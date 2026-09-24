@@ -1,0 +1,204 @@
+class TenantUser {
+  final String id;
+  final String? username;
+  final String fullName;
+  final String email;
+  final String systemRole; // 'tenant-admin' | 'tenant-user'
+  final String status; // 'active' | 'disabled'
+  final bool isActive;
+  final String createdAt;
+  final String updatedAt;
+
+  TenantUser({
+    required this.id,
+    this.username,
+    required this.fullName,
+    required this.email,
+    required this.systemRole,
+    required this.status,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory TenantUser.fromJson(Map<String, dynamic> json) {
+    return TenantUser(
+      id: json['id']?.toString() ?? '',
+      username: json['username']?.toString(),
+      fullName: json['fullName']?.toString() ?? json['name']?.toString() ?? 'Người dùng',
+      email: json['email']?.toString() ?? '',
+      systemRole: json['systemRole']?.toString() ?? 'tenant-user',
+      status: json['status']?.toString() ?? (json['isActive'] == true ? 'active' : 'disabled'),
+      isActive: json['isActive'] == true || json['status'] == 'active',
+      createdAt: json['createdAt']?.toString() ?? '',
+      updatedAt: json['updatedAt']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'username': username,
+    'fullName': fullName,
+    'email': email,
+    'systemRole': systemRole,
+    'status': status,
+    'isActive': isActive,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+  };
+}
+
+class ModuleCatalogItem {
+  final String key;
+  final String name;
+  final String description;
+  final String launchUrl;
+  final String? icon;
+  final String version;
+  final String entitlementStatus; // 'active' | 'provisioning' | 'not-entitled'
+
+  ModuleCatalogItem({
+    required this.key,
+    required this.name,
+    required this.description,
+    required this.launchUrl,
+    this.icon,
+    required this.version,
+    required this.entitlementStatus,
+  });
+
+  bool get isActive => entitlementStatus == 'active';
+
+  factory ModuleCatalogItem.fromJson(Map<String, dynamic> json) {
+    return ModuleCatalogItem(
+      key: json['key']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      launchUrl: json['launchUrl']?.toString() ?? '',
+      icon: json['icon']?.toString(),
+      version: json['version']?.toString() ?? '1.0.0',
+      entitlementStatus: json['entitlementStatus']?.toString() ?? 'not-entitled',
+    );
+  }
+}
+
+class OrgNode {
+  final String id;
+  final String treeId;
+  final String? parentId;
+  final String nodeTypeId;
+  final String code;
+  final String name;
+  final String? description;
+  final int sortOrder;
+  final String status;
+
+  OrgNode({
+    required this.id,
+    required this.treeId,
+    this.parentId,
+    required this.nodeTypeId,
+    required this.code,
+    required this.name,
+    this.description,
+    this.sortOrder = 0,
+    required this.status,
+  });
+
+  factory OrgNode.fromJson(Map<String, dynamic> json) {
+    return OrgNode(
+      id: json['id']?.toString() ?? '',
+      treeId: json['treeId']?.toString() ?? '',
+      parentId: json['parentId']?.toString(),
+      nodeTypeId: json['nodeTypeId']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+      status: json['status']?.toString() ?? 'active',
+    );
+  }
+}
+
+class OrgNodeType {
+  final String id;
+  final String code;
+  final String name;
+  final String category; // 'unit' | 'position'
+  final String? description;
+
+  OrgNodeType({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.category,
+    this.description,
+  });
+
+  factory OrgNodeType.fromJson(Map<String, dynamic> json) {
+    return OrgNodeType(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      category: json['category']?.toString() ?? 'unit',
+      description: json['description']?.toString(),
+    );
+  }
+}
+
+class OrgAssignment {
+  final String id;
+  final String nodeId;
+  final String userId;
+  final bool isPrimary;
+  final String? note;
+  final String status;
+
+  OrgAssignment({
+    required this.id,
+    required this.nodeId,
+    required this.userId,
+    required this.isPrimary,
+    this.note,
+    required this.status,
+  });
+
+  factory OrgAssignment.fromJson(Map<String, dynamic> json) {
+    return OrgAssignment(
+      id: json['id']?.toString() ?? '',
+      nodeId: json['nodeId']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? '',
+      isPrimary: json['isPrimary'] == true,
+      note: json['note']?.toString(),
+      status: json['status']?.toString() ?? 'active',
+    );
+  }
+}
+
+class OrganizationSnapshot {
+  final List<OrgNode> nodes;
+  final List<OrgNodeType> nodeTypes;
+  final List<OrgAssignment> assignments;
+  final List<TenantUser> users;
+
+  OrganizationSnapshot({
+    required this.nodes,
+    required this.nodeTypes,
+    required this.assignments,
+    required this.users,
+  });
+
+  factory OrganizationSnapshot.fromJson(Map<String, dynamic> json) {
+    final rawNodes = json['nodes'] as List<dynamic>? ?? [];
+    final rawTypes = json['nodeTypes'] as List<dynamic>? ?? [];
+    final rawAssignments = json['assignments'] as List<dynamic>? ?? [];
+    final rawUsers = json['users'] as List<dynamic>? ?? [];
+
+    return OrganizationSnapshot(
+      nodes: rawNodes.map((e) => OrgNode.fromJson(e as Map<String, dynamic>)).toList(),
+      nodeTypes: rawTypes.map((e) => OrgNodeType.fromJson(e as Map<String, dynamic>)).toList(),
+      assignments: rawAssignments.map((e) => OrgAssignment.fromJson(e as Map<String, dynamic>)).toList(),
+      users: rawUsers.map((e) => TenantUser.fromJson(e as Map<String, dynamic>)).toList(),
+    );
+  }
+}
