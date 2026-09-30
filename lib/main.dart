@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import './providers/auth_provider.dart';
 import './providers/analysis_provider.dart';
-import './screens/tenant_input_screen.dart';
+import './screens/login_screen.dart';
 import './screens/home_screen.dart';
 
 void main() {
@@ -46,7 +46,7 @@ class MyApp extends StatelessWidget {
           ),
           home: authProvider.isLoggedIn
               ? const HomeScreen()
-              : const TenantInputScreen(),
+              : const LoginScreen(),
         );
       },
     );

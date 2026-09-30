@@ -241,6 +241,14 @@ class PlatformService {
       entitlementStatus: 'active',
     ),
     ModuleCatalogItem(
+      key: 'hrm',
+      name: 'Chấm công & Nhân sự (HRM Attendance)',
+      description: 'Chấm công GPS di động, sổ quẹt thẻ, phê duyệt giải trình công và quản lý ca làm việc.',
+      launchUrl: '/modules/hrm/attendance',
+      version: '1.0.0',
+      entitlementStatus: 'active',
+    ),
+    ModuleCatalogItem(
       key: 'crm',
       name: 'Quản lý khách hàng (CRM Enterprise)',
       description: 'Quản lý thông tin khách hàng doanh nghiệp, hợp đồng dịch vụ và chăm sóc đối tác.',
