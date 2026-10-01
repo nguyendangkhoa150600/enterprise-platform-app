@@ -6,24 +6,35 @@ import 'package:dio/io.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
+  String? _kind; // 'tenant-user' | 'platform-admin'
   String? _tenantSlug;
   String? _fullName;
   String? _email;
   String? _tenantId;
+  List<String> _roles = [];
   List<String> _permissions = [];
   String? _cookies;
   bool _isLoading = false;
   String? _errorMessage;
 
   bool get isLoggedIn => _isLoggedIn;
+  String? get kind => _kind;
+  bool get isPlatformAdmin => _kind == 'platform-admin' || _roles.contains('platform-admin');
+  bool get isTenantAdmin => _roles.contains('tenant-admin');
   String? get tenantSlug => _tenantSlug;
   String? get fullName => _fullName;
   String? get email => _email;
   String? get tenantId => _tenantId;
+  List<String> get roles => _roles;
   List<String> get permissions => _permissions;
   String? get cookies => _cookies;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
 
   static String get authBaseUrl {
     try {
@@ -54,16 +65,18 @@ class AuthProvider extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+    _kind = prefs.getString('user_kind') ?? 'tenant-user';
     _tenantSlug = prefs.getString('tenant_slug');
     _fullName = prefs.getString('full_name');
     _email = prefs.getString('email');
     _tenantId = prefs.getString('tenant_id');
+    _roles = prefs.getStringList('roles') ?? [];
     _permissions = prefs.getStringList('permissions') ?? [];
     _cookies = prefs.getString('session_cookies');
     notifyListeners();
   }
 
-  // Set tenant slug after parsing enter url screen
+  // Set tenant slug optionally
   Future<bool> setTenant(String inputUrl) async {
     _errorMessage = null;
     String cleanSlug = inputUrl.trim().toLowerCase();
@@ -77,7 +90,6 @@ class AuthProvider extends ChangeNotifier {
       }
     }
     
-    // Remove extra domain components or path slashes
     cleanSlug = cleanSlug
         .replaceAll('http://', '')
         .replaceAll('https://', '')
@@ -99,58 +111,71 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  // Perform tenant login
-  Future<bool> login(String email, String password) async {
-    if (_tenantSlug == null) {
-      _errorMessage = 'Vui lòng chọn doanh nghiệp trước.';
-      notifyListeners();
-      return false;
-    }
-
+  // Perform unified login (portal: 'tenant' or 'platform')
+  Future<bool> login({
+    required String email,
+    required String password,
+    String portal = 'tenant',
+    String? tenantSlug,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      final Map<String, dynamic> requestBody = {
+        'email': email.trim(),
+        'password': password,
+        'portal': portal,
+      };
+
+      if (tenantSlug != null && tenantSlug.trim().isNotEmpty) {
+        requestBody['tenantSlug'] = tenantSlug.trim().toLowerCase();
+      } else if (_tenantSlug != null && _tenantSlug!.trim().isNotEmpty && portal == 'tenant') {
+        requestBody['tenantSlug'] = _tenantSlug!.trim().toLowerCase();
+      }
+
       final response = await _dio.post(
         '/auth/v1/login',
-        data: {
-          'email': email,
-          'password': password,
-          'portal': 'tenant',
-          'tenantSlug': _tenantSlug,
-        },
+        data: requestBody,
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
         final principal = data['principal'];
         
-        if (principal == null || principal['kind'] != 'tenant-user') {
-          throw Exception('Tài khoản không phải quản trị viên hoặc nhân viên của doanh nghiệp.');
+        if (principal == null) {
+          throw Exception('Không nhận được thông tin xác thực từ máy chủ.');
         }
 
-        _fullName = principal['fullName'] ?? 'Người dùng';
-        _email = principal['email'];
-        _tenantId = principal['tenantId'];
+        _kind = principal['kind']?.toString() ?? (portal == 'platform' ? 'platform-admin' : 'tenant-user');
+        _fullName = principal['displayName']?.toString() ?? principal['fullName']?.toString() ?? (portal == 'platform' ? 'Platform Super Admin' : 'Người dùng');
+        _email = principal['email']?.toString() ?? email.trim();
+        _tenantId = principal['tenantId']?.toString();
+        _tenantSlug = principal['tenantSlug']?.toString() ?? (portal == 'platform' ? 'PLATFORM' : 'SVN');
         _isLoggedIn = true;
         
+        final List<dynamic> rolesList = principal['roles'] ?? [];
+        _roles = rolesList.map((r) => r.toString()).toList();
+
         final List<dynamic> permsList = principal['permissions'] ?? [];
         _permissions = permsList.map((p) => p.toString()).toList();
 
         // Extract cookies
         final List<String>? setCookies = response.headers['set-cookie'];
         if (setCookies != null && setCookies.isNotEmpty) {
-          // Clean and store cookies
           _cookies = setCookies.map((c) => c.split(';').first).join('; ');
         }
 
         // Persist to SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_logged_in', true);
+        await prefs.setString('user_kind', _kind ?? 'tenant-user');
         await prefs.setString('full_name', _fullName ?? '');
         await prefs.setString('email', _email ?? '');
         await prefs.setString('tenant_id', _tenantId ?? '');
+        await prefs.setString('tenant_slug', _tenantSlug ?? '');
+        await prefs.setStringList('roles', _roles);
         await prefs.setStringList('permissions', _permissions);
         if (_cookies != null) {
           await prefs.setString('session_cookies', _cookies!);
@@ -170,13 +195,13 @@ class AuthProvider extends ChangeNotifier {
         debugPrint("DioException Response Status: ${e.response!.statusCode}");
       }
       if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-        _errorMessage = 'Hết thời gian kết nối (Timeout). Vui lòng đảm bảo backend (npm run dev trên cổng 3333) đang chạy.';
+        _errorMessage = 'Hết thời gian kết nối (Timeout). Vui lòng đảm bảo backend API (cổng 3333) đang hoạt động.';
       } else if (e.type == DioExceptionType.connectionError) {
-        _errorMessage = 'Không thể kết nối đến máy chủ Gateway (cổng 8080). Vui lòng kiểm tra Docker.';
+        _errorMessage = 'Không thể kết nối đến máy chủ backend (cổng 3333). Vui lòng kiểm tra lại dịch vụ.';
       } else if (e.response != null && e.response!.data != null && e.response!.data['message'] != null) {
         _errorMessage = e.response!.data['message'].toString();
       } else {
-        _errorMessage = 'Thông tin đăng nhập không chính xác hoặc lỗi hệ thống.';
+        _errorMessage = 'Email hoặc mật khẩu không chính xác.';
       }
       notifyListeners();
       return false;
@@ -189,7 +214,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Clear tenant selection (change workspace)
+  // Clear tenant selection
   Future<void> clearTenant() async {
     _tenantSlug = null;
     _errorMessage = null;
@@ -204,7 +229,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Send logout request
       if (_cookies != null) {
         await _dio.post(
           '/auth/v1/logout',
@@ -217,13 +241,16 @@ class AuthProvider extends ChangeNotifier {
         );
       }
     } catch (_) {
-      // Ignore network errors on logout to allow offline state clearing
+      // Ignore network errors on logout
     }
 
     _isLoggedIn = false;
+    _kind = null;
     _fullName = null;
     _email = null;
     _tenantId = null;
+    _tenantSlug = null;
+    _roles = [];
     _permissions = [];
     _cookies = null;
     _isLoading = false;
@@ -231,9 +258,12 @@ class AuthProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('is_logged_in');
+    await prefs.remove('user_kind');
     await prefs.remove('full_name');
     await prefs.remove('email');
     await prefs.remove('tenant_id');
+    await prefs.remove('tenant_slug');
+    await prefs.remove('roles');
     await prefs.remove('permissions');
     await prefs.remove('session_cookies');
     

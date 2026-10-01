@@ -1,3 +1,60 @@
+class AuthenticatedPrincipal {
+  final String kind; // 'tenant-user' | 'platform-admin'
+  final String userId;
+  final String sessionId;
+  final String email;
+  final String displayName;
+  final String? tenantId;
+  final String? tenantSlug;
+  final String? membershipId;
+  final List<String> roles;
+  final List<String> permissions;
+
+  AuthenticatedPrincipal({
+    required this.kind,
+    required this.userId,
+    required this.sessionId,
+    required this.email,
+    required this.displayName,
+    this.tenantId,
+    this.tenantSlug,
+    this.membershipId,
+    required this.roles,
+    required this.permissions,
+  });
+
+  bool get isPlatformAdmin => kind == 'platform-admin' || roles.contains('platform-admin');
+  bool get isTenantAdmin => roles.contains('tenant-admin');
+
+  factory AuthenticatedPrincipal.fromJson(Map<String, dynamic> json) {
+    return AuthenticatedPrincipal(
+      kind: json['kind']?.toString() ?? 'tenant-user',
+      userId: json['userId']?.toString() ?? '',
+      sessionId: json['sessionId']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      displayName: json['displayName']?.toString() ?? json['fullName']?.toString() ?? 'Người dùng',
+      tenantId: json['tenantId']?.toString(),
+      tenantSlug: json['tenantSlug']?.toString(),
+      membershipId: json['membershipId']?.toString(),
+      roles: (json['roles'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      permissions: (json['permissions'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'kind': kind,
+    'userId': userId,
+    'sessionId': sessionId,
+    'email': email,
+    'displayName': displayName,
+    'tenantId': tenantId,
+    'tenantSlug': tenantSlug,
+    'membershipId': membershipId,
+    'roles': roles,
+    'permissions': permissions,
+  };
+}
+
 class TenantUser {
   final String id;
   final String? username;
