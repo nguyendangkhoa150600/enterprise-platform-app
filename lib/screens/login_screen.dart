@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../theme/colors.dart';
 import './home_screen.dart';
@@ -22,11 +23,40 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _rememberMe = true;
 
   @override
   void initState() {
     super.initState();
     _portal = widget.initialPortal;
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rememberMe = prefs.getBool('saved_remember_me') ?? true;
+      final savedEmail = prefs.getString('saved_login_email') ?? '';
+      final savedPassword = prefs.getString('saved_login_password') ?? '';
+      final savedPortal = prefs.getString('saved_login_portal');
+
+      if (mounted) {
+        setState(() {
+          _rememberMe = rememberMe;
+          if (_rememberMe) {
+            if (savedPortal != null && (savedPortal == 'tenant' || savedPortal == 'platform')) {
+              _portal = savedPortal;
+            }
+            if (savedEmail.isNotEmpty) {
+              _emailController.text = savedEmail;
+            }
+            if (savedPassword.isNotEmpty) {
+              _passwordController.text = savedPassword;
+            }
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -54,12 +84,28 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
         portal: _portal,
       );
-      if (success && mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
-        );
+      if (success) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('saved_remember_me', _rememberMe);
+          if (_rememberMe) {
+            await prefs.setString('saved_login_email', _emailController.text.trim());
+            await prefs.setString('saved_login_password', _passwordController.text);
+            await prefs.setString('saved_login_portal', _portal);
+          } else {
+            await prefs.remove('saved_login_email');
+            await prefs.remove('saved_login_password');
+            await prefs.remove('saved_login_portal');
+          }
+        } catch (_) {}
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            (route) => false,
+          );
+        }
       }
     }
   }
@@ -447,6 +493,57 @@ class _LoginScreenState extends State<LoginScreen> {
               onFieldSubmitted: (_) => _handleLogin(),
             ),
 
+            // Remember me checkbox
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _rememberMe = !_rememberMe;
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: Checkbox(
+                        value: _rememberMe,
+                        onChanged: (val) {
+                          setState(() {
+                            _rememberMe = val ?? false;
+                          });
+                        },
+                        activeColor: activeAccent,
+                        checkColor: Colors.white,
+                        side: BorderSide(
+                          color: AppColors.slate500.withOpacity(0.8),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Ghi nhớ tài khoản',
+                      style: TextStyle(
+                        color: AppColors.slate300,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // Error message display
             if (authProvider.errorMessage != null) ...[
               const SizedBox(height: 14),
@@ -473,7 +570,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Submit Button
             SizedBox(

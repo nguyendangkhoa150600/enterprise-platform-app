@@ -60,6 +60,10 @@ class _ProcedureScreenState extends State<ProcedureScreen> {
         backgroundColor: AppColors.slate900,
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
