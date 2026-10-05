@@ -208,6 +208,8 @@ class OrgAssignment {
   final String nodeId;
   final String userId;
   final bool isPrimary;
+  final String? startDate;
+  final String? endDate;
   final String? note;
   final String status;
 
@@ -216,6 +218,8 @@ class OrgAssignment {
     required this.nodeId,
     required this.userId,
     required this.isPrimary,
+    this.startDate,
+    this.endDate,
     this.note,
     required this.status,
   });
@@ -226,6 +230,8 @@ class OrgAssignment {
       nodeId: json['nodeId']?.toString() ?? '',
       userId: json['userId']?.toString() ?? '',
       isPrimary: json['isPrimary'] == true,
+      startDate: json['startDate']?.toString(),
+      endDate: json['endDate']?.toString(),
       note: json['note']?.toString(),
       status: json['status']?.toString() ?? 'active',
     );
@@ -259,3 +265,104 @@ class OrganizationSnapshot {
     );
   }
 }
+
+class TenantRole {
+  final String id;
+  final String name;
+  final String key;
+  final String? description;
+  final bool isSystem;
+  final List<String> actionKeys;
+  final List<String> permissionIds;
+  final List<String> moduleKeys;
+  final List<String> userIds;
+  final String? createdAt;
+  final String? updatedAt;
+
+  TenantRole({
+    required this.id,
+    required this.name,
+    required this.key,
+    this.description,
+    this.isSystem = false,
+    this.actionKeys = const [],
+    this.permissionIds = const [],
+    this.moduleKeys = const [],
+    this.userIds = const [],
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory TenantRole.fromJson(Map<String, dynamic> json) {
+    return TenantRole(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      key: json['key']?.toString() ?? '',
+      description: json['description']?.toString(),
+      isSystem: json['isSystem'] == true,
+      actionKeys: (json['actionKeys'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      permissionIds: (json['permissionIds'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      moduleKeys: (json['moduleKeys'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      userIds: (json['userIds'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      createdAt: json['createdAt']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'key': key,
+    'description': description,
+    'isSystem': isSystem,
+    'actionKeys': actionKeys,
+    'permissionIds': permissionIds,
+    'moduleKeys': moduleKeys,
+    'userIds': userIds,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+  };
+}
+
+class TenantPermission {
+  final String id;
+  final String name;
+  final String? key;
+  final String? description;
+  final bool isSystem;
+  final List<String> actionKeys;
+  final List<String> roleIds;
+
+  TenantPermission({
+    required this.id,
+    required this.name,
+    this.key,
+    this.description,
+    this.isSystem = false,
+    this.actionKeys = const [],
+    this.roleIds = const [],
+  });
+
+  factory TenantPermission.fromJson(Map<String, dynamic> json) {
+    return TenantPermission(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      key: json['key']?.toString(),
+      description: json['description']?.toString(),
+      isSystem: json['isSystem'] == true,
+      actionKeys: (json['actionKeys'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      roleIds: (json['roleIds'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'key': key,
+    'description': description,
+    'isSystem': isSystem,
+    'actionKeys': actionKeys,
+    'roleIds': roleIds,
+  };
+}
+
