@@ -36,13 +36,34 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.amber,
-              primary: Colors.amber.shade700,
+              seedColor: const Color(0xFF2563EB), // Professional Enterprise Blue
+              primary: const Color(0xFF2563EB),
               secondary: const Color(0xFF10B981),
               surface: Colors.white,
+              surfaceContainer: Colors.white,
+              surfaceContainerLow: Colors.white,
+              surfaceContainerHigh: Colors.white,
+              surfaceContainerHighest: Colors.white,
+              surfaceTint: Colors.transparent,
             ),
             fontFamily: 'Roboto', // Modern system font fallback
             scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+            popupMenuTheme: PopupMenuThemeData(
+              color: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              elevation: 8,
+              shadowColor: Colors.black.withOpacity(0.12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1E293B),
+                fontFamily: 'Roboto',
+              ),
+            ),
           ),
           home: authProvider.isLoggedIn
               ? const HomeScreen()

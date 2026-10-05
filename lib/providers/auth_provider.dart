@@ -31,18 +31,27 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  bool hasPermission(String permission) {
+    if (isPlatformAdmin || isTenantAdmin) return true;
+    return _permissions.contains(permission) || _permissions.contains('*');
+  }
+
+  bool hasRole(String role) {
+    if (isPlatformAdmin) return true;
+    return _roles.contains(role);
+  }
+
+  bool get canCreateUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.create') || hasPermission('users.create');
+  bool get canUpdateUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.update') || hasPermission('users.update');
+  bool get canDeleteUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.delete') || hasPermission('users.delete');
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();
   }
 
   static String get authBaseUrl {
-    try {
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:3333/api';
-      }
-    } catch (_) {}
-    return 'http://localhost:3333/api';
+    return 'https://enterprise-platform.savinatestinghub.com/api';
   }
 
   final Dio _dio = Dio(BaseOptions(

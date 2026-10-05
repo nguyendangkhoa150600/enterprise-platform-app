@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/hrm_attendance_models.dart';
 import '../services/hrm_attendance_service.dart';
 import '../theme/colors.dart';
+import '../utils/error_handler.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -109,8 +110,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     } catch (e) {
       if (mounted) {
         setState(() => _isPunching = false);
+        final userMsg = ApiErrorHandler.parse(e, defaultMessage: 'Không thể quẹt thẻ Vào ca. Vui lòng thử lại.');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi chấm công: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(userMsg),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
       }
     }
@@ -149,8 +156,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     } catch (e) {
       if (mounted) {
         setState(() => _isPunching = false);
+        final userMsg = ApiErrorHandler.parse(e, defaultMessage: 'Không thể quẹt thẻ Hết ca. Vui lòng thử lại.');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi chấm công: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(userMsg),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
       }
     }
