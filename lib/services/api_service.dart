@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
+import 'api_client_helper.dart';
 
 class ApiService {
   static const String baseUrl = 'https://backend.dev.savinatestinghub.com/api/v1';
@@ -15,28 +16,7 @@ class ApiService {
   ));
 
   ApiService() {
-    // Ignore SSL certificate errors for dev server
-    (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-      final client = HttpClient();
-      client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
-      return client;
-    };
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final cookies = await AuthProvider.getStoredCookies();
-        if (cookies != null && cookies.isNotEmpty) {
-          options.headers['cookie'] = cookies;
-          final parts = cookies.split('; ');
-          for (var part in parts) {
-            if (part.startsWith('ep_csrf=')) {
-              options.headers['x-csrf-token'] = part.substring('ep_csrf='.length);
-            }
-          }
-        }
-        return handler.next(options);
-      },
-    ));
+    ApiClientHelper.configureDio(_dio);
   }
 
   // Projects CRUD

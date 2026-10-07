@@ -67,7 +67,7 @@ class ApiErrorHandler {
       }
 
       if (error.type == DioExceptionType.connectionError) {
-        return 'Không thể kết nối đến máy chủ backend (cổng 3333). Vui lòng kiểm tra mạng hoặc khởi động lại server API.';
+        return 'Không thể kết nối đến máy chủ API. Vui lòng kiểm tra kết nối mạng của thiết bị hoặc trạng thái server.';
       }
 
       if (rawMsg != null && rawMsg.trim().isNotEmpty) {

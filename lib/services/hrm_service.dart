@@ -4,6 +4,7 @@ import 'package:dio/io.dart';
 import '../models/hrm_models.dart';
 import '../models/hrm_attendance_models.dart';
 import '../providers/auth_provider.dart';
+import 'api_client_helper.dart';
 
 class HrmService {
   static final HrmService _instance = HrmService._internal();
@@ -16,27 +17,7 @@ class HrmService {
   ));
 
   HrmService._internal() {
-    (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-      final client = HttpClient();
-      client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
-      return client;
-    };
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final cookies = await AuthProvider.getStoredCookies();
-        if (cookies != null && cookies.isNotEmpty) {
-          options.headers['cookie'] = cookies;
-          final parts = cookies.split('; ');
-          for (var part in parts) {
-            if (part.startsWith('ep_csrf=')) {
-              options.headers['x-csrf-token'] = part.substring('ep_csrf='.length);
-            }
-          }
-        }
-        return handler.next(options);
-      },
-    ));
+    ApiClientHelper.configureDio(_dio);
   }
 
   // In-memory persistent caches for realistic state transitions
@@ -48,7 +29,7 @@ class HrmService {
   // 1. Dashboard Stats
   Future<HrmDashboardStats> getDashboardStats() async {
     try {
-      final response = await _dio.get('/api/hrm/v1/dashboard/overview');
+      final response = await _dio.get('/hrm/v1/dashboard/overview');
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data['data'] ?? response.data;
         return HrmDashboardStats.fromJson(data);
@@ -67,17 +48,17 @@ class HrmService {
 
   // 2. Get Requests (Đơn từ & Yêu cầu)
   Future<List<HrmRequestItem>> getRequests({String? status, HrmRequestType? type}) async {
-    if (_cachedRequests == null) {
-      try {
-        final response = await _dio.get('/api/hrm/v1/requests');
-        if (response.statusCode == 200 && response.data != null) {
-          final list = (response.data['data'] ?? response.data) as List;
-          _cachedRequests = list.map((item) => HrmRequestItem.fromJson(item)).toList();
+    try {
+      final response = await _dio.get('/hrm/v1/requests');
+      if (response.statusCode == 200 && response.data != null) {
+        final raw = response.data['data'] ?? response.data['items'] ?? response.data;
+        if (raw is List) {
+          _cachedRequests = raw.map((item) => HrmRequestItem.fromJson(item as Map<String, dynamic>)).toList();
         }
-      } catch (_) {}
+      }
+    } catch (_) {}
 
-      _cachedRequests ??= _getMockRequests();
-    }
+    _cachedRequests ??= _getMockRequests();
 
     var result = List<HrmRequestItem>.from(_cachedRequests!);
     if (status != null && status != 'ALL') {
@@ -113,7 +94,7 @@ class HrmService {
 
     try {
       final response = await _dio.post(
-        '/api/hrm/v1/requests',
+        '/hrm/v1/requests',
         data: payload,
       );
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -149,7 +130,7 @@ class HrmService {
   // 4. Approve Request
   Future<bool> approveRequest(String id, {String? note}) async {
     try {
-      await _dio.post('/api/hrm/v1/requests/$id/approve', data: {'note': note});
+      await _dio.post('/hrm/v1/requests/$id/approve', data: {'note': note});
     } catch (_) {}
 
     if (_cachedRequests != null) {
@@ -183,7 +164,7 @@ class HrmService {
   // 5. Reject Request
   Future<bool> rejectRequest(String id, {required String reason}) async {
     try {
-      await _dio.post('/api/hrm/v1/requests/$id/reject', data: {'reason': reason});
+      await _dio.post('/hrm/v1/requests/$id/reject', data: {'reason': reason});
     } catch (_) {}
 
     if (_cachedRequests != null) {
@@ -218,7 +199,7 @@ class HrmService {
   Future<List<HrmEmployeeItem>> getEmployees({String? search, String? department}) async {
     if (_cachedEmployees == null) {
       try {
-        final response = await _dio.get('/api/hrm/v1/employees');
+        final response = await _dio.get('/hrm/v1/employees');
         if (response.statusCode == 200 && response.data != null) {
           final list = (response.data['data'] ?? response.data) as List;
           _cachedEmployees = list.map((item) => HrmEmployeeItem.fromJson(item)).toList();
@@ -248,7 +229,7 @@ class HrmService {
   Future<List<HrmPayslipItem>> getPayslips() async {
     if (_cachedPayslips == null) {
       try {
-        final response = await _dio.get('/api/hrm/v1/payroll/payslips');
+        final response = await _dio.get('/hrm/v1/payroll/payslips');
         if (response.statusCode == 200 && response.data != null) {
           final list = (response.data['data'] ?? response.data) as List;
           _cachedPayslips = list.map((item) => HrmPayslipItem.fromJson(item)).toList();
@@ -264,7 +245,7 @@ class HrmService {
   Future<List<HrmShift>> getShifts() async {
     if (_cachedShifts == null) {
       try {
-        final response = await _dio.get('/api/hrm/v1/shifts');
+        final response = await _dio.get('/hrm/v1/shifts');
         if (response.statusCode == 200 && response.data != null) {
           final list = (response.data['data'] ?? response.data) as List;
           _cachedShifts = list.map((item) => HrmShift.fromJson(item)).toList();
@@ -511,4 +492,211 @@ class HrmService {
       ),
     ];
   }
+
+  // 9. Get Dependents (Người phụ thuộc)
+  Future<List<HrmDependentItem>> getDependents() async {
+    return [
+      HrmDependentItem(
+        id: 'dep-001',
+        employeeId: 'emp-001',
+        employeeName: 'Nguyễn Đăng Khoa',
+        fullName: 'Nguyễn Gia Bảo',
+        relationship: 'Con ruột',
+        dateOfBirth: DateTime(2020, 5, 12),
+        idNumber: '079200012345',
+        taxCode: '8594029101',
+        status: 'VERIFIED',
+        startDate: DateTime(2020, 6, 1),
+      ),
+      HrmDependentItem(
+        id: 'dep-002',
+        employeeId: 'emp-001',
+        employeeName: 'Nguyễn Đăng Khoa',
+        fullName: 'Trần Thị Mai',
+        relationship: 'Vợ/Chồng',
+        dateOfBirth: DateTime(1992, 11, 20),
+        idNumber: '079192009876',
+        taxCode: '8594029102',
+        status: 'VERIFIED',
+        startDate: DateTime(2022, 1, 1),
+      ),
+      HrmDependentItem(
+        id: 'dep-003',
+        employeeId: 'emp-002',
+        employeeName: 'Trần Văn Minh',
+        fullName: 'Trần Minh Khang',
+        relationship: 'Con ruột',
+        dateOfBirth: DateTime(2023, 8, 15),
+        idNumber: '079203004321',
+        taxCode: '8594029103',
+        status: 'PENDING',
+        startDate: DateTime(2023, 9, 1),
+      ),
+    ];
+  }
+
+  // 10. Get Salary Advances (Ứng và thu hồi lương)
+  Future<List<HrmSalaryAdvanceItem>> getSalaryAdvances() async {
+    return [
+      HrmSalaryAdvanceItem(
+        id: 'adv-001',
+        employeeId: 'emp-002',
+        employeeName: 'Trần Văn Minh',
+        amount: 5000000,
+        reason: 'Tạm ứng chi phí cá nhân khẩn cấp',
+        requestDate: DateTime(2026, 9, 20),
+        status: 'RECOVERING',
+        repaymentPeriod: '10/2026 - 11/2026',
+        repaidAmount: 2500000,
+        monthlyDeduction: 2500000,
+      ),
+      HrmSalaryAdvanceItem(
+        id: 'adv-002',
+        employeeId: 'emp-003',
+        employeeName: 'Lê Thị Thu Thảo',
+        amount: 3000000,
+        reason: 'Chi phí khám chữa bệnh gia đình',
+        requestDate: DateTime(2026, 10, 1),
+        status: 'PENDING',
+        repaymentPeriod: '10/2026',
+        repaidAmount: 0,
+        monthlyDeduction: 3000000,
+      ),
+      HrmSalaryAdvanceItem(
+        id: 'adv-003',
+        employeeId: 'emp-004',
+        employeeName: 'Phạm Đức Long',
+        amount: 10000000,
+        reason: 'Mua sắm thiết bị làm việc cá nhân',
+        requestDate: DateTime(2026, 7, 15),
+        status: 'COMPLETED',
+        repaymentPeriod: '08/2026 - 09/2026',
+        repaidAmount: 10000000,
+        monthlyDeduction: 5000000,
+      ),
+    ];
+  }
+
+  // 11. Get Timesheet Summary (Bảng công tổng hợp)
+  Future<List<HrmTimesheetSummaryItem>> getTimesheetSummaries() async {
+    return [
+      const HrmTimesheetSummaryItem(
+        employeeId: 'emp-001',
+        employeeName: 'Nguyễn Tấn Tài (Bạn)',
+        employeeCode: 'SVN-001',
+        department: 'Khối Điều hành & Kỹ thuật',
+        standardWorkdays: 22,
+        actualWorkdays: 22,
+        paidLeaveDays: 0,
+        overtimeHours: 6.5,
+        lateCount: 0,
+        missingPunchCount: 0,
+        status: 'VALID',
+      ),
+      const HrmTimesheetSummaryItem(
+        employeeId: 'emp-002',
+        employeeName: 'Trần Văn Minh',
+        employeeCode: 'SVN-002',
+        department: 'Phòng Kỹ thuật & R&D',
+        standardWorkdays: 22,
+        actualWorkdays: 21,
+        paidLeaveDays: 1,
+        overtimeHours: 12.0,
+        lateCount: 1,
+        missingPunchCount: 0,
+        status: 'VALID',
+      ),
+      const HrmTimesheetSummaryItem(
+        employeeId: 'emp-003',
+        employeeName: 'Lê Thị Thu Thảo',
+        employeeCode: 'SVN-003',
+        department: 'Phòng Nhân sự & Tổng hợp',
+        standardWorkdays: 22,
+        actualWorkdays: 22,
+        paidLeaveDays: 0,
+        overtimeHours: 4.0,
+        lateCount: 0,
+        missingPunchCount: 0,
+        status: 'VALID',
+      ),
+      const HrmTimesheetSummaryItem(
+        employeeId: 'emp-004',
+        employeeName: 'Phạm Đức Long',
+        employeeCode: 'SVN-004',
+        department: 'Phòng Dự án & Khảo sát',
+        standardWorkdays: 22,
+        actualWorkdays: 20.5,
+        paidLeaveDays: 1,
+        overtimeHours: 8.0,
+        lateCount: 2,
+        missingPunchCount: 1,
+        status: 'NEEDS_REVIEW',
+      ),
+      const HrmTimesheetSummaryItem(
+        employeeId: 'emp-005',
+        employeeName: 'Võ Hoàng Nam',
+        employeeCode: 'SVN-005',
+        department: 'Phòng Tài chính - Kế toán',
+        standardWorkdays: 22,
+        actualWorkdays: 22,
+        paidLeaveDays: 0,
+        overtimeHours: 0,
+        lateCount: 0,
+        missingPunchCount: 0,
+        status: 'VALID',
+      ),
+      const HrmTimesheetSummaryItem(
+        employeeId: 'emp-006',
+        employeeName: 'Đặng Thanh Tùng',
+        employeeCode: 'SVN-006',
+        department: 'Phòng Vận hành & Bảo trì',
+        standardWorkdays: 22,
+        actualWorkdays: 21.5,
+        paidLeaveDays: 0.5,
+        overtimeHours: 15.0,
+        lateCount: 0,
+        missingPunchCount: 0,
+        status: 'VALID',
+      ),
+    ];
+  }
+
+  // 12. Get Policy Config (Chính sách & Cấu hình)
+  Future<HrmPolicyConfig> getPolicyConfig() async {
+    return const HrmPolicyConfig();
+  }
+
+  // 13. Get Integration Devices (Hệ thống & Tích hợp)
+  Future<List<HrmIntegrationDevice>> getIntegrationDevices() async {
+    return [
+      HrmIntegrationDevice(
+        id: 'dev-01',
+        name: 'Máy chấm công FaceID Cửa chính',
+        type: 'FaceID Biometric Terminal',
+        ipAddress: '192.168.1.201',
+        location: 'Trụ sở SAVINA - Tầng 1',
+        status: 'ONLINE',
+        lastSync: DateTime.now().subtract(const Duration(minutes: 2)),
+      ),
+      HrmIntegrationDevice(
+        id: 'dev-02',
+        name: 'Máy chấm công Vân tay Cửa sau',
+        type: 'Optical Fingerprint Scanner',
+        ipAddress: '192.168.1.202',
+        location: 'Trụ sở SAVINA - Tầng 2',
+        status: 'ONLINE',
+        lastSync: DateTime.now().subtract(const Duration(minutes: 5)),
+      ),
+      HrmIntegrationDevice(
+        id: 'dev-03',
+        name: 'Máy chấm công Xưởng cơ điện',
+        type: 'Outdoor Rugged Biometric',
+        ipAddress: '192.168.2.50',
+        location: 'Kho trung tâm & Xưởng bảo trì',
+        status: 'OFFLINE',
+        lastSync: DateTime.now().subtract(const Duration(hours: 4)),
+      ),
+    ];
+  }
 }
+

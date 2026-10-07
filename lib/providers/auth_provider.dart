@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
 class AuthProvider extends ChangeNotifier {
+  static AuthProvider? instance;
+
   bool _isLoggedIn = false;
   String? _kind; // 'tenant-user' | 'platform-admin'
   String? _tenantSlug;
@@ -61,6 +63,7 @@ class AuthProvider extends ChangeNotifier {
   ));
 
   AuthProvider() {
+    instance = this;
     // Ignore SSL certificate errors for dev server
     (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
@@ -189,6 +192,11 @@ class AuthProvider extends ChangeNotifier {
         if (_cookies != null) {
           await prefs.setString('session_cookies', _cookies!);
         }
+        
+        // Save login credentials for seamless silent background renewal
+        await prefs.setString('saved_login_email', email.trim());
+        await prefs.setString('saved_login_password', password);
+        await prefs.setString('saved_login_portal', portal);
 
         _isLoading = false;
         notifyListeners();
@@ -204,9 +212,9 @@ class AuthProvider extends ChangeNotifier {
         debugPrint("DioException Response Status: ${e.response!.statusCode}");
       }
       if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-        _errorMessage = 'Hết thời gian kết nối (Timeout). Vui lòng đảm bảo backend API (cổng 3333) đang hoạt động.';
+        _errorMessage = 'Hết thời gian chờ kết nối (Timeout). Vui lòng kiểm tra lại đường truyền mạng hoặc máy chủ.';
       } else if (e.type == DioExceptionType.connectionError) {
-        _errorMessage = 'Không thể kết nối đến máy chủ backend (cổng 3333). Vui lòng kiểm tra lại dịch vụ.';
+        _errorMessage = 'Không thể kết nối đến máy chủ (${AuthProvider.authBaseUrl}). Vui lòng kiểm tra kết nối mạng của thiết bị.';
       } else if (e.response != null && e.response!.data != null && e.response!.data['message'] != null) {
         _errorMessage = e.response!.data['message'].toString();
       } else {
@@ -275,14 +283,19 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove('roles');
     await prefs.remove('permissions');
     await prefs.remove('session_cookies');
+    await prefs.remove('saved_login_password');
     
     notifyListeners();
   }
 
   // Extract ep_csrf from stored cookies string for POST requests
   String _getCsrfToken() {
-    if (_cookies == null) return '';
-    final parts = _cookies!.split('; ');
+    return extractCsrf(_cookies);
+  }
+
+  static String extractCsrf(String? cookies) {
+    if (cookies == null || cookies.isEmpty) return '';
+    final parts = cookies.split('; ');
     for (var part in parts) {
       if (part.startsWith('ep_csrf=')) {
         return part.substring('ep_csrf='.length);
@@ -295,5 +308,109 @@ class AuthProvider extends ChangeNotifier {
   static Future<String?> getStoredCookies() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('session_cookies');
+  }
+
+  // Static helper to merge and update cookies from response headers
+  static Future<void> updateCookiesFromSetCookie(List<String>? setCookies) async {
+    if (setCookies == null || setCookies.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existingCookies = prefs.getString('session_cookies');
+      final Map<String, String> cookieMap = {};
+
+      if (existingCookies != null && existingCookies.isNotEmpty) {
+        for (var part in existingCookies.split('; ')) {
+          final idx = part.indexOf('=');
+          if (idx > 0) {
+            cookieMap[part.substring(0, idx).trim()] = part.substring(idx + 1).trim();
+          }
+        }
+      }
+
+      for (var sc in setCookies) {
+        final mainPart = sc.split(';').first;
+        final idx = mainPart.indexOf('=');
+        if (idx > 0) {
+          cookieMap[mainPart.substring(0, idx).trim()] = mainPart.substring(idx + 1).trim();
+        }
+      }
+
+      final merged = cookieMap.entries.map((e) => '${e.key}=${e.value}').join('; ');
+      await prefs.setString('session_cookies', merged);
+      
+      if (instance != null) {
+        instance!._cookies = merged;
+      }
+    } catch (e) {
+      debugPrint('[AuthProvider] Error updating cookies: $e');
+    }
+  }
+
+  // Silent automatic background login to renew session seamlessly
+  static Future<bool> silentRelogin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEmail = prefs.getString('saved_login_email');
+      final savedPassword = prefs.getString('saved_login_password');
+      final savedPortal = prefs.getString('saved_login_portal') ?? 'tenant';
+      final savedTenantSlug = prefs.getString('tenant_slug');
+
+      if (savedEmail == null || savedEmail.isEmpty || savedPassword == null || savedPassword.isEmpty) {
+        debugPrint('[AuthProvider] silentRelogin: No saved credentials found.');
+        return false;
+      }
+
+      debugPrint('[AuthProvider] silentRelogin: Attempting silent renewal for $savedEmail...');
+      final standaloneDio = Dio(BaseOptions(
+        baseUrl: authBaseUrl,
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 12),
+      ));
+      (standaloneDio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+        final client = HttpClient();
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+        return client;
+      };
+
+      final Map<String, dynamic> body = {
+        'email': savedEmail.trim(),
+        'password': savedPassword,
+        'portal': savedPortal,
+      };
+      if (savedTenantSlug != null && savedTenantSlug.isNotEmpty && savedPortal == 'tenant') {
+        body['tenantSlug'] = savedTenantSlug.trim().toLowerCase();
+      }
+
+      final response = await standaloneDio.post('/auth/v1/login', data: body);
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final principal = data['principal'];
+        if (principal != null) {
+          final setCookies = response.headers['set-cookie'];
+          if (setCookies != null && setCookies.isNotEmpty) {
+            final newCookies = setCookies.map((c) => c.split(';').first).join('; ');
+            await prefs.setString('session_cookies', newCookies);
+            if (instance != null) {
+              instance!._cookies = newCookies;
+              instance!._isLoggedIn = true;
+              instance!._fullName = principal['displayName']?.toString() ?? principal['fullName']?.toString();
+              instance!._email = principal['email']?.toString() ?? savedEmail;
+              instance!._tenantId = principal['tenantId']?.toString();
+              instance!._tenantSlug = principal['tenantSlug']?.toString() ?? savedTenantSlug;
+              final List<dynamic> rolesList = principal['roles'] ?? [];
+              instance!._roles = rolesList.map((r) => r.toString()).toList();
+              final List<dynamic> permsList = principal['permissions'] ?? [];
+              instance!._permissions = permsList.map((p) => p.toString()).toList();
+              instance!.notifyListeners();
+            }
+          }
+          debugPrint('[AuthProvider] silentRelogin: Session renewed successfully!');
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('[AuthProvider] silentRelogin failed: $e');
+    }
+    return false;
   }
 }

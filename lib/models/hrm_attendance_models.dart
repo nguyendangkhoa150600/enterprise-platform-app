@@ -1,3 +1,34 @@
+class LeaveType {
+  final String id;
+  final String code;
+  final String name;
+  final double? daysAllowed;
+  final bool isPaid;
+  final String? description;
+
+  LeaveType({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.daysAllowed,
+    this.isPaid = true,
+    this.description,
+  });
+
+  factory LeaveType.fromJson(Map<String, dynamic> json) {
+    return LeaveType(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? json['name']?.toString() ?? '',
+      name: json['name']?.toString() ?? json['title']?.toString() ?? json['code']?.toString() ?? 'Nghỉ phép',
+      daysAllowed: (json['days_allowed'] ?? json['daysAllowed'] ?? json['quota']) != null
+          ? double.tryParse(json['days_allowed']?.toString() ?? json['daysAllowed']?.toString() ?? json['quota']?.toString() ?? '')
+          : null,
+      isPaid: json['is_paid'] ?? json['isPaid'] ?? true,
+      description: json['description']?.toString(),
+    );
+  }
+}
+
 class HrmShift {
   final String id;
   final String code;
@@ -81,15 +112,15 @@ class AttendanceContext {
   });
 
   factory AttendanceContext.fromJson(Map<String, dynamic> json) {
-    final emp = json['employee'] as Map<String, dynamic>? ?? {};
+    final emp = json['employee'] as Map<String, dynamic>? ?? json['user'] as Map<String, dynamic>? ?? json['profile'] as Map<String, dynamic>? ?? {};
     final rawSites = json['sites'] as List<dynamic>? ?? [];
 
     return AttendanceContext(
       serverTime: json['server_time']?.toString() ?? DateTime.now().toIso8601String(),
       workDate: json['work_date']?.toString() ?? DateTime.now().toIso8601String().substring(0, 10),
-      employeeId: emp['id']?.toString() ?? 'emp-01',
-      employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? 'NV-001',
-      fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? 'SVN Admin',
+      employeeId: emp['id']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? json['employee_code']?.toString() ?? 'MS_385',
+      fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? emp['name']?.toString() ?? json['full_name']?.toString() ?? 'Nguyễn Tấn Tài',
       shift: json['shift'] != null ? HrmShift.fromJson(json['shift']) : HrmShift(id: 's-01', code: 'CA_HC', name: 'Ca Hành chính', startTime: '08:00:00', endTime: '17:30:00'),
       allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['GPS', 'WIFI_WAN_IP'],
       sites: rawSites.map((e) => HrmSite.fromJson(e as Map<String, dynamic>)).toList(),
@@ -130,6 +161,29 @@ class PrecheckResult {
   }
 }
 
+class AttendancePunch {
+  final String punchType; // 'IN' | 'OUT'
+  final String occurredAt;
+  final String? verificationMethod;
+  final String? siteName;
+
+  AttendancePunch({
+    required this.punchType,
+    required this.occurredAt,
+    this.verificationMethod = 'GPS',
+    this.siteName,
+  });
+
+  factory AttendancePunch.fromJson(Map<String, dynamic> json) {
+    return AttendancePunch(
+      punchType: json['punch_type']?.toString() ?? json['punchType']?.toString() ?? 'IN',
+      occurredAt: json['occurred_at']?.toString() ?? json['occurredAt']?.toString() ?? '',
+      verificationMethod: json['verification_method']?.toString() ?? json['verificationMethod']?.toString() ?? 'GPS',
+      siteName: json['site_name']?.toString() ?? json['siteName']?.toString(),
+    );
+  }
+}
+
 class AttendanceRecord {
   final String id;
   final String employeeId;
@@ -143,6 +197,9 @@ class AttendanceRecord {
   final String attendanceSource;
   final String? matchedSiteName;
   final String? note;
+  final List<AttendancePunch>? punches;
+
+  List<AttendancePunch> get punchList => punches ?? const [];
 
   AttendanceRecord({
     required this.id,
@@ -157,9 +214,11 @@ class AttendanceRecord {
     this.attendanceSource = 'MOBILE_APP',
     this.matchedSiteName,
     this.note,
+    this.punches = const [],
   });
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    final rawPunches = json['punches'] as List<dynamic>? ?? [];
     return AttendanceRecord(
       id: json['id']?.toString() ?? 'att-0',
       employeeId: json['employee_id']?.toString() ?? json['employeeId']?.toString() ?? '',
@@ -173,6 +232,7 @@ class AttendanceRecord {
       attendanceSource: json['attendance_source']?.toString() ?? json['attendanceSource']?.toString() ?? 'MOBILE_APP',
       matchedSiteName: json['matched_site_name']?.toString() ?? json['matchedSiteName']?.toString() ?? 'Trụ sở chính',
       note: json['note']?.toString(),
+      punches: rawPunches.map((p) => AttendancePunch.fromJson(p as Map<String, dynamic>)).toList(),
     );
   }
 }
@@ -203,17 +263,29 @@ class AttendanceCorrection {
   });
 
   factory AttendanceCorrection.fromJson(Map<String, dynamic> json) {
+    final rawDate = json['request_date']?.toString() ??
+        json['requestDate']?.toString() ??
+        json['start_date']?.toString() ??
+        json['created_at']?.toString() ??
+        DateTime.now().toIso8601String();
+    final cleanDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+    final title = json['title']?.toString() ?? '';
+    final rawReason = json['reason']?.toString() ?? json['notes']?.toString() ?? json['description']?.toString() ?? '';
+    final combinedReason = title.isNotEmpty && rawReason.isNotEmpty && !rawReason.contains(title)
+        ? '[$title] $rawReason'
+        : (rawReason.isNotEmpty ? rawReason : (title.isNotEmpty ? title : 'Đơn đề xuất'));
+
     return AttendanceCorrection(
       id: json['id']?.toString() ?? '',
-      employeeId: json['employee_id']?.toString() ?? '',
-      attendanceId: json['attendance_id']?.toString(),
-      requestDate: json['request_date']?.toString() ?? json['requestDate']?.toString() ?? '',
-      newCheckInAt: json['new_check_in_at']?.toString() ?? json['newCheckInAt']?.toString(),
-      newCheckOutAt: json['new_check_out_at']?.toString() ?? json['newCheckOutAt']?.toString(),
-      reason: json['reason']?.toString() ?? '',
-      status: json['status']?.toString() ?? 'PENDING',
-      createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString() ?? '',
-      rejectionReason: json['rejection_reason']?.toString(),
+      employeeId: json['employee_id']?.toString() ?? json['employeeId']?.toString() ?? '',
+      attendanceId: json['attendance_id']?.toString() ?? json['attendanceId']?.toString(),
+      requestDate: cleanDate,
+      newCheckInAt: json['new_check_in_at']?.toString() ?? json['newCheckInAt']?.toString() ?? json['start_date']?.toString(),
+      newCheckOutAt: json['new_check_out_at']?.toString() ?? json['newCheckOutAt']?.toString() ?? json['end_date']?.toString(),
+      reason: combinedReason,
+      status: (json['status']?.toString() ?? 'PENDING').toUpperCase(),
+      createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString() ?? DateTime.now().toIso8601String(),
+      rejectionReason: json['rejection_reason']?.toString() ?? json['rejectionReason']?.toString(),
     );
   }
 }
