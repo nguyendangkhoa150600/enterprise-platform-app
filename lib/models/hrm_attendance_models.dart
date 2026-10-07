@@ -240,11 +240,16 @@ class AttendanceRecord {
 class AttendanceCorrection {
   final String id;
   final String employeeId;
+  final String? employeeName;
   final String? attendanceId;
   final String requestDate;
+  final String? fromDate;
+  final String? toDate;
   final String? newCheckInAt;
   final String? newCheckOutAt;
   final String reason;
+  final double? duration;
+  final String? leaveTypeName;
   final String status; // 'PENDING' | 'APPROVED' | 'REJECTED'
   final String createdAt;
   final String? rejectionReason;
@@ -252,11 +257,16 @@ class AttendanceCorrection {
   AttendanceCorrection({
     required this.id,
     required this.employeeId,
+    this.employeeName,
     this.attendanceId,
     required this.requestDate,
+    this.fromDate,
+    this.toDate,
     this.newCheckInAt,
     this.newCheckOutAt,
     required this.reason,
+    this.duration,
+    this.leaveTypeName,
     required this.status,
     required this.createdAt,
     this.rejectionReason,
@@ -266,26 +276,67 @@ class AttendanceCorrection {
     final rawDate = json['request_date']?.toString() ??
         json['requestDate']?.toString() ??
         json['start_date']?.toString() ??
+        json['fromDate']?.toString() ??
+        json['from_date']?.toString() ??
         json['created_at']?.toString() ??
         DateTime.now().toIso8601String();
     final cleanDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
-    final title = json['title']?.toString() ?? '';
+    final title = json['title']?.toString() ??
+        json['leave_type_name']?.toString() ??
+        json['leaveTypeName']?.toString() ??
+        (json['leave_type'] is Map ? json['leave_type']['name']?.toString() : null) ??
+        '';
     final rawReason = json['reason']?.toString() ?? json['notes']?.toString() ?? json['description']?.toString() ?? '';
     final combinedReason = title.isNotEmpty && rawReason.isNotEmpty && !rawReason.contains(title)
         ? '[$title] $rawReason'
         : (rawReason.isNotEmpty ? rawReason : (title.isNotEmpty ? title : 'Đơn đề xuất'));
 
+    double? parsedDuration;
+    if (json['duration'] != null) {
+      parsedDuration = double.tryParse(json['duration'].toString());
+    }
+
+    final rawFrom = json['from_date']?.toString() ?? json['fromDate']?.toString() ?? json['start_date']?.toString() ?? cleanDate;
+    final rawTo = json['to_date']?.toString() ?? json['toDate']?.toString() ?? json['end_date']?.toString() ?? cleanDate;
+
     return AttendanceCorrection(
       id: json['id']?.toString() ?? '',
       employeeId: json['employee_id']?.toString() ?? json['employeeId']?.toString() ?? '',
+      employeeName: json['employee_name']?.toString() ??
+          json['employeeName']?.toString() ??
+          (json['employee'] is Map ? json['employee']['name']?.toString() : null),
       attendanceId: json['attendance_id']?.toString() ?? json['attendanceId']?.toString(),
       requestDate: cleanDate,
+      fromDate: rawFrom.length >= 10 ? rawFrom.substring(0, 10) : rawFrom,
+      toDate: rawTo.length >= 10 ? rawTo.substring(0, 10) : rawTo,
       newCheckInAt: json['new_check_in_at']?.toString() ?? json['newCheckInAt']?.toString() ?? json['start_date']?.toString(),
       newCheckOutAt: json['new_check_out_at']?.toString() ?? json['newCheckOutAt']?.toString() ?? json['end_date']?.toString(),
       reason: combinedReason,
+      duration: parsedDuration,
+      leaveTypeName: title.isNotEmpty ? title : null,
       status: (json['status']?.toString() ?? 'PENDING').toUpperCase(),
       createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString() ?? DateTime.now().toIso8601String(),
       rejectionReason: json['rejection_reason']?.toString() ?? json['rejectionReason']?.toString(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'employee_id': employeeId,
+      'employee_name': employeeName,
+      'attendance_id': attendanceId,
+      'request_date': requestDate,
+      'from_date': fromDate,
+      'to_date': toDate,
+      'new_check_in_at': newCheckInAt,
+      'new_check_out_at': newCheckOutAt,
+      'reason': reason,
+      'duration': duration,
+      'leave_type_name': leaveTypeName,
+      'status': status,
+      'created_at': createdAt,
+      'rejection_reason': rejectionReason,
+    };
   }
 }

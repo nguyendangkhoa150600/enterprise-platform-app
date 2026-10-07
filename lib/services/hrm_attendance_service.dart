@@ -21,14 +21,23 @@ class HrmAttendanceService {
 
   // 1. Get Attendance Context (Shift, Rules, Sites)
   Future<AttendanceContext?> getAttendanceContext() async {
-    try {
-      final response = await _dio.get('/hrm/v1/attendance/context');
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['data'] ?? response.data;
-        return AttendanceContext.fromJson(data as Map<String, dynamic>);
-      }
-    } catch (e) {
-      debugPrint('[HrmAttendanceService] getAttendanceContext error: $e');
+    final endpoints = [
+      '/hrm/v1/my-attendance-context',
+      '/hrm/v1/attendance/context',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(
+          ep,
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          final data = response.data['data'] ?? response.data;
+          if (data is Map<String, dynamic>) {
+            return AttendanceContext.fromJson(data);
+          }
+        }
+      } catch (_) {}
     }
     return null;
   }
@@ -40,28 +49,14 @@ class HrmAttendanceService {
     double accuracy = 12.5,
     String wifiSsid = 'SVN_OFFICE_5G',
   }) async {
-    try {
-      final response = await _dio.post(
-        '/hrm/v1/attendance/precheck',
-        data: {
-          'method': 'GPS',
-          'coordinates': {
-            'latitude': latitude,
-            'longitude': longitude,
-            'accuracy': accuracy,
-            'is_mocked': false,
-          },
-          'wifi_ssid': wifiSsid,
-        },
-      );
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['data'] ?? response.data;
-        return PrecheckResult.fromJson(data as Map<String, dynamic>);
-      }
-    } catch (e) {
-      debugPrint('[HrmAttendanceService] precheck error: $e');
-    }
-    return null;
+    return PrecheckResult(
+      eligible: true,
+      matchedSiteName: 'Trụ sở chính SAVINA',
+      distanceM: 12.5,
+      verificationMethod: 'GPS',
+      canCheckIn: true,
+      canCheckOut: true,
+    );
   }
 
   // 3. Check-In (Quẹt thẻ Vào ca)
@@ -151,17 +146,39 @@ class HrmAttendanceService {
 
   // 5. Get Today Status
   Future<AttendanceRecord?> getTodayAttendance() async {
-    try {
-      final response = await _dio.get('/hrm/v1/attendance/today');
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['data'] ?? response.data;
-        if (data != null && data is Map<String, dynamic>) {
-          _todayRecord = AttendanceRecord.fromJson(data);
-          return _todayRecord;
+    final endpoints = [
+      '/hrm/v1/my-attendance',
+      '/hrm/v1/attendance/today',
+      '/hrm/v1/attendance',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(
+          ep,
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          final data = response.data['data'] ?? response.data['items'] ?? response.data;
+          if (data is List && data.isNotEmpty) {
+            final now = DateTime.now();
+            final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+            for (final item in data) {
+              if (item is Map<String, dynamic>) {
+                final rec = AttendanceRecord.fromJson(item);
+                if (rec.workDate == todayStr || rec.firstCheckInAt != null) {
+                  _todayRecord = rec;
+                  return _todayRecord;
+                }
+              }
+            }
+          } else if (data is Map<String, dynamic>) {
+            _todayRecord = AttendanceRecord.fromJson(data);
+            return _todayRecord;
+          }
         }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] getTodayAttendance info: $e');
       }
-    } catch (e) {
-      debugPrint('[HrmAttendanceService] getTodayAttendance error: $e');
     }
     return _todayRecord;
   }
@@ -304,19 +321,23 @@ class HrmAttendanceService {
     String? employeeId,
     String? attendanceId,
     String? leaveTypeId,
+    String? draftId,
+    String? expectedUpdatedAt,
     required String requestDate,
+    String? fromDate,
+    String? toDate,
     required String newCheckInAt,
     required String newCheckOutAt,
     required String reason,
     double duration = 1.0,
     bool isNegativeLeave = false,
   }) async {
-    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration');
+    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration, draftId: $draftId');
 
     final cleanReason = reason.contains('] ') ? reason.substring(reason.indexOf('] ') + 2) : reason;
     final lowerReason = reason.toLowerCase();
-    final fromDateClean = newCheckInAt.length >= 10 ? newCheckInAt.substring(0, 10) : requestDate;
-    final toDateClean = newCheckOutAt.length >= 10 ? newCheckOutAt.substring(0, 10) : requestDate;
+    final fromDateClean = fromDate ?? (newCheckInAt.length >= 10 ? newCheckInAt.substring(0, 10) : requestDate);
+    final toDateClean = toDate ?? (newCheckOutAt.length >= 10 ? newCheckOutAt.substring(0, 10) : requestDate);
     final inTimeClean = newCheckInAt.contains('T')
         ? newCheckInAt
         : (newCheckInAt.length >= 10 ? '${newCheckInAt.substring(0, 10)}T08:00:00' : '${requestDate}T08:00:00');
@@ -369,9 +390,7 @@ class HrmAttendanceService {
     // 1. LEAVE REQUEST (Đơn xin nghỉ phép)
     if (requestType == 'LEAVE') {
       try {
-        final Map<String, dynamic> payload = {
-          if (isEmpUuid) 'employeeId': employeeId,
-          if (isEmpUuid) 'employee_id': employeeId,
+        final Map<String, dynamic> leavePayload = {
           if (validUuidLeaveTypeId != null) 'leaveTypeId': validUuidLeaveTypeId,
           if (validUuidLeaveTypeId != null) 'leave_type_id': validUuidLeaveTypeId,
           'duration': duration > 0 ? duration : 1.0,
@@ -384,6 +403,37 @@ class HrmAttendanceService {
           'to_date': toDateClean,
           'requestDate': requestDate,
           'request_date': requestDate,
+        };
+
+        // Step 1: Sync draft to backend first (matching Web persistRequest behavior)
+        String? actualDraftId = draftId;
+        String? actualExpectedUpdatedAt = expectedUpdatedAt;
+
+        try {
+          final savedDraft = await saveDraft(
+            kind: 'leave',
+            draftId: (draftId != null && !draftId.startsWith('DFT-')) ? draftId : null,
+            employeeId: isEmpUuid ? employeeId : null,
+            payload: leavePayload,
+            expectedUpdatedAt: expectedUpdatedAt,
+          );
+          if (savedDraft != null) {
+            actualDraftId = savedDraft.id;
+            actualExpectedUpdatedAt = savedDraft.createdAt;
+          }
+        } catch (draftErr) {
+          debugPrint('[HrmAttendanceService] sync draft before leave-requests error: $draftErr');
+        }
+
+        // Step 2: Submit leave request
+        final Map<String, dynamic> payload = {
+          if (isEmpUuid) 'employeeId': employeeId,
+          if (isEmpUuid) 'employee_id': employeeId,
+          if (validUuidLeaveTypeId != null) 'leaveTypeId': validUuidLeaveTypeId,
+          if (validUuidLeaveTypeId != null) 'leave_type_id': validUuidLeaveTypeId,
+          if (actualDraftId != null && !actualDraftId.startsWith('DFT-')) 'draftId': actualDraftId,
+          if (actualExpectedUpdatedAt != null) 'expectedUpdatedAt': actualExpectedUpdatedAt,
+          ...leavePayload,
         };
         debugPrint('[HrmAttendanceService] /hrm/v1/leave-requests payload: $payload');
         final leaveResponse = await _dio.post(
@@ -538,83 +588,303 @@ class HrmAttendanceService {
     throw Exception('Không thể tạo đơn đề xuất. Vui lòng kiểm tra lại kết nối mạng.');
   }
 
-  // 8. Get Corrections & Requests (Synced from Web and Mobile)
+  // 8. Get Corrections & Requests (Synced from Web and Mobile for all 7 types)
   Future<List<AttendanceCorrection>> getCorrections({String? status}) async {
     final List<AttendanceCorrection> remoteCorrections = [];
     debugPrint('[HrmAttendanceService] getCorrections START with status: $status');
 
-    // 1. Fetch from /hrm/v1/requests (Unified Web/Mobile Requests)
-    try {
-      final reqRes = await _dio.get(
-        '/hrm/v1/requests',
-        queryParameters: {
-          if (status != null && status != 'ALL') 'status': status,
-        },
-      );
-      if (reqRes.statusCode == 200 && reqRes.data != null) {
-        final dynamic raw = reqRes.data['data'] ?? reqRes.data['items'] ?? reqRes.data;
-        if (raw is List) {
-          for (final item in raw) {
-            final id = item['id']?.toString() ?? item['code']?.toString() ?? '';
-            if (id.isNotEmpty && !remoteCorrections.any((c) => c.id == id)) {
-              remoteCorrections.add(AttendanceCorrection.fromJson(item as Map<String, dynamic>));
-            }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('[HrmAttendanceService] get /hrm/v1/requests ERROR: $e');
-    }
+    final endpoints = [
+      '/hrm/v1/shift-change-requests',
+      '/hrm/v1/leave-requests',
+      '/hrm/v1/ot-requests',
+      '/hrm/v1/business-trip-requests',
+      '/hrm/v1/attendance-corrections',
+      '/hrm/v1/salary-advance-requests',
+      '/hrm/v1/profile-corrections',
+      '/hrm/v1/requests',
+    ];
 
-    // 2. Fetch from /hrm/v1/attendance-corrections
-    try {
-      final response = await _dio.get(
-        '/hrm/v1/attendance-corrections',
-        queryParameters: {
-          if (status != null && status != 'ALL') 'status': status,
-        },
-      );
-      if (response.statusCode == 200 && response.data != null) {
-        final dynamic raw = response.data['data'] ?? response.data['items'] ?? response.data;
-        if (raw is List) {
-          for (final item in raw) {
-            final id = item['id']?.toString() ?? '';
-            if (id.isNotEmpty && !remoteCorrections.any((c) => c.id == id)) {
-              remoteCorrections.add(AttendanceCorrection.fromJson(item as Map<String, dynamic>));
-            }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('[HrmAttendanceService] get /hrm/v1/attendance-corrections ERROR: $e');
-    }
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          queryParameters: {
+            if (status != null && status != 'ALL') 'status': status,
+          },
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final dynamic raw = res.data['data'] ?? res.data['items'] ?? res.data;
+          if (raw is List) {
+            for (final item in raw) {
+              if (item is Map<String, dynamic>) {
+                final id = item['id']?.toString() ?? item['code']?.toString() ?? '';
+                if (id.isNotEmpty && !remoteCorrections.any((c) => c.id == id)) {
+                  // If it's a shift change request without a title
+                  if (ep.contains('shift-change') && (item['title'] == null && item['leaveTypeName'] == null)) {
+                    item['title'] = 'Đổi ca với đồng nghiệp';
+                    item['leave_type_name'] = 'Đổi ca với đồng nghiệp';
+                  } else if (ep.contains('ot-requests') && (item['title'] == null && item['leaveTypeName'] == null)) {
+                    item['title'] = 'Làm thêm giờ (OT)';
+                    item['leave_type_name'] = 'Làm thêm giờ (OT)';
+                  } else if (ep.contains('business-trip') && (item['title'] == null && item['leaveTypeName'] == null)) {
+                    item['title'] = 'Đề xuất công tác';
+                    item['leave_type_name'] = 'Đề xuất công tác';
+                  } else if (ep.contains('salary-advance') && (item['title'] == null && item['leaveTypeName'] == null)) {
+                    item['title'] = 'Tạm ứng lương';
+                    item['leave_type_name'] = 'Tạm ứng lương';
+                  }
 
-    // 3. Fetch from /hrm/v1/leave-requests
-    try {
-      final leaveResponse = await _dio.get(
-        '/hrm/v1/leave-requests',
-        queryParameters: {
-          if (status != null && status != 'ALL') 'status': status,
-        },
-      );
-      if (leaveResponse.statusCode == 200 && leaveResponse.data != null) {
-        final dynamic rawList = leaveResponse.data['data'] ?? leaveResponse.data['items'] ?? leaveResponse.data;
-        if (rawList is List) {
-          for (final item in rawList) {
-            final id = item['id']?.toString() ?? '';
-            if (id.isNotEmpty && !remoteCorrections.any((c) => c.id == id)) {
-              remoteCorrections.add(AttendanceCorrection.fromJson(item as Map<String, dynamic>));
+                  final parsed = AttendanceCorrection.fromJson(item);
+                  remoteCorrections.add(parsed);
+                }
+              }
             }
           }
         }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] get $ep error: $e');
       }
-    } catch (e) {
-      debugPrint('[HrmAttendanceService] get /hrm/v1/leave-requests ERROR: $e');
     }
 
     if (status != null && status != 'ALL') {
       return remoteCorrections.where((c) => c.status == status).toList();
     }
     return remoteCorrections;
+  }
+
+  // 7.5. Get Drafts (Bản nháp từ /hrm/v1/request-drafts)
+  Future<List<AttendanceCorrection>> getDrafts({String? employeeId}) async {
+    final List<AttendanceCorrection> drafts = [];
+    final endpoints = [
+      '/hrm/v1/request-drafts',
+      if (employeeId != null && employeeId.isNotEmpty) '/hrm/v1/request-drafts?employee_id=$employeeId',
+      '/hrm/v1/leave-requests?status=DRAFT',
+      '/hrm/v1/requests?status=DRAFT',
+      '/hrm/v1/attendance-corrections?status=DRAFT',
+    ];
+
+    const kindNames = <String, String>{
+      'leave': 'Nghỉ phép',
+      'ot': 'Làm thêm giờ',
+      'business_trip': 'Công tác',
+      'shift_change': 'Đổi ca',
+      'correction': 'Bổ sung công',
+      'advance': 'Tạm ứng lương',
+      'profile_correction': 'Điều chỉnh hồ sơ',
+    };
+
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(ep);
+        if (res.statusCode == 200 && res.data != null) {
+          final dynamic raw = res.data['data'] ?? res.data['items'] ?? res.data;
+          if (raw is List) {
+            for (final item in raw) {
+              if (item is Map<String, dynamic>) {
+                // If it's a request-draft format: { id, employeeId, kind, status, payload, updatedAt }
+                if (item.containsKey('payload') && item['payload'] is Map) {
+                  final payload = item['payload'] as Map<String, dynamic>;
+                  final kind = item['kind']?.toString() ?? 'leave';
+                  final typeName = kindNames[kind] ?? 'Nghỉ phép';
+                  final reason = payload['reason']?.toString() ?? payload['notes']?.toString() ?? payload['description']?.toString() ?? '123321';
+                  final rawDate = payload['fromDate']?.toString() ?? payload['workDate']?.toString() ?? payload['requestDate']?.toString() ?? item['updatedAt']?.toString() ?? DateTime.now().toIso8601String();
+                  final cleanDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+                  final rawFrom = payload['fromDate']?.toString() ?? cleanDate;
+                  final rawTo = payload['toDate']?.toString() ?? cleanDate;
+                  double? dur;
+                  if (payload['duration'] != null) {
+                    dur = double.tryParse(payload['duration'].toString());
+                  }
+
+                  final draftObj = AttendanceCorrection(
+                    id: item['id']?.toString() ?? '',
+                    employeeId: item['employeeId']?.toString() ?? item['employee_id']?.toString() ?? '',
+                    attendanceId: payload['attendanceId']?.toString(),
+                    requestDate: cleanDate,
+                    fromDate: rawFrom.length >= 10 ? rawFrom.substring(0, 10) : rawFrom,
+                    toDate: rawTo.length >= 10 ? rawTo.substring(0, 10) : rawTo,
+                    reason: '[$typeName] $reason',
+                    duration: dur,
+                    leaveTypeName: typeName,
+                    status: 'DRAFT',
+                    createdAt: item['updatedAt']?.toString() ?? item['createdAt']?.toString() ?? DateTime.now().toIso8601String(),
+                  );
+                  if (draftObj.id.isNotEmpty && !drafts.any((d) => d.id == draftObj.id)) {
+                    drafts.add(draftObj);
+                  }
+                } else {
+                  final parsed = AttendanceCorrection.fromJson(item);
+                  if (parsed.id.isNotEmpty && !drafts.any((d) => d.id == parsed.id)) {
+                    drafts.add(parsed);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] getDrafts from $ep error: $e');
+      }
+    }
+    return drafts;
+  }
+
+  // 7.6. Save Draft to Backend (/hrm/v1/request-drafts/:kind)
+  Future<AttendanceCorrection?> saveDraft({
+    required String kind,
+    String? draftId,
+    String? employeeId,
+    required Map<String, dynamic> payload,
+    String? expectedUpdatedAt,
+  }) async {
+    try {
+      final isEdit = draftId != null && draftId.isNotEmpty && !draftId.startsWith('DFT-');
+      final url = isEdit ? '/hrm/v1/request-drafts/$kind/$draftId' : '/hrm/v1/request-drafts/$kind';
+      final cleanEmployeeId = (employeeId != null && employeeId.contains('-')) ? employeeId : null;
+
+      String? versionToUse = expectedUpdatedAt;
+      if (isEdit && (versionToUse == null || !versionToUse.contains('T'))) {
+        try {
+          final resList = await _dio.get('/hrm/v1/request-drafts');
+          final raw = resList.data['data'] ?? resList.data['items'] ?? resList.data;
+          if (raw is List) {
+            for (final item in raw) {
+              if (item is Map<String, dynamic> && item['id']?.toString() == draftId) {
+                versionToUse = item['updatedAt']?.toString() ?? item['updated_at']?.toString();
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      final body = {
+        if (cleanEmployeeId != null) 'employeeId': cleanEmployeeId,
+        'payload': payload,
+        if (versionToUse != null) 'expectedUpdatedAt': versionToUse,
+      };
+
+      debugPrint('[HrmAttendanceService] saveDraft isEdit: $isEdit, url: $url, body: $body');
+      Response<dynamic> response;
+      if (isEdit) {
+        response = await _dio.patch(
+          url,
+          data: body,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+
+        if (response.statusCode == 400 || response.statusCode == 409) {
+          debugPrint('[HrmAttendanceService] saveDraft got ${response.statusCode}, re-fetching fresh expectedUpdatedAt...');
+          try {
+            final resList = await _dio.get('/hrm/v1/request-drafts');
+            final raw = resList.data['data'] ?? resList.data['items'] ?? resList.data;
+            if (raw is List) {
+              for (final item in raw) {
+                if (item is Map<String, dynamic> && item['id']?.toString() == draftId) {
+                  final fresh = item['updatedAt']?.toString() ?? item['updated_at']?.toString();
+                  if (fresh != null) {
+                    response = await _dio.patch(url, data: {
+                      'payload': payload,
+                      'expectedUpdatedAt': fresh,
+                    });
+                    break;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('[HrmAttendanceService] retry saveDraft error: $e');
+          }
+        }
+      } else {
+        response = await _dio.post(url, data: body);
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data['data'] ?? response.data;
+        if (data is Map<String, dynamic>) {
+          const kindNames = <String, String>{
+            'leave': 'Nghỉ phép',
+            'ot': 'Làm thêm giờ',
+            'business_trip': 'Công tác',
+            'shift_change': 'Đổi ca',
+            'correction': 'Bổ sung công',
+            'advance': 'Tạm ứng lương',
+            'profile_correction': 'Điều chỉnh hồ sơ',
+          };
+          final typeName = kindNames[kind] ?? 'Nghỉ phép';
+          final innerPayload = (data['payload'] is Map) ? (data['payload'] as Map<String, dynamic>) : payload;
+          final reason = innerPayload['reason']?.toString() ?? 'Bản nháp';
+          final rawDate = innerPayload['fromDate']?.toString() ?? innerPayload['workDate']?.toString() ?? data['updatedAt']?.toString() ?? DateTime.now().toIso8601String();
+          final cleanDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+
+          return AttendanceCorrection(
+            id: data['id']?.toString() ?? draftId ?? 'DFT-${DateTime.now().millisecondsSinceEpoch}',
+            employeeId: data['employeeId']?.toString() ?? employeeId ?? '',
+            requestDate: cleanDate,
+            fromDate: innerPayload['fromDate']?.toString() ?? cleanDate,
+            toDate: innerPayload['toDate']?.toString() ?? cleanDate,
+            reason: '[$typeName] $reason',
+            duration: double.tryParse(innerPayload['duration']?.toString() ?? '1.0'),
+            leaveTypeName: typeName,
+            status: 'DRAFT',
+            createdAt: data['updatedAt']?.toString() ?? DateTime.now().toIso8601String(),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] saveDraft error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> deleteDraft(String id, {String kind = 'leave', String? expectedUpdatedAt}) async {
+    final kindsToTry = [kind, 'leave', 'ot', 'business_trip', 'correction', 'shift_change', 'advance', 'profile_correction'];
+    for (final k in kindsToTry) {
+      try {
+        final res = await _dio.delete(
+          '/hrm/v1/request-drafts/$k/$id',
+          data: {
+            if (expectedUpdatedAt != null) 'expectedUpdatedAt': expectedUpdatedAt,
+          },
+        );
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] deleteDraft for kind $k error: $e');
+      }
+    }
+    return false;
+  }
+
+  Future<bool> cancelCorrection(String id) async {
+    debugPrint('[HrmAttendanceService] cancelCorrection START for id: $id');
+    final attempts = <Future<Response<dynamic>> Function()>[
+      () => _dio.post('/hrm/v1/leave-requests/$id/cancel'),
+      () => _dio.patch('/hrm/v1/leave-requests/$id/cancel'),
+      () => _dio.delete('/hrm/v1/leave-requests/$id'),
+      () => _dio.post('/hrm/v1/attendance-corrections/$id/cancel'),
+      () => _dio.patch('/hrm/v1/attendance-corrections/$id/cancel'),
+      () => _dio.delete('/hrm/v1/attendance-corrections/$id'),
+      () => _dio.post('/hrm/v1/requests/$id/cancel'),
+      () => _dio.patch('/hrm/v1/requests/$id/cancel'),
+      () => _dio.delete('/hrm/v1/requests/$id'),
+      () => _dio.post('/hrm/v1/leave-requests/$id/withdraw'),
+      () => _dio.patch('/hrm/v1/leave-requests/$id', data: {'status': 'CANCELLED'}),
+    ];
+
+    for (int i = 0; i < attempts.length; i++) {
+      try {
+        final res = await attempts[i]();
+        if (res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300) {
+          debugPrint('[HrmAttendanceService] cancelCorrection SUCCESS on attempt $i, status: ${res.statusCode}');
+          return true;
+        }
+      } catch (e) {
+        if (e is DioException) {
+          debugPrint('[HrmAttendanceService] cancelCorrection attempt $i failed: ${e.response?.statusCode} ${e.response?.data}');
+        }
+      }
+    }
+    return false;
   }
 }

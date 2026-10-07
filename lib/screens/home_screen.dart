@@ -14,6 +14,8 @@ import './login_screen.dart';
 import './user_management_screen.dart';
 import './org_chart_workspace_screen.dart';
 import './role_permission_screen.dart';
+import './notification_center_screen.dart';
+import '../providers/notification_provider.dart';
 import '../widgets/assign_role_modal.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -552,6 +554,47 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(fontSize: 12, color: AppColors.slate500, fontWeight: FontWeight.w500),
             ),
             const Spacer(),
+            Consumer<NotificationProvider>(
+              builder: (context, noti, _) {
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined, size: 21, color: Color(0xFF334155)),
+                      tooltip: 'Trung tâm thông báo',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    if (noti.unreadCount > 0)
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3.5),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                          alignment: Alignment.center,
+                          child: Text(
+                            noti.unreadCount > 99 ? '99+' : '${noti.unreadCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(width: 2),
             IconButton(
               icon: const Icon(Icons.refresh, size: 20, color: AppColors.slate600),
               tooltip: 'Làm mới',

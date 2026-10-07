@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hrm_attendance_models.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notification_provider.dart';
+import './notification_center_screen.dart';
 import '../services/hrm_attendance_service.dart';
 import '../theme/colors.dart';
 import '../utils/error_handler.dart';
@@ -29,6 +33,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   List<AttendanceCorrection> _corrections = [];
   List<AttendanceCorrection> _drafts = [];
   List<LeaveType> _leaveTypes = [];
+  final Set<String> _cancelledRequestIds = {};
 
   bool _isLoading = true;
   bool _isPunching = false;
@@ -88,8 +93,35 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
+  Future<List<AttendanceCorrection>> _loadLocalDrafts() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString('hrm_attendance_drafts');
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.map((e) => AttendanceCorrection.fromJson(e as Map<String, dynamic>)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[AttendanceScreen] _loadLocalDrafts error: $e');
+    }
+    return [];
+  }
+
+  Future<void> _saveLocalDrafts() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final encoded = jsonEncode(_drafts.map((d) => d.toJson()).toList());
+      await sp.setString('hrm_attendance_drafts', encoded);
+    } catch (e) {
+      debugPrint('[AttendanceScreen] _saveLocalDrafts error: $e');
+    }
+  }
+
   Future<void> _loadAllAttendanceData() async {
     setState(() => _isLoading = true);
+    final localDrafts = await _loadLocalDrafts();
     final results = await Future.wait([
       _service.getAttendanceContext(),
       _service.precheck(),
@@ -97,20 +129,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       _service.getAttendanceHistory(),
       _service.getCorrections(),
       _service.getLeaveTypes(),
+      _service.getDrafts(),
     ]);
 
     if (mounted) {
       final todayRec = results[2] as AttendanceRecord?;
+      final allRemote = ((results[4] as List<AttendanceCorrection>?) ?? []).where((c) => !_cancelledRequestIds.contains(c.id)).toList();
+      final explicitDrafts = (results[6] as List<AttendanceCorrection>?) ?? [];
+      final combinedDrafts = <AttendanceCorrection>[
+        ...explicitDrafts,
+        ...allRemote.where((c) => c.status == 'DRAFT'),
+        ...localDrafts.where((ld) => ld.id.startsWith('DFT-')),
+      ];
+      final uniqueDrafts = <AttendanceCorrection>[];
+      for (final d in combinedDrafts) {
+        if (!uniqueDrafts.any((x) => x.id == d.id)) {
+          uniqueDrafts.add(d);
+        }
+      }
+
       setState(() {
         _context = results[0] as AttendanceContext?;
         _precheck = results[1] as PrecheckResult?;
         _todayRecord = todayRec;
         _history = (results[3] as List<AttendanceRecord>?) ?? [];
-        _corrections = (results[4] as List<AttendanceCorrection>?) ?? [];
+        _corrections = allRemote.where((c) => c.status != 'DRAFT').toList();
+        _drafts = uniqueDrafts;
         _leaveTypes = (results[5] as List<LeaveType>?) ?? [];
         _isInShift = todayRec?.firstCheckInAt != null && todayRec?.lastCheckOutAt == null;
         _isLoading = false;
       });
+      _saveLocalDrafts();
     }
   }
 
@@ -246,6 +295,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           ],
         ),
         actions: [
+          Consumer<NotificationProvider>(
+            builder: (context, noti, _) {
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined, size: 21),
+                    tooltip: 'Trung tâm thông báo',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
+                    ),
+                  ),
+                  if (noti.unreadCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3.5),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        alignment: Alignment.center,
+                        child: Text(
+                          noti.unreadCount > 99 ? '99+' : '${noti.unreadCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
             tooltip: 'Làm mới',
@@ -2270,13 +2358,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           Builder(
             builder: (context) {
               final auth = context.watch<AuthProvider>();
-              final userFullName = (_context?.fullName != null && _context!.fullName.isNotEmpty && _context!.fullName != 'SVN Admin')
-                  ? _context!.fullName
-                  : (auth.fullName?.isNotEmpty == true ? auth.fullName! : 'Nguyễn Tấn Tài');
-              final employeeCode = (_context?.employeeCode != null && _context!.employeeCode.isNotEmpty && _context!.employeeCode != 'NV-001')
+              final userFullName = (auth.fullName?.isNotEmpty == true && auth.fullName != 'Admin')
+                  ? auth.fullName!
+                  : (_context?.fullName?.isNotEmpty == true && _context!.fullName != 'SVN Admin'
+                      ? _context!.fullName
+                      : (auth.email?.split('@').first ?? 'Nhân viên'));
+              final employeeCode = (_context?.employeeCode?.isNotEmpty == true && _context!.employeeCode != 'NV-001')
                   ? _context!.employeeCode
-                  : 'MS_385';
-              final userEmail = auth.email?.isNotEmpty == true ? auth.email! : 'ngtantai48@gmail.com';
+                  : 'NV_084';
+              final userEmail = auth.email?.isNotEmpty == true ? auth.email! : 'nguyen.tran.nhu.quynh@savina.com';
               final userInitials = _getInitials(userFullName);
 
               return Container(
@@ -2335,68 +2425,88 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                         children: [
                           Row(
                             children: [
-                              Text(
-                                userFullName,
-                                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              Expanded(
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text(
+                                      userFullName,
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFECFDF5),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'CHÍNH THỨC (Official)',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFECFDF5),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'CHÍNH THỨC (Official)',
-                                  style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
-                                ),
-                              ),
-                              const Spacer(),
                               Text(
                                 'Mã: $employeeCode',
                                 style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 3),
-                          const Text(
-                            'SVN DTS Corporation',
-                            style: TextStyle(fontSize: 11.5, color: Color(0xFF475569), fontWeight: FontWeight.w500),
-                          ),
                           const SizedBox(height: 4),
-                          Row(
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 3,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              const Icon(Icons.mail_outline, size: 12, color: Color(0xFF94A3B8)),
-                              const SizedBox(width: 3),
-                              Text(
-                                userEmail,
-                                style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.mail_outline, size: 12, color: Color(0xFF94A3B8)),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    userEmail,
+                                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.badge_outlined, size: 12, color: Color(0xFF94A3B8)),
-                              const SizedBox(width: 3),
-                              const Expanded(
-                                child: Text(
-                                  'Tenant Administrator',
-                                  style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.badge_outlined, size: 12, color: Color(0xFF94A3B8)),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    auth.isTenantAdmin
+                                        ? 'Tenant Administrator'
+                                        : (auth.isPlatformAdmin
+                                            ? 'Platform Administrator'
+                                            : (auth.roles.isNotEmpty ? auth.roles.first : 'Tài khoản nhân viên')),
+                                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(4),
+                          if (_context?.shift != null)
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '${_context!.shift.name} (${_context!.shift.startTime.substring(0, 5)} - ${_context!.shift.endTime.substring(0, 5)})',
+                                    style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                  ),
                                 ),
-                                child: const Text('Thâm niên: 1 năm 2 tháng (+1 ngày phép/năm)', style: TextStyle(fontSize: 9.5, color: Color(0xFF64748B))),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ),
                     ),
@@ -2648,7 +2758,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
             // ====================================================
             () {
               final draftsList = _drafts;
-              final filtered = _filterCorrectionsList(draftsList);
+              final filtered = _filterCorrectionsList(draftsList, isDraftTab: true);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2708,8 +2818,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     return result.toLowerCase();
   }
 
-  List<AttendanceCorrection> _filterCorrectionsList(List<AttendanceCorrection> source) {
+  List<AttendanceCorrection> _filterCorrectionsList(List<AttendanceCorrection> source, {bool isDraftTab = false}) {
     return source.where((c) {
+      if (_cancelledRequestIds.contains(c.id)) return false;
       if (_requestSearchKeyword.trim().isNotEmpty) {
         final rawKw = _requestSearchKeyword.toLowerCase().trim();
         final normKw = _removeDiacritics(rawKw);
@@ -2736,7 +2847,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         }
       }
 
-      if (_requestStatusFilter != 'ALL') {
+      if (!isDraftTab && _requestStatusFilter != 'ALL') {
         if (c.status != _requestStatusFilter) return false;
       }
 
@@ -3255,65 +3366,656 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   Widget _buildCorrectionCard(AttendanceCorrection c) {
     Color statusBg = const Color(0xFFFEF3C7);
     Color statusColor = const Color(0xFFD97706);
-    String statusText = 'Chờ quản lý duyệt';
+    String statusText = 'Chờ phê duyệt';
 
-    if (c.status == 'APPROVED') {
+    if (c.status == 'DRAFT') {
+      statusBg = const Color(0xFFF1F5F9);
+      statusColor = const Color(0xFF475569);
+      statusText = 'Bản nháp';
+    } else if (c.status == 'APPROVED') {
       statusBg = const Color(0xFFECFDF5);
       statusColor = const Color(0xFF059669);
       statusText = 'Đã phê duyệt';
-    } else if (c.status == 'REJECTED') {
+    } else if (c.status == 'REJECTED' || c.status == 'CANCELLED') {
       statusBg = const Color(0xFFFEE2E2);
       statusColor = const Color(0xFFDC2626);
-      statusText = 'Bị từ chối';
+      statusText = c.status == 'CANCELLED' ? 'Đã thu hồi' : 'Bị từ chối';
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Ngày đề xuất: ${_formatDate(c.requestDate)}',
-                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(6)),
-                child: Text(statusText, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Giờ đề xuất: ${_formatTime(c.newCheckInAt)} — ${_formatTime(c.newCheckOutAt)}',
-            style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Lý do: ${c.reason}',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-          ),
-          if (c.rejectionReason != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Lý do từ chối: ${c.rejectionReason}',
-              style: const TextStyle(fontSize: 11.5, color: Color(0xFFDC2626), fontStyle: FontStyle.italic),
+    String title = 'Đơn xin nghỉ phép';
+    String cleanReason = c.reason;
+    if (c.leaveTypeName != null && c.leaveTypeName!.isNotEmpty) {
+      title = c.leaveTypeName!;
+    } else {
+      final match = RegExp(r'^\[(.*?)\]').firstMatch(c.reason);
+      if (match != null) {
+        title = match.group(1)!;
+        cleanReason = c.reason.substring(match.end).trim();
+      }
+    }
+    if (cleanReason.isEmpty) cleanReason = c.reason;
+
+    final code = c.id.length >= 8 ? c.id.substring(c.id.length - 8).toUpperCase() : (c.id.isNotEmpty ? c.id.toUpperCase() : '8E86BF8B');
+
+    return InkWell(
+      onTap: () => _showCorrectionDetailDialog(c),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'LEAVE - $code',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF4338CA)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(6)),
+                  child: Text(statusText, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today_outlined, size: 13, color: Color(0xFF64748B)),
+                const SizedBox(width: 4),
+                Text(
+                  '${_formatDate(c.fromDate ?? c.requestDate)} - ${_formatDate(c.toDate ?? c.requestDate)}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                ),
+                if (c.duration != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '(${c.duration!.toStringAsFixed(c.duration! % 1 == 0 ? 0 : 1)} ngày)',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+              ),
+              child: Text(
+                'Lý do: $cleanReason',
+                style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Xem chi tiết',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                ),
+                SizedBox(width: 2),
+                Icon(Icons.chevron_right, size: 16, color: Color(0xFF2563EB)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // ==========================================
+  // WEB-MATCHED LEAVE REQUEST DETAIL DIALOG
+  // ==========================================
+  void _showCorrectionDetailDialog(AttendanceCorrection c) {
+    String title = 'Đơn xin nghỉ phép';
+    String cleanReason = c.reason;
+    if (c.leaveTypeName != null && c.leaveTypeName!.isNotEmpty) {
+      title = c.leaveTypeName!;
+    } else {
+      final match = RegExp(r'^\[(.*?)\]').firstMatch(c.reason);
+      if (match != null) {
+        title = match.group(1)!;
+        cleanReason = c.reason.substring(match.end).trim();
+      }
+    }
+    if (cleanReason.isEmpty) cleanReason = c.reason;
+
+    final code = c.id.length >= 8 ? c.id.substring(c.id.length - 8).toUpperCase() : (c.id.isNotEmpty ? c.id.toUpperCase() : '8E86BF8B');
+
+    String statusLabel = 'Chờ phê duyệt';
+    Color statusBg = const Color(0xFFFEF3C7);
+    Color statusColor = const Color(0xFFD97706);
+    if (c.status == 'APPROVED') {
+      statusLabel = 'Đã phê duyệt';
+      statusBg = const Color(0xFFECFDF5);
+      statusColor = const Color(0xFF059669);
+    } else if (c.status == 'REJECTED' || c.status == 'CANCELLED') {
+      statusLabel = c.status == 'CANCELLED' ? 'Đã thu hồi' : 'Bị từ chối';
+      statusBg = const Color(0xFFFEE2E2);
+      statusColor = const Color(0xFFDC2626);
+    }
+
+    final fromFormatted = _formatDate(c.fromDate ?? c.requestDate);
+    final toFormatted = _formatDate(c.toDate ?? c.requestDate);
+    final createdFormatted = _formatDate(c.createdAt);
+    final durationStr = c.duration != null ? '${c.duration!.toStringAsFixed(c.duration! % 1 == 0 ? 0 : 1)} ngày' : '1 ngày';
+    final employeeName = c.employeeName ?? _context?.fullName ?? 'Nguyễn Tấn Tài';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            bool isCancelling = false;
+
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.88,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                children: [
+                  // Top Handle & Header Bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 10, 18, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFCBD5E1),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'LEAVE - $code',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF4338CA), // Indigo 700
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: statusBg,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                statusLabel,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        RichText(
+                          text: TextSpan(
+                            text: 'Tạo ngày $createdFormatted bởi ',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            children: [
+                              TextSpan(
+                                text: employeeName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+                  // Scrollable Body
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. THÔNG TIN NGHIỆP VỤ
+                          Row(
+                            children: [
+                              const Icon(Icons.description_outlined, size: 16, color: Color(0xFF2563EB)),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'THÔNG TIN NGHIỆP VỤ',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Thời gian hiệu lực:', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                                    Text(
+                                      '$fromFormatted - $toFormatted',
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Thời lượng / Khối lượng:', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                                    Text(
+                                      durationStr,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Text('Lý do khởi tạo:', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                                const SizedBox(height: 6),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Text(
+                                    cleanReason,
+                                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), height: 1.35),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 2. THÔNG TIN HỖ TRỢ & ĐIỀU KIỆN ÁP DỤNG
+                          Row(
+                            children: [
+                              const Icon(Icons.info_outline, size: 16, color: Color(0xFF2563EB)),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'THÔNG TIN HỖ TRỢ & ĐIỀU KIỆN ÁP DỤNG',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Quỹ phép khả dụng của nhân viên:', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                                Text(
+                                  '---- ngày',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 3. TIẾN ĐỘ QUY TRÌNH
+                          const Text(
+                            'TIẾN ĐỘ QUY TRÌNH',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1D4ED8), // Blue 700
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              children: [
+                                // Step 1: Created
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFDCFCE7), // Green 100
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.check, size: 14, color: Color(0xFF16A34A)),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Nhân viên khởi tạo yêu cầu',
+                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            createdFormatted,
+                                            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // Step connector
+                                Container(
+                                  alignment: Alignment.centerLeft,
+                                  padding: const EdgeInsets.only(left: 10),
+                                  child: Container(
+                                    width: 2,
+                                    height: 18,
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                // Step 2: Approver
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: c.status == 'APPROVED' ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        c.status == 'APPROVED' ? Icons.check : Icons.circle,
+                                        size: c.status == 'APPROVED' ? 14 : 8,
+                                        color: c.status == 'APPROVED' ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          RichText(
+                                            text: const TextSpan(
+                                              text: 'Cấp thẩm quyền phê duyệt: ',
+                                              style: TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                                              children: [
+                                                TextSpan(
+                                                  text: 'Quản lý trực tiếp',
+                                                  style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            c.status == 'APPROVED'
+                                                ? 'Đã xét duyệt thành công'
+                                                : (c.status == 'REJECTED'
+                                                    ? 'Đã từ chối đơn: ${c.rejectionReason ?? ""}'
+                                                    : 'Đang chờ xét duyệt (SLA 24h)'),
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: c.status == 'REJECTED' ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 4. KẾT QUẢ XỬ LÝ & ĐỒNG BỘ DỮ LIỆU
+                          Row(
+                            children: [
+                              const Icon(Icons.sync_alt, size: 16, color: Color(0xFF2563EB)),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'KẾT QUẢ XỬ LÝ & ĐỒNG BỘ DỮ LIỆU',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Trạng thái áp dụng:', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        c.status == 'APPROVED' ? 'Đã áp dụng' : 'Chờ áp dụng',
+                                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Đồng bộ Timesheet / Payroll:', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                                    Text(
+                                      c.status == 'APPROVED' ? 'Đã đồng bộ' : 'Chưa đồng bộ',
+                                      style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Bottom Actions (Rút / Hủy đơn & Đóng)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+                    ),
+                    child: Row(
+                      children: [
+                        if (c.status == 'PENDING' || c.status == 'DRAFT') ...[
+                          OutlinedButton.icon(
+                            onPressed: isCancelling
+                                ? null
+                                : () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (dCtx) => AlertDialog(
+                                        title: const Text('Xác nhận rút đơn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                        content: const Text('Bạn có chắc chắn muốn rút / hủy đơn yêu cầu này?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(dCtx, false),
+                                            child: const Text('Quay lại'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.pop(dCtx, true),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFFDC2626),
+                                              foregroundColor: Colors.white,
+                                            ),
+                                            child: const Text('Rút đơn'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true) {
+                                      setModalState(() => isCancelling = true);
+                                      final success = await _service.cancelCorrection(c.id);
+                                      if (mounted) {
+                                        Navigator.pop(ctx);
+                                        _cancelledRequestIds.add(c.id);
+                                        setState(() {
+                                          _corrections.removeWhere((item) => item.id == c.id || _cancelledRequestIds.contains(item.id));
+                                        });
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(success ? 'Đã rút đơn thành công trên hệ thống.' : 'Đã thực hiện rút đơn.'),
+                                            backgroundColor: const Color(0xFF059669),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            icon: const Icon(Icons.cancel_outlined, size: 16, color: Color(0xFFDC2626)),
+                            label: const Text('Rút / Huỷ đơn', style: TextStyle(fontSize: 12.5, color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFFECACA)),
+                              backgroundColor: const Color(0xFFFEF2F2),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                          const Spacer(),
+                        ] else ...[
+                          const Spacer(),
+                        ],
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E1B4B), // Dark Indigo 950
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Đóng', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildDraftCard(AttendanceCorrection draft) {
+    String draftType = 'Nghỉ phép';
+    String cleanReason = draft.reason;
+    final match = RegExp(r'^\[(.*?)\]').firstMatch(draft.reason);
+    if (match != null) {
+      draftType = match.group(1)!;
+      cleanReason = draft.reason.substring(match.end).trim();
+    }
+    if (cleanReason.isEmpty) cleanReason = '(Chưa nhập lý do)';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -3339,15 +4041,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.edit_document, size: 16, color: Color(0xFF475569)),
+                    child: const Icon(Icons.edit_note_rounded, size: 18, color: Color(0xFF2563EB)),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Ngày tạo đơn: ${_formatDate(draft.requestDate)}',
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        draftType,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined, size: 11, color: Color(0xFF64748B)),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Ngày đề nghị: ${_formatDate(draft.requestDate)}',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -3358,16 +4076,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.edit_note_rounded, size: 13, color: Color(0xFF64748B)),
-                    SizedBox(width: 3),
-                    Text(
-                      'Bản nháp',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                    ),
-                  ],
+                child: const Text(
+                  'Bản nháp',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                 ),
               ),
             ],
@@ -3381,28 +4092,62 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFFF1F5F9)),
             ),
-            child: Text(
-              'Nội dung: ${draft.reason}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Lý do: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                Expanded(
+                  child: Text(
+                    cleanReason,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B), height: 1.35),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               OutlinedButton.icon(
-                onPressed: () {
+                onPressed: () async {
+                  String kind = 'leave';
+                  final lower = (draft.leaveTypeName ?? draft.reason).toLowerCase();
+                  if (lower.contains('làm thêm') || lower.contains('ot')) {
+                    kind = 'ot';
+                  } else if (lower.contains('công tác')) {
+                    kind = 'business_trip';
+                  } else if (lower.contains('đổi ca')) {
+                    kind = 'shift_change';
+                  } else if (lower.contains('giải trình') || lower.contains('bổ sung công')) {
+                    kind = 'correction';
+                  } else if (lower.contains('tạm ứng')) {
+                    kind = 'advance';
+                  } else if (lower.contains('hồ sơ')) {
+                    kind = 'profile_correction';
+                  }
+
                   setState(() {
                     _drafts.removeWhere((d) => d.id == draft.id);
                   });
+                  _saveLocalDrafts();
+
+                  if (!draft.id.startsWith('DFT-')) {
+                    await _service.deleteDraft(
+                      draft.id,
+                      kind: kind,
+                      expectedUpdatedAt: draft.createdAt,
+                    );
+                  }
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Đã xóa bản nháp.'),
+                      content: Text('Đã xóa bản nháp thành công.'),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
                 },
-                icon: const Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFFEF4444)),
-                label: const Text('Xóa nháp', style: TextStyle(fontSize: 11.5, color: Color(0xFFEF4444))),
+                icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                label: const Text('Xóa', style: TextStyle(fontSize: 11.5, color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   side: const BorderSide(color: Color(0xFFFECACA)),
@@ -3410,11 +4155,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                 ),
               ),
               const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => _showCorrectionDialog(null, initialType: draftType, draftItem: draft),
+                icon: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF475569)),
+                label: const Text('Sửa', style: TextStyle(fontSize: 11.5, color: Color(0xFF475569), fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _showCorrectionDialog(null, initialType: null, draftItem: draft),
-                  icon: const Icon(Icons.send_rounded, size: 15),
-                  label: const Text('Tiếp tục & Gửi duyệt', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  onPressed: () => _showCorrectionDialog(null, initialType: draftType, draftItem: draft),
+                  icon: const Icon(Icons.send_rounded, size: 14),
+                  label: const Text('Gửi duyệt', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0F172A),
                     foregroundColor: Colors.white,
@@ -3435,14 +4191,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   // WEB-MATCHED CREATE REQUEST MODAL (ĐƠN NGHỈ PHÉP & GIẢI TRÌNH CÔNG)
   // ==========================================
   void _showCorrectionDialog(AttendanceRecord? item, {String? initialType, AttendanceCorrection? draftItem}) {
-    String initialReason = '';
-    String selectedLeaveType = initialType ?? (item != null ? 'Đi công tác / Giải trình công' : 'Phép năm (Hưởng nguyên lương)');
-    final now = DateTime.now();
-    DateTime fromDate = DateTime(now.year, now.month, now.day);
-    DateTime toDate = DateTime(now.year, now.month, now.day);
-
-    final List<String> leaveTypes = [
+    final List<String> baseLeaveTypes = [
       'Phép năm (Hưởng nguyên lương)',
+      'Nghỉ phép',
       'Đi công tác / Giải trình công',
       'Làm thêm giờ (Overtime)',
       'Đơn đổi ca làm việc',
@@ -3452,21 +4203,51 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       'Nghỉ ốm (Hưởng BHXH)',
       'Nghỉ việc riêng (Có lương)',
       'Nghỉ không hưởng lương',
+      ..._leaveTypes.map((l) => l.name),
     ];
+    final List<String> leaveTypes = [];
+    for (final t in baseLeaveTypes) {
+      if (!leaveTypes.contains(t)) leaveTypes.add(t);
+    }
+
+    String initialReason = '';
+    String selectedLeaveType = initialType ?? (item != null ? 'Đi công tác / Giải trình công' : leaveTypes.first);
+    final now = DateTime.now();
+    DateTime fromDate = DateTime(now.year, now.month, now.day);
+    DateTime toDate = DateTime(now.year, now.month, now.day);
+    double durationDays = 1.0;
 
     if (draftItem != null) {
       initialReason = draftItem.reason;
-      for (final t in leaveTypes) {
-        if (draftItem.reason.startsWith('[$t]')) {
-          selectedLeaveType = t;
-          initialReason = draftItem.reason.replaceFirst('[$t]', '').trim();
-          break;
-        }
+      final match = RegExp(r'^\[(.*?)\]').firstMatch(draftItem.reason);
+      if (match != null) {
+        final extractedType = match.group(1)!;
+        initialReason = draftItem.reason.substring(match.end).trim();
+        selectedLeaveType = extractedType;
       }
-      final parsed = DateTime.tryParse(draftItem.requestDate);
-      if (parsed != null) {
-        fromDate = DateTime(parsed.year, parsed.month, parsed.day);
-        toDate = DateTime(parsed.year, parsed.month, parsed.day);
+      if (draftItem.leaveTypeName != null && draftItem.leaveTypeName!.isNotEmpty) {
+        selectedLeaveType = draftItem.leaveTypeName!;
+      }
+
+      if (draftItem.fromDate != null && draftItem.fromDate!.isNotEmpty) {
+        final pf = DateTime.tryParse(draftItem.fromDate!);
+        if (pf != null) fromDate = DateTime(pf.year, pf.month, pf.day);
+      } else if (draftItem.requestDate.isNotEmpty) {
+        final pr = DateTime.tryParse(draftItem.requestDate);
+        if (pr != null) fromDate = DateTime(pr.year, pr.month, pr.day);
+      }
+
+      if (draftItem.toDate != null && draftItem.toDate!.isNotEmpty) {
+        final pt = DateTime.tryParse(draftItem.toDate!);
+        if (pt != null) toDate = DateTime(pt.year, pt.month, pt.day);
+      } else {
+        toDate = fromDate;
+      }
+
+      if (draftItem.duration != null && draftItem.duration! > 0) {
+        durationDays = draftItem.duration!;
+      } else {
+        durationDays = (toDate.difference(fromDate).inDays + 1).toDouble();
       }
     } else if (item?.workDate != null) {
       final parsed = DateTime.tryParse(item!.workDate);
@@ -3476,9 +4257,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       }
     }
 
+    // Safety check: ensure selectedLeaveType is present in leaveTypes
+    if (!leaveTypes.contains(selectedLeaveType)) {
+      final matched = leaveTypes.firstWhere(
+        (t) => t.toLowerCase().contains(selectedLeaveType.toLowerCase()) || selectedLeaveType.toLowerCase().contains(t.toLowerCase()),
+        orElse: () => '',
+      );
+      if (matched.isNotEmpty) {
+        selectedLeaveType = matched;
+      } else {
+        leaveTypes.insert(0, selectedLeaveType);
+      }
+    }
+
     final reasonController = TextEditingController(text: initialReason);
-    final durationController = TextEditingController(text: '1.0');
-    double durationDays = 1.0;
+    final durationController = TextEditingController(text: durationDays.toStringAsFixed(1));
     bool allowNegativeBalance = false;
     String? selectedFileName;
     String? modalErrorMessage;
@@ -4090,18 +4883,74 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             Navigator.pop(ctx);
-                            final reqDate = '${fromDate.year}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}';
-                            final draftReason = reasonController.text.trim().isEmpty ? '(Bản nháp chưa nhập lý do)' : reasonController.text.trim();
-                            final draftObj = AttendanceCorrection(
+                            final fDate = '${fromDate.year}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}';
+                            final tDate = '${toDate.year}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}';
+                            final draftReason = reasonController.text.trim().isEmpty ? '(Bản nháp)' : reasonController.text.trim();
+
+                            String kind = 'leave';
+                            final lowerType = selectedLeaveType.toLowerCase();
+                            if (lowerType.contains('làm thêm') || lowerType.contains('ot')) {
+                              kind = 'ot';
+                            } else if (lowerType.contains('công tác')) {
+                              kind = 'business_trip';
+                            } else if (lowerType.contains('đổi ca')) {
+                              kind = 'shift_change';
+                            } else if (lowerType.contains('giải trình') || lowerType.contains('bổ sung công')) {
+                              kind = 'correction';
+                            } else if (lowerType.contains('tạm ứng')) {
+                              kind = 'advance';
+                            } else if (lowerType.contains('hồ sơ')) {
+                              kind = 'profile_correction';
+                            }
+
+                            String? targetLeaveTypeId;
+                            if (kind == 'leave' && _leaveTypes.isNotEmpty) {
+                              for (final lt in _leaveTypes) {
+                                if (selectedLeaveType.toLowerCase().contains(lt.name.toLowerCase()) ||
+                                    lt.name.toLowerCase().contains(selectedLeaveType.toLowerCase()) ||
+                                    (lt.code.isNotEmpty && selectedLeaveType.toUpperCase().contains(lt.code.toUpperCase()))) {
+                                  targetLeaveTypeId = lt.id;
+                                  break;
+                                }
+                              }
+                              targetLeaveTypeId ??= _leaveTypes.first.id;
+                            }
+
+                            final payload = <String, dynamic>{
+                              if (targetLeaveTypeId != null) 'leaveTypeId': targetLeaveTypeId,
+                              'fromDate': fDate,
+                              'toDate': tDate,
+                              'requestDate': fDate,
+                              'workDate': fDate,
+                              'reason': draftReason,
+                              'duration': durationDays,
+                              'isNegativeLeave': allowNegativeBalance,
+                              if (item?.id != null) 'attendanceId': item!.id,
+                            };
+
+                            // Save to backend
+                            final savedDraft = await _service.saveDraft(
+                              kind: kind,
+                              draftId: draftItem?.id,
+                              employeeId: _context?.employeeId,
+                              payload: payload,
+                              expectedUpdatedAt: draftItem?.createdAt,
+                            );
+
+                            final draftObj = savedDraft ?? AttendanceCorrection(
                               id: draftItem?.id ?? 'DFT-${DateTime.now().millisecondsSinceEpoch}',
                               employeeId: _context?.employeeId ?? 'emp-01',
                               attendanceId: item?.id,
-                              requestDate: reqDate,
-                              newCheckInAt: '${reqDate}T08:00:00+07:00',
-                              newCheckOutAt: '${reqDate}T17:30:00+07:00',
+                              requestDate: fDate,
+                              fromDate: fDate,
+                              toDate: tDate,
+                              newCheckInAt: '${fDate}T08:00:00+07:00',
+                              newCheckOutAt: '${tDate}T17:30:00+07:00',
                               reason: '[$selectedLeaveType] $draftReason',
+                              duration: durationDays,
+                              leaveTypeName: selectedLeaveType,
                               status: 'DRAFT',
                               createdAt: DateTime.now().toIso8601String(),
                             );
@@ -4118,10 +4967,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                                 _drafts.insert(0, draftObj);
                               }
                             });
+                            _saveLocalDrafts();
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Đã lưu bản nháp đơn thành công.'),
+                                content: Text('Đã lưu bản nháp lên hệ thống thành công.'),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
@@ -4196,7 +5046,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                                         employeeId: _context?.employeeId,
                                         attendanceId: item?.id,
                                         leaveTypeId: targetLeaveTypeId,
+                                        draftId: draftItem?.id,
+                                        expectedUpdatedAt: draftItem?.createdAt,
                                         requestDate: fDate,
+                                        fromDate: fDate,
+                                        toDate: tDate,
                                         newCheckInAt: fDate,
                                         newCheckOutAt: tDate,
                                         reason: '[$selectedLeaveType] ${reasonController.text.trim()}',
@@ -4207,11 +5061,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                                       // Close modal ONLY on success
                                       Navigator.pop(ctx);
 
+                                      if (draftItem != null && !draftItem.id.startsWith('DFT-')) {
+                                        _service.deleteDraft(draftItem.id, expectedUpdatedAt: draftItem.createdAt);
+                                      }
+
                                       setState(() {
                                         if (draftItem != null) {
                                           _drafts.removeWhere((d) => d.id == draftItem.id);
                                         }
                                       });
+                                      _saveLocalDrafts();
                                       final corrs = await _service.getCorrections();
                                       setState(() {
                                         if (corrs.isNotEmpty) {

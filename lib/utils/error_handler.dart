@@ -43,6 +43,9 @@ class ApiErrorHandler {
         if (rawMsg != null && rawMsg.toLowerCase().contains('email')) {
           return 'Địa chỉ email này đã tồn tại trong hệ thống. Vui lòng sử dụng địa chỉ email khác.';
         }
+        if (rawMsg != null && rawMsg.isNotEmpty) {
+          return rawMsg;
+        }
         return 'Dữ liệu này đã tồn tại trong hệ thống (bị trùng lặp). Vui lòng kiểm tra lại.';
       }
 
