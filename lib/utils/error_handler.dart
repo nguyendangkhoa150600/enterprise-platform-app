@@ -43,6 +43,9 @@ class ApiErrorHandler {
         if (rawMsg != null && rawMsg.toLowerCase().contains('email')) {
           return 'Địa chỉ email này đã tồn tại trong hệ thống. Vui lòng sử dụng địa chỉ email khác.';
         }
+        if (rawMsg != null && rawMsg.isNotEmpty) {
+          return rawMsg;
+        }
         return 'Dữ liệu này đã tồn tại trong hệ thống (bị trùng lặp). Vui lòng kiểm tra lại.';
       }
 
@@ -67,7 +70,7 @@ class ApiErrorHandler {
       }
 
       if (error.type == DioExceptionType.connectionError) {
-        return 'Không thể kết nối đến máy chủ backend (cổng 3333). Vui lòng kiểm tra mạng hoặc khởi động lại server API.';
+        return 'Không thể kết nối đến máy chủ API. Vui lòng kiểm tra kết nối mạng của thiết bị hoặc trạng thái server.';
       }
 
       if (rawMsg != null && rawMsg.trim().isNotEmpty) {
