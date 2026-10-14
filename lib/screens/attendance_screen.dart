@@ -8,9 +8,19 @@ import '../models/hrm_attendance_models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import './notification_center_screen.dart';
+import './my_requests_screen.dart';
 import '../services/hrm_attendance_service.dart';
 import '../theme/colors.dart';
 import '../utils/error_handler.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_text_styles.dart';
+import '../core/utils/formatters.dart';
+import '../shared/widgets/app_card.dart';
+import '../shared/widgets/app_status_badge.dart';
+import '../shared/widgets/empty_state_view.dart';
+import '../features/attendance/data/attendance_repository.dart';
+import '../features/attendance/widgets/attendance_metric_banner.dart';
+import '../features/attendance/widgets/shift_assignment_card.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -63,7 +73,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _startLiveClock();
     _loadAllAttendanceData();
   }
@@ -335,6 +345,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
             },
           ),
           IconButton(
+            icon: const Icon(Icons.assignment_outlined, size: 20),
+            tooltip: 'Đơn từ của tôi',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyRequestsScreen()),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh, size: 20),
             tooltip: 'Làm mới',
             onPressed: _loadAllAttendanceData,
@@ -350,7 +368,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           tabs: const [
             Tab(text: 'Điểm danh hôm nay'),
             Tab(text: 'Sổ chấm công'),
-            Tab(text: 'Đơn từ & Yêu cầu'),
           ],
         ),
       ),
@@ -361,7 +378,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 _buildTodayTab(),
                 _buildHistoryTab(),
-                _buildRequestsTab(),
               ],
             ),
     );
@@ -2358,15 +2374,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           Builder(
             builder: (context) {
               final auth = context.watch<AuthProvider>();
-              final userFullName = (auth.fullName?.isNotEmpty == true && auth.fullName != 'Admin')
+              final userFullName = (auth.fullName?.isNotEmpty == true)
                   ? auth.fullName!
-                  : (_context?.fullName?.isNotEmpty == true && _context!.fullName != 'SVN Admin'
+                  : (_context?.fullName?.isNotEmpty == true
                       ? _context!.fullName
                       : (auth.email?.split('@').first ?? 'Nhân viên'));
-              final employeeCode = (_context?.employeeCode?.isNotEmpty == true && _context!.employeeCode != 'NV-001')
+              final employeeCode = (_context?.employeeCode?.isNotEmpty == true)
                   ? _context!.employeeCode
-                  : 'NV_084';
-              final userEmail = auth.email?.isNotEmpty == true ? auth.email! : 'nguyen.tran.nhu.quynh@savina.com';
+                  : '--';
+              final userEmail = auth.email ?? '';
               final userInitials = _getInitials(userFullName);
 
               return Container(

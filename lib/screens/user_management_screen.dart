@@ -1327,8 +1327,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   setModalState(() => inlineError = 'Vui lòng điền đầy đủ Họ tên và Email.');
                                   return;
                                 }
-                                if (!isEditing && (passCtrl.text.trim().length < 12 || passCtrl.text.trim().length > 128)) {
-                                  setModalState(() => inlineError = 'Mật khẩu phải từ 12 đến 128 ký tự theo quy định bảo mật.');
+                                if (!isEditing && (passCtrl.text.trim().length < 6 || passCtrl.text.trim().length > 128)) {
+                                  setModalState(() => inlineError = 'Mật khẩu phải từ 6 đến 128 ký tự.');
                                   return;
                                 }
 
