@@ -206,6 +206,170 @@ class HrmAttendanceService {
     return [];
   }
 
+  // 6.1. Get Timesheet Board (Bảng công ma trận & Bảng công của tôi đồng bộ Web)
+  Future<HrmTimesheetBoard?> getTimesheetBoard({
+    required String month,
+    bool self = true,
+    int page = 1,
+    int pageSize = 100,
+    String? query,
+  }) async {
+    final endpoints = [
+      '/hrm/v1/timesheet-board',
+      '/timesheet-board',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(
+          ep,
+          queryParameters: {
+            'month': month,
+            if (self) 'self': '1',
+            if (!self) 'page': '$page',
+            if (!self) 'page_size': '$pageSize',
+            if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+          },
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          final data = response.data['data'] ?? response.data;
+          if (data is Map<String, dynamic>) {
+            return HrmTimesheetBoard.fromJson(data);
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] getTimesheetBoard error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  // 6.2. Tính công toàn bộ nhân sự tháng (Calculate Timesheet - Web synchronized)
+  Future<HrmTimesheetCalculateResult?> calculateTimesheet({required String month}) async {
+    final endpoints = [
+      '/hrm/v1/timesheet-months/$month/calculate',
+      '/timesheet-months/$month/calculate',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.post(
+          ep,
+          data: {},
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          final data = response.data['data'] ?? response.data;
+          if (data is Map<String, dynamic>) {
+            return HrmTimesheetCalculateResult.fromJson(data);
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] calculateTimesheet error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  // 6.3. Lấy điều kiện chốt kỳ công / đơn từ (Get Close State & Blockers - Web synchronized)
+  Future<HrmMonthCloseState?> getTimesheetCloseState({required String month}) async {
+    final endpoints = [
+      '/hrm/v1/timesheet-months/$month/close-state',
+      '/timesheet-months/$month/close-state',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(
+          ep,
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          final data = response.data['data'] ?? response.data;
+          if (data is Map<String, dynamic>) {
+            return HrmMonthCloseState.fromJson(data);
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] getTimesheetCloseState error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  // 6.4. Chốt đơn từ trong tháng (Close Requests - Web synchronized)
+  Future<Map<String, dynamic>> closeRequests({required String month}) async {
+    final endpoints = [
+      '/hrm/v1/timesheet-months/$month/close-requests',
+      '/timesheet-months/$month/close-requests',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.post(
+          ep,
+          data: {},
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true};
+        }
+        final msg = response.data?['message'] ?? response.data?['error'] ?? 'Chốt đơn từ thất bại (${response.statusCode})';
+        return {'success': false, 'message': msg.toString()};
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] closeRequests error on $ep: $e');
+      }
+    }
+    return {'success': false, 'message': 'Không thể kết nối đến máy chủ.'};
+  }
+
+  // 6.5. Chốt bảng công của tháng (Close / Lock Timesheet - Web synchronized)
+  Future<Map<String, dynamic>> closeTimesheet({required String month}) async {
+    final endpoints = [
+      '/hrm/v1/timesheet-months/$month/close',
+      '/timesheet-months/$month/close',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.post(
+          ep,
+          data: {},
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true};
+        }
+        final msg = response.data?['message'] ?? response.data?['error'] ?? 'Chốt công thất bại (${response.statusCode})';
+        return {'success': false, 'message': msg.toString()};
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] closeTimesheet error on $ep: $e');
+      }
+    }
+    return {'success': false, 'message': 'Không thể kết nối đến máy chủ.'};
+  }
+
+  // 6.6. Mở lại kỳ công (Reopen Timesheet - Web synchronized)
+  Future<Map<String, dynamic>> reopenTimesheet({required String month, String reason = ''}) async {
+    final endpoints = [
+      '/hrm/v1/timesheet-months/$month/reopen',
+      '/timesheet-months/$month/reopen',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.post(
+          ep,
+          data: {'reason': reason.trim()},
+          options: Options(validateStatus: (status) => status != null && status < 500),
+        );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true};
+        }
+        final msg = response.data?['message'] ?? response.data?['error'] ?? 'Mở lại thất bại (${response.statusCode})';
+        return {'success': false, 'message': msg.toString()};
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] reopenTimesheet error on $ep: $e');
+      }
+    }
+    return {'success': false, 'message': 'Không thể kết nối đến máy chủ.'};
+  }
+
   List<LeaveType> _cachedLeaveTypes = [];
 
   // 6.5. Get Leave Types (Loại nghỉ phép)
@@ -921,6 +1085,24 @@ class HrmAttendanceService {
       }
     } catch (e) {
       debugPrint('[HrmAttendanceService] getCareerHistory error: $e');
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getCareerEvents() async {
+    try {
+      final res = await _dio.get(
+        '/hrm/v1/my-profile/career-events',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getCareerEvents error: $e');
     }
     return [];
   }
