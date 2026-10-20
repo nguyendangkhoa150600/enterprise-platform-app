@@ -35,7 +35,10 @@ class NotificationService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        final dynamic raw = response.data['items'] ?? response.data['data'] ?? response.data;
+        dynamic raw = response.data;
+        if (raw is Map) {
+          raw = raw['items'] ?? raw['data'] ?? raw;
+        }
         if (raw is List) {
           return raw
               .whereType<Map<String, dynamic>>()
@@ -54,9 +57,14 @@ class NotificationService {
     try {
       final response = await _dio.get('/realtime/v1/summary');
       if (response.statusCode == 200 && response.data != null) {
-        final dynamic raw = response.data['data'] ?? response.data;
-        if (raw is Map<String, dynamic>) {
-          return NotificationSummary.fromJson(raw);
+        dynamic raw = response.data;
+        if (raw is Map) {
+          raw = raw['data'] ?? raw;
+          if (raw is Map<String, dynamic>) {
+            return NotificationSummary.fromJson(raw);
+          } else if (raw is Map) {
+            return NotificationSummary.fromJson(Map<String, dynamic>.from(raw));
+          }
         }
       }
     } catch (e) {
@@ -95,7 +103,10 @@ class NotificationService {
     try {
       final response = await _dio.get('/realtime/v1/preferences');
       if (response.statusCode == 200 && response.data != null) {
-        final dynamic raw = response.data['data'] ?? response.data;
+        dynamic raw = response.data;
+        if (raw is Map) {
+          raw = raw['data'] ?? raw['preferences'] ?? raw['items'] ?? raw;
+        }
         if (raw is List) {
           return raw
               .whereType<Map<String, dynamic>>()

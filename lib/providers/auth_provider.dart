@@ -283,7 +283,13 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove('roles');
     await prefs.remove('permissions');
     await prefs.remove('session_cookies');
-    await prefs.remove('saved_login_password');
+
+    final rememberMe = prefs.getBool('saved_remember_me') ?? true;
+    if (!rememberMe) {
+      await prefs.remove('saved_login_email');
+      await prefs.remove('saved_login_password');
+      await prefs.remove('saved_login_portal');
+    }
     
     notifyListeners();
   }
@@ -346,16 +352,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  static DateTime? _lastSilentReloginTime;
+  static bool _isSilentRelogging = false;
+
   // Silent automatic background login to renew session seamlessly
   static Future<bool> silentRelogin() async {
+    if (_isSilentRelogging) return false;
+    if (_lastSilentReloginTime != null && DateTime.now().difference(_lastSilentReloginTime!).inSeconds < 15) {
+      return false;
+    }
+
     try {
+      _isSilentRelogging = true;
+      _lastSilentReloginTime = DateTime.now();
       final prefs = await SharedPreferences.getInstance();
       final savedEmail = prefs.getString('saved_login_email');
       final savedPassword = prefs.getString('saved_login_password');
       final savedPortal = prefs.getString('saved_login_portal') ?? 'tenant';
       final savedTenantSlug = prefs.getString('tenant_slug');
 
-      if (savedEmail == null || savedEmail.isEmpty || savedPassword == null || savedPassword.isEmpty) {
+      if (savedEmail == null || savedEmail.trim().isEmpty || savedPassword == null || savedPassword.trim().isEmpty) {
         debugPrint('[AuthProvider] silentRelogin: No saved credentials found.');
         return false;
       }
@@ -410,7 +426,60 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('[AuthProvider] silentRelogin failed: $e');
+    } finally {
+      _isSilentRelogging = false;
     }
     return false;
+  }
+
+  // Self-service password change (POST /auth/v1/password)
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await _dio.post(
+        '/auth/v1/password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        },
+        options: Options(
+          headers: {
+            if (_cookies != null) 'cookie': _cookies,
+            'x-csrf-token': _getCsrfToken(),
+          },
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      _isLoading = false;
+      if (res.statusCode == 200 || res.statusCode == 204) {
+        final setCookies = res.headers['set-cookie'];
+        if (setCookies != null && setCookies.isNotEmpty) {
+          await updateCookiesFromSetCookie(setCookies);
+        }
+        notifyListeners();
+        return {'success': true, 'message': 'Đổi mật khẩu thành công!'};
+      } else {
+        final data = res.data;
+        String msg = 'Đổi mật khẩu thất bại.';
+        if (data is Map && data['message'] != null) {
+          msg = data['message'].toString();
+        }
+        _errorMessage = msg;
+        notifyListeners();
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ: $e'};
+    }
   }
 }

@@ -9,12 +9,16 @@ import './main_analysis_screen.dart';
 import './maintenance_screen.dart';
 import './procedure_screen.dart';
 import './attendance_screen.dart';
+import './attendance_monitor_screen.dart';
 import './hrm_hub_screen.dart';
 import './login_screen.dart';
 import './user_management_screen.dart';
 import './org_chart_workspace_screen.dart';
 import './role_permission_screen.dart';
 import './notification_center_screen.dart';
+import './profile_income_screen.dart';
+import './account_screen.dart';
+import './my_requests_screen.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/assign_role_modal.dart';
 
@@ -125,8 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen()));
     } else if (key == 'attendance' || key == 'hrm-attendance') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen()));
-    } else if (key == 'requests' || key == 'hrm-requests') {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialTabIndex: 1)));
+    } else if (key == 'requests' || key == 'hrm-requests' || key == 'my-requests' || key == 'don-tu') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen()));
     } else if (key == 'approvals' || key == 'hrm-approvals') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialTabIndex: 2)));
     } else if (key == 'employees' || key == 'shifts' || key == 'payslips') {
@@ -661,8 +665,14 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildWelcomeActionButton(
                   icon: Icons.fingerprint_rounded,
-                  label: 'Chấm công & Đơn từ',
+                  label: 'Chấm công GPS',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
+                ),
+                const SizedBox(width: 8),
+                _buildWelcomeActionButton(
+                  icon: Icons.assignment_outlined,
+                  label: 'Đơn từ của tôi',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen())),
                 ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
@@ -1686,17 +1696,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                               const SizedBox(width: 5),
-                              Text(
-                                user.fullName,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
-                              ),
-                              if (a.note != null && a.note!.isNotEmpty) ...[
-                                const SizedBox(width: 4),
-                                Text(
-                                  '· ${a.note!}',
-                                  style: const TextStyle(fontSize: 10, color: AppColors.slate500),
+                              Flexible(
+                                child: Text(
+                                  user.fullName + (a.note != null && a.note!.isNotEmpty ? ' · ${a.note!}' : ''),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
                                 ),
-                              ],
+                              ),
                             ],
                           ),
                         );
@@ -1856,6 +1863,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'dashboard'))),
               },
               {
+                'title': 'Giám sát chấm công',
+                'icon': Icons.insights_rounded,
+                'bg': const Color(0xFFFEF3C7), // Amber 100
+                'iconColor': const Color(0xFFD97706),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceMonitorScreen())),
+              },
+              {
                 'title': 'Lịch & Thông báo',
                 'icon': Icons.event_note_outlined,
                 'bg': const Color(0xFFEFF6FF), // Sky 50
@@ -1870,25 +1884,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
               },
               {
-                'title': 'Đơn từ & Yêu cầu',
-                'icon': Icons.post_add_rounded,
+                'title': 'Đơn từ của tôi',
+                'icon': Icons.assignment_outlined,
+                'bg': const Color(0xFFEFF6FF), // Sky 50
+                'iconColor': const Color(0xFF2563EB),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen())),
+              },
+              {
+                'title': 'Đơn từ cần xử lý',
+                'icon': Icons.assignment_turned_in_outlined,
                 'bg': const Color(0xFFE0F2FE), // Sky 50
                 'iconColor': const Color(0xFF0284C7),
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'requests'))),
               },
               {
-                'title': 'Hồ sơ của tôi',
-                'icon': Icons.badge_outlined,
+                'title': 'Hồ sơ & Thu nhập',
+                'icon': Icons.assignment_ind_outlined,
                 'bg': const Color(0xFFEEF2FF), // Indigo 50
-                'iconColor': const Color(0xFF6366F1),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'my_profile'))),
+                'iconColor': const Color(0xFF4F46E5),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileIncomeScreen())),
               },
               {
-                'title': 'Phiếu lương',
-                'icon': Icons.receipt_long_rounded,
-                'bg': const Color(0xFFFEF2F2), // Rose 50
-                'iconColor': const Color(0xFFE11D48),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'my_payslips'))),
+                'title': 'Tài khoản & Mật khẩu',
+                'icon': Icons.manage_accounts_outlined,
+                'bg': const Color(0xFFF0FDF4), // Green 50
+                'iconColor': const Color(0xFF16A34A),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen())),
               },
               {
                 'title': 'Nhân sự & Chức danh',
@@ -2272,7 +2293,54 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          // My Account & Password Change Tile (Matching Web /account)
+          InkWell(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()));
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2563EB),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.key_rounded, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tài khoản của tôi & Đổi mật khẩu',
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Xem thông tin tài khoản và tự đổi mật khẩu',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF3B82F6)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Color(0xFF2563EB), size: 20),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // Workspace details
           Container(
