@@ -10,6 +10,7 @@ import './maintenance_screen.dart';
 import './procedure_screen.dart';
 import './attendance_screen.dart';
 import './attendance_monitor_screen.dart';
+import './leave_balances_screen.dart';
 import './hrm_hub_screen.dart';
 import './login_screen.dart';
 import './user_management_screen.dart';
@@ -19,6 +20,9 @@ import './notification_center_screen.dart';
 import './profile_income_screen.dart';
 import './account_screen.dart';
 import './my_requests_screen.dart';
+import './workspace_screen.dart';
+import './assistant_chat_screen.dart';
+import './fleet_schedule_screen.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/assign_role_modal.dart';
 
@@ -137,6 +141,14 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialTabIndex: 3)));
     } else if (key == 'roles' || key == 'permissions' || key == 'role-permission' || key == 'authorization' || key == 'rbac') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const RolePermissionScreen()));
+    } else if (key == 'workspace' || key == 'projects' || key == 'project') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 0)));
+    } else if (key == 'customers' || key == 'contracts') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 1)));
+    } else if (key == 'tasks' || key == 'standalone-tasks' || key == 'cong-viec') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 2)));
+    } else if (key == 'assistant' || key == 'savina-agent' || key == 'ai' || key == 'tro-ly') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Phân hệ "$key" đang chuẩn bị khởi chạy.')),
@@ -169,6 +181,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
       ),
       bottomNavigationBar: _buildMobileBottomBar(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AssistantChatScreen()),
+        ),
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [Color(0xFF6366F1), Color(0xFF2563EB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: const Icon(Icons.auto_awesome, size: 24, color: Colors.white),
+        ),
+      ),
     );
   }
 
@@ -558,6 +591,27 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(fontSize: 12, color: AppColors.slate500, fontWeight: FontWeight.w500),
             ),
             const Spacer(),
+            // Savina AI Assistant Launcher Button
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+              ),
+              tooltip: 'Trợ lý Savina AI',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AssistantChatScreen()),
+              ),
+              visualDensity: VisualDensity.compact,
+            ),
             Consumer<NotificationProvider>(
               builder: (context, noti, _) {
                 return Stack(
@@ -663,6 +717,12 @@ class _HomeScreenState extends State<HomeScreen> {
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
+                _buildWelcomeActionButton(
+                  icon: Icons.auto_awesome,
+                  label: 'Trợ lý Savina AI',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen())),
+                ),
+                const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.fingerprint_rounded,
                   label: 'Chấm công GPS',
@@ -1807,24 +1867,31 @@ class _HomeScreenState extends State<HomeScreen> {
             title: 'WORKPLACE',
             items: [
               {
-                'title': 'Quy trình',
-                'icon': Icons.account_tree_outlined,
-                'bg': const Color(0xFFEEF2FF), // Indigo 50
-                'iconColor': const Color(0xFF6366F1),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcedureScreen())),
-              },
-              {
-                'title': 'Công việc',
-                'icon': Icons.assignment_turned_in_outlined,
-                'bg': const Color(0xFFECFDF5), // Emerald 50
-                'iconColor': const Color(0xFF10B981),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcedureScreen())),
-              },
-              {
                 'title': 'Dự án',
                 'icon': Icons.work_outline_rounded,
                 'bg': const Color(0xFFFFFBEB), // Amber 50
                 'iconColor': const Color(0xFFF59E0B),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 0))),
+              },
+              {
+                'title': 'Khách hàng & Hợp đồng',
+                'icon': Icons.handshake_outlined,
+                'bg': const Color(0xFFEFF6FF), // Blue 50
+                'iconColor': const Color(0xFF2563EB),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 1))),
+              },
+              {
+                'title': 'Việc ngoài dự án',
+                'icon': Icons.task_alt_outlined,
+                'bg': const Color(0xFFECFDF5), // Emerald 50
+                'iconColor': const Color(0xFF10B981),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 2))),
+              },
+              {
+                'title': 'Quy trình',
+                'icon': Icons.account_tree_outlined,
+                'bg': const Color(0xFFEEF2FF), // Indigo 50
+                'iconColor': const Color(0xFF6366F1),
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcedureScreen())),
               },
               {
@@ -1855,6 +1922,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildMenuSection(
             title: 'QUẢN TRỊ NHÂN SỰ (HRM)',
             items: [
+              // 1. TỔNG QUAN
               {
                 'title': 'Bàn làm việc',
                 'icon': Icons.space_dashboard_rounded,
@@ -1870,18 +1938,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceMonitorScreen())),
               },
               {
-                'title': 'Lịch & Thông báo',
-                'icon': Icons.event_note_outlined,
-                'bg': const Color(0xFFEFF6FF), // Sky 50
+                'title': 'Đơn từ cần xử lý',
+                'icon': Icons.assignment_turned_in_outlined,
+                'bg': const Color(0xFFE0F2FE), // Sky 50
                 'iconColor': const Color(0xFF0284C7),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'schedule'))),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'requests'))),
+              },
+
+              // 2. CÁ NHÂN
+              {
+                'title': 'Bảng công của tôi',
+                'icon': Icons.calendar_today_outlined,
+                'bg': const Color(0xFFF0FDF4), // Emerald 50
+                'iconColor': const Color(0xFF059669),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen(initialTabIndex: 1))),
               },
               {
                 'title': 'Chấm công GPS',
                 'icon': Icons.fingerprint_rounded,
                 'bg': const Color(0xFFECFDF5), // Emerald 50
                 'iconColor': const Color(0xFF059669),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen(initialTabIndex: 0))),
               },
               {
                 'title': 'Đơn từ của tôi',
@@ -1889,13 +1966,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 'bg': const Color(0xFFEFF6FF), // Sky 50
                 'iconColor': const Color(0xFF2563EB),
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen())),
-              },
-              {
-                'title': 'Đơn từ cần xử lý',
-                'icon': Icons.assignment_turned_in_outlined,
-                'bg': const Color(0xFFE0F2FE), // Sky 50
-                'iconColor': const Color(0xFF0284C7),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'requests'))),
               },
               {
                 'title': 'Hồ sơ & Thu nhập',
@@ -1911,33 +1981,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 'iconColor': const Color(0xFF16A34A),
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen())),
               },
+
+              // 3. QUẢN LÝ
               {
                 'title': 'Nhân sự & Chức danh',
                 'icon': Icons.people_alt_outlined,
                 'bg': const Color(0xFFECFDF5), // Emerald 50
                 'iconColor': const Color(0xFF059669),
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'employees'))),
-              },
-              {
-                'title': 'Người phụ thuộc',
-                'icon': Icons.family_restroom_outlined,
-                'bg': const Color(0xFFFFFBEB), // Amber 50
-                'iconColor': const Color(0xFFD97706),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'dependents'))),
-              },
-              {
-                'title': 'Quản lý Ca làm',
-                'icon': Icons.schedule_rounded,
-                'bg': const Color(0xFFFFFBEB), // Amber 50
-                'iconColor': const Color(0xFFD97706),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'shifts'))),
-              },
-              {
-                'title': 'Xử lý Đơn từ',
-                'icon': Icons.fact_check_outlined,
-                'bg': const Color(0xFFF5F3FF), // Purple 50
-                'iconColor': const Color(0xFF7C3AED),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'approvals'))),
               },
               {
                 'title': 'Bảng công tổng hợp',
@@ -1947,39 +1998,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'timesheet'))),
               },
               {
-                'title': 'Tiền lương & Chi trả',
-                'icon': Icons.account_balance_wallet_outlined,
+                'title': 'Quỹ phép năm',
+                'icon': Icons.beach_access_rounded,
                 'bg': const Color(0xFFEFF6FF), // Blue 50
                 'iconColor': const Color(0xFF2563EB),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaveBalancesScreen())),
+              },
+              {
+                'title': 'Lương và chi trả',
+                'icon': Icons.payments_outlined,
+                'bg': const Color(0xFFFFFBEB), // Amber 50
+                'iconColor': const Color(0xFFD97706),
                 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'payroll'))),
               },
               {
-                'title': 'Ứng & Thu hồi lương',
-                'icon': Icons.price_change_outlined,
-                'bg': const Color(0xFFFFF7ED), // Orange 50
-                'iconColor': const Color(0xFFEA580C),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'advances'))),
+                'title': 'Lịch xe',
+                'icon': Icons.directions_car_filled_outlined,
+                'bg': const Color(0xFFEFF6FF), // Blue 50
+                'iconColor': const Color(0xFF1D4ED8),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FleetScheduleScreen())),
               },
+
+              // 4. HỆ THỐNG
               {
-                'title': 'Chính sách & Cấu hình',
+                'title': 'Cấu hình HRM',
                 'icon': Icons.tune_rounded,
                 'bg': const Color(0xFFF8FAFC), // Slate 50
-                'iconColor': const Color(0xFF475569),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'policy'))),
-              },
-              {
-                'title': 'Hệ thống & Tích hợp',
-                'icon': Icons.hub_outlined,
-                'bg': const Color(0xFFEEF2FF), // Indigo 50
-                'iconColor': const Color(0xFF4F46E5),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'integrations'))),
-              },
-              {
-                'title': 'QL Người dùng',
-                'icon': Icons.manage_accounts_outlined,
-                'bg': const Color(0xFFF1F5F9), // Slate 50
                 'iconColor': const Color(0xFF0F172A),
-                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'config'))),
               },
             ],
           ),
@@ -2106,6 +2152,75 @@ class _HomeScreenState extends State<HomeScreen> {
                 'bg': const Color(0xFFECFDF5), // Emerald 50
                 'iconColor': const Color(0xFF059669),
                 'onTap': () => setState(() => _mobileNavIndex = 2),
+              },
+            ],
+          ),
+          // 7. TIỆN ÍCH & TÍNH NĂNG KHÁC (Tạm thời chuyển từ HRM)
+          _buildMenuSection(
+            title: 'TIỆN ÍCH & TÍNH NĂNG KHÁC',
+            items: [
+              {
+                'title': 'Lịch & Thông báo',
+                'icon': Icons.event_note_outlined,
+                'bg': const Color(0xFFEFF6FF), // Sky 50
+                'iconColor': const Color(0xFF0284C7),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'schedule'))),
+              },
+              {
+                'title': 'Người phụ thuộc',
+                'icon': Icons.family_restroom_outlined,
+                'bg': const Color(0xFFFFFBEB), // Amber 50
+                'iconColor': const Color(0xFFD97706),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'dependents'))),
+              },
+              {
+                'title': 'Quản lý Ca làm',
+                'icon': Icons.schedule_rounded,
+                'bg': const Color(0xFFFFFBEB), // Amber 50
+                'iconColor': const Color(0xFFD97706),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'shifts'))),
+              },
+              {
+                'title': 'Xử lý Đơn từ',
+                'icon': Icons.fact_check_outlined,
+                'bg': const Color(0xFFF5F3FF), // Purple 50
+                'iconColor': const Color(0xFF7C3AED),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'approvals'))),
+              },
+              {
+                'title': 'Tiền lương & Chi trả',
+                'icon': Icons.account_balance_wallet_outlined,
+                'bg': const Color(0xFFEFF6FF), // Blue 50
+                'iconColor': const Color(0xFF2563EB),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'payroll'))),
+              },
+              {
+                'title': 'Ứng & Thu hồi lương',
+                'icon': Icons.price_change_outlined,
+                'bg': const Color(0xFFFFF7ED), // Orange 50
+                'iconColor': const Color(0xFFEA580C),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'advances'))),
+              },
+              {
+                'title': 'Chính sách & Cấu hình',
+                'icon': Icons.tune_rounded,
+                'bg': const Color(0xFFF8FAFC), // Slate 50
+                'iconColor': const Color(0xFF475569),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'config'))),
+              },
+              {
+                'title': 'Hệ thống & Tích hợp',
+                'icon': Icons.hub_outlined,
+                'bg': const Color(0xFFEEF2FF), // Indigo 50
+                'iconColor': const Color(0xFF4F46E5),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'integrations'))),
+              },
+              {
+                'title': 'Trợ lý AI Savina',
+                'icon': Icons.auto_awesome,
+                'bg': const Color(0xFFEFF6FF), // Sky 50
+                'iconColor': const Color(0xFF2563EB),
+                'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen())),
               },
             ],
           ),
@@ -2553,6 +2668,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(color: AppColors.slate500, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                   ),
                 ),
+                _buildModuleShortcut('Dự án (Workspace)', Icons.work_outline, 'workspace'),
                 _buildModuleShortcut('Quy trình (Workflow)', Icons.account_tree, 'procedure'),
                 _buildModuleShortcut('Kho vật tư (Inventory)', Icons.inventory_2, 'inventory'),
                 _buildModuleShortcut('Bảo trì (Maintenance)', Icons.build, 'maintenance'),

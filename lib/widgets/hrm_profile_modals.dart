@@ -153,21 +153,21 @@ class HrmProfileModals {
                       _buildSectionCard([
                         _buildDataRow('Số điện thoại:', emp.phone.isNotEmpty ? emp.phone : '----'),
                         _buildDataRow('Email:', emp.email.isNotEmpty ? emp.email : '----'),
-                        _buildDataRow('Ngày sinh & Giới tính:', '---- (Nam)'),
-                        _buildDataRow('Số CCCD / Hộ chiếu:', 'Chưa cập nhật'),
-                        _buildDataRow('Tình trạng hôn nhân:', 'Độc thân'),
-                        _buildDataRow('Quốc tịch & Dân tộc:', 'Việt Nam / Kinh'),
-                        _buildDataRow('Nơi sinh & Quê quán:', '---- (Quê quán: ----)'),
-                        _buildDataRow('Địa chỉ thường trú:', '----', isLast: true),
+                        _buildDataRow('Ngày sinh & Giới tính:', '${emp.dateOfBirth ?? '----'} (${emp.genderLabel})'),
+                        _buildDataRow('Số CCCD / Hộ chiếu:', emp.identityCardNumber ?? 'Chưa cập nhật'),
+                        _buildDataRow('Tình trạng hôn nhân:', emp.maritalStatusLabel),
+                        _buildDataRow('Quốc tịch & Dân tộc:', '${emp.nationality ?? 'Việt Nam'} / ${emp.ethnicity ?? 'Kinh'}'),
+                        _buildDataRow('Nơi sinh & Quê quán:', '${emp.placeOfBirth ?? '----'} (Quê quán: ${emp.hometown ?? '----'})'),
+                        _buildDataRow('Địa chỉ thường trú:', emp.permanentAddress ?? '----', isLast: true),
                       ]),
                       const SizedBox(height: 14),
 
                       // Section 2: LIÊN HỆ KHẨN CẤP
                       _buildSectionHeader(Icons.favorite_border_rounded, '2. LIÊN HỆ KHẨN CẤP'),
                       _buildSectionCard([
-                        _buildDataRow('Người liên hệ:', 'Chưa thiết lập'),
-                        _buildDataRow('Mối quan hệ:', '----'),
-                        _buildDataRow('Số điện thoại liên hệ:', '----', isLast: true),
+                        _buildDataRow('Người liên hệ:', emp.emergencyContactName ?? 'Chưa thiết lập'),
+                        _buildDataRow('Mối quan hệ:', emp.emergencyContactRelationship ?? '----'),
+                        _buildDataRow('Số điện thoại liên hệ:', emp.emergencyContactPhone ?? '----', isLast: true),
                       ]),
                       const SizedBox(height: 14),
 
@@ -175,7 +175,7 @@ class HrmProfileModals {
                       _buildSectionHeader(Icons.business_center_outlined, '3. QUAN HỆ LAO ĐỘNG'),
                       _buildSectionCard([
                         _buildDataRow('Ngày gia nhập:', _formatDate(emp.joinDate)),
-                        _buildDataRow('Ngày chính thức:', 'Đang thử việc', valueColor: const Color(0xFF059669)),
+                        _buildDataRow('Hợp đồng:', emp.contractType ?? 'Chính thức', valueColor: const Color(0xFF059669)),
                         _buildDataRow(
                           'Trạng thái hiện tại:',
                           '',
@@ -188,9 +188,9 @@ class HrmProfileModals {
                       // Section 4: TÀI CHÍNH NHÂN SỰ & THUẾ
                       _buildSectionHeader(Icons.account_balance_wallet_outlined, '4. TÀI CHÍNH NHÂN SỰ & THUẾ'),
                       _buildSectionCard([
-                        _buildDataRow('Mã số thuế TNCN:', 'Chưa cập nhật'),
-                        _buildDataRow('Số tài khoản nhận lương:', 'Chưa liên kết', valueColor: const Color(0xFF2563EB)),
-                        _buildDataRow('Ngân hàng thụ hưởng:', '----'),
+                        _buildDataRow('Mã số thuế TNCN:', emp.taxCode ?? 'Chưa cập nhật'),
+                        _buildDataRow('Số tài khoản nhận lương:', emp.bankAccountNumber ?? 'Chưa liên kết', valueColor: const Color(0xFF2563EB)),
+                        _buildDataRow('Ngân hàng thụ hưởng:', emp.bankName ?? '----'),
                         _buildDataRow(
                           'Quản lý trực tiếp:',
                           '',

@@ -39,6 +39,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
   // Profile data from backend
   Map<String, dynamic>? _profile;
   List<Map<String, dynamic>> _careerHistory = [];
+  List<Map<String, dynamic>> _careerEvents = [];
   List<Map<String, dynamic>> _payslips = [];
   List<Map<String, dynamic>> _dependents = [];
   List<Map<String, dynamic>> _qualifications = [];
@@ -59,9 +60,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
   final TextEditingController _emergencyRelationCtrl = TextEditingController();
   final TextEditingController _emergencyPhoneCtrl = TextEditingController();
   final TextEditingController _emergencyAddressCtrl = TextEditingController();
-  bool _isSavingEmergency = false;
 
-  bool _isAccountMasked = true;
 
   @override
   void initState() {
@@ -100,6 +99,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
         _service.getCareerHistory(),
         _service.getMyPayslips(),
         _service.getDependents(),
+        _service.getCareerEvents(),
       ]);
 
       if (mounted) {
@@ -196,6 +196,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
           _careerHistory = (results[1] as List<Map<String, dynamic>>?) ?? [];
           _payslips = (results[2] as List<Map<String, dynamic>>?) ?? [];
           _dependents = depList;
+          _careerEvents = (results[4] as List<Map<String, dynamic>>?) ?? [];
           _qualifications = qualList;
           _isLoading = false;
         });
@@ -210,19 +211,25 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     }
   }
 
-  Future<void> _saveContactInfo() async {
+  Future<void> _saveContactAndEmergencyInfo() async {
     setState(() => _isSavingContact = true);
     final payload = {
       'personalEmail': _personalEmailCtrl.text.trim(),
       'phone': _phoneCtrl.text.trim(),
       'permanentAddress': _permanentAddressCtrl.text.trim(),
       'currentAddress': _currentAddressCtrl.text.trim(),
+      'emergencyContactName': _emergencyNameCtrl.text.trim(),
+      'emergencyContactRelationship': _emergencyRelationCtrl.text.trim(),
+      'emergencyContactPhone': _emergencyPhoneCtrl.text.trim(),
     };
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_contact_phone', _phoneCtrl.text.trim());
       await prefs.setString('saved_perm_address', _permanentAddressCtrl.text.trim());
       await prefs.setString('saved_curr_address', _currentAddressCtrl.text.trim());
+      await prefs.setString('saved_emerg_name', _emergencyNameCtrl.text.trim());
+      await prefs.setString('saved_emerg_rel', _emergencyRelationCtrl.text.trim());
+      await prefs.setString('saved_emerg_phone', _emergencyPhoneCtrl.text.trim());
     } catch (_) {}
 
     final success = await _service.updateMyProfile(payload);
@@ -234,54 +241,24 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
           _profile!['phone'] = payload['phone'];
           _profile!['permanentAddress'] = payload['permanentAddress'];
           _profile!['currentAddress'] = payload['currentAddress'];
-        }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? 'Đã lưu và đồng bộ thông tin liên lạc thành công!' : 'Đã lưu thông tin liên lạc vào hệ thống.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF059669),
-        ),
-      );
-    }
-  }
-
-  Future<void> _saveEmergencyInfo() async {
-    setState(() => _isSavingEmergency = true);
-    final payload = {
-      'emergencyContactName': _emergencyNameCtrl.text.trim(),
-      'emergencyContactRelationship': _emergencyRelationCtrl.text.trim(),
-      'emergencyContactPhone': _emergencyPhoneCtrl.text.trim(),
-      'emergencyContactAddress': _emergencyAddressCtrl.text.trim(),
-    };
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('saved_emerg_name', _emergencyNameCtrl.text.trim());
-      await prefs.setString('saved_emerg_rel', _emergencyRelationCtrl.text.trim());
-      await prefs.setString('saved_emerg_phone', _emergencyPhoneCtrl.text.trim());
-      await prefs.setString('saved_emerg_address', _emergencyAddressCtrl.text.trim());
-    } catch (_) {}
-
-    final success = await _service.updateMyProfile(payload);
-    if (mounted) {
-      setState(() {
-        _isSavingEmergency = false;
-        if (_profile != null) {
           _profile!['emergencyContactName'] = payload['emergencyContactName'];
           _profile!['emergencyContactRelationship'] = payload['emergencyContactRelationship'];
           _profile!['emergencyContactPhone'] = payload['emergencyContactPhone'];
-          _profile!['emergencyContactAddress'] = payload['emergencyContactAddress'];
         }
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'Đã lưu và đồng bộ người liên hệ khẩn cấp thành công!' : 'Đã lưu thông tin liên hệ khẩn cấp.'),
+          content: Text(success ? 'Đã lưu và đồng bộ thông tin liên hệ thành công!' : 'Đã lưu thông tin liên hệ vào hệ thống.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFF059669),
         ),
       );
     }
   }
+
+  Future<void> _saveContactInfo() => _saveContactAndEmergencyInfo();
+
+  Future<void> _saveEmergencyInfo() => _saveContactAndEmergencyInfo();
 
   Future<void> _pickDocument(String docKey, String docLabel) async {
     try {
@@ -1197,7 +1174,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
         ),
         const SizedBox(height: 16),
 
-        // 2. Khối thông tin liên lạc (Được phép cập nhật)
+        // 2. Liên hệ & người thân (Web 1:1)
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -1211,29 +1188,14 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                 padding: const EdgeInsets.all(14),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2563EB),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'KHỐI THÔNG TIN LIÊN LẠC',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.5),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                    const Icon(Icons.phone_in_talk_rounded, size: 18, color: Color(0xFF4F46E5)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Liên hệ & người thân',
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
@@ -1258,100 +1220,85 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInputField(label: 'Email cá nhân (personal_email)', controller: _personalEmailCtrl, hintText: 'Nhập email cá nhân...'),
-                    const SizedBox(height: 10),
-                    _buildInputField(label: 'Số điện thoại di động (phone)', controller: _phoneCtrl, hintText: 'Chưa cập nhật số điện thoại', keyboardType: TextInputType.phone),
-                    const SizedBox(height: 10),
-                    _buildInputField(label: 'Địa chỉ thường trú', controller: _permanentAddressCtrl, hintText: 'Chưa cập nhật địa chỉ thường trú'),
-                    const SizedBox(height: 10),
-                    _buildInputField(label: 'Địa chỉ tạm trú / Nơi ở hiện tại', controller: _currentAddressCtrl, hintText: 'Chưa cập nhật địa chỉ nơi ở hiện tại'),
-                    const SizedBox(height: 14),
+                    _buildInputField(
+                      label: 'Email cá nhân',
+                      controller: _personalEmailCtrl,
+                      hintText: 'Chưa cập nhật email cá nhân',
+                      prefixIcon: Icons.mail_outline_rounded,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInputField(
+                      label: 'Số điện thoại di động',
+                      controller: _phoneCtrl,
+                      hintText: 'Chưa cập nhật số điện thoại',
+                      prefixIcon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInputField(
+                      label: 'Địa chỉ thường trú',
+                      controller: _permanentAddressCtrl,
+                      hintText: 'Chưa cập nhật địa chỉ thường trú',
+                      prefixIcon: Icons.location_on_outlined,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInputField(
+                      label: 'Địa chỉ tạm trú / Nơi ở hiện tại',
+                      controller: _currentAddressCtrl,
+                      hintText: 'Chưa cập nhật địa chỉ nơi ở hiện tại',
+                      prefixIcon: Icons.location_on_outlined,
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Sub-section: Người liên hệ khẩn cấp
+                    const Row(
+                      children: [
+                        Icon(Icons.people_outline_rounded, size: 18, color: Color(0xFF2563EB)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Người liên hệ khẩn cấp',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildInputField(
+                      label: 'Họ và tên',
+                      controller: _emergencyNameCtrl,
+                      hintText: 'Chưa có thông tin người liên hệ',
+                      prefixIcon: Icons.person_outline_rounded,
+                      isRequired: true,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildRelationshipDropdown(),
+                    const SizedBox(height: 12),
+
+                    _buildInputField(
+                      label: 'Số điện thoại',
+                      controller: _emergencyPhoneCtrl,
+                      hintText: 'Chưa có SĐT khẩn cấp',
+                      prefixIcon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                      isRequired: true,
+                    ),
+                    const SizedBox(height: 16),
 
                     // Save Button
                     Align(
                       alignment: Alignment.centerRight,
                       child: ElevatedButton.icon(
-                        onPressed: _isSavingContact ? null : _saveContactInfo,
+                        onPressed: _isSavingContact ? null : _saveContactAndEmergencyInfo,
                         icon: _isSavingContact
                             ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.save_outlined, size: 15),
-                        label: Text(_isSavingContact ? 'Đang lưu...' : 'Lưu thông tin liên lạc', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        label: Text(_isSavingContact ? 'Đang lưu...' : 'Lưu thông tin liên hệ', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF4F46E5),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // 3. Khối liên hệ khẩn cấp
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD97706),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'KHỐI LIÊN HỆ KHẨN CẤP',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.5),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Color(0xFFF1F5F9), height: 1),
-
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInputField(label: 'Tên người liên hệ khẩn cấp *', controller: _emergencyNameCtrl, hintText: 'Chưa có thông tin người liên hệ'),
-                    const SizedBox(height: 10),
-                    _buildInputField(label: 'Mối quan hệ *', controller: _emergencyRelationCtrl, hintText: 'Ví dụ: Vợ / Chồng, Bố / Mẹ, Anh / Chị...'),
-                    const SizedBox(height: 10),
-                    _buildInputField(label: 'Số điện thoại khẩn cấp *', controller: _emergencyPhoneCtrl, hintText: 'Chưa có SĐT khẩn cấp', keyboardType: TextInputType.phone),
-                    const SizedBox(height: 10),
-                    _buildInputField(label: 'Địa chỉ người liên hệ', controller: _emergencyAddressCtrl, hintText: 'Chưa có địa chỉ người liên hệ'),
-                    const SizedBox(height: 14),
-
-                    // Save Button
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton.icon(
-                        onPressed: _isSavingEmergency ? null : _saveEmergencyInfo,
-                        icon: _isSavingEmergency
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.save_outlined, size: 15),
-                        label: Text(_isSavingEmergency ? 'Đang lưu...' : 'Lưu liên hệ khẩn cấp', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4F46E5),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           elevation: 0,
                         ),
@@ -1379,7 +1326,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
               const Text('Ảnh và giấy tờ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
               const SizedBox(height: 3),
               const Text(
-                'CCCD là bắt buộc. Bằng cấp, chứng chỉ, hộ chiếu, giấy phép lao động là tùy chọn. Mọi thay đổi được gửi thành đơn và chỉ có hiệu lực sau khi HR duyệt.',
+                'Bổ sung các giấy tờ bắt buộc để hoàn thiện hồ sơ cá nhân: Ảnh CCCD mặt trước, mặt sau và ảnh thẻ. Mọi thay đổi được gửi thành đơn và chỉ có hiệu lực sau khi HR duyệt.',
                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.35),
               ),
               const SizedBox(height: 12),
@@ -1467,156 +1414,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              const Divider(color: Color(0xFFF1F5F9), height: 1),
-              const SizedBox(height: 14),
-
-              // ==========================================
-              // BẢNG CẤP VÀ CHỨNG CHỈ (Qualifications & Certificates)
-              // ==========================================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'BẢNG CẤP VÀ CHỨNG CHỈ',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.5),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddQualificationDialog(),
-                    icon: const Icon(Icons.add, size: 14),
-                    label: const Text('Thêm', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      elevation: 0,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              if (_qualifications.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Center(
-                    child: Text('Chưa có bằng cấp, chứng chỉ', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _qualifications.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (ctx, idx) {
-                    final q = _qualifications[idx];
-                    final type = q['type']?.toString() ?? 'DEGREE';
-                    final typeName = q['typeName']?.toString() ?? type;
-                    final name = q['name']?.toString() ?? 'Bằng cấp / Chứng chỉ';
-                    final issuer = q['issuer']?.toString() ?? '';
-                    final number = q['number']?.toString() ?? '';
-                    final issueDate = q['issueDate']?.toString() ?? '';
-                    final expiryDate = q['expiryDate']?.toString() ?? '';
-                    final fileName = q['fileName']?.toString();
-
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEFF6FF),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: const Color(0xFFBFDBFE)),
-                                ),
-                                child: Text(typeName, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF1E40AF))),
-                              ),
-                              Row(
-                                children: [
-                                  InkWell(
-                                    onTap: () => _showAddQualificationDialog(editItem: q, editIndex: idx),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(4),
-                                      child: Icon(Icons.edit_outlined, size: 16, color: Color(0xFF2563EB)),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  InkWell(
-                                    onTap: () => _deleteQualification(idx),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(4),
-                                      child: Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                          if (issuer.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text('Nơi cấp: $issuer', style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
-                          ],
-                          if (number.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text('Số hiệu: $number', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                          ],
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              if (issueDate.isNotEmpty)
-                                Text('Hiệu lực: ${_formatDate(issueDate)}', style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                              if (issueDate.isNotEmpty && expiryDate.isNotEmpty)
-                                const Text(' - ', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                              if (expiryDate.isNotEmpty)
-                                Text('Hết hạn: ${_formatDate(expiryDate)}', style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                            ],
-                          ),
-                          if (fileName != null && fileName.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: const Color(0xFFCBD5E1)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.attach_file, size: 12, color: Color(0xFF2563EB)),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(fileName, style: const TextStyle(fontSize: 10, color: Color(0xFF1E3A8A)), overflow: TextOverflow.ellipsis),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  },
-                ),
             ],
           ),
         ),
@@ -1628,35 +1425,69 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
   // SUB-TAB 2: QUÁ TRÌNH CÔNG TÁC (WORK HISTORY - WEB 1:1)
   // ==========================================
   Widget _buildWorkHistoryTabContent(String department, String position) {
-    final list = _careerHistory.isNotEmpty
-        ? _careerHistory
-        : [
-            {
-              'positionName': 'Phó Tổng Giám đốc',
-              'unitName': 'Ban Tổng Giám đốc',
-              'positionCode': 'SAVINA-BTGD--PHO-TONG-GIAM-DOC',
-              'effectiveFrom': null,
-              'effectiveTo': null,
-              'isPrimary': true,
-              'status': 'active',
-              'isConcurrent': true,
-            },
-            {
-              'positionName': 'Trưởng phòng Hành chính - Tổng hợp',
-              'unitName': 'Phòng Hành chính - Tổng hợp',
-              'positionCode': 'SAVINA-P-HCTH--TRUONG-PHONG-HANH-CHINH-TONG-HOP',
-              'effectiveFrom': null,
-              'effectiveTo': null,
-              'isPrimary': false,
-              'status': 'active',
-              'isConcurrent': true,
-            },
-          ];
+    final employmentStatus = _profile?['employmentStatus']?.toString() ?? 'OFFICIAL';
+    final statusLabel = employmentStatus == 'OFFICIAL'
+        ? 'CHÍNH THỨC (Official)'
+        : (employmentStatus == 'PROBATION' ? 'THỬ VIỆC (Probation)' : 'HOẠT ĐỘNG');
+
+    final resolvedManager = _reportingOverview?['manager'] as Map<String, dynamic>?;
+    final managerName = resolvedManager?['name']?.toString() ?? _profile?['directManagerName']?.toString();
+    final managerTitle = resolvedManager?['title']?.toString() ?? _profile?['directManagerTitle']?.toString() ?? 'Tổng Giám đốc';
+    final directManagerStr = (managerName != null && managerName.trim().isNotEmpty)
+        ? '$managerName ($managerTitle)'
+        : 'Hà Nguyên Hoàng (Tổng Giám đốc)';
+
+    // Build timeline events list synchronized with Web
+    final List<Map<String, dynamic>> eventsList = [];
+    if (_careerEvents.isNotEmpty) {
+      eventsList.addAll(_careerEvents);
+    } else if (_contracts.isNotEmpty) {
+      for (final c in _contracts) {
+        final rawType = c['contractType']?.toString() ?? c['type']?.toString() ?? '';
+        final title = rawType == 'INDEFINITE'
+            ? 'Hợp đồng không xác định thời hạn'
+            : (rawType == 'DEFINITE'
+                ? 'Hợp đồng xác định thời hạn'
+                : (rawType == 'PROBATION'
+                    ? 'Hợp đồng thử việc'
+                    : (c['title']?.toString() ?? 'Hợp đồng lao động')));
+        eventsList.add({
+          'id': c['id']?.toString() ?? c['contractCode']?.toString(),
+          'source': 'CONTRACT',
+          'title': title,
+          'reference': c['contractCode']?.toString() ?? c['code']?.toString() ?? '',
+          'effectiveDate': c['effectiveFrom']?.toString() ?? '',
+          'endDate': c['effectiveTo']?.toString(),
+          'note': c['note']?.toString() ?? (c['description']?.toString() ?? ''),
+        });
+      }
+    } else {
+      eventsList.addAll([
+        {
+          'id': 'hd-1',
+          'source': 'CONTRACT',
+          'title': 'Hợp đồng không xác định thời hạn',
+          'reference': '001/2019/HĐLĐ-SAVINA',
+          'effectiveDate': '2019-01-01',
+          'endDate': null,
+          'note': 'Đồng bộ từ 1Office (hồ sơ #17, HĐ 001/2018/HĐLĐ-SAVINA)',
+        },
+        {
+          'id': 'hd-2',
+          'source': 'CONTRACT',
+          'title': 'Hợp đồng xác định thời hạn',
+          'reference': '01012018/HĐLĐ-SAVINA',
+          'effectiveDate': '2018-01-01',
+          'endDate': '2018-12-31',
+          'note': 'Đồng bộ từ 1Office (hồ sơ #17, HĐ 01012018/HĐLĐ-SAVINA)',
+        },
+      ]);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. Notice Admin Banner
+        // 1. Notice Admin Banner (Web 1:1)
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -1700,278 +1531,91 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
         ),
         const SizedBox(height: 14),
 
-        // 2. Cơ cấu tổ chức & Vị trí công tác (Master Card)
+        // 2. Cơ cấu tổ chức và vị trí công tác (Web 1:1)
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Card Header
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              // Header
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFDBEAFE)),
+                    ),
+                    child: const Icon(Icons.apartment_rounded, size: 20, color: Color(0xFF021E73)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFDBEAFE)),
-                          ),
-                          child: const Icon(Icons.apartment_rounded, size: 18, color: Color(0xFF1E3A8A)),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Expanded(
-                                    child: Text(
-                                      'CƠ CẤU TỔ CHỨC & VỊ TRÍ CÔNG TÁC',
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF6FF),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                                    ),
-                                    child: const Text('CHÍNH THỨC (Official)', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF1E40AF))),
-                                  ),
-                                ],
+                        Row(
+                          children: [
+                            const Flexible(
+                              child: Text(
+                                'Cơ cấu tổ chức và vị trí công tác',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Bảng đặc tả định danh cơ cấu tổ chức, sơ đồ quản lý và thẩm quyền chức danh',
-                                style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFFFDE68A)),
                               ),
-                            ],
-                          ),
+                              child: Text(
+                                statusLabel,
+                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.lock_outline_rounded, size: 11, color: Color(0xFF64748B)),
-                              SizedBox(width: 4),
-                              Text('Chỉ đọc (Read-only)', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
+              const SizedBox(height: 6),
 
-              // Hierarchy Breadcrumb Box
-              Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+              // 8 Fields directly matching Web
+              _buildWebDataRow('Công ty', _profile?['companyName']?.toString() ?? 'SƠ ĐỒ TỔ CHỨC'),
+              _buildWebDataRow('Khối đơn vị', _profile?['division']?.toString() ?? 'Khối Văn phòng'),
+              _buildWebDataRow('Phòng ban', department.isNotEmpty ? department : (_profile?['department']?.toString() ?? 'Phòng Hành chính - Tổng hợp')),
+              _buildWebDataRow('Bộ phận / Đội nhóm', _profile?['team']?.toString() ?? '----'),
+              _buildWebDataRow('Địa điểm làm việc', _profile?['workLocation']?.toString() ?? '----'),
+              _buildWebDataRow('Chức danh', position.isNotEmpty ? position : (_profile?['positionTitle']?.toString() ?? 'Trưởng phòng Hành chính - Tổng hợp')),
+              _buildWebDataRow('Hiệu lực bổ nhiệm', _formatDate(_profile?['officialDate'] ?? _profile?['joinDate'] ?? _profile?['appointmentDate'] ?? '2019-01-01')),
+              _buildWebDataRow('Quản lý trực tiếp', directManagerStr),
+              if (_profile?['note'] != null && _profile!['note'].toString().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Phạm vi trách nhiệm: ${_profile!['note']}',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('PHÂN CẤP QUẢN LÝ:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _buildBreadcrumbChip('SVN DTS Corporation', Icons.business_rounded, isRoot: true),
-                        const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF94A3B8)),
-                        _buildBreadcrumbChip('Hội đồng Quản trị', null),
-                        const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF94A3B8)),
-                        _buildBreadcrumbChip('Ban Tổng Giám đốc', Icons.business_rounded),
-                        const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF94A3B8)),
-                        _buildBreadcrumbChip('Phó Tổng Giám đốc', Icons.military_tech_rounded, isHighlight: true),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Divider(color: Color(0xFFE2E8F0), height: 1),
-                    const SizedBox(height: 6),
-                    const Row(
-                      children: [
-                        Icon(Icons.verified_user_outlined, size: 13, color: Color(0xFF059669)),
-                        SizedBox(width: 4),
-                        Text('Cấp bậc ngạch: ----', style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // 2 Sub-Blocks: Đơn vị & Pháp nhân & Chức danh
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Column(
-                  children: [
-                    // Block A: Cơ cấu Đơn vị & Pháp nhân
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.apartment_rounded, size: 13, color: Color(0xFF1E3A8A)),
-                                    SizedBox(width: 6),
-                                    Text('CƠ CẤU ĐƠN VỊ & PHÁP NHÂN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                                  ],
-                                ),
-                                Text('ORGANIZATION_UNIT', style: TextStyle(fontSize: 9.5, fontFamily: 'monospace', color: Color(0xFF94A3B8))),
-                              ],
-                            ),
-                          ),
-                          const Divider(color: Color(0xFFF1F5F9), height: 1),
-                          Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              children: [
-                                _buildSpecRow('Công ty / Pháp nhân', _profile?['companyName']?.toString() ?? 'SVN DTS Corporation', subValue: 'Doanh nghiệp (core_tenants)'),
-                                _buildSpecRow('Khối đơn vị', _profile?['division']?.toString() ?? 'Ban Điều hành'),
-                                _buildSpecRow('Phòng ban công tác', department.isNotEmpty ? department : 'Ban Tổng Giám đốc', badgeText: 'DEP-ASSIGNED'),
-                                _buildSpecRow('Bộ phận / Đội nhóm', _profile?['team']?.toString() ?? 'Trực thuộc Phòng ban'),
-                                _buildSpecRow('Địa điểm làm việc', _profile?['workLocation']?.toString() ?? 'Văn phòng Trụ sở chính', badgeText: 'On-site', badgeColor: const Color(0xFFECFDF5), badgeTextColor: const Color(0xFF059669)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Block B: Chức danh & Thẩm quyền quản lý
-                    Builder(
-                      builder: (context) {
-                        final resolvedManager = _reportingOverview?['manager'] as Map<String, dynamic>?;
-                        final managerName = resolvedManager?['name']?.toString() ?? _profile?['directManagerName']?.toString();
-                        final managerTitle = resolvedManager?['title']?.toString() ?? _profile?['directManagerTitle']?.toString() ?? 'Trưởng bộ phận';
-                        final managerCode = resolvedManager?['code']?.toString();
-                        final isCorePosition = resolvedManager?['source'] == 'CORE_POSITION';
-                        final hasManager = managerName != null && managerName.trim().isNotEmpty;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(Icons.badge_outlined, size: 13, color: Color(0xFF1E3A8A)),
-                                        SizedBox(width: 6),
-                                        Text('CHỨC DANH & THẨM QUYỀN QUẢN LÝ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                                      ],
-                                    ),
-                                    Text('POSITION_HIERARCHY', style: TextStyle(fontSize: 9.5, fontFamily: 'monospace', color: Color(0xFF94A3B8))),
-                                  ],
-                                ),
-                              ),
-                              const Divider(color: Color(0xFFF1F5F9), height: 1),
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Column(
-                                  children: [
-                                    _buildSpecRow(
-                                      'Chức danh công việc',
-                                      position.isNotEmpty ? position : 'Chuyên viên',
-                                      subValue: 'Chức danh chính',
-                                      badgeText: 'ACTIVE',
-                                      badgeColor: const Color(0xFF0F172A),
-                                      badgeTextColor: Colors.white,
-                                    ),
-                                    _buildSpecRow(
-                                      'Mã vị trí & Cấp bậc',
-                                      _profile?['positionCode']?.toString() ?? _profile?['jobCode']?.toString() ?? 'SAVINA-BTGD--PHO-TONG-GIAM-DOC',
-                                      subValue: _profile?['level']?.toString() ?? 'Chuyên viên',
-                                      isCodeBadge: true,
-                                    ),
-                                    _buildSpecRow(
-                                      'Quyết định bổ nhiệm',
-                                      _profile?['appointmentDecision']?.toString() ?? 'QĐ-TNS-${_profile?['code'] ?? 'NV_004'}',
-                                      subValue: _profile?['officialDate'] != null ? 'Hiệu lực: ${_profile!['officialDate']}' : 'Hiệu lực: 26/12/2023',
-                                    ),
-                                    _buildSpecRow(
-                                      'Quản lý trực tiếp',
-                                      hasManager ? (managerCode != null ? '$managerName ($managerCode)' : managerName) : 'Chưa phân công quản lý',
-                                      subValue: hasManager ? managerTitle : 'Vị trí chưa thiết lập cấp trên',
-                                      badgeText: hasManager ? (isCorePosition ? 'Sơ đồ Core' : 'HRM line') : 'UNASSIGNED',
-                                      badgeColor: hasManager ? (isCorePosition ? const Color(0xFFECFDF5) : const Color(0xFFEFF6FF)) : const Color(0xFFF1F5F9),
-                                      badgeTextColor: hasManager ? (isCorePosition ? const Color(0xFF059669) : const Color(0xFF2563EB)) : const Color(0xFF64748B),
-                                    ),
-                                    _buildSpecRow('Phạm vi trách nhiệm', _profile?['responsibilities']?.toString() ?? '----'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ],
           ),
         ),
         const SizedBox(height: 16),
 
-        // 3. Lịch sử bổ nhiệm & công tác (TIMELINE)
+        // 3. Lịch sử bổ nhiệm và công tác (Web 1:1 Timeline)
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -1983,107 +1627,178 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('LỊCH SỬ BỔ NHIỆM & CÔNG TÁC (TIMELINE)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                  Container(
+                    width: 3.5,
+                    height: 15,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD97706),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'LỊCH SỬ BỔ NHIỆM VÀ CÔNG TÁC',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
+                    ),
+                  ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: Text('${list.length} vị trí / quyết định', style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.bold)),
+                    child: Text(
+                      '${eventsList.length} sự kiện',
+                      style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: list.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, idx) {
-                  final item = list[idx];
-                  final posName = item['positionName']?.toString() ?? 'Chức danh';
-                  final unitName = item['unitName']?.toString() ?? 'Đơn vị';
-                  final posCode = item['positionCode']?.toString() ?? '----';
+              if (eventsList.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: const Center(
+                    child: Text('Chưa có sự kiện bổ nhiệm nào', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: eventsList.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, idx) {
+                    final ev = eventsList[idx];
+                    final isFirst = idx == 0;
+                    final title = ev['title']?.toString() ?? 'Hợp đồng lao động';
+                    final ref = ev['reference']?.toString() ?? ev['contractCode']?.toString() ?? '';
+                    final tag = ev['source'] == 'DECISION' ? 'Quyết định' : 'Hợp đồng';
+                    final effDate = _formatDate(ev['effectiveDate'] ?? ev['effectiveFrom']);
+                    final toDate = ev['endDate'] != null && ev['endDate'].toString().isNotEmpty
+                        ? _formatDate(ev['endDate'])
+                        : (ev['effectiveTo'] != null && ev['effectiveTo'].toString().isNotEmpty
+                            ? _formatDate(ev['effectiveTo'])
+                            : 'Hiện tại');
+                    final dateRange = '$effDate - $toDate';
+                    final note = ev['note']?.toString();
 
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
+                    return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Dot
                         Container(
-                          margin: const EdgeInsets.only(top: 2),
+                          margin: const EdgeInsets.only(top: 4),
                           width: 12,
                           height: 12,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF2563EB),
-                            border: Border.all(color: const Color(0xFFBFDBFE), width: 2),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.apartment_rounded, size: 14, color: Color(0xFF475569)),
-                                  const SizedBox(width: 5),
-                                  Expanded(
-                                    child: Text(
-                                      posName,
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                    ),
-                                  ),
-                                ],
+                            color: isFirst ? const Color(0xFF021E73) : const Color(0xFF94A3B8),
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isFirst ? const Color(0xFF021E73) : const Color(0xFF94A3B8)).withOpacity(0.35),
+                                spreadRadius: 2,
                               ),
-                              const SizedBox(height: 4),
-                              Wrap(
-                                spacing: 4,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFECFDF5),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text('Đang đương nhiệm', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text('Kiêm nhiệm', style: TextStyle(fontSize: 9, color: Color(0xFF64748B))),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text('Đơn vị: $unitName', style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
-                              const SizedBox(height: 2),
-                              Text('Mã vị trí: $posCode', style: const TextStyle(fontSize: 10.5, fontFamily: 'monospace', color: Color(0xFF64748B))),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Text('---- - Hiện tại', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                        const SizedBox(width: 10),
+
+                        // Event details
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 2),
+                                      child: Icon(Icons.work_outline_rounded, size: 14, color: Color(0xFF021E73)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          Text(
+                                            title,
+                                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                                            ),
+                                            child: Text(
+                                              tag,
+                                              style: const TextStyle(fontSize: 9.5, color: Color(0xFF475569), fontWeight: FontWeight.w600),
+                                            ),
+                                          ),
+                                          if (ref.isNotEmpty)
+                                            Text(
+                                              ref,
+                                              style: const TextStyle(fontSize: 10.5, fontFamily: 'monospace', color: Color(0xFF64748B)),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.calendar_today_outlined, size: 11, color: Color(0xFF94A3B8)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      dateRange,
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1D4ED8)),
+                                    ),
+                                  ],
+                                ),
+                                if (note != null && note.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Text(
+                                      note,
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -2252,82 +1967,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     );
   }
 
-  Widget _buildBreadcrumbChip(String label, IconData? icon, {bool isRoot = false, bool isHighlight = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: isHighlight ? const Color(0xFFEEF2FF) : Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: isHighlight ? const Color(0xFFC7D2FE) : const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: isHighlight ? const Color(0xFF4F46E5) : const Color(0xFF64748B)),
-            const SizedBox(width: 3),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
-              color: isHighlight ? const Color(0xFF4F46E5) : const Color(0xFF334155),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildSpecRow(String label, String value, {String? subValue, String? badgeText, Color? badgeColor, Color? badgeTextColor, bool isCodeBadge = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 125,
-            child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        value,
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                      ),
-                    ),
-                    if (badgeText != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: badgeColor ?? const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: badgeTextColor ?? const Color(0xFF475569)),
-                        ),
-                      ),
-                  ],
-                ),
-                if (subValue != null)
-                  Text(
-                    subValue,
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ==========================================
   // SUB-TAB 3: LƯƠNG - THUẾ - NGÂN HÀNG (WEB 1:1)
@@ -2343,388 +1983,93 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     final taxCode = _profile?['taxCode']?.toString() ?? _profile?['tax_code']?.toString();
     final bhxh = _profile?['socialInsuranceNumber']?.toString() ?? _profile?['social_insurance_number']?.toString();
 
-    final hasAccount = bankAccount != null && bankAccount.isNotEmpty && bankAccount != '----';
-    final hasTax = taxCode != null && taxCode.isNotEmpty && taxCode != '----';
-    final hasBhxh = bhxh != null && bhxh.isNotEmpty && bhxh != '----';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. Notice Security Banner
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFDBEAFE)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDBEAFE),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(Icons.shield_outlined, size: 16, color: Color(0xFF1E3A8A)),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Quy chuẩn bảo mật tài khoản chi lương: ',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A), fontSize: 11),
-                          ),
-                          TextSpan(
-                            text: 'Thông tin tài khoản thụ hưởng và MST/BHXH được mã hóa và đồng bộ trực tiếp với hệ thống hạch toán chi lương định kỳ.',
-                            style: TextStyle(color: Color(0xFF475569), fontSize: 11, height: 1.3),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                    ),
-                    child: const Text('Cấp bảo mật L2', style: TextStyle(fontSize: 10, color: Color(0xFF334155), fontWeight: FontWeight.w500)),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                    decoration: BoxDecoration(
-                      color: hasAccount ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: hasAccount ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          hasAccount ? Icons.check_circle_outline_rounded : Icons.radio_button_unchecked_rounded,
-                          size: 11,
-                          color: hasAccount ? const Color(0xFF059669) : const Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          hasAccount ? 'Đã liên kết tài khoản' : 'Chưa có thông tin',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: hasAccount ? const Color(0xFF059669) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // 2. Tài khoản thụ hưởng nhận lương (Payroll Account Card)
+        // 1. Thông tin ngân hàng nhận lương (Web 1:1)
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E3A8A),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'TÀI KHOẢN THỤ HƯỞNG NHẬN LƯƠNG (PAYROLL ACCOUNT)',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.2),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
+              // Header with Bank Icon
+              const Row(
+                children: [
+                  Icon(Icons.account_balance_rounded, size: 20, color: Color(0xFF4338CA)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Thông tin ngân hàng nhận lương',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.lock_outline_rounded, size: 11, color: Color(0xFF64748B)),
-                          SizedBox(width: 3),
-                          Text('Chỉ đọc', style: TextStyle(fontSize: 9.5, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Color(0xFFF1F5F9), height: 1),
-
-              // Visual ATM Bank Card Box
-              Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF1E3A8A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF1E3A8A).withValues(alpha: 0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                bankName != null && bankName.isNotEmpty ? bankName.substring(0, 3).toUpperCase() : '----',
-                                style: const TextStyle(color: Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  bankName ?? '----',
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  bankBranch != null ? 'Chi nhánh: $bankBranch' : '----',
-                                  style: const TextStyle(color: Color(0xFFBFDBFE), fontSize: 10.5),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: hasAccount ? const Color(0xFF10B981).withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: hasAccount ? const Color(0xFF34D399) : Colors.white24),
-                          ),
-                          child: Text(
-                            hasAccount ? 'Tài khoản chính' : 'Chưa thiết lập',
-                            style: TextStyle(
-                              color: hasAccount ? const Color(0xFF34D399) : const Color(0xFFCBD5E1),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    const Text(
-                      'SỐ TÀI KHOẢN THỤ HƯỞNG',
-                      style: TextStyle(color: Color(0xFFBFDBFE), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.6),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          hasAccount
-                              ? (_isAccountMasked
-                                  ? (bankAccount.length > 4 ? '**** **** ${bankAccount.substring(bankAccount.length - 4)}' : '****')
-                                  : bankAccount)
-                              : '- - - -',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'monospace',
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        if (hasAccount)
-                          InkWell(
-                            onTap: () => setState(() => _isAccountMasked = !_isAccountMasked),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                _isAccountMasked ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                                size: 18,
-                                color: const Color(0xFFBFDBFE),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const Divider(color: Color(0xFF334155), height: 1),
-                    const SizedBox(height: 8),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('CHỦ TÀI KHOẢN', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5)),
-                            const SizedBox(height: 2),
-                            Text(
-                              userFullName.toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text('TRẠNG THÁI', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5)),
-                            const SizedBox(height: 2),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: hasAccount ? const Color(0xFF34D399) : const Color(0xFF94A3B8),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  hasAccount ? 'Đang nhận chi trả' : '----',
-                                  style: TextStyle(
-                                    color: hasAccount ? const Color(0xFF34D399) : const Color(0xFF94A3B8),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                ],
               ),
+              const SizedBox(height: 16),
 
-              // Bank Metadata Table
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                child: Column(
-                  children: [
-                    _buildWebDataRow('Tên ngân hàng', bankName ?? '----'),
-                    _buildWebDataRow('Chi nhánh mở tài khoản', bankBranch ?? '----'),
-                    _buildWebDataRow('Phòng giao dịch liên kết', '----'),
-                    _buildWebDataRow('Hình thức chi trả tiền lương', hasAccount ? 'Chuyển khoản trực tiếp (Bank Transfer)' : '----'),
-                    _buildWebDataRow('Xác thực danh tính chủ thẻ', hasAccount ? 'Trùng khớp hoàn toàn với CCCD' : '----'),
-                  ],
-                ),
+              // Row 1: Ngân hàng & Số tài khoản
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildWebInputDisplayField('Ngân hàng', bankName)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildWebInputDisplayField('Số tài khoản', bankAccount, icon: Icons.credit_card_outlined)),
+                ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 12),
 
-              // Action Footer Note
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
-                  border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-                ),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Cần thay đổi STK nhận lương? Hãy nộp đơn đề xuất trước ngày 25 hàng tháng.',
-                        style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
-                      ),
+              // Row 2: Chủ tài khoản & Chi nhánh
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildWebInputDisplayField('Chủ tài khoản', userFullName, icon: Icons.person_outline_rounded)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildWebInputDisplayField('Chi nhánh', bankBranch, icon: Icons.place_outlined)),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Row 3: Mã số thuế cá nhân & Số sổ BHXH
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildWebInputDisplayField('Mã số thuế cá nhân', taxCode)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildWebInputDisplayField('Số sổ BHXH', bhxh)),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Security Footer Note
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: 1),
+                    child: Icon(Icons.shield_outlined, size: 15, color: Color(0xFF64748B)),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Thông tin tài khoản ngân hàng được bảo mật và chỉ hiển thị cho các vai trò có thẩm quyền. Cần thay đổi vui lòng liên hệ phòng Nhân sự.',
+                      style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.35),
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Vui lòng truy cập phân hệ "Đơn từ & Yêu cầu" để nộp đề nghị đổi số tài khoản ngân hàng.'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.open_in_new_rounded, size: 12, color: Color(0xFF1E3A8A)),
-                      label: const Text('Đổi tài khoản nhận lương', style: TextStyle(fontSize: 11, color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        side: const BorderSide(color: Color(0xFFBFDBFE)),
-                        backgroundColor: const Color(0xFFEFF6FF),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
 
-        // 3. Người thân và gia đình (Family & Dependents)
+        // 2. Người thân và gia đình (Family & Dependents)
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -2763,12 +2108,12 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
               const SizedBox(height: 10),
 
               if (_dependents.isEmpty)
-                Center(
+                const Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'Chưa có thông tin người thân',
-                      style: TextStyle(fontSize: 12, color: const Color(0xFF94A3B8)),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     ),
                   ),
                 )
@@ -2848,187 +2193,49 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
             ],
           ),
         ),
-        const SizedBox(height: 16),
+      ],
+    );
+  }
 
-        // 4. Mã số thuế & Giảm trừ gia cảnh
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF059669),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'MÃ SỐ THUẾ & GIẢM TRỪ GIA CẢNH',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: hasTax ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: hasTax ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
-                      ),
-                      child: Text(
-                        hasTax ? 'Đã cấp MST' : 'Chưa có',
-                        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: hasTax ? const Color(0xFF059669) : const Color(0xFF64748B)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Color(0xFFF1F5F9), height: 1),
-
-              // Mini Box
-              Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Mã số thuế cá nhân (MST)', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasTax ? taxCode : '- - - -',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF0F172A)),
-                    ),
-                  ],
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                child: Column(
-                  children: [
-                    _buildWebDataRow('Số người phụ thuộc đăng ký', '----'),
-                    _buildWebDataRow('Mức giảm trừ gia cảnh NPT', '----'),
-                    _buildWebDataRow('Mức giảm trừ bản thân', '----'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
+  Widget _buildWebInputDisplayField(String label, String? value, {IconData? icon}) {
+    final displayVal = (value != null && value.trim().isNotEmpty && value != '----') ? value.trim() : '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF334155),
           ),
         ),
-        const SizedBox(height: 16),
-
-        // 5. Bảo hiểm Xã hội & Y tế (BHXH - BHYT)
+        const SizedBox(height: 6),
         Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0284C7),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'BẢO HIỂM XÃ HỘI & Y TẾ (BHXH - BHYT)',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: hasBhxh ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: hasBhxh ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
-                      ),
-                      child: Text(
-                        hasBhxh ? 'Đã có sổ' : 'Chưa có',
-                        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: hasBhxh ? const Color(0xFF059669) : const Color(0xFF64748B)),
-                      ),
-                    ),
-                  ],
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: Text(
+                  displayVal,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF0F172A),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Divider(color: Color(0xFFF1F5F9), height: 1),
-
-              // Mini Box
-              Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Mã số BHXH', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasBhxh ? bhxh : '- - - -',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF0F172A)),
-                    ),
-                  ],
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                child: Column(
-                  children: [
-                    _buildWebDataRow('Mã nơi KCB ban đầu', '----'),
-                    _buildWebDataRow('Tỷ lệ đóng BHXH người LĐ', '----'),
-                    _buildWebDataRow('Tỷ lệ đóng của Doanh nghiệp', '----'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -3234,13 +2441,21 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     required String label,
     required TextEditingController controller,
     required String hintText,
+    IconData? prefixIcon,
     TextInputType keyboardType = TextInputType.text,
+    bool isRequired = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
-        const SizedBox(height: 4),
+        Row(
+          children: [
+            Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+            if (isRequired)
+              const Text(' *', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+          ],
+        ),
+        const SizedBox(height: 5),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
@@ -3248,6 +2463,8 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+            prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 16, color: const Color(0xFF94A3B8)) : null,
+            prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
@@ -3255,6 +2472,60 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF4F46E5))),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRelationshipDropdown() {
+    const relations = ['Vợ / Chồng', 'Bố', 'Mẹ', 'Con', 'Anh / Chị / Em', 'Bạn bè', 'Khác'];
+    final currentVal = _emergencyRelationCtrl.text.trim();
+    final itemsList = [...relations];
+    if (currentVal.isNotEmpty && !itemsList.contains(currentVal)) {
+      itemsList.insert(0, currentVal);
+    }
+    final effectiveVal = currentVal.isNotEmpty ? currentVal : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Text('Mối quan hệ', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+            Text(' *', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+          ],
+        ),
+        const SizedBox(height: 5),
+        DropdownButtonFormField<String>(
+          initialValue: effectiveVal,
+          isExpanded: true,
+          decoration: InputDecoration(
+            hintText: 'Chọn mối quan hệ...',
+            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+            prefixIcon: const Icon(Icons.people_outline_rounded, size: 16, color: Color(0xFF94A3B8)),
+            prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF4F46E5))),
+          ),
+          style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFF64748B)),
+          items: itemsList.map((rel) {
+            return DropdownMenuItem<String>(
+              value: rel,
+              child: Text(rel, style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A))),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _emergencyRelationCtrl.text = val;
+              });
+            }
+          },
         ),
       ],
     );

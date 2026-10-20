@@ -166,12 +166,14 @@ class AttendancePunch {
   final String occurredAt;
   final String? verificationMethod;
   final String? siteName;
+  final String? deviceName;
 
   AttendancePunch({
     required this.punchType,
     required this.occurredAt,
     this.verificationMethod = 'GPS',
     this.siteName,
+    this.deviceName,
   });
 
   factory AttendancePunch.fromJson(Map<String, dynamic> json) {
@@ -180,6 +182,7 @@ class AttendancePunch {
       occurredAt: json['occurred_at']?.toString() ?? json['occurredAt']?.toString() ?? '',
       verificationMethod: json['verification_method']?.toString() ?? json['verificationMethod']?.toString() ?? 'GPS',
       siteName: json['site_name']?.toString() ?? json['siteName']?.toString(),
+      deviceName: json['device_name']?.toString() ?? json['deviceName']?.toString(),
     );
   }
 }
@@ -408,3 +411,750 @@ class ShiftAssignment {
     );
   }
 }
+
+class HrmBoardMonthInfo {
+  final String month; // e.g. "2026-10"
+  final String from; // e.g. "2026-10-01"
+  final String to; // e.g. "2026-10-31"
+  final String state; // "OPEN" | "LOCKED" | "REVIEWING"
+  final String? periodId;
+  final String? requestsClosedAt;
+  final String? lockedAt;
+  final String? calculatedAt;
+
+  HrmBoardMonthInfo({
+    required this.month,
+    required this.from,
+    required this.to,
+    required this.state,
+    this.periodId,
+    this.requestsClosedAt,
+    this.lockedAt,
+    this.calculatedAt,
+  });
+
+  String get stateLabel {
+    switch (state) {
+      case 'OPEN':
+        return 'Đang mở';
+      case 'LOCKED':
+        return 'Đã chốt';
+      case 'REQUESTS_CLOSED':
+        return 'Đã đóng đơn';
+      default:
+        return state;
+    }
+  }
+
+  factory HrmBoardMonthInfo.fromJson(Map<String, dynamic> json) {
+    return HrmBoardMonthInfo(
+      month: json['month']?.toString() ?? '',
+      from: json['from']?.toString() ?? '',
+      to: json['to']?.toString() ?? '',
+      state: (json['state']?.toString() ?? 'OPEN').toUpperCase(),
+      periodId: json['periodId']?.toString() ?? json['period_id']?.toString(),
+      requestsClosedAt: json['requestsClosedAt']?.toString() ?? json['requests_closed_at']?.toString(),
+      lockedAt: json['lockedAt']?.toString() ?? json['locked_at']?.toString(),
+      calculatedAt: json['calculatedAt']?.toString() ?? json['calculated_at']?.toString(),
+    );
+  }
+}
+
+class HrmBoardCalendarDay {
+  final String date;
+  final int weekday; // 0 = Sun, 1 = Mon ... 6 = Sat
+  final String kind; // 'WORK' | 'OFF' | 'HOLIDAY'
+  final String? holidayName;
+
+  HrmBoardCalendarDay({
+    required this.date,
+    required this.weekday,
+    required this.kind,
+    this.holidayName,
+  });
+
+  factory HrmBoardCalendarDay.fromJson(Map<String, dynamic> json) {
+    return HrmBoardCalendarDay(
+      date: json['date']?.toString() ?? '',
+      weekday: (json['weekday'] as num?)?.toInt() ?? 0,
+      kind: (json['kind']?.toString() ?? 'WORK').toUpperCase(),
+      holidayName: json['holidayName']?.toString() ?? json['holiday_name']?.toString(),
+    );
+  }
+}
+
+class HrmDayRequest {
+  final String id;
+  final String kind; // 'LEAVE' | 'OT' | 'TRIP' | 'CORRECTION' | 'SHIFT_CHANGE' | 'CUSTOM'
+  final String status; // 'APPROVED' | 'PENDING' | 'REJECTED'
+  final String? code;
+  final String? label;
+  final String? reasonName;
+  final String? description;
+  final String? fromAt;
+  final String? toAt;
+  final int? minutes;
+  final double? otRate;
+  final String? punchIn;
+  final String? punchOut;
+  final String? createdAt;
+
+  HrmDayRequest({
+    required this.id,
+    required this.kind,
+    required this.status,
+    this.code,
+    this.label,
+    this.reasonName,
+    this.description,
+    this.fromAt,
+    this.toAt,
+    this.minutes,
+    this.otRate,
+    this.punchIn,
+    this.punchOut,
+    this.createdAt,
+  });
+
+  factory HrmDayRequest.fromJson(Map<String, dynamic> json) {
+    return HrmDayRequest(
+      id: json['id']?.toString() ?? '',
+      kind: (json['kind']?.toString() ?? 'LEAVE').toUpperCase(),
+      status: (json['status']?.toString() ?? 'PENDING').toUpperCase(),
+      code: json['code']?.toString(),
+      label: json['label']?.toString(),
+      reasonName: json['reasonName']?.toString() ?? json['reason_name']?.toString(),
+      description: json['description']?.toString(),
+      fromAt: json['fromAt']?.toString() ?? json['from_at']?.toString(),
+      toAt: json['toAt']?.toString() ?? json['to_at']?.toString(),
+      minutes: (json['minutes'] as num?)?.toInt(),
+      otRate: (json['otRate'] ?? json['ot_rate'] as num?)?.toDouble(),
+      punchIn: json['punchIn']?.toString() ?? json['punch_in']?.toString(),
+      punchOut: json['punchOut']?.toString() ?? json['punch_out']?.toString(),
+      createdAt: json['createdAt']?.toString() ?? json['created_at']?.toString(),
+    );
+  }
+}
+
+class HrmDayLeaveInfo {
+  final String? reasonName;
+  final bool paid;
+  final bool annual;
+  final double days;
+
+  HrmDayLeaveInfo({
+    this.reasonName,
+    this.paid = true,
+    this.annual = false,
+    this.days = 1.0,
+  });
+
+  factory HrmDayLeaveInfo.fromJson(Map<String, dynamic> json) {
+    return HrmDayLeaveInfo(
+      reasonName: json['reasonName']?.toString() ?? json['reason_name']?.toString() ?? json['name']?.toString(),
+      paid: json['paid'] == true || json['isPaid'] == true || json['is_paid'] == true,
+      annual: json['annual'] == true || json['isAnnual'] == true || json['is_annual'] == true,
+      days: (json['days'] as num?)?.toDouble() ?? 1.0,
+    );
+  }
+}
+
+class HrmBoardDay {
+  final String date;
+  final String kind; // 'WORK' | 'OFF' | 'HOLIDAY'
+  final String status; // 'PRESENT' | 'LATE' | 'EARLY_LEAVE' | 'LATE_EARLY' | 'ABNORMAL' | 'ABSENT' | 'ANNUAL_LEAVE' | 'PAID_LEAVE' | 'UNPAID_LEAVE' | 'TRIP' | 'OFF' | 'HOLIDAY' | 'NO_SCHEDULE' | 'FUTURE'
+  final String? shiftCode;
+  final String? shiftName;
+  final String? shiftStart;
+  final String? shiftEnd;
+  final String? shiftBreakStart;
+  final String? shiftBreakEnd;
+  final int shiftBreakMinutes;
+  final String? checkIn;
+  final String? checkOut;
+  final int scheduledMinutes;
+  final int workedMinutes;
+  final int paidMinutes;
+  final double workdayUnits;
+  final int lateMinutes;
+  final int earlyLeaveMinutes;
+  final int otMinutes;
+  final List<String> anomalies;
+  final String? tripId;
+  final String? holidayName;
+  final bool adjusted;
+  final List<HrmDayRequest> requests;
+  final HrmDayLeaveInfo? leave;
+
+  HrmBoardDay({
+    required this.date,
+    required this.kind,
+    required this.status,
+    this.shiftCode,
+    this.shiftName,
+    this.shiftStart,
+    this.shiftEnd,
+    this.shiftBreakStart,
+    this.shiftBreakEnd,
+    this.shiftBreakMinutes = 0,
+    this.checkIn,
+    this.checkOut,
+    this.scheduledMinutes = 0,
+    this.workedMinutes = 0,
+    this.paidMinutes = 0,
+    this.workdayUnits = 0.0,
+    this.lateMinutes = 0,
+    this.earlyLeaveMinutes = 0,
+    this.otMinutes = 0,
+    this.anomalies = const [],
+    this.tripId,
+    this.holidayName,
+    this.adjusted = false,
+    this.requests = const [],
+    this.leave,
+  });
+
+  bool get isLateOrEarly => lateMinutes > 0 || earlyLeaveMinutes > 0;
+  int get earlyMinutes => earlyLeaveMinutes;
+  bool get isAbsent => status == 'ABSENT';
+  bool get isOff => kind == 'OFF' || status == 'OFF';
+  bool get isHoliday => kind == 'HOLIDAY' || status == 'HOLIDAY';
+  bool get isFuture => status == 'FUTURE';
+
+  factory HrmBoardDay.fromJson(Map<String, dynamic> json) {
+    final anomaliesRaw = json['anomalies'];
+    final List<String> anomaliesList = [];
+    if (anomaliesRaw is List) {
+      for (final a in anomaliesRaw) {
+        if (a != null) anomaliesList.add(a.toString());
+      }
+    }
+
+    final requestsRaw = json['requests'];
+    final List<HrmDayRequest> requestsList = [];
+    if (requestsRaw is List) {
+      for (final r in requestsRaw) {
+        if (r is Map<String, dynamic>) {
+          requestsList.add(HrmDayRequest.fromJson(r));
+        }
+      }
+    }
+
+    return HrmBoardDay(
+      date: json['date']?.toString() ?? '',
+      kind: (json['kind']?.toString() ?? 'WORK').toUpperCase(),
+      status: (json['status']?.toString() ?? 'NO_SCHEDULE').toUpperCase(),
+      shiftCode: json['shiftCode']?.toString() ?? json['shift_code']?.toString(),
+      shiftName: json['shiftName']?.toString() ?? json['shift_name']?.toString(),
+      shiftStart: json['shiftStart']?.toString() ?? json['shift_start']?.toString(),
+      shiftEnd: json['shiftEnd']?.toString() ?? json['shift_end']?.toString(),
+      shiftBreakStart: json['shiftBreakStart']?.toString() ?? json['shift_break_start']?.toString(),
+      shiftBreakEnd: json['shiftBreakEnd']?.toString() ?? json['shift_break_end']?.toString(),
+      shiftBreakMinutes: (json['shiftBreakMinutes'] ?? json['shift_break_minutes'] as num?)?.toInt() ?? 0,
+      checkIn: json['checkIn']?.toString() ?? json['check_in']?.toString(),
+      checkOut: json['checkOut']?.toString() ?? json['check_out']?.toString(),
+      scheduledMinutes: (json['scheduledMinutes'] ?? json['scheduled_minutes'] as num?)?.toInt() ?? 0,
+      workedMinutes: (json['workedMinutes'] ?? json['worked_minutes'] as num?)?.toInt() ?? 0,
+      paidMinutes: (json['paidMinutes'] ?? json['paid_minutes'] as num?)?.toInt() ?? 0,
+      workdayUnits: (json['workdayUnits'] ?? json['workday_units'] as num?)?.toDouble() ?? 0.0,
+      lateMinutes: (json['lateMinutes'] ?? json['late_minutes'] as num?)?.toInt() ?? 0,
+      earlyLeaveMinutes: (json['earlyLeaveMinutes'] ?? json['early_leave_minutes'] as num?)?.toInt() ?? 0,
+      otMinutes: (json['otMinutes'] ?? json['ot_minutes'] as num?)?.toInt() ?? 0,
+      anomalies: anomaliesList,
+      tripId: json['tripId']?.toString() ?? json['trip_id']?.toString(),
+      holidayName: json['holidayName']?.toString() ?? json['holiday_name']?.toString(),
+      adjusted: json['adjusted'] == true,
+      requests: requestsList,
+      leave: json['leave'] is Map<String, dynamic> ? HrmDayLeaveInfo.fromJson(json['leave'] as Map<String, dynamic>) : null,
+    );
+  }
+}
+
+class HrmBoardTotals {
+  final double workdayUnits;
+  final int workedMinutes;
+  final int paidMinutes;
+  final int lateMinutes;
+  final int earlyLeaveMinutes;
+  final int otMinutes;
+  final int lateDays;
+  final int earlyLeaveDays;
+  final int abnormalDays;
+  final int unscheduledDays;
+  final int absentDays;
+  final int annualLeaveDays;
+  final int paidLeaveDays;
+  final int unpaidLeaveDays;
+  final int tripDays;
+  final int offDays;
+  final int holidayDays;
+
+  HrmBoardTotals({
+    this.workdayUnits = 0.0,
+    this.workedMinutes = 0,
+    this.paidMinutes = 0,
+    this.lateMinutes = 0,
+    this.earlyLeaveMinutes = 0,
+    this.otMinutes = 0,
+    this.lateDays = 0,
+    this.earlyLeaveDays = 0,
+    this.abnormalDays = 0,
+    this.unscheduledDays = 0,
+    this.absentDays = 0,
+    this.annualLeaveDays = 0,
+    this.paidLeaveDays = 0,
+    this.unpaidLeaveDays = 0,
+    this.tripDays = 0,
+    this.offDays = 0,
+    this.holidayDays = 0,
+  });
+
+  factory HrmBoardTotals.fromJson(Map<String, dynamic> json) {
+    return HrmBoardTotals(
+      workdayUnits: (json['workdayUnits'] ?? json['workday_units'] as num?)?.toDouble() ?? 0.0,
+      workedMinutes: (json['workedMinutes'] ?? json['worked_minutes'] as num?)?.toInt() ?? 0,
+      paidMinutes: (json['paidMinutes'] ?? json['paid_minutes'] as num?)?.toInt() ?? 0,
+      lateMinutes: (json['lateMinutes'] ?? json['late_minutes'] as num?)?.toInt() ?? 0,
+      earlyLeaveMinutes: (json['earlyLeaveMinutes'] ?? json['early_leave_minutes'] as num?)?.toInt() ?? 0,
+      otMinutes: (json['otMinutes'] ?? json['ot_minutes'] as num?)?.toInt() ?? 0,
+      lateDays: (json['lateDays'] ?? json['late_days'] as num?)?.toInt() ?? 0,
+      earlyLeaveDays: (json['earlyLeaveDays'] ?? json['early_leave_days'] as num?)?.toInt() ?? 0,
+      abnormalDays: (json['abnormalDays'] ?? json['abnormal_days'] as num?)?.toInt() ?? 0,
+      unscheduledDays: (json['unscheduledDays'] ?? json['unscheduled_days'] as num?)?.toInt() ?? 0,
+      absentDays: (json['absentDays'] ?? json['absent_days'] as num?)?.toInt() ?? 0,
+      annualLeaveDays: (json['annualLeaveDays'] ?? json['annual_leave_days'] as num?)?.toInt() ?? 0,
+      paidLeaveDays: (json['paidLeaveDays'] ?? json['paid_leave_days'] as num?)?.toInt() ?? 0,
+      unpaidLeaveDays: (json['unpaidLeaveDays'] ?? json['unpaid_leave_days'] as num?)?.toInt() ?? 0,
+      tripDays: (json['tripDays'] ?? json['trip_days'] as num?)?.toInt() ?? 0,
+      offDays: (json['offDays'] ?? json['off_days'] as num?)?.toInt() ?? 0,
+      holidayDays: (json['holidayDays'] ?? json['holiday_days'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class HrmBoardStandard {
+  final String mode; // 'DYNAMIC' | 'FIXED' | 'MINUTES'
+  final double workdays;
+
+  HrmBoardStandard({
+    this.mode = 'DYNAMIC',
+    this.workdays = 22.0,
+  });
+
+  factory HrmBoardStandard.fromJson(Map<String, dynamic> json) {
+    return HrmBoardStandard(
+      mode: json['mode']?.toString() ?? 'DYNAMIC',
+      workdays: (json['workdays'] as num?)?.toDouble() ?? 22.0,
+    );
+  }
+}
+
+class HrmBoardEmployee {
+  final String employeeId;
+  final String employeeCode;
+  final String employeeName;
+  final String? departmentName;
+  final String? positionName;
+  final Map<String, HrmBoardDay> days;
+  final HrmBoardTotals totals;
+  final HrmBoardStandard? standard;
+
+  HrmBoardEmployee({
+    required this.employeeId,
+    required this.employeeCode,
+    required this.employeeName,
+    this.departmentName,
+    this.positionName,
+    this.days = const {},
+    required this.totals,
+    this.standard,
+  });
+
+  factory HrmBoardEmployee.fromJson(Map<String, dynamic> json) {
+    final Map<String, HrmBoardDay> daysMap = {};
+    final rawDays = json['days'];
+    if (rawDays is Map<String, dynamic>) {
+      rawDays.forEach((k, v) {
+        if (v is Map<String, dynamic>) {
+          daysMap[k] = HrmBoardDay.fromJson(v);
+        }
+      });
+    }
+
+    return HrmBoardEmployee(
+      employeeId: json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? json['employee_code']?.toString() ?? '',
+      employeeName: json['employeeName']?.toString() ?? json['employee_name']?.toString() ?? '',
+      departmentName: json['departmentName']?.toString() ?? json['department_name']?.toString(),
+      positionName: json['positionName']?.toString() ?? json['position_name']?.toString(),
+      days: daysMap,
+      totals: json['totals'] is Map<String, dynamic>
+          ? HrmBoardTotals.fromJson(json['totals'] as Map<String, dynamic>)
+          : HrmBoardTotals(),
+      standard: json['standard'] is Map<String, dynamic>
+          ? HrmBoardStandard.fromJson(json['standard'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+}
+
+class HrmTimesheetBoard {
+  final HrmBoardMonthInfo month;
+  final bool canViewAll;
+  final List<HrmBoardCalendarDay> calendar;
+  final List<HrmBoardEmployee> employees;
+  final Map<String, dynamic> meta;
+
+  HrmTimesheetBoard({
+    required this.month,
+    required this.canViewAll,
+    this.calendar = const [],
+    this.employees = const [],
+    this.meta = const {},
+  });
+
+  HrmBoardEmployee? get myEmployee => employees.isNotEmpty ? employees.first : null;
+
+  factory HrmTimesheetBoard.fromJson(Map<String, dynamic> json) {
+    final calRaw = json['calendar'];
+    final List<HrmBoardCalendarDay> calList = [];
+    if (calRaw is List) {
+      for (final c in calRaw) {
+        if (c is Map<String, dynamic>) {
+          calList.add(HrmBoardCalendarDay.fromJson(c));
+        }
+      }
+    }
+
+    final empRaw = json['employees'];
+    final List<HrmBoardEmployee> empList = [];
+    if (empRaw is List) {
+      for (final e in empRaw) {
+        if (e is Map<String, dynamic>) {
+          empList.add(HrmBoardEmployee.fromJson(e));
+        }
+      }
+    }
+
+    return HrmTimesheetBoard(
+      month: json['month'] is Map<String, dynamic>
+          ? HrmBoardMonthInfo.fromJson(json['month'] as Map<String, dynamic>)
+          : HrmBoardMonthInfo(month: '', from: '', to: '', state: 'OPEN'),
+      canViewAll: json['canViewAll'] == true || json['can_view_all'] == true,
+      calendar: calList,
+      employees: empList,
+      meta: json['meta'] is Map<String, dynamic> ? json['meta'] as Map<String, dynamic> : {},
+    );
+  }
+}
+
+class TimesheetCell {
+  final int day;
+  final String date;
+  final String status;
+  final String shiftCode;
+  final String shiftName;
+  final String? firstIn;
+  final String? lastOut;
+  final int lateMinutes;
+  final int earlyMinutes;
+  final double workUnits;
+  final bool isLate;
+  final bool isAbnormal;
+  final bool isAbsent;
+  final bool isLeave;
+  final String? leaveType;
+  final List<AttendancePunch> punches;
+  final HrmBoardDay? rawBoardDay;
+
+  TimesheetCell({
+    required this.day,
+    required this.date,
+    this.status = 'PRESENT',
+    this.shiftCode = 'CA_HC',
+    this.shiftName = 'Ca Hành chính',
+    this.firstIn,
+    this.lastOut,
+    this.lateMinutes = 0,
+    this.earlyMinutes = 0,
+    this.workUnits = 1.0,
+    this.isLate = false,
+    this.isAbnormal = false,
+    this.isAbsent = false,
+    this.isLeave = false,
+    this.leaveType,
+    this.punches = const [],
+    this.rawBoardDay,
+  });
+
+  factory TimesheetCell.fromBoardDay(int day, HrmBoardDay d) {
+    final punches = <AttendancePunch>[];
+    if (d.checkIn != null && d.checkIn!.isNotEmpty) {
+      punches.add(AttendancePunch(punchType: 'IN', occurredAt: d.checkIn!));
+    }
+    if (d.checkOut != null && d.checkOut!.isNotEmpty) {
+      punches.add(AttendancePunch(punchType: 'OUT', occurredAt: d.checkOut!));
+    }
+    final isLv = d.status.contains('LEAVE') || d.requests.any((r) => r.kind == 'LEAVE');
+    final String? lvType = d.requests.where((r) => r.kind == 'LEAVE').firstOrNull?.label ?? (isLv ? 'Nghỉ phép' : null);
+    final isAbs = d.status == 'ABSENT';
+    final isAbn = d.status == 'ABNORMAL' || isAbs;
+    final isLt = d.lateMinutes > 0 || d.earlyLeaveMinutes > 0 || d.status == 'LATE' || d.status == 'LATE_EARLY' || d.status == 'EARLY_LEAVE';
+
+    return TimesheetCell(
+      day: day,
+      date: d.date,
+      status: d.status,
+      shiftCode: d.shiftCode ?? 'CA_HC',
+      shiftName: d.shiftName ?? 'Ca Hành chính',
+      firstIn: d.checkIn,
+      lastOut: d.checkOut,
+      lateMinutes: d.lateMinutes,
+      earlyMinutes: d.earlyMinutes,
+      workUnits: d.workdayUnits,
+      isLate: isLt,
+      isAbnormal: isAbn,
+      isAbsent: isAbs,
+      isLeave: isLv,
+      leaveType: lvType,
+      punches: punches,
+      rawBoardDay: d,
+    );
+  }
+}
+
+class MonthlyTimesheetSummary {
+  final double standardWorkDays;
+  final String standardHint;
+  final double actualWorkDays;
+  final int lateDays;
+  final int lateMinutes;
+  final int earlyDays;
+  final int earlyMinutes;
+  final double leaveDays;
+  final int absentDays;
+  final double otHours;
+  final int abnormalDays;
+  final int tripDays;
+  final int unscheduledDays;
+  final int missingPunchDays;
+  final double paidLeaveDays;
+  final double unpaidLeaveDays;
+  final double holidayDays;
+  final double totalWorkHours;
+  final double completionRate;
+
+  MonthlyTimesheetSummary({
+    this.standardWorkDays = 22.0,
+    this.standardHint = 'Động theo ngày công của tháng',
+    this.actualWorkDays = 0.0,
+    this.lateDays = 0,
+    this.lateMinutes = 0,
+    this.earlyDays = 0,
+    this.earlyMinutes = 0,
+    this.leaveDays = 0.0,
+    this.absentDays = 0,
+    this.otHours = 0.0,
+    this.abnormalDays = 0,
+    this.tripDays = 0,
+    this.unscheduledDays = 0,
+    this.missingPunchDays = 0,
+    this.paidLeaveDays = 0.0,
+    this.unpaidLeaveDays = 0.0,
+    this.holidayDays = 0.0,
+    this.totalWorkHours = 0.0,
+    this.completionRate = 0.0,
+  });
+}
+
+class MonthlyTimesheetRow {
+  final String employeeCode;
+  final String employeeName;
+  final String departmentName;
+  final String positionName;
+  final bool isCurrentUser;
+  final Map<int, TimesheetCell> cells;
+  final MonthlyTimesheetSummary summary;
+
+  MonthlyTimesheetRow({
+    required this.employeeCode,
+    required this.employeeName,
+    this.departmentName = '',
+    this.positionName = '',
+    this.isCurrentUser = true,
+    this.cells = const {},
+    required this.summary,
+  });
+
+  factory MonthlyTimesheetRow.fromBoardEmployee(HrmBoardEmployee emp, [HrmBoardStandard? standard]) {
+    final cellMap = <int, TimesheetCell>{};
+    emp.days.forEach((dateStr, boardDay) {
+      final parts = dateStr.split('-');
+      if (parts.length >= 3) {
+        final d = int.tryParse(parts[2]);
+        if (d != null) {
+          cellMap[d] = TimesheetCell.fromBoardDay(d, boardDay);
+        }
+      }
+    });
+
+    final totalAbsent = emp.totals.absentDays;
+    final totalAbnormal = emp.totals.abnormalDays;
+    final combinedMissing = totalAbsent > 0 ? (totalAbsent + totalAbnormal) : totalAbnormal;
+    final standardDays = standard?.workdays ?? 22.0;
+    final isFixed = standard?.mode == 'FIXED' || standard?.mode == 'MINUTES';
+    final stdHint = isFixed ? 'Cố định theo cấu hình' : 'Động theo ngày công của tháng';
+    final totalLeaves = (emp.totals.annualLeaveDays + emp.totals.paidLeaveDays + emp.totals.unpaidLeaveDays).toDouble();
+    final otHours = emp.totals.otMinutes / 60.0;
+    final rate = standardDays > 0 ? ((emp.totals.workdayUnits / standardDays) * 100.0).clamp(0.0, 100.0) : 0.0;
+
+    return MonthlyTimesheetRow(
+      employeeCode: emp.employeeCode,
+      employeeName: emp.employeeName,
+      departmentName: emp.departmentName ?? '',
+      positionName: emp.positionName ?? '',
+      isCurrentUser: true,
+      cells: cellMap,
+      summary: MonthlyTimesheetSummary(
+        standardWorkDays: standardDays,
+        standardHint: stdHint,
+        actualWorkDays: emp.totals.workdayUnits,
+        lateDays: emp.totals.lateDays,
+        lateMinutes: emp.totals.lateMinutes,
+        earlyDays: emp.totals.earlyLeaveDays,
+        earlyMinutes: emp.totals.earlyLeaveMinutes,
+        leaveDays: totalLeaves,
+        absentDays: totalAbsent,
+        otHours: otHours,
+        abnormalDays: totalAbnormal,
+        tripDays: emp.totals.tripDays,
+        unscheduledDays: emp.totals.unscheduledDays,
+        missingPunchDays: combinedMissing,
+        paidLeaveDays: emp.totals.paidLeaveDays.toDouble(),
+        unpaidLeaveDays: emp.totals.unpaidLeaveDays.toDouble(),
+        holidayDays: emp.totals.holidayDays.toDouble(),
+        totalWorkHours: emp.totals.workedMinutes / 60.0,
+        completionRate: rate,
+      ),
+    );
+  }
+}
+
+// ==========================================
+// THÁNG CÔNG & ĐIỀU KIỆN CHỐT CÔNG (WEB SYNCHRONIZED)
+// ==========================================
+class HrmMonthCloseItem {
+  final String employeeId;
+  final String employeeCode;
+  final String employeeName;
+  final String date;
+  final String reason;
+
+  HrmMonthCloseItem({
+    required this.employeeId,
+    required this.employeeCode,
+    required this.employeeName,
+    required this.date,
+    required this.reason,
+  });
+
+  factory HrmMonthCloseItem.fromJson(Map<String, dynamic> json) {
+    return HrmMonthCloseItem(
+      employeeId: json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? json['employee_code']?.toString() ?? '',
+      employeeName: json['employeeName']?.toString() ?? json['employee_name']?.toString() ?? '',
+      date: json['date']?.toString() ?? '',
+      reason: json['reason']?.toString() ?? json['message']?.toString() ?? '',
+    );
+  }
+}
+
+class HrmMonthCloseBlocker {
+  final String code;
+  final String message;
+  final int count;
+  final List<HrmMonthCloseItem> items;
+
+  HrmMonthCloseBlocker({
+    required this.code,
+    required this.message,
+    required this.count,
+    this.items = const [],
+  });
+
+  factory HrmMonthCloseBlocker.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    final List<HrmMonthCloseItem> itemsList = [];
+    if (rawItems is List) {
+      for (final it in rawItems) {
+        if (it is Map<String, dynamic>) {
+          itemsList.add(HrmMonthCloseItem.fromJson(it));
+        }
+      }
+    }
+    return HrmMonthCloseBlocker(
+      code: json['code']?.toString() ?? '',
+      message: json['message']?.toString() ?? '',
+      count: (json['count'] as num?)?.toInt() ?? 0,
+      items: itemsList,
+    );
+  }
+}
+
+class HrmMonthCloseState {
+  final HrmBoardMonthInfo month;
+  final List<HrmMonthCloseBlocker> blockersForRequests;
+  final List<HrmMonthCloseBlocker> blockersForLock;
+
+  HrmMonthCloseState({
+    required this.month,
+    this.blockersForRequests = const [],
+    this.blockersForLock = const [],
+  });
+
+  factory HrmMonthCloseState.fromJson(Map<String, dynamic> json) {
+    final rawReq = json['blockersForRequests'] ?? json['blockers_for_requests'];
+    final List<HrmMonthCloseBlocker> reqList = [];
+    if (rawReq is List) {
+      for (final b in rawReq) {
+        if (b is Map<String, dynamic>) {
+          reqList.add(HrmMonthCloseBlocker.fromJson(b));
+        }
+      }
+    }
+
+    final rawLock = json['blockersForLock'] ?? json['blockers_for_lock'];
+    final List<HrmMonthCloseBlocker> lockList = [];
+    if (rawLock is List) {
+      for (final b in rawLock) {
+        if (b is Map<String, dynamic>) {
+          lockList.add(HrmMonthCloseBlocker.fromJson(b));
+        }
+      }
+    }
+
+    return HrmMonthCloseState(
+      month: json['month'] is Map<String, dynamic>
+          ? HrmBoardMonthInfo.fromJson(json['month'] as Map<String, dynamic>)
+          : HrmBoardMonthInfo(month: '', from: '', to: '', state: 'OPEN'),
+      blockersForRequests: reqList,
+      blockersForLock: lockList,
+    );
+  }
+}
+
+class HrmTimesheetCalculateResult {
+  final int count;
+  final int abnormal;
+
+  HrmTimesheetCalculateResult({required this.count, required this.abnormal});
+
+  factory HrmTimesheetCalculateResult.fromJson(Map<String, dynamic> json) {
+    final result = json['result'] is Map<String, dynamic> ? json['result'] as Map<String, dynamic> : json;
+    return HrmTimesheetCalculateResult(
+      count: (result['count'] as num?)?.toInt() ?? 0,
+      abnormal: (result['abnormal'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+

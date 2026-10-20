@@ -289,6 +289,22 @@ class HrmEmployeeItem {
   final double? baseSalary;
   final String? contractType;
   final int completionRate;
+  final String? maritalStatus;
+  final String? gender;
+  final String? dateOfBirth;
+  final String? identityCardNumber;
+  final String? nationality;
+  final String? ethnicity;
+  final String? placeOfBirth;
+  final String? hometown;
+  final String? permanentAddress;
+  final String? currentAddress;
+  final String? emergencyContactName;
+  final String? emergencyContactPhone;
+  final String? emergencyContactRelationship;
+  final String? taxCode;
+  final String? bankAccountNumber;
+  final String? bankName;
 
   const HrmEmployeeItem({
     required this.id,
@@ -304,6 +320,22 @@ class HrmEmployeeItem {
     this.baseSalary,
     this.contractType,
     this.completionRate = 20,
+    this.maritalStatus,
+    this.gender,
+    this.dateOfBirth,
+    this.identityCardNumber,
+    this.nationality,
+    this.ethnicity,
+    this.placeOfBirth,
+    this.hometown,
+    this.permanentAddress,
+    this.currentAddress,
+    this.emergencyContactName,
+    this.emergencyContactPhone,
+    this.emergencyContactRelationship,
+    this.taxCode,
+    this.bankAccountNumber,
+    this.bankName,
   });
 
   static String _extractName(dynamic val, [String fallback = '']) {
@@ -358,7 +390,47 @@ class HrmEmployeeItem {
       baseSalary: rawBaseSalary != null ? _parseDouble(rawBaseSalary) : null,
       contractType: json['contractType']?.toString() ?? json['contract_type']?.toString() ?? 'Chính thức',
       completionRate: _parseInt(rawCompletionRate, 20),
+      maritalStatus: json['maritalStatus']?.toString() ?? json['marital_status']?.toString(),
+      gender: json['gender']?.toString(),
+      dateOfBirth: json['dateOfBirth']?.toString() ?? json['date_of_birth']?.toString() ?? json['birthDate']?.toString(),
+      identityCardNumber: json['identityCardNumber']?.toString() ?? json['identity_card_number']?.toString() ?? json['idCard']?.toString(),
+      nationality: json['nationality']?.toString(),
+      ethnicity: json['ethnicity']?.toString(),
+      placeOfBirth: json['placeOfBirth']?.toString() ?? json['place_of_birth']?.toString(),
+      hometown: json['hometown']?.toString(),
+      permanentAddress: json['permanentAddress']?.toString() ?? json['permanent_address']?.toString(),
+      currentAddress: json['currentAddress']?.toString() ?? json['current_address']?.toString(),
+      emergencyContactName: json['emergencyContactName']?.toString() ?? json['emergency_contact_name']?.toString(),
+      emergencyContactPhone: json['emergencyContactPhone']?.toString() ?? json['emergency_contact_phone']?.toString(),
+      emergencyContactRelationship: json['emergencyContactRelationship']?.toString() ?? json['emergency_contact_relationship']?.toString(),
+      taxCode: json['taxCode']?.toString() ?? json['tax_code']?.toString(),
+      bankAccountNumber: json['bankAccountNumber']?.toString() ?? json['bank_account_number']?.toString(),
+      bankName: json['bankName']?.toString() ?? json['bank_name']?.toString(),
     );
+  }
+
+  String get maritalStatusLabel {
+    switch (maritalStatus?.toUpperCase()) {
+      case 'SINGLE':
+        return 'Độc thân';
+      case 'MARRIED':
+        return 'Đã kết hôn';
+      case 'DIVORCED':
+        return 'Ly hôn';
+      default:
+        return maritalStatus?.isNotEmpty == true ? maritalStatus! : 'Độc thân';
+    }
+  }
+
+  String get genderLabel {
+    switch (gender?.toUpperCase()) {
+      case 'MALE':
+        return 'Nam';
+      case 'FEMALE':
+        return 'Nữ';
+      default:
+        return gender?.isNotEmpty == true ? gender! : 'Nam';
+    }
   }
 
   DateTime? get hireDate => joinDate;

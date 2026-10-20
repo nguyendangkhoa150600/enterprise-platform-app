@@ -19,13 +19,12 @@ class ApiClientHelper {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Ensure we don't end up with double /api/api
-          if (options.path.startsWith('/api/')) {
-            if (options.baseUrl.endsWith('/api') || options.baseUrl.endsWith('/api/')) {
-              options.path = options.path.substring(4);
+          // Normalize options.path to always have /api/ so domain root resolution preserves the /api gateway prefix
+          if (!options.path.startsWith('http')) {
+            if (!options.path.startsWith('/api/') && options.path != '/api') {
+              final clean = options.path.startsWith('/') ? options.path : '/${options.path}';
+              options.path = '/api$clean';
             }
-          } else if (options.path.startsWith('/hrm/') && !options.baseUrl.contains('/api')) {
-            options.path = '/api${options.path}';
           }
 
           final cookies = await AuthProvider.getStoredCookies();
