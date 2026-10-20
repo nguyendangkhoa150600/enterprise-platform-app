@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,7 +54,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   static String get authBaseUrl {
-    return 'https://enterprise-platform.savinatestinghub.com/api';
+    return 'https://enterprise-platform.savinatestinghub.com';
   }
 
   final Dio _dio = Dio(BaseOptions(
@@ -86,6 +87,15 @@ class AuthProvider extends ChangeNotifier {
     _permissions = prefs.getStringList('permissions') ?? [];
     _cookies = prefs.getString('session_cookies');
     notifyListeners();
+
+    // If logged in and saved credentials exist, trigger silent renewal to ensure fresh session
+    if (_isLoggedIn) {
+      final savedEmail = prefs.getString('saved_login_email');
+      final savedPassword = prefs.getString('saved_login_password');
+      if (savedEmail != null && savedEmail.isNotEmpty && savedPassword != null && savedPassword.isNotEmpty) {
+        silentRelogin();
+      }
+    }
   }
 
   // Set tenant slug optionally
@@ -148,7 +158,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final response = await _dio.post(
-        '/auth/v1/login',
+        '/api/auth/v1/login',
         data: requestBody,
       );
 
@@ -248,7 +258,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       if (_cookies != null) {
         await _dio.post(
-          '/auth/v1/logout',
+          '/api/auth/v1/logout',
           options: Options(
             headers: {
               'cookie': _cookies,
@@ -354,17 +364,24 @@ class AuthProvider extends ChangeNotifier {
 
   static DateTime? _lastSilentReloginTime;
   static bool _isSilentRelogging = false;
+  static Completer<bool>? _silentReloginCompleter;
 
   // Silent automatic background login to renew session seamlessly
   static Future<bool> silentRelogin() async {
-    if (_isSilentRelogging) return false;
-    if (_lastSilentReloginTime != null && DateTime.now().difference(_lastSilentReloginTime!).inSeconds < 15) {
+    if (_isSilentRelogging && _silentReloginCompleter != null) {
+      debugPrint('[AuthProvider] silentRelogin: Another silent relogin already in progress. Waiting for its result...');
+      return _silentReloginCompleter!.future;
+    }
+    if (_lastSilentReloginTime != null && DateTime.now().difference(_lastSilentReloginTime!).inSeconds < 5) {
       return false;
     }
 
+    _isSilentRelogging = true;
+    final completer = Completer<bool>();
+    _silentReloginCompleter = completer;
+    _lastSilentReloginTime = DateTime.now();
+
     try {
-      _isSilentRelogging = true;
-      _lastSilentReloginTime = DateTime.now();
       final prefs = await SharedPreferences.getInstance();
       final savedEmail = prefs.getString('saved_login_email');
       final savedPassword = prefs.getString('saved_login_password');
@@ -373,14 +390,15 @@ class AuthProvider extends ChangeNotifier {
 
       if (savedEmail == null || savedEmail.trim().isEmpty || savedPassword == null || savedPassword.trim().isEmpty) {
         debugPrint('[AuthProvider] silentRelogin: No saved credentials found.');
+        completer.complete(false);
         return false;
       }
 
       debugPrint('[AuthProvider] silentRelogin: Attempting silent renewal for $savedEmail...');
       final standaloneDio = Dio(BaseOptions(
         baseUrl: authBaseUrl,
-        connectTimeout: const Duration(seconds: 8),
-        receiveTimeout: const Duration(seconds: 12),
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
       ));
       (standaloneDio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
         final client = HttpClient();
@@ -397,7 +415,7 @@ class AuthProvider extends ChangeNotifier {
         body['tenantSlug'] = savedTenantSlug.trim().toLowerCase();
       }
 
-      final response = await standaloneDio.post('/auth/v1/login', data: body);
+      final response = await standaloneDio.post('/api/auth/v1/login', data: body);
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
         final principal = data['principal'];
@@ -421,13 +439,19 @@ class AuthProvider extends ChangeNotifier {
             }
           }
           debugPrint('[AuthProvider] silentRelogin: Session renewed successfully!');
+          completer.complete(true);
           return true;
         }
       }
+      completer.complete(false);
     } catch (e) {
       debugPrint('[AuthProvider] silentRelogin failed: $e');
+      if (!completer.isCompleted) {
+        completer.complete(false);
+      }
     } finally {
       _isSilentRelogging = false;
+      _silentReloginCompleter = null;
     }
     return false;
   }
@@ -443,7 +467,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final res = await _dio.post(
-        '/auth/v1/password',
+        '/api/auth/v1/password',
         data: {
           'currentPassword': currentPassword,
           'newPassword': newPassword,
