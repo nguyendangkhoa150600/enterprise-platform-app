@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/hrm_attendance_models.dart';
@@ -148,14 +149,13 @@ class HrmAttendanceService {
   Future<AttendanceRecord?> getTodayAttendance() async {
     final endpoints = [
       '/hrm/v1/my-attendance',
-      '/hrm/v1/attendance/today',
       '/hrm/v1/attendance',
     ];
     for (final ep in endpoints) {
       try {
         final response = await _dio.get(
           ep,
-          options: Options(validateStatus: (status) => status != null && status < 500),
+          options: Options(validateStatus: (status) => true),
         );
         if (response.statusCode == 200 && response.data != null) {
           final data = response.data['data'] ?? response.data['items'] ?? response.data;
@@ -887,4 +887,524 @@ class HrmAttendanceService {
     }
     return false;
   }
+
+  // ==========================================
+  // 8. MY PROFILE & INCOME (HỒ SƠ & PHIẾU LƯƠNG CỦA TÔI)
+  // ==========================================
+  Future<Map<String, dynamic>?> getMyProfile() async {
+    try {
+      final res = await _dio.get(
+        '/hrm/v1/my-profile',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final data = res.data['data'] ?? res.data;
+        if (data is Map<String, dynamic>) return data;
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getMyProfile error: $e');
+    }
+    return null;
+  }
+
+  Future<List<Map<String, dynamic>>> getCareerHistory() async {
+    try {
+      final res = await _dio.get(
+        '/hrm/v1/my-profile/career-history',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getCareerHistory error: $e');
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getMyPayslips() async {
+    try {
+      final res = await _dio.get(
+        '/hrm/v1/my-payslips',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getMyPayslips error: $e');
+    }
+    return [];
+  }
+
+  Future<bool> updateMyProfile(Map<String, dynamic> updateData) async {
+    final endpoints = [
+      '/hrm/v1/my-profile',
+      '/hrm/v1/profile',
+    ];
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+      for (final ep in endpoints) {
+        try {
+          final res = await _dio.patch(
+            ep,
+            data: updateData,
+            options: Options(
+              headers: {'Content-Type': 'application/json'},
+              validateStatus: (status) => status != null && status < 500,
+            ),
+          );
+          debugPrint('[HrmAttendanceService] updateMyProfile ($ep) status: ${res.statusCode}, response: ${res.data}');
+          if (res.statusCode == 200 || res.statusCode == 204) {
+            return true;
+          }
+          if (res.statusCode == 401 && attempt == 0) {
+            debugPrint('[HrmAttendanceService] 401 received on updateMyProfile. Triggering silent relogin...');
+            final renewed = await AuthProvider.silentRelogin();
+            if (renewed) {
+              break; // Break inner loop to retry outer loop with renewed token
+            }
+          }
+        } catch (e) {
+          debugPrint('[HrmAttendanceService] updateMyProfile ($ep) error: $e');
+        }
+      }
+    }
+    return false;
+  }
+
+  Future<Map<String, dynamic>?> getProfileDocuments(String employeeId) async {
+    try {
+      final res = await _dio.get(
+        '/hrm/v1/employees/$employeeId/profile-documents',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final data = res.data['data'] ?? res.data;
+        if (data is Map<String, dynamic>) return data;
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getProfileDocuments error: $e');
+    }
+    return null;
+  }
+
+  Future<String?> uploadHrmAttachment({
+    required String filePath,
+    required String fileName,
+    String? documentType,
+    String? employeeId,
+  }) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      final ext = fileName.split('.').last.toLowerCase();
+      String contentType = 'application/octet-stream';
+      if (ext == 'jpg' || ext == 'jpeg') contentType = 'image/jpeg';
+      else if (ext == 'png') contentType = 'image/png';
+      else if (ext == 'webp') contentType = 'image/webp';
+      else if (ext == 'pdf') contentType = 'application/pdf';
+
+      // Step 1: Create attachment record
+      final createRes = await _dio.post(
+        '/hrm/v1/attachments',
+        data: {
+          if (employeeId != null && employeeId.isNotEmpty && employeeId.length > 30) 'employeeId': employeeId,
+          'fileName': fileName,
+          'contentType': contentType,
+          'sizeBytes': bytes.length,
+          if (documentType != null) 'documentType': documentType,
+        },
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+
+      if (createRes.statusCode != 200 && createRes.statusCode != 201) {
+        debugPrint('[HrmAttendanceService] Attachment create failed: ${createRes.data}');
+        return null;
+      }
+
+      final attachData = createRes.data['data'] ?? createRes.data;
+      final attachmentId = attachData['id']?.toString();
+      final uploadUrl = attachData['uploadUrl']?.toString();
+
+      if (attachmentId != null && uploadUrl != null) {
+        // Step 2: PUT binary bytes to presigned URL
+        final putRes = await Dio().put(
+          uploadUrl,
+          data: Stream.fromIterable([bytes]),
+          options: Options(
+            headers: {
+              'Content-Type': contentType,
+              'Content-Length': bytes.length,
+            },
+            validateStatus: (s) => s != null && s < 500,
+          ),
+        );
+
+        if (putRes.statusCode == 200 || putRes.statusCode == 204) {
+          // Step 3: Complete attachment
+          await _dio.post(
+            '/hrm/v1/attachments/$attachmentId/complete',
+            options: Options(validateStatus: (s) => s != null && s < 500),
+          );
+          return attachmentId;
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] uploadHrmAttachment error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> submitProfileDocumentChanges({
+    required List<Map<String, dynamic>> documentChanges,
+    String? reason,
+    String? identityCardExpiryDate,
+    String? employeeId,
+  }) async {
+    try {
+      // 1. First try direct profile-documents if employeeId is provided
+      if (employeeId != null && employeeId.isNotEmpty && employeeId.length > 30) {
+        final docRes = await _dio.post(
+          '/hrm/v1/employees/$employeeId/profile-documents',
+          data: {
+            'documentChanges': documentChanges,
+            if (identityCardExpiryDate != null) 'identityCardExpiryDate': identityCardExpiryDate,
+          },
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (docRes.statusCode == 200 || docRes.statusCode == 201) {
+          return true;
+        }
+      }
+
+      // 2. Self-service profile correction request
+      final corrRes = await _dio.post(
+        '/hrm/v1/profile-corrections',
+        data: {
+          'documentChanges': documentChanges,
+          'changes': identityCardExpiryDate != null ? {'identityCardExpiryDate': identityCardExpiryDate} : {},
+          'reason': (reason != null && reason.trim().length >= 3) ? reason.trim() : 'Cập nhật hồ sơ từ Mobile App',
+        },
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+
+      return corrRes.statusCode == 200 || corrRes.statusCode == 201;
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] submitProfileDocumentChanges error: $e');
+    }
+    return false;
+  }
+
+  // ==========================================
+  // SELF-SERVICE DEPENDENTS (NGƯỜI THÂN CÁ NHÂN)
+  // ==========================================
+  Future<List<Map<String, dynamic>>> getDependents() async {
+    try {
+      final res = await _dio.get(
+        '/api/hrm/v1/my-dependents',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getDependents error: $e');
+    }
+    return [];
+  }
+
+  Future<bool> createDependent(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/my-dependents',
+        data: data,
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] createDependent error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteDependent(String id) async {
+    try {
+      final res = await _dio.delete(
+        '/api/hrm/v1/my-dependents/$id',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] deleteDependent error: $e');
+      return false;
+    }
+  }
+
+  // ==========================================
+  // EMPLOYEE DEPENDENTS (QUẢN LÝ NGƯỜI THÂN THEO NHÂN VIÊN)
+  // ==========================================
+  Future<List<Map<String, dynamic>>> getEmployeeDependents(String employeeId) async {
+    try {
+      final res = await _dio.get(
+        '/api/hrm/v1/employees/$employeeId/dependents',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getEmployeeDependents error: $e');
+    }
+    return [];
+  }
+
+  Future<bool> createEmployeeDependent(String employeeId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/employees/$employeeId/dependents',
+        data: data,
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] createEmployeeDependent error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteEmployeeDependent(String employeeId, String id) async {
+    try {
+      final res = await _dio.delete(
+        '/api/hrm/v1/employees/$employeeId/dependents/$id',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] deleteEmployeeDependent error: $e');
+      return false;
+    }
+  }
+
+  // ==========================================
+  // EMPLOYEE CONTRACTS (HỢP ĐỒNG LAO ĐỘNG)
+  // ==========================================
+  Future<List<Map<String, dynamic>>> getEmployeeContracts(String employeeId) async {
+    try {
+      final res = await _dio.get(
+        '/api/hrm/v1/employees/$employeeId/contracts',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getEmployeeContracts error: $e');
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> createEmployeeDraftContract(String employeeId, Map<String, dynamic> data) async {
+    try {
+      debugPrint('[HrmAttendanceService] createEmployeeDraftContract employeeId: $employeeId, data: $data');
+      final res = await _dio.post(
+        '/api/hrm/v1/employees/$employeeId/contracts',
+        data: data,
+        options: Options(validateStatus: (status) => true),
+      );
+      debugPrint('[HrmAttendanceService] createEmployeeDraftContract response: ${res.statusCode} ${res.data}');
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final resData = res.data is Map ? (res.data['data'] ?? res.data) : null;
+        return {
+          'success': true,
+          'data': resData is Map<String, dynamic> ? resData : data,
+        };
+      } else {
+        String msg = 'Tạo hợp đồng thất bại (Mã: ${res.statusCode})';
+        if (res.data is Map) {
+          final m = res.data['message'] ?? res.data['error'] ?? res.data['detail'];
+          if (m != null) msg = m is List ? m.join(', ') : m.toString();
+        } else if (res.data is String && (res.data as String).isNotEmpty) {
+          msg = res.data.toString();
+        }
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] createEmployeeDraftContract exception: $e');
+      String msg = e.toString();
+      if (e is DioException && e.response?.data != null) {
+        final d = e.response!.data;
+        if (d is Map) {
+          final m = d['message'] ?? d['error'] ?? d['detail'];
+          if (m != null) msg = m is List ? m.join(', ') : m.toString();
+        } else if (d is String && d.isNotEmpty) {
+          msg = d;
+        }
+      }
+      return {'success': false, 'message': msg};
+    }
+  }
+
+  Future<bool> deleteEmployeeContract(String contractId, {String? expectedUpdatedAt}) async {
+    try {
+      final res = await _dio.delete(
+        '/api/hrm/v1/contracts/$contractId',
+        data: expectedUpdatedAt != null ? {'expectedUpdatedAt': expectedUpdatedAt} : null,
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] deleteEmployeeContract error: $e');
+      return false;
+    }
+  }
+
+  /// Ban hành hợp đồng theo chứng từ đã ký (DRAFT -> ACTIVE)
+  Future<Map<String, dynamic>> activateEmployeeContract(String contractId, {required String expectedUpdatedAt}) async {
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/contracts/$contractId/activate',
+        data: {'expectedUpdatedAt': expectedUpdatedAt},
+        options: Options(validateStatus: (status) => true),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return {'success': true, 'data': res.data};
+      }
+      String msg = 'Ban hành hợp đồng thất bại (${res.statusCode})';
+      if (res.data is Map) {
+        final m = res.data['message'] ?? res.data['error'];
+        if (m != null) msg = m is List ? m.join(', ') : m.toString();
+      }
+      return {'success': false, 'message': msg};
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] activateEmployeeContract error: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Lập phụ lục / gia hạn từ hợp đồng gốc đang ACTIVE
+  Future<Map<String, dynamic>> amendEmployeeContract(String contractId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/contracts/$contractId/amendments',
+        data: data,
+        options: Options(validateStatus: (status) => true),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return {'success': true, 'data': res.data};
+      }
+      String msg = 'Tạo phụ lục thất bại (${res.statusCode})';
+      if (res.data is Map) {
+        final m = res.data['message'] ?? res.data['error'];
+        if (m != null) msg = m is List ? m.join(', ') : m.toString();
+      }
+      return {'success': false, 'message': msg};
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] amendEmployeeContract error: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Ghi nhận chấm dứt hợp đồng ACTIVE
+  Future<Map<String, dynamic>> terminateEmployeeContract(String contractId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/contracts/$contractId/terminate',
+        data: data,
+        options: Options(validateStatus: (status) => true),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return {'success': true, 'data': res.data};
+      }
+      String msg = 'Ghi nhận chấm dứt thất bại (${res.statusCode})';
+      if (res.data is Map) {
+        final m = res.data['message'] ?? res.data['error'];
+        if (m != null) msg = m is List ? m.join(', ') : m.toString();
+      }
+      return {'success': false, 'message': msg};
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] terminateEmployeeContract error: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Sửa thông tin hợp đồng nháp
+  Future<Map<String, dynamic>> updateEmployeeDraftContract(String contractId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.patch(
+        '/api/hrm/v1/contracts/$contractId',
+        data: data,
+        options: Options(validateStatus: (status) => true),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return {'success': true, 'data': res.data};
+      }
+      String msg = 'Cập nhật hợp đồng thất bại (${res.statusCode})';
+      if (res.data is Map) {
+        final m = res.data['message'] ?? res.data['error'];
+        if (m != null) msg = m is List ? m.join(', ') : m.toString();
+      }
+      return {'success': false, 'message': msg};
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] updateEmployeeDraftContract error: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Lấy tuyến quản lý trực tiếp & lịch sử báo cáo chuẩn Core
+  Future<Map<String, dynamic>?> getEmployeeReportingLines(String employeeId) async {
+    try {
+      final res = await _dio.get(
+        '/api/hrm/v1/employees/$employeeId/reporting-lines',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final data = res.data['data'] ?? res.data;
+        if (data is Map<String, dynamic>) {
+          return data;
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getEmployeeReportingLines error: $e');
+    }
+    return null;
+  }
+
+  /// Lấy quỹ phép & thâm niên theo chính sách HĐLĐ mới
+  Future<List<Map<String, dynamic>>> getEmployeeLeaveBalances(String employeeId, {int? year}) async {
+    try {
+      final y = year ?? DateTime.now().year;
+      final res = await _dio.get(
+        '/api/hrm/v1/employees/$employeeId/leave-balances?year=$y',
+        options: Options(validateStatus: (status) => status != null && status < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getEmployeeLeaveBalances error: $e');
+    }
+    return [];
+  }
 }
+

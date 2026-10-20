@@ -119,8 +119,8 @@ class AttendanceContext {
       serverTime: json['server_time']?.toString() ?? DateTime.now().toIso8601String(),
       workDate: json['work_date']?.toString() ?? DateTime.now().toIso8601String().substring(0, 10),
       employeeId: emp['id']?.toString() ?? json['employee_id']?.toString() ?? '',
-      employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? json['employee_code']?.toString() ?? 'MS_385',
-      fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? emp['name']?.toString() ?? json['full_name']?.toString() ?? 'Nguyễn Tấn Tài',
+      employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? json['employee_code']?.toString() ?? '',
+      fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? emp['name']?.toString() ?? json['full_name']?.toString() ?? '',
       shift: json['shift'] != null ? HrmShift.fromJson(json['shift']) : HrmShift(id: 's-01', code: 'CA_HC', name: 'Ca Hành chính', startTime: '08:00:00', endTime: '17:30:00'),
       allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['GPS', 'WIFI_WAN_IP'],
       sites: rawSites.map((e) => HrmSite.fromJson(e as Map<String, dynamic>)).toList(),
@@ -338,5 +338,73 @@ class AttendanceCorrection {
       'created_at': createdAt,
       'rejection_reason': rejectionReason,
     };
+  }
+}
+
+class MonthlyAttendanceSummary {
+  final String monthYear;
+  final int totalWorkDays;
+  final int actualWorkDays;
+  final int lateDays;
+  final int earlyLeaveDays;
+  final int leaveDays;
+  final int unauthorizedAbsenceDays;
+  final double totalWorkHours;
+  final double totalOvertimeHours;
+
+  const MonthlyAttendanceSummary({
+    required this.monthYear,
+    this.totalWorkDays = 22,
+    this.actualWorkDays = 0,
+    this.lateDays = 0,
+    this.earlyLeaveDays = 0,
+    this.leaveDays = 0,
+    this.unauthorizedAbsenceDays = 0,
+    this.totalWorkHours = 0.0,
+    this.totalOvertimeHours = 0.0,
+  });
+
+  factory MonthlyAttendanceSummary.fromJson(Map<String, dynamic> json) {
+    return MonthlyAttendanceSummary(
+      monthYear: json['month_year']?.toString() ?? json['monthYear']?.toString() ?? 'T10/2026',
+      totalWorkDays: (json['total_work_days'] ?? json['totalWorkDays'] as num?)?.toInt() ?? 22,
+      actualWorkDays: (json['actual_work_days'] ?? json['actualWorkDays'] as num?)?.toInt() ?? 0,
+      lateDays: (json['late_days'] ?? json['lateDays'] as num?)?.toInt() ?? 0,
+      earlyLeaveDays: (json['early_leave_days'] ?? json['earlyLeaveDays'] as num?)?.toInt() ?? 0,
+      leaveDays: (json['leave_days'] ?? json['leaveDays'] as num?)?.toInt() ?? 0,
+      unauthorizedAbsenceDays: (json['unauthorized_absence_days'] ?? json['unauthorizedAbsenceDays'] as num?)?.toInt() ?? 0,
+      totalWorkHours: (json['total_work_hours'] ?? json['totalWorkHours'] as num?)?.toDouble() ?? 0.0,
+      totalOvertimeHours: (json['total_overtime_hours'] ?? json['totalOvertimeHours'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class ShiftAssignment {
+  final String id;
+  final String employeeId;
+  final DateTime workDate;
+  final String shiftId;
+  final String? shiftName;
+  final String status;
+
+  const ShiftAssignment({
+    required this.id,
+    required this.employeeId,
+    required this.workDate,
+    required this.shiftId,
+    this.shiftName,
+    this.status = 'ASSIGNED',
+  });
+
+  factory ShiftAssignment.fromJson(Map<String, dynamic> json) {
+    final rawDate = json['work_date'] ?? json['workDate'] ?? json['date'] ?? DateTime.now().toIso8601String();
+    return ShiftAssignment(
+      id: json['id']?.toString() ?? '',
+      employeeId: json['employee_id']?.toString() ?? json['employeeId']?.toString() ?? '',
+      workDate: DateTime.tryParse(rawDate.toString()) ?? DateTime.now(),
+      shiftId: json['shift_id']?.toString() ?? json['shiftId']?.toString() ?? '',
+      shiftName: json['shift_name']?.toString() ?? json['shiftName']?.toString(),
+      status: json['status']?.toString() ?? 'ASSIGNED',
+    );
   }
 }
