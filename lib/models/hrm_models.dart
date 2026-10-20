@@ -267,3 +267,128 @@ class HrmDashboardStats {
     );
   }
 }
+
+class HrmDependentItem {
+  final String id;
+  final String employeeId;
+  final String employeeName;
+  final String fullName;
+  final String relationship; // Con ruột, Cha/Mẹ, Vợ/Chồng
+  final DateTime dateOfBirth;
+  final String idNumber;
+  final String taxCode;
+  final String status; // VERIFIED, PENDING
+  final DateTime startDate;
+  final DateTime? endDate;
+
+  const HrmDependentItem({
+    required this.id,
+    required this.employeeId,
+    required this.employeeName,
+    required this.fullName,
+    required this.relationship,
+    required this.dateOfBirth,
+    required this.idNumber,
+    required this.taxCode,
+    required this.status,
+    required this.startDate,
+    this.endDate,
+  });
+}
+
+class HrmSalaryAdvanceItem {
+  final String id;
+  final String employeeId;
+  final String employeeName;
+  final double amount;
+  final String reason;
+  final DateTime requestDate;
+  final String status; // PENDING, APPROVED, RECOVERING, COMPLETED, REJECTED
+  final String repaymentPeriod; // e.g. "10/2026 - 12/2026"
+  final double repaidAmount;
+  final double monthlyDeduction;
+
+  const HrmSalaryAdvanceItem({
+    required this.id,
+    required this.employeeId,
+    required this.employeeName,
+    required this.amount,
+    required this.reason,
+    required this.requestDate,
+    required this.status,
+    required this.repaymentPeriod,
+    required this.repaidAmount,
+    required this.monthlyDeduction,
+  });
+}
+
+class HrmTimesheetSummaryItem {
+  final String employeeId;
+  final String employeeName;
+  final String employeeCode;
+  final String department;
+  final double standardWorkdays;
+  final double actualWorkdays;
+  final double paidLeaveDays;
+  final double overtimeHours;
+  final int lateCount;
+  final int missingPunchCount;
+  final String status; // VALID, NEEDS_REVIEW, LOCKED
+
+  const HrmTimesheetSummaryItem({
+    required this.employeeId,
+    required this.employeeName,
+    required this.employeeCode,
+    required this.department,
+    required this.standardWorkdays,
+    required this.actualWorkdays,
+    required this.paidLeaveDays,
+    required this.overtimeHours,
+    required this.lateCount,
+    required this.missingPunchCount,
+    required this.status,
+  });
+}
+
+class HrmPolicyConfig {
+  final int annualLeaves;
+  final int lateGraceMinutes;
+  final double otWeekdayRate;
+  final double otWeekendRate;
+  final double otHolidayRate;
+  final double geofenceRadiusMeters;
+  final bool requireWifiMatching;
+  final bool autoApproveOt;
+
+  const HrmPolicyConfig({
+    this.annualLeaves = 12,
+    this.lateGraceMinutes = 15,
+    this.otWeekdayRate = 1.5,
+    this.otWeekendRate = 2.0,
+    this.otHolidayRate = 3.0,
+    this.geofenceRadiusMeters = 100,
+    this.requireWifiMatching = true,
+    this.autoApproveOt = false,
+  });
+}
+
+class HrmIntegrationDevice {
+  final String id;
+  final String name;
+  final String type; // Biometric, FaceID, Cloud Sync, Webhook
+  final String ipAddress;
+  final String location;
+  final String status; // ONLINE, OFFLINE
+  final DateTime lastSync;
+
+  const HrmIntegrationDevice({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.ipAddress,
+    required this.location,
+    required this.status,
+    required this.lastSync,
+  });
+}
+
