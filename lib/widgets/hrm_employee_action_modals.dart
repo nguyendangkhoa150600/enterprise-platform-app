@@ -166,6 +166,8 @@ class HrmEmployeeActionModals {
 
                 DropdownButtonFormField<String>(
                   value: selectedType,
+                  menuMaxHeight: 280,
+                  borderRadius: BorderRadius.circular(10),
                   items: const [
                     DropdownMenuItem(value: 'APPOINTMENT', child: Text('Bổ nhiệm chức danh')),
                     DropdownMenuItem(value: 'TRANSFER', child: Text('Điều chuyển phòng ban / đơn vị')),
@@ -385,6 +387,8 @@ class HrmEmployeeActionModals {
                 const SizedBox(height: 14),
                 DropdownButtonFormField<HrmRequestType>(
                   value: selectedType,
+                  menuMaxHeight: 280,
+                  borderRadius: BorderRadius.circular(10),
                   items: const [
                     DropdownMenuItem(value: HrmRequestType.leave, child: Text('Đơn xin nghỉ phép')),
                     DropdownMenuItem(value: HrmRequestType.overtime, child: Text('Đơn đăng ký làm thêm giờ (OT)')),

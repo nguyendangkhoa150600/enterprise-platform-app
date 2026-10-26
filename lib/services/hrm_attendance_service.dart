@@ -206,6 +206,104 @@ class HrmAttendanceService {
     return [];
   }
 
+  // 6.0. Get Attendance Data (Dữ liệu chấm công toàn hệ thống 1:1 Web)
+  Future<Map<String, dynamic>> getAttendanceData({
+    required String from,
+    required String to,
+    String? q,
+    String? status,
+    String? employeeId,
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    final endpoints = [
+      '/hrm/v1/attendance-data',
+      '/attendance-data',
+      '/hrm/v1/attendance',
+      '/attendance',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          queryParameters: {
+            'from': from,
+            'to': to,
+            'page': page,
+            'page_size': pageSize,
+            if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+            if (status != null && status != 'ALL' && status.isNotEmpty) 'status': status,
+            if (employeeId != null && employeeId.isNotEmpty) 'employee_id': employeeId,
+          },
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final dynamic raw = res.data['data'] ?? res.data['items'] ?? res.data;
+          final dynamic meta = res.data['meta'] ?? {};
+          final List<HrmAttendanceDataRow> rows = [];
+          if (raw is List) {
+            for (final item in raw) {
+              if (item is Map<String, dynamic>) {
+                rows.add(HrmAttendanceDataRow.fromJson(item));
+              }
+            }
+          }
+          return {
+            'data': rows,
+            'meta': meta is Map ? meta : {},
+            'total': meta is Map ? (meta['total'] ?? rows.length) : rows.length,
+          };
+        }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] getAttendanceData error on $ep: $e');
+      }
+    }
+    return {'data': <HrmAttendanceDataRow>[], 'meta': {}, 'total': 0};
+  }
+
+  // 6.0.1 Get Attendance Events (Lượt quẹt gốc theo nhân viên và ngày 1:1 Web)
+  Future<List<HrmAttendanceRawEvent>> getAttendanceEvents({
+    required String employeeId,
+    required String workDate,
+  }) async {
+    final day = workDate.length >= 10 ? workDate.substring(0, 10) : workDate;
+    final endpoints = [
+      '/hrm/v1/attendance-events',
+      '/attendance-events',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          queryParameters: {
+            'employee_id': employeeId,
+            'from': day,
+            'to': day,
+            'page': '1',
+            'page_size': '100',
+          },
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final dynamic raw = res.data['data'] ?? res.data['items'] ?? res.data;
+          if (raw is List) {
+            final List<HrmAttendanceRawEvent> events = [];
+            for (final item in raw) {
+              if (item is Map<String, dynamic>) {
+                events.add(HrmAttendanceRawEvent.fromJson(item));
+              }
+            }
+            events.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+            return events;
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] getAttendanceEvents error on $ep: $e');
+      }
+    }
+    return [];
+  }
+
   // 6.1. Get Timesheet Board (Bảng công ma trận & Bảng công của tôi đồng bộ Web)
   Future<HrmTimesheetBoard?> getTimesheetBoard({
     required String month,
@@ -480,6 +578,32 @@ class HrmAttendanceService {
     return 'ANNUAL_LEAVE';
   }
 
+  // 6.6. Resolve Request Reason ID by Kind (BUSINESS_TRIP, ATTENDANCE_CORRECTION, OVERTIME, SHIFT_CHANGE)
+  Future<String?> _resolveReasonIdForKind(String kind) async {
+    try {
+      final res = await _dio.get('/hrm/v1/request-reasons', queryParameters: {'kind': kind, 'active': 'true'});
+      final list = (res.data is Map ? res.data['data'] : res.data) as List?;
+      if (list != null && list.isNotEmpty) {
+        final firstId = list.first['id']?.toString();
+        if (firstId != null && firstId.isNotEmpty) {
+          return firstId;
+        }
+      }
+      // If no reasons exist for this kind, try seeding default reasons
+      try {
+        await _dio.post('/hrm/v1/request-reasons/defaults');
+        final retryRes = await _dio.get('/hrm/v1/request-reasons', queryParameters: {'kind': kind, 'active': 'true'});
+        final retryList = (retryRes.data is Map ? retryRes.data['data'] : retryRes.data) as List?;
+        if (retryList != null && retryList.isNotEmpty) {
+          return retryList.first['id']?.toString();
+        }
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] _resolveReasonIdForKind($kind) error: $e');
+    }
+    return null;
+  }
+
   // 7. Create Attendance Correction / ESS Request (Làm đơn & đồng bộ lên hệ thống)
   Future<AttendanceCorrection> createCorrection({
     String? employeeId,
@@ -528,25 +652,25 @@ class HrmAttendanceService {
     // Determine ESS Request Category
     String requestType = 'LEAVE';
     String requestTitle = 'Đơn xin nghỉ phép';
-    if ((attendanceId != null && attendanceId.isNotEmpty) ||
-        lowerReason.contains('giải trình') ||
-        lowerReason.contains('điều chỉnh công') ||
-        lowerReason.contains('quên') ||
-        lowerReason.contains('bổ sung công')) {
-      requestType = 'ATTENDANCE_CORRECTION';
-      requestTitle = 'Đơn giải trình chấm công';
+    if (lowerReason.contains('công tác') || lowerReason.contains('business')) {
+      requestType = 'BUSINESS_TRIP';
+      requestTitle = 'Đơn đề xuất đi công tác';
     } else if (lowerReason.contains('thêm giờ') || lowerReason.contains('overtime') || lowerReason.contains('ot')) {
       requestType = 'OVERTIME';
       requestTitle = 'Đơn đăng ký làm thêm giờ (OT)';
-    } else if (lowerReason.contains('công tác') || lowerReason.contains('business')) {
-      requestType = 'BUSINESS_TRIP';
-      requestTitle = 'Đơn đề xuất đi công tác';
     } else if (lowerReason.contains('tạm ứng') || lowerReason.contains('advance')) {
       requestType = 'SALARY_ADVANCE';
       requestTitle = 'Đơn xin tạm ứng lương';
     } else if (lowerReason.contains('đổi ca') || lowerReason.contains('shift')) {
       requestType = 'SHIFT_CHANGE';
       requestTitle = 'Đơn xin đổi ca làm việc';
+    } else if ((attendanceId != null && attendanceId.isNotEmpty) ||
+        lowerReason.contains('giải trình') ||
+        lowerReason.contains('điều chỉnh công') ||
+        lowerReason.contains('quên') ||
+        lowerReason.contains('bổ sung công')) {
+      requestType = 'ATTENDANCE_CORRECTION';
+      requestTitle = 'Đơn giải trình chấm công';
     }
 
     final isEmpUuid = employeeId != null && uuidRegex.hasMatch(employeeId);
@@ -561,6 +685,7 @@ class HrmAttendanceService {
           'isNegativeLeave': isNegativeLeave,
           'is_negative_leave': isNegativeLeave,
           'reason': cleanReason.isNotEmpty ? cleanReason : reason,
+          'description': cleanReason.isNotEmpty ? cleanReason : reason,
           'fromDate': fromDateClean,
           'toDate': toDateClean,
           'from_date': fromDateClean,
@@ -622,18 +747,21 @@ class HrmAttendanceService {
     // 2. ATTENDANCE CORRECTION (Giải trình công)
     if (requestType == 'ATTENDANCE_CORRECTION') {
       try {
+        final reasonId = await _resolveReasonIdForKind('ATTENDANCE_CORRECTION');
+        final punchAt = inTimeClean.contains('T') ? inTimeClean : '${requestDate}T08:00:00';
+        final punchIso = DateTime.tryParse(punchAt)?.toUtc().toIso8601String() ?? DateTime.now().toUtc().toIso8601String();
         final response = await _dio.post(
           '/hrm/v1/attendance-corrections',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
             if (attendanceId != null && attendanceId.isNotEmpty) 'attendanceId': attendanceId,
-            'request_date': requestDate,
+            if (reasonId != null) 'reasonId': reasonId,
             'requestDate': requestDate,
-            'new_check_in_at': inTimeClean,
-            'newCheckInAt': inTimeClean,
-            'new_check_out_at': outTimeClean,
-            'newCheckOutAt': outTimeClean,
+            'punches': [
+              {'kind': 'IN', 'at': punchIso}
+            ],
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
+            'description': cleanReason.isNotEmpty ? cleanReason : reason,
           },
         );
         if (response.statusCode == 200 || response.statusCode == 201) {
@@ -641,7 +769,9 @@ class HrmAttendanceService {
           return AttendanceCorrection.fromJson(data as Map<String, dynamic>);
         }
       } catch (e) {
-        debugPrint('[HrmAttendanceService] /hrm/v1/attendance-corrections ERROR: $e');
+        if (e is DioException) {
+          debugPrint('[HrmAttendanceService] /hrm/v1/attendance-corrections ERROR: ${e.response?.statusCode} - ${e.response?.data}');
+        }
         final err = ApiErrorHandler.parse(e);
         throw Exception(err);
       }
@@ -650,10 +780,12 @@ class HrmAttendanceService {
     // 3. OVERTIME (Làm thêm giờ)
     if (requestType == 'OVERTIME') {
       try {
+        final reasonId = await _resolveReasonIdForKind('OVERTIME');
         final otRes = await _dio.post(
           '/hrm/v1/ot-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
+            if (reasonId != null) 'reasonId': reasonId,
             'workDate': fromDateClean,
             'startTime': '18:00',
             'endTime': '21:00',
@@ -661,6 +793,7 @@ class HrmAttendanceService {
             'otType': 'REGULAR',
             'isNightOt': false,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
+            'description': cleanReason.isNotEmpty ? cleanReason : reason,
           },
         );
         if (otRes.statusCode == 200 || otRes.statusCode == 201) {
@@ -668,7 +801,9 @@ class HrmAttendanceService {
           return AttendanceCorrection.fromJson(data as Map<String, dynamic>);
         }
       } catch (e) {
-        debugPrint('[HrmAttendanceService] /hrm/v1/ot-requests ERROR: $e');
+        if (e is DioException) {
+          debugPrint('[HrmAttendanceService] /hrm/v1/ot-requests ERROR: ${e.response?.statusCode} - ${e.response?.data}');
+        }
         final err = ApiErrorHandler.parse(e);
         throw Exception(err);
       }
@@ -677,17 +812,20 @@ class HrmAttendanceService {
     // 4. BUSINESS TRIP (Công tác)
     if (requestType == 'BUSINESS_TRIP') {
       try {
+        final reasonId = await _resolveReasonIdForKind('BUSINESS_TRIP');
         final tripRes = await _dio.post(
           '/hrm/v1/business-trip-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
+            if (reasonId != null) 'reasonId': reasonId,
             'businessTripType': 'DOMESTIC',
-            'destination': 'Công tác theo kế hoạch dự án',
+            'destination': 'Công tác theo kế hoạch phòng ban',
             'fromDate': fromDateClean,
             'toDate': toDateClean,
             'daysCount': duration.ceil() > 0 ? duration.ceil() : 1,
             'allowOt': false,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
+            'description': cleanReason.isNotEmpty ? cleanReason : reason,
           },
         );
         if (tripRes.statusCode == 200 || tripRes.statusCode == 201) {
@@ -695,7 +833,9 @@ class HrmAttendanceService {
           return AttendanceCorrection.fromJson(data as Map<String, dynamic>);
         }
       } catch (e) {
-        debugPrint('[HrmAttendanceService] /hrm/v1/business-trip-requests ERROR: $e');
+        if (e is DioException) {
+          debugPrint('[HrmAttendanceService] /hrm/v1/business-trip-requests ERROR: ${e.response?.statusCode} - ${e.response?.data}');
+        }
         final err = ApiErrorHandler.parse(e);
         throw Exception(err);
       }
@@ -712,6 +852,7 @@ class HrmAttendanceService {
             'requestedAmount': 5000000,
             'numberOfInstallments': 1,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
+            'description': cleanReason.isNotEmpty ? cleanReason : reason,
           },
         );
         if (advRes.statusCode == 200 || advRes.statusCode == 201) {
@@ -719,7 +860,9 @@ class HrmAttendanceService {
           return AttendanceCorrection.fromJson(data as Map<String, dynamic>);
         }
       } catch (e) {
-        debugPrint('[HrmAttendanceService] /hrm/v1/salary-advance-requests ERROR: $e');
+        if (e is DioException) {
+          debugPrint('[HrmAttendanceService] /hrm/v1/salary-advance-requests ERROR: ${e.response?.statusCode} - ${e.response?.data}');
+        }
         final err = ApiErrorHandler.parse(e);
         throw Exception(err);
       }
@@ -728,14 +871,17 @@ class HrmAttendanceService {
     // 6. SHIFT CHANGE (Đổi ca)
     if (requestType == 'SHIFT_CHANGE') {
       try {
+        final reasonId = await _resolveReasonIdForKind('SHIFT_CHANGE');
         final shiftRes = await _dio.post(
           '/hrm/v1/shift-change-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
+            if (reasonId != null) 'reasonId': reasonId,
             'changeType': 'CHANGE',
             'fromDate': fromDateClean,
             'toDate': toDateClean,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
+            'description': cleanReason.isNotEmpty ? cleanReason : reason,
           },
         );
         if (shiftRes.statusCode == 200 || shiftRes.statusCode == 201) {
@@ -743,7 +889,9 @@ class HrmAttendanceService {
           return AttendanceCorrection.fromJson(data as Map<String, dynamic>);
         }
       } catch (e) {
-        debugPrint('[HrmAttendanceService] /hrm/v1/shift-change-requests ERROR: $e');
+        if (e is DioException) {
+          debugPrint('[HrmAttendanceService] /hrm/v1/shift-change-requests ERROR: ${e.response?.statusCode} - ${e.response?.data}');
+        }
         final err = ApiErrorHandler.parse(e);
         throw Exception(err);
       }

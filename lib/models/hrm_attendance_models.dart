@@ -1158,3 +1158,89 @@ class HrmTimesheetCalculateResult {
   }
 }
 
+class HrmAttendanceDataRow {
+  final String id;
+  final String employeeId;
+  final String employeeCode;
+  final String employeeName;
+  final String? departmentName;
+  final String workDate;
+  final String? checkInAt;
+  final String? checkOutAt;
+  final int workedMinutes;
+  final int scheduledMinutes;
+  final int lateMinutes;
+  final int earlyMinutes;
+  final String status;
+  final String? source;
+
+  HrmAttendanceDataRow({
+    required this.id,
+    required this.employeeId,
+    required this.employeeCode,
+    required this.employeeName,
+    this.departmentName,
+    required this.workDate,
+    this.checkInAt,
+    this.checkOutAt,
+    this.workedMinutes = 0,
+    this.scheduledMinutes = 0,
+    this.lateMinutes = 0,
+    this.earlyMinutes = 0,
+    this.status = 'VALID',
+    this.source,
+  });
+
+  factory HrmAttendanceDataRow.fromJson(Map<String, dynamic> json) {
+    return HrmAttendanceDataRow(
+      id: json['id']?.toString() ?? '',
+      employeeId: json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? json['employee_code']?.toString() ?? '',
+      employeeName: json['employeeName']?.toString() ?? json['employee_name']?.toString() ?? json['fullName']?.toString() ?? json['full_name']?.toString() ?? '',
+      departmentName: json['departmentName']?.toString() ?? json['department_name']?.toString(),
+      workDate: json['workDate']?.toString() ?? json['work_date']?.toString() ?? '',
+      checkInAt: json['checkInAt']?.toString() ?? json['check_in_at']?.toString() ?? json['firstCheckInAt']?.toString() ?? json['first_check_in_at']?.toString(),
+      checkOutAt: json['checkOutAt']?.toString() ?? json['check_out_at']?.toString() ?? json['lastCheckOutAt']?.toString() ?? json['last_check_out_at']?.toString(),
+      workedMinutes: (json['workedMinutes'] ?? json['worked_minutes'] as num?)?.toInt() ?? 0,
+      scheduledMinutes: (json['scheduledMinutes'] ?? json['scheduled_minutes'] as num?)?.toInt() ?? 0,
+      lateMinutes: (json['lateMinutes'] ?? json['late_minutes'] as num?)?.toInt() ?? 0,
+      earlyMinutes: (json['earlyMinutes'] ?? json['early_minutes'] as num?)?.toInt() ?? 0,
+      status: json['status']?.toString() ?? 'VALID',
+      source: json['source']?.toString() ?? json['attendance_source']?.toString() ?? json['attendanceSource']?.toString(),
+    );
+  }
+}
+
+class HrmAttendanceRawEvent {
+  final String id;
+  final String eventKind; // 'IN' | 'OUT'
+  final String occurredAt;
+  final String? source;
+  final String? deviceId;
+  final Map<String, dynamic>? gpsCoordinates;
+  final String? voidedByCorrectionId;
+
+  HrmAttendanceRawEvent({
+    required this.id,
+    required this.eventKind,
+    required this.occurredAt,
+    this.source,
+    this.deviceId,
+    this.gpsCoordinates,
+    this.voidedByCorrectionId,
+  });
+
+  factory HrmAttendanceRawEvent.fromJson(Map<String, dynamic> json) {
+    return HrmAttendanceRawEvent(
+      id: json['id']?.toString() ?? '',
+      eventKind: json['event_kind']?.toString() ?? json['eventKind']?.toString() ?? json['kind']?.toString() ?? 'IN',
+      occurredAt: json['occurred_at']?.toString() ?? json['occurredAt']?.toString() ?? '',
+      source: json['source']?.toString(),
+      deviceId: json['device_id']?.toString() ?? json['deviceId']?.toString(),
+      gpsCoordinates: json['gps_coordinates'] is Map ? (json['gps_coordinates'] as Map<String, dynamic>) : null,
+      voidedByCorrectionId: json['voided_by_correction_id']?.toString() ?? json['voidedByCorrectionId']?.toString(),
+    );
+  }
+}
+
+

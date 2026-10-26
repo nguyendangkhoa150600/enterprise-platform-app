@@ -274,6 +274,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       value: _statusFilter,
                                       isDense: true,
                                       isExpanded: true,
+                                      menuMaxHeight: 280,
                                       icon: Icon(
                                         Icons.keyboard_arrow_down_rounded,
                                         size: 16,
@@ -348,6 +349,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       value: _roleFilter,
                                       isDense: true,
                                       isExpanded: true,
+                                      menuMaxHeight: 280,
                                       icon: Icon(
                                         Icons.keyboard_arrow_down_rounded,
                                         size: 16,

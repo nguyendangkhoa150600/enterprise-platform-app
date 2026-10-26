@@ -10,6 +10,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isLoggedIn = false;
   String? _kind; // 'tenant-user' | 'platform-admin'
+  String? _userId;
   String? _tenantSlug;
   String? _fullName;
   String? _email;
@@ -22,6 +23,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoggedIn => _isLoggedIn;
   String? get kind => _kind;
+  String? get userId => _userId;
   bool get isPlatformAdmin => _kind == 'platform-admin' || _roles.contains('platform-admin');
   bool get isTenantAdmin => _roles.contains('tenant-admin');
   String? get tenantSlug => _tenantSlug;
@@ -79,6 +81,7 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _isLoggedIn = prefs.getBool('is_logged_in') ?? false;
     _kind = prefs.getString('user_kind') ?? 'tenant-user';
+    _userId = prefs.getString('user_id');
     _tenantSlug = prefs.getString('tenant_slug');
     _fullName = prefs.getString('full_name');
     _email = prefs.getString('email');
@@ -171,6 +174,7 @@ class AuthProvider extends ChangeNotifier {
         }
 
         _kind = principal['kind']?.toString() ?? (portal == 'platform' ? 'platform-admin' : 'tenant-user');
+        _userId = principal['userId']?.toString() ?? principal['id']?.toString() ?? principal['sub']?.toString();
         _fullName = principal['displayName']?.toString() ?? principal['fullName']?.toString() ?? (portal == 'platform' ? 'Platform Super Admin' : 'Người dùng');
         _email = principal['email']?.toString() ?? email.trim();
         _tenantId = principal['tenantId']?.toString();
@@ -193,6 +197,7 @@ class AuthProvider extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_logged_in', true);
         await prefs.setString('user_kind', _kind ?? 'tenant-user');
+        if (_userId != null) await prefs.setString('user_id', _userId!);
         await prefs.setString('full_name', _fullName ?? '');
         await prefs.setString('email', _email ?? '');
         await prefs.setString('tenant_id', _tenantId ?? '');
@@ -427,6 +432,11 @@ class AuthProvider extends ChangeNotifier {
             if (instance != null) {
               instance!._cookies = newCookies;
               instance!._isLoggedIn = true;
+              final uid = principal['userId']?.toString() ?? principal['id']?.toString() ?? principal['sub']?.toString();
+              if (uid != null) {
+                instance!._userId = uid;
+                await prefs.setString('user_id', uid);
+              }
               instance!._fullName = principal['displayName']?.toString() ?? principal['fullName']?.toString();
               instance!._email = principal['email']?.toString() ?? savedEmail;
               instance!._tenantId = principal['tenantId']?.toString();

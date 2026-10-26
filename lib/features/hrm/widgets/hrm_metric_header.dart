@@ -7,6 +7,10 @@ class HrmMetricHeader extends StatelessWidget {
   final int totalEmployees;
   final int probationCount;
   final int totalPositions;
+  final String? thirdTitle;
+  final String? thirdSubtitle;
+  final int? thirdCount;
+  final IconData? thirdIcon;
   final VoidCallback? onTotalTap;
   final VoidCallback? onProbationTap;
   final VoidCallback? onPositionsTap;
@@ -16,6 +20,10 @@ class HrmMetricHeader extends StatelessWidget {
     required this.totalEmployees,
     required this.probationCount,
     required this.totalPositions,
+    this.thirdTitle,
+    this.thirdSubtitle,
+    this.thirdCount,
+    this.thirdIcon,
     this.onTotalTap,
     this.onProbationTap,
     this.onPositionsTap,
@@ -53,10 +61,10 @@ class HrmMetricHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: _buildMetricCard(
-              title: 'CHỨC DANH & JD',
-              count: '$totalPositions',
-              subtitle: 'Vị trí công việc',
-              icon: Icons.work_outline_rounded,
+              title: thirdTitle ?? 'QUYẾT ĐỊNH',
+              count: '${thirdCount ?? totalPositions}',
+              subtitle: thirdSubtitle ?? 'Bổ nhiệm & điều chuyển',
+              icon: thirdIcon ?? Icons.description_outlined,
               iconColor: AppColors.emerald600,
               iconBgColor: AppColors.emerald50,
               onTap: onPositionsTap,

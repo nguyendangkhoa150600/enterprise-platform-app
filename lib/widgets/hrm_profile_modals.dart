@@ -1928,18 +1928,26 @@ class HrmProfileModals {
         border: isLast ? null : const Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
-          customValueWidget ??
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold,
-                  color: valueColor ?? const Color(0xFF0F172A),
-                ),
-              ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: customValueWidget ??
+                  Text(
+                    value,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: valueColor ?? const Color(0xFF0F172A),
+                      height: 1.35,
+                    ),
+                  ),
+            ),
+          ),
         ],
       ),
     );
