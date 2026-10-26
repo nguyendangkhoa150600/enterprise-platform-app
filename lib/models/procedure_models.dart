@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../core/i18n/app_i18n.dart';
 
 String generateProcedureUuidV4() {
   final random = Random.secure();
@@ -217,7 +218,7 @@ class ProcedureInstance {
     this.steps = const [],
     this.activity = const [],
     this.authorization,
-    this.category = 'Vận hành',
+    String? category,
     this.stage = 'IN_PROGRESS',
     this.priority = 'MEDIUM',
     this.assigneeName,
@@ -225,7 +226,7 @@ class ProcedureInstance {
     this.subtasksCount = 0,
     this.completedSubtasksCount = 0,
     this.source,
-  });
+  }) : category = category ?? 'models.procedure.default_category'.tr();
 
   factory ProcedureInstance.fromJson(Map<String, dynamic> json) {
     final rawSteps = json['steps'] as List<dynamic>? ?? [];
@@ -288,10 +289,10 @@ class ProcedureInstance {
     return ProcedureInstance(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? json['id']?.toString() ?? 'PRC-001',
-      title: json['title']?.toString() ?? json['name']?.toString() ?? 'Quy trình vận hành',
+      title: json['title']?.toString() ?? json['name']?.toString() ?? 'models.procedure.default_title'.tr(),
       definitionId: json['definitionId']?.toString() ?? '',
       definitionCode: json['definitionCode']?.toString() ?? '',
-      definitionName: json['definitionName']?.toString() ?? json['category']?.toString() ?? 'Quy trình',
+      definitionName: json['definitionName']?.toString() ?? json['category']?.toString() ?? 'models.notif.cat_procedure'.tr(),
       definitionVersion: (json['definitionVersion'] as num?)?.toInt() ?? 1,
       status: normStatus,
       currentStepId: json['currentStepId']?.toString(),
@@ -305,7 +306,7 @@ class ProcedureInstance {
       steps: stepsList,
       activity: activityList,
       authorization: authorization,
-      category: json['category']?.toString() ?? json['definitionName']?.toString() ?? 'Vận hành',
+      category: json['category']?.toString() ?? json['definitionName']?.toString() ?? 'models.procedure.default_category'.tr(),
       stage: normStatus == 'completed' ? 'COMPLETED' : 'IN_PROGRESS',
       priority: json['priority']?.toString().toUpperCase() ?? 'MEDIUM',
       assigneeName: json['assigneeName']?.toString() ?? json['actorName']?.toString() ?? authorization?.currentRoleStage,
@@ -334,8 +335,8 @@ class ProcedureInstance {
 
   String get currentStepOnlyName {
     final step = currentStep;
-    if (step == null) return 'Đang xử lý';
-    return 'Bước ${step.order}: ${step.name}';
+    if (step == null) return 'models.status.processing'.tr();
+    return 'models.procedure.step_label'.tr(args: {'order': step.order, 'name': step.name});
   }
 
   String get currentRole {
@@ -357,8 +358,8 @@ class ProcedureInstance {
   }
 
   String get sourceLabel => (source?.toUpperCase() == 'SYSTEM' || source?.toLowerCase() == 'automated')
-      ? 'Hệ thống'
-      : 'Tạo thủ công';
+      ? 'models.procedure.system'.tr()
+      : 'models.procedure.manual'.tr();
 
   ProcedureInstanceStep? get currentStep {
     if (steps.isEmpty) return null;
@@ -409,9 +410,9 @@ class ProcedureInstance {
       final minutes = totalMinutes % 60;
       final durStr = hours == 0 ? '${minutes}p' : (minutes == 0 ? '${hours}h' : '${hours}h ${minutes}p');
       if (diffMs <= 0) {
-        return 'Quá $durStr';
+        return 'models.procedure.overdue_by'.tr(args: {'duration': durStr});
       } else {
-        return 'Còn $durStr';
+        return 'models.procedure.remaining'.tr(args: {'duration': durStr});
       }
     } catch (_) {
       return null;
@@ -425,10 +426,10 @@ class ProcedureInstance {
 
   String get currentStepLabel {
     final step = currentStep;
-    if (step == null) return 'Đang khởi tạo';
+    if (step == null) return 'models.procedure.initializing'.tr();
     final role = authorization?.currentRoleStage ?? (step.assignments.isNotEmpty ? step.assignments.first.role : null);
-    final roleText = role != null && role.isNotEmpty ? ' (Vai $role)' : '';
-    return 'Bước ${step.order}: ${step.name}$roleText';
+    final roleText = role != null && role.isNotEmpty ? 'models.procedure.role_suffix'.tr(args: {'role': role}) : '';
+    return 'models.procedure.step_label_role'.tr(args: {'order': step.order, 'name': step.name, 'role': roleText});
   }
 }
 
@@ -559,8 +560,8 @@ class ProcedureDefinition {
 
   String get displayName {
     final count = steps.length;
-    final statusText = status == 'published' ? 'Đã công bố' : 'Bản nháp';
-    return '$name ($count bước · $statusText)';
+    final statusText = status == 'published' ? 'models.procedure.published'.tr() : 'models.status.draft'.tr();
+    return 'models.procedure.def_summary'.tr(args: {'name': name, 'count': count, 'status': statusText});
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 import '../../../services/platform_service.dart';
 
@@ -133,12 +134,12 @@ void showOrgNodeDetailBottomSheet(
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(Icons.tune_rounded, size: 17, color: Color(0xFF2563EB)),
                       SizedBox(width: 8),
                       Text(
-                        'THUỘC TÍNH CHI TIẾT',
+                        'org_chart.props_title'.tr(),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -158,7 +159,7 @@ void showOrgNodeDetailBottomSheet(
                       ),
                     ),
                     child: Text(
-                      selectedCategory == 'unit' ? 'ĐƠN VỊ' : 'CHỨC DANH',
+                      selectedCategory == 'unit' ? 'org_chart.type_unit_caps'.tr() : 'org_chart.type_position_caps'.tr(),
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.bold,
@@ -169,8 +170,8 @@ void showOrgNodeDetailBottomSheet(
                 ],
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Xem và chỉnh sửa trực tiếp các thông số kỹ thuật của node trên sơ đồ.',
+              Text(
+                'org_chart.props_desc'.tr(),
                 style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 16),
@@ -178,13 +179,13 @@ void showOrgNodeDetailBottomSheet(
               const SizedBox(height: 14),
 
               // 1. Phân loại đối tượng (Radio Switch Web-matched)
-              const Text('Phân loại đối tượng', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.category_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
               Row(
                 children: [
                   Expanded(
                     child: buildOrgCategoryOption(
-                      label: 'Đơn vị',
+                      label: 'org_chart.unit'.tr(),
                       isSelected: selectedCategory == 'unit',
                       onTap: () => setModalState(() => selectedCategory = 'unit'),
                     ),
@@ -192,7 +193,7 @@ void showOrgNodeDetailBottomSheet(
                   const SizedBox(width: 8),
                   Expanded(
                     child: buildOrgCategoryOption(
-                      label: 'Chức danh',
+                      label: 'org_chart.position'.tr(),
                       isSelected: selectedCategory == 'position',
                       onTap: () => setModalState(() => selectedCategory = 'position'),
                     ),
@@ -202,27 +203,27 @@ void showOrgNodeDetailBottomSheet(
               const SizedBox(height: 14),
 
               // 2. Tên đơn vị / Chức danh
-              const Text('Tên đơn vị / chức danh *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.name_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
               TextField(
                 controller: nameCtrl,
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                decoration: buildOrgInputDecoration('Nhập tên đơn vị hoặc chức danh...'),
+                decoration: buildOrgInputDecoration('org_chart.name_hint'.tr()),
               ),
               const SizedBox(height: 14),
 
               // 3. Mã định danh
-              const Text('Mã định danh (Code) *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.code_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
               TextField(
                 controller: codeCtrl,
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                decoration: buildOrgInputDecoration('Ví dụ: BOD, HR, FIN, CEO...'),
+                decoration: buildOrgInputDecoration('org_chart.code_hint'.tr()),
               ),
               const SizedBox(height: 14),
 
               // 4. Node cha trực thuộc
-              const Text('Đơn vị / Node cha trực thuộc', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.parent_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -237,9 +238,9 @@ void showOrgNodeDetailBottomSheet(
                     isExpanded: true,
                     style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
                     items: [
-                      const DropdownMenuItem<String?>(
+                      DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('-- Là gốc cao nhất (Root Node) --', style: TextStyle(color: Color(0xFF64748B))),
+                        child: Text('org_chart.root_option'.tr(), style: TextStyle(color: Color(0xFF64748B))),
                       ),
                       ...availableParents.map((p) {
                         return DropdownMenuItem<String?>(
@@ -257,13 +258,13 @@ void showOrgNodeDetailBottomSheet(
               const SizedBox(height: 14),
 
               // 5. Mô tả bổ sung
-              const Text('Mô tả bổ sung', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.extra_desc'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
               TextField(
                 controller: descCtrl,
                 maxLines: 2,
                 style: const TextStyle(fontSize: 13),
-                decoration: buildOrgInputDecoration('Mô tả nhiệm vụ, phòng ban hoặc vai trò...'),
+                decoration: buildOrgInputDecoration('org_chart.extra_desc_hint'.tr()),
               ),
               const SizedBox(height: 20),
 
@@ -276,7 +277,7 @@ void showOrgNodeDetailBottomSheet(
                       onConfirmDeleteNode(node);
                     },
                     icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
-                    label: const Text('Xóa node', style: TextStyle(color: Color(0xFFEF4444), fontSize: 13, fontWeight: FontWeight.w600)),
+                    label: Text('org_chart.delete_node'.tr(), style: TextStyle(color: Color(0xFFEF4444), fontSize: 13, fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                       side: const BorderSide(color: Color(0xFFFECACA)),
@@ -289,7 +290,7 @@ void showOrgNodeDetailBottomSheet(
                       onPressed: () async {
                         if (nameCtrl.text.trim().isEmpty || codeCtrl.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Vui lòng nhập tên và mã định danh của node.')),
+                            SnackBar(content: Text('org_chart.err_name_code_id'.tr())),
                           );
                           return;
                         }
@@ -307,13 +308,13 @@ void showOrgNodeDetailBottomSheet(
 
                         if (success) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Đã lưu thay đổi thuộc tính thành công!'), backgroundColor: Color(0xFF059669)),
+                            SnackBar(content: Text('org_chart.props_saved'.tr()), backgroundColor: Color(0xFF059669)),
                           );
                           onRefreshSnapshot();
                         }
                       },
                       icon: const Icon(Icons.save_outlined, size: 16),
-                      label: const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      label: Text('org_chart.save_changes'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
@@ -335,12 +336,12 @@ void showOrgNodeDetailBottomSheet(
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.badge_outlined, size: 17, color: Color(0xFF2563EB)),
                         SizedBox(width: 8),
                         Text(
-                          'CHỨC DANH TRỰC THUỘC',
+                          'org_chart.sub_positions_caps'.tr(),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
@@ -358,7 +359,7 @@ void showOrgNodeDetailBottomSheet(
                         border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
                       child: Text(
-                        '${subordinatePositions.length} chức danh',
+                        'org_chart.position_count'.tr(args: {'count': subordinatePositions.length}),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -379,17 +380,17 @@ void showOrgNodeDetailBottomSheet(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: const Column(
+                    child: Column(
                       children: [
                         Icon(Icons.badge_outlined, size: 28, color: Color(0xFF94A3B8)),
                         SizedBox(height: 6),
                         Text(
-                          'Chưa có chức danh trực thuộc',
+                          'org_chart.no_sub_positions'.tr(),
                           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Thêm các vị trí / chức danh chuyên môn cho đơn vị này bên dưới.',
+                          'org_chart.no_sub_positions_hint'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                           textAlign: TextAlign.center,
                         ),
@@ -448,7 +449,7 @@ void showOrgNodeDetailBottomSheet(
                                           borderRadius: BorderRadius.circular(4),
                                           border: Border.all(color: const Color(0xFFBFDBFE)),
                                         ),
-                                        child: const Text('Lãnh đạo', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                                        child: Text('org_chart.leader'.tr(), style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
                                       ),
                                     ],
                                   ],
@@ -456,8 +457,8 @@ void showOrgNodeDetailBottomSheet(
                                 const SizedBox(height: 2),
                                 Text(
                                   posAssignments.isNotEmpty
-                                      ? 'Đang đảm nhiệm: ${posAssignments.map((a) => snapshot.users.where((u) => u.id == a.userId).firstOrNull?.fullName ?? 'Nhân sự').join(', ')}'
-                                      : 'Chưa có nhân sự bổ nhiệm',
+                                      ? 'org_chart.holding'.tr(args: {'names': posAssignments.map((a) => snapshot.users.where((u) => u.id == a.userId).firstOrNull?.fullName ?? 'org_chart.personnel'.tr()).join(', ')})
+                                      : 'org_chart.no_assigned_personnel'.tr(),
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: posAssignments.isNotEmpty ? const Color(0xFF059669) : const Color(0xFF94A3B8),
@@ -500,8 +501,8 @@ void showOrgNodeDetailBottomSheet(
                       onOpenAddOrEditDialog(parentNodeId: node.id, defaultCategory: 'position');
                     },
                     icon: const Icon(Icons.add, size: 16, color: Color(0xFF2563EB)),
-                    label: const Text(
-                      'Thêm chức danh trực thuộc',
+                    label: Text(
+                      'org_chart.add_sub_position'.tr(),
                       style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -522,12 +523,12 @@ void showOrgNodeDetailBottomSheet(
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.people_alt_outlined, size: 17, color: Color(0xFF059669)),
                         SizedBox(width: 8),
                         Text(
-                          'NHÂN SỰ ĐƯỢC BỔ NHIỆM',
+                          'org_chart.assigned_personnel_caps'.tr(),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
@@ -545,7 +546,7 @@ void showOrgNodeDetailBottomSheet(
                         border: Border.all(color: const Color(0xFFA7F3D0)),
                       ),
                       child: Text(
-                        '${positionAssignments.length} nhân sự',
+                        'org_chart.personnel_count'.tr(args: {'count': positionAssignments.length}),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -566,17 +567,17 @@ void showOrgNodeDetailBottomSheet(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: const Column(
+                    child: Column(
                       children: [
                         Icon(Icons.person_outline, size: 28, color: Color(0xFF94A3B8)),
                         SizedBox(height: 6),
                         Text(
-                          'Vị trí này đang trống',
+                          'org_chart.position_vacant'.tr(),
                           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Chưa có nhân sự nào được bổ nhiệm giữ chức danh này.',
+                          'org_chart.position_vacant_desc'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                           textAlign: TextAlign.center,
                         ),
@@ -586,7 +587,7 @@ void showOrgNodeDetailBottomSheet(
                 else
                   ...positionAssignments.map((asg) {
                     final assignedUser = snapshot.users.where((u) => u.id == asg.userId).firstOrNull;
-                    final name = assignedUser?.fullName ?? 'Nhân sự';
+                    final name = assignedUser?.fullName ?? 'org_chart.personnel'.tr();
                     final email = assignedUser?.email ?? '';
 
                     return Container(
@@ -631,8 +632,8 @@ void showOrgNodeDetailBottomSheet(
                                           borderRadius: BorderRadius.circular(4),
                                           border: Border.all(color: const Color(0xFFBFDBFE)),
                                         ),
-                                        child: const Text(
-                                          'Chính thức',
+                                        child: Text(
+                                          'org_chart.official'.tr(),
                                           style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                                         ),
                                       ),
@@ -655,8 +656,8 @@ void showOrgNodeDetailBottomSheet(
                               color: const Color(0xFFECFDF5),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              'Đang giữ vị trí',
+                            child: Text(
+                              'org_chart.holding_position'.tr(),
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                             ),
                           ),
@@ -728,23 +729,23 @@ void showOrgNodeAddOrEditDialog(
               const SizedBox(height: 14),
 
               Text(
-                isEditing ? 'Chỉnh sửa Node' : (selectedCategory == 'position' ? 'Thêm chức danh mới' : 'Thêm đơn vị mới vào sơ đồ'),
+                isEditing ? 'org_chart.edit_node'.tr() : (selectedCategory == 'position' ? 'org_chart.add_position'.tr() : 'org_chart.add_unit'.tr()),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 14),
 
-              const Text('Tên đơn vị / chức danh *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.name_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
-              TextField(controller: nameCtrl, style: const TextStyle(fontSize: 13), decoration: buildOrgInputDecoration('Nhập tên...')),
+              TextField(controller: nameCtrl, style: const TextStyle(fontSize: 13), decoration: buildOrgInputDecoration('org_chart.enter_name'.tr())),
               const SizedBox(height: 14),
 
-              const Text('Phân loại đối tượng', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.category_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
               Row(
                 children: [
                   Expanded(
                     child: buildOrgCategoryOption(
-                      label: 'Đơn vị',
+                      label: 'org_chart.unit'.tr(),
                       isSelected: selectedCategory == 'unit',
                       onTap: () => setDialogState(() => selectedCategory = 'unit'),
                     ),
@@ -752,7 +753,7 @@ void showOrgNodeAddOrEditDialog(
                   const SizedBox(width: 8),
                   Expanded(
                     child: buildOrgCategoryOption(
-                      label: 'Chức danh',
+                      label: 'org_chart.position'.tr(),
                       isSelected: selectedCategory == 'position',
                       onTap: () => setDialogState(() => selectedCategory = 'position'),
                     ),
@@ -761,12 +762,12 @@ void showOrgNodeAddOrEditDialog(
               ),
               const SizedBox(height: 14),
 
-              const Text('Mã định danh *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.identifier_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
-              TextField(controller: codeCtrl, style: const TextStyle(fontSize: 13), decoration: buildOrgInputDecoration('Nhập mã...')),
+              TextField(controller: codeCtrl, style: const TextStyle(fontSize: 13), decoration: buildOrgInputDecoration('org_chart.enter_code'.tr())),
               const SizedBox(height: 14),
 
-              const Text('Node cha trực thuộc', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('org_chart.parent_node'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -781,9 +782,9 @@ void showOrgNodeAddOrEditDialog(
                     isExpanded: true,
                     style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
                     items: [
-                      const DropdownMenuItem<String?>(
+                      DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('-- Là gốc cao nhất (Root Node) --', style: TextStyle(color: Color(0xFF64748B))),
+                        child: Text('org_chart.root_option'.tr(), style: TextStyle(color: Color(0xFF64748B))),
                       ),
                       ...snapshot.nodes.where((n) => existingNode == null || n.id != existingNode.id).map((p) {
                         return DropdownMenuItem<String?>(
@@ -800,9 +801,9 @@ void showOrgNodeAddOrEditDialog(
               ),
               const SizedBox(height: 14),
 
-              const Text('Mô tả', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+              Text('common.description'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
               const SizedBox(height: 6),
-              TextField(controller: descCtrl, maxLines: 2, style: const TextStyle(fontSize: 13), decoration: buildOrgInputDecoration('Nhập mô tả...')),
+              TextField(controller: descCtrl, maxLines: 2, style: const TextStyle(fontSize: 13), decoration: buildOrgInputDecoration('org_chart.enter_desc'.tr())),
               const SizedBox(height: 20),
 
               Row(
@@ -810,14 +811,14 @@ void showOrgNodeAddOrEditDialog(
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+                    child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B))),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () async {
                       if (nameCtrl.text.trim().isEmpty || codeCtrl.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Vui lòng nhập tên và mã của node.')),
+                          SnackBar(content: Text('org_chart.err_name_code'.tr())),
                         );
                         return;
                       }
@@ -849,7 +850,7 @@ void showOrgNodeAddOrEditDialog(
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(isEditing ? 'Đã cập nhật node thành công!' : 'Đã thêm node mới thành công!'),
+                            content: Text(isEditing ? 'org_chart.node_updated'.tr() : 'org_chart.node_added'.tr()),
                             backgroundColor: const Color(0xFF059669),
                           ),
                         );
@@ -863,7 +864,7 @@ void showOrgNodeAddOrEditDialog(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
                     ),
-                    child: Text(isEditing ? 'Lưu thay đổi' : 'Thêm node', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(isEditing ? 'org_chart.save_changes'.tr() : 'org_chart.add_node'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -885,15 +886,15 @@ void confirmDeleteOrgNode(
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Xóa node sơ đồ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      title: Text('org_chart.delete_node_title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       content: Text(
-        'Bạn có chắc chắn muốn xóa "${node.name}" khỏi sơ đồ tổ chức không? Các vị trí trực thuộc cũng sẽ bị ảnh hưởng.',
+        'org_chart.delete_node_confirm'.tr(args: {'name': node.name}),
         style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+          child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B))),
         ),
         ElevatedButton(
           onPressed: () async {
@@ -901,7 +902,7 @@ void confirmDeleteOrgNode(
             final success = await platformService.deleteNode(node.id);
             if (success) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã xóa node thành công!'), backgroundColor: Color(0xFFEF4444)),
+                SnackBar(content: Text('org_chart.node_deleted'.tr()), backgroundColor: Color(0xFFEF4444)),
               );
               onRefreshSnapshot();
             }
@@ -910,7 +911,7 @@ void confirmDeleteOrgNode(
             backgroundColor: const Color(0xFFEF4444),
             foregroundColor: Colors.white,
           ),
-          child: const Text('Xóa node'),
+          child: Text('org_chart.delete_node'.tr()),
         ),
       ],
     ),

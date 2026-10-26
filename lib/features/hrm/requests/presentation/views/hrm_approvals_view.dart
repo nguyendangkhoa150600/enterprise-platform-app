@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../../models/hrm_models.dart';
 import '../../../../../services/hrm_service.dart';
 import '../widgets/hrm_request_detail_bottom_sheet.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Quản lý Đơn từ & Phê duyệt (Approvals & Requests Management - 1:1 Web Pixel-Perfect)
 class HrmApprovalsView extends StatefulWidget {
@@ -142,14 +143,14 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dCtx) => AlertDialog(
-        title: const Text('Phê duyệt hàng loạt', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Text('Xác nhận phê duyệt đồng loạt $count đơn từ đã chọn theo thẩm quyền quản lý?'),
+        title: Text('hrm_requests.bulk_title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text('hrm_requests.bulk_msg'.tr(args: {'count': count})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(dCtx, false), child: Text('common.cancel'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(dCtx, true),
-            child: const Text('Xác nhận duyệt'),
+            child: Text('hrm_requests.bulk_confirm'.tr()),
           ),
         ],
       ),
@@ -169,7 +170,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã phê duyệt thành công $successCount/$count đơn từ!'),
+            content: Text('hrm_requests.bulk_success'.tr(args: {'success': successCount, 'count': count})),
             backgroundColor: const Color(0xFF059669),
             behavior: SnackBarBehavior.floating,
           ),
@@ -200,44 +201,44 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
     Color bg = const Color(0xFFFFF7ED);
     Color fg = const Color(0xFFEA580C);
     Color border = const Color(0xFFFFEDD5);
-    String label = 'Chờ duyệt';
+    String label = 'hrm_requests.status_pending'.tr();
 
     switch (status) {
       case HrmRequestStatus.approved:
         bg = const Color(0xFFDCFCE7);
         fg = const Color(0xFF16A34A);
         border = const Color(0xFFBBF7D0);
-        label = 'Đã phê duyệt';
+        label = 'hrm_requests.status_approved'.tr();
         break;
       case HrmRequestStatus.rejected:
         bg = const Color(0xFFFEE2E2);
         fg = const Color(0xFFDC2626);
         border = const Color(0xFFFECACA);
-        label = 'Từ chối';
+        label = 'common.reject'.tr();
         break;
       case HrmRequestStatus.draft:
         bg = const Color(0xFFF1F5F9);
         fg = const Color(0xFF64748B);
         border = const Color(0xFFE2E8F0);
-        label = 'Bản nháp';
+        label = 'hrm_requests.status_draft'.tr();
         break;
       case HrmRequestStatus.cancelled:
         bg = const Color(0xFFF1F5F9);
         fg = const Color(0xFF64748B);
         border = const Color(0xFFE2E8F0);
-        label = 'Đã rút / hủy';
+        label = 'hrm_requests.status_cancelled'.tr();
         break;
       case HrmRequestStatus.processing:
         bg = const Color(0xFFEFF6FF);
         fg = const Color(0xFF2563EB);
         border = const Color(0xFFDBEAFE);
-        label = 'Đang xử lý';
+        label = 'hrm_requests.status_processing'.tr();
         break;
       case HrmRequestStatus.pending:
         bg = const Color(0xFFFFF7ED);
         fg = const Color(0xFFEA580C);
         border = const Color(0xFFFFEDD5);
-        label = 'Chờ duyệt';
+        label = 'hrm_requests.status_pending'.tr();
         break;
     }
 
@@ -336,12 +337,12 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
           children: [
             // Breadcrumbs
             Row(
-              children: const [
-                Text('Nhân sự', style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+              children: [
+                Text('hrm_requests.breadcrumb_hr'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
                 SizedBox(width: 4),
                 Icon(Icons.chevron_right, size: 14, color: Color(0xFF94A3B8)),
                 SizedBox(width: 4),
-                Text('Đơn từ cần xử lý', style: TextStyle(fontSize: 11, color: Color(0xFF1E293B), fontWeight: FontWeight.w600)),
+                Text('hrm_requests.page_title'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF1E293B), fontWeight: FontWeight.w600)),
               ],
             ),
             const SizedBox(height: 6),
@@ -353,14 +354,14 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Đơn từ cần xử lý',
+                        'hrm_requests.page_title'.tr(),
                         style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: -0.3),
                       ),
                       SizedBox(height: 3),
                       Text(
-                        'Theo dõi và phê duyệt các yêu cầu đang chờ xử lý.',
+                        'hrm_requests.page_desc'.tr(),
                         style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
                       ),
                     ],
@@ -369,7 +370,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                 OutlinedButton.icon(
                   onPressed: _loadAllHrmData,
                   icon: const Icon(Icons.refresh_rounded, size: 14),
-                  label: const Text('Làm mới', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  label: Text('common.refresh'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -386,7 +387,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
               children: [
                 Expanded(
                   child: _buildApprovalStatCard(
-                    title: 'Chờ tôi duyệt',
+                    title: 'hrm_requests.stat_pending_me'.tr(),
                     value: '$pendingCount',
                     icon: Icons.warning_amber_rounded,
                     bgColor: const Color(0xFFFFFBEB),
@@ -397,7 +398,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildApprovalStatCard(
-                    title: 'Đang xử lý',
+                    title: 'hrm_requests.status_processing'.tr(),
                     value: '$processingCount',
                     icon: Icons.access_time_rounded,
                     bgColor: const Color(0xFFEFF6FF),
@@ -412,7 +413,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
               children: [
                 Expanded(
                   child: _buildApprovalStatCard(
-                    title: 'Quá hạn',
+                    title: 'hrm_requests.stat_overdue'.tr(),
                     value: '$overdueCount',
                     icon: Icons.error_outline_rounded,
                     bgColor: const Color(0xFFFEF2F2),
@@ -423,7 +424,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildApprovalStatCard(
-                    title: 'Đã xử lý tháng này',
+                    title: 'hrm_requests.stat_processed_month'.tr(),
                     value: '$processedThisMonth',
                     icon: Icons.check_circle_outline_rounded,
                     bgColor: const Color(0xFFF0FDF4),
@@ -449,7 +450,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                   TextField(
                     controller: _approvalSearchCtrl,
                     decoration: InputDecoration(
-                      hintText: 'Tên nhân viên, mã đơn, lý do...',
+                      hintText: 'hrm_requests.search_hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                       prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
                       suffixIcon: _approvalSearchQuery.isNotEmpty
@@ -476,28 +477,28 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                     child: Row(
                       children: [
                         _buildDropdownFilterBox(
-                          label: 'Loại đơn',
+                          label: 'hrm_requests.filter_type'.tr(),
                           valueDisplay: _getTypeFilterLabel(_approvalTypeFilter),
                           onTap: _showTypeFilterPicker,
                           hasActiveValue: _approvalTypeFilter != 'ALL',
                         ),
                         const SizedBox(width: 8),
                         _buildDropdownFilterBox(
-                          label: 'Phòng ban',
-                          valueDisplay: _approvalDeptFilter == 'ALL' ? 'Tất cả' : _approvalDeptFilter,
+                          label: 'hrm_requests.filter_dept'.tr(),
+                          valueDisplay: _approvalDeptFilter == 'ALL' ? 'common.all'.tr() : _approvalDeptFilter,
                           onTap: _showDeptFilterPicker,
                           hasActiveValue: _approvalDeptFilter != 'ALL',
                         ),
                         const SizedBox(width: 8),
                         _buildDropdownFilterBox(
-                          label: 'Bước duyệt',
-                          valueDisplay: _approvalStepFilter == 'ALL' ? 'Tất cả' : _approvalStepFilter,
+                          label: 'hrm_requests.filter_step'.tr(),
+                          valueDisplay: _approvalStepFilter == 'ALL' ? 'common.all'.tr() : _approvalStepFilter,
                           onTap: _showStepFilterPicker,
                           hasActiveValue: _approvalStepFilter != 'ALL',
                         ),
                         const SizedBox(width: 8),
                         _buildDropdownFilterBox(
-                          label: 'Trạng thái',
+                          label: 'common.status'.tr(),
                           valueDisplay: _getStatusFilterLabel(_approvalStatusFilter),
                           onTap: _showStatusFilterPicker,
                           hasActiveValue: _approvalStatusFilter != 'ALL',
@@ -521,10 +522,10 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildSubTabChip('Tất cả (${_requests.length})', 'ALL'),
-                        _buildSubTabChip('Chờ tôi duyệt ($pendingCount)', 'PENDING'),
-                        _buildSubTabChip('Đang xử lý ($processingCount)', 'PROCESSING'),
-                        _buildSubTabChip('Đã xử lý ($processedCount)', 'PROCESSED'),
+                        _buildSubTabChip('${'common.all'.tr()} (${_requests.length})', 'ALL'),
+                        _buildSubTabChip('${'hrm_requests.stat_pending_me'.tr()} ($pendingCount)', 'PENDING'),
+                        _buildSubTabChip('${'hrm_requests.status_processing'.tr()} ($processingCount)', 'PROCESSING'),
+                        _buildSubTabChip('${'hrm_requests.tab_processed'.tr()} ($processedCount)', 'PROCESSED'),
                       ],
                     ),
                   ),
@@ -532,7 +533,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                 ElevatedButton.icon(
                   onPressed: _selectedApprovalIds.isNotEmpty ? _handleBulkApprove : null,
                   icon: const Icon(Icons.done_all_rounded, size: 13),
-                  label: Text('Duyệt đã chọn (${_selectedApprovalIds.length})', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                  label: Text('${'hrm_requests.approve_selected'.tr()} (${_selectedApprovalIds.length})', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF16A34A),
                     foregroundColor: Colors.white,
@@ -558,10 +559,10 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Column(
-                  children: const [
+                  children: [
                     Icon(Icons.assignment_turned_in_outlined, size: 32, color: Color(0xFFCBD5E1)),
                     SizedBox(height: 8),
-                    Text('Không có đơn từ nào phù hợp.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                    Text('hrm_requests.empty'.tr(), style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                   ],
                 ),
               )
@@ -586,7 +587,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                       timeStr = '${_formatDate(start)} -> ${_formatDate(end)}';
                     }
                   } else if (start != null) {
-                    timeStr = 'Từ ${_formatDate(start)}';
+                    timeStr = 'hrm_requests.from_date'.tr(args: {'date': _formatDate(start)});
                   }
 
                   String durationBadge = '';
@@ -711,9 +712,9 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                             children: [
                               _buildStatusBadge(r.status),
                               Row(
-                                children: const [
+                                children: [
                                   Text(
-                                    'Xem chi tiết',
+                                    'common.view_detail'.tr(),
                                     style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w500),
                                   ),
                                   SizedBox(width: 2),
@@ -792,7 +793,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
     if (_approvalStartDateFilter != null && _approvalEndDateFilter != null) {
       display = '${_formatDate(_approvalStartDateFilter!)} - ${_formatDate(_approvalEndDateFilter!)}';
     } else if (_approvalStartDateFilter != null) {
-      display = 'Từ ${_formatDate(_approvalStartDateFilter!)}';
+      display = 'hrm_requests.from_date'.tr(args: {'date': _formatDate(_approvalStartDateFilter!)});
     }
 
     return InkWell(
@@ -856,48 +857,48 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
   String _getTypeFilterLabel(String key) {
     switch (key) {
       case 'LEAVE':
-        return 'Nghỉ phép';
+        return 'hrm_requests.type_leave'.tr();
       case 'OVERTIME':
-        return 'Làm thêm (OT)';
+        return 'hrm_requests.type_overtime'.tr();
       case 'ATTENDANCE_CORRECTION':
-        return 'Giải trình công';
+        return 'hrm_requests.type_attendance_correction'.tr();
       case 'BUSINESS_TRIP':
-        return 'Công tác';
+        return 'hrm_requests.type_business_trip'.tr();
       case 'SHIFT_CHANGE':
-        return 'Đổi ca làm';
+        return 'hrm_requests.type_shift_change'.tr();
       case 'ADVANCE':
-        return 'Tạm ứng lương';
+        return 'hrm_requests.type_advance'.tr();
       default:
-        return 'Tất cả';
+        return 'common.all'.tr();
     }
   }
 
   String _getStatusFilterLabel(String key) {
     switch (key) {
       case 'PENDING':
-        return 'Chờ duyệt';
+        return 'hrm_requests.status_pending'.tr();
       case 'PROCESSING':
-        return 'Đang xử lý';
+        return 'hrm_requests.status_processing'.tr();
       case 'APPROVED':
-        return 'Đã phê duyệt';
+        return 'hrm_requests.status_approved'.tr();
       case 'CANCELLED':
-        return 'Đã rút / hủy';
+        return 'hrm_requests.status_cancelled'.tr();
       case 'REJECTED':
-        return 'Từ chối';
+        return 'common.reject'.tr();
       default:
-        return 'Tất cả';
+        return 'common.all'.tr();
     }
   }
 
   void _showTypeFilterPicker() {
     final types = [
-      {'key': 'ALL', 'label': 'Tất cả (${_requests.length})'},
-      {'key': 'LEAVE', 'label': 'Nghỉ phép (${_requests.where((r) => r.type == HrmRequestType.leave).length})'},
-      {'key': 'OVERTIME', 'label': 'Làm thêm (OT) (${_requests.where((r) => r.type == HrmRequestType.overtime).length})'},
-      {'key': 'ATTENDANCE_CORRECTION', 'label': 'Giải trình công (${_requests.where((r) => r.type == HrmRequestType.attendanceCorrection).length})'},
-      {'key': 'BUSINESS_TRIP', 'label': 'Công tác (${_requests.where((r) => r.type == HrmRequestType.businessTrip).length})'},
-      {'key': 'SHIFT_CHANGE', 'label': 'Đổi ca làm (${_requests.where((r) => r.type == HrmRequestType.shiftChange).length})'},
-      {'key': 'ADVANCE', 'label': 'Tạm ứng lương (${_requests.where((r) => r.type == HrmRequestType.advance).length})'},
+      {'key': 'ALL', 'label': '${'common.all'.tr()} (${_requests.length})'},
+      {'key': 'LEAVE', 'label': '${'hrm_requests.type_leave'.tr()} (${_requests.where((r) => r.type == HrmRequestType.leave).length})'},
+      {'key': 'OVERTIME', 'label': '${'hrm_requests.type_overtime'.tr()} (${_requests.where((r) => r.type == HrmRequestType.overtime).length})'},
+      {'key': 'ATTENDANCE_CORRECTION', 'label': '${'hrm_requests.type_attendance_correction'.tr()} (${_requests.where((r) => r.type == HrmRequestType.attendanceCorrection).length})'},
+      {'key': 'BUSINESS_TRIP', 'label': '${'hrm_requests.type_business_trip'.tr()} (${_requests.where((r) => r.type == HrmRequestType.businessTrip).length})'},
+      {'key': 'SHIFT_CHANGE', 'label': '${'hrm_requests.type_shift_change'.tr()} (${_requests.where((r) => r.type == HrmRequestType.shiftChange).length})'},
+      {'key': 'ADVANCE', 'label': '${'hrm_requests.type_advance'.tr()} (${_requests.where((r) => r.type == HrmRequestType.advance).length})'},
     ];
 
     showModalBottomSheet(
@@ -909,9 +910,9 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text('Lọc theo Loại đơn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              child: Text('hrm_requests.filter_by_type'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
             ),
             const Divider(),
             ...types.map((t) {
@@ -932,7 +933,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
   }
 
   void _showDeptFilterPicker() {
-    final depts = <String>{'Tất cả', ..._requests.map((r) => r.department).where((d) => d.isNotEmpty)};
+    final depts = <String>{'common.all'.tr(), ..._requests.map((r) => r.department).where((d) => d.isNotEmpty)};
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
@@ -942,13 +943,13 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text('Lọc theo Phòng ban', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              child: Text('hrm_requests.filter_by_dept'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
             ),
             const Divider(),
             ...depts.map((d) {
-              final val = d == 'Tất cả' ? 'ALL' : d;
+              final val = d == 'common.all'.tr() ? 'ALL' : d;
               final isSel = _approvalDeptFilter == val;
               final count = val == 'ALL' ? _requests.length : _requests.where((r) => r.department == d).length;
               return ListTile(
@@ -967,7 +968,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
   }
 
   void _showStepFilterPicker() {
-    final steps = ['Tất cả', 'Cấp 1 - Quản lý trực tiếp', 'Cấp 2 - Ban Giám đốc'];
+    final steps = ['common.all'.tr(), 'hrm_requests.step_level1'.tr(), 'hrm_requests.step_level2'.tr()];
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
@@ -977,13 +978,13 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text('Lọc theo Bước duyệt', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              child: Text('hrm_requests.filter_by_step'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
             ),
             const Divider(),
             ...steps.map((s) {
-              final val = s == 'Tất cả' ? 'ALL' : s;
+              final val = s == 'common.all'.tr() ? 'ALL' : s;
               final isSel = _approvalStepFilter == val;
               return ListTile(
                 title: Text(s, style: TextStyle(fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: isSel ? const Color(0xFF2563EB) : const Color(0xFF1E293B))),
@@ -1002,12 +1003,12 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
 
   void _showStatusFilterPicker() {
     final stats = [
-      {'key': 'ALL', 'label': 'Tất cả (${_requests.length})'},
-      {'key': 'PENDING', 'label': 'Chờ duyệt (${_requests.where((r) => r.status == HrmRequestStatus.pending).length})'},
-      {'key': 'PROCESSING', 'label': 'Đang xử lý (${_requests.where((r) => r.status == HrmRequestStatus.processing).length})'},
-      {'key': 'APPROVED', 'label': 'Đã phê duyệt (${_requests.where((r) => r.status == HrmRequestStatus.approved).length})'},
-      {'key': 'CANCELLED', 'label': 'Đã rút / hủy (${_requests.where((r) => r.status == HrmRequestStatus.cancelled).length})'},
-      {'key': 'REJECTED', 'label': 'Từ chối (${_requests.where((r) => r.status == HrmRequestStatus.rejected).length})'},
+      {'key': 'ALL', 'label': '${'common.all'.tr()} (${_requests.length})'},
+      {'key': 'PENDING', 'label': '${'hrm_requests.status_pending'.tr()} (${_requests.where((r) => r.status == HrmRequestStatus.pending).length})'},
+      {'key': 'PROCESSING', 'label': '${'hrm_requests.status_processing'.tr()} (${_requests.where((r) => r.status == HrmRequestStatus.processing).length})'},
+      {'key': 'APPROVED', 'label': '${'hrm_requests.status_approved'.tr()} (${_requests.where((r) => r.status == HrmRequestStatus.approved).length})'},
+      {'key': 'CANCELLED', 'label': '${'hrm_requests.status_cancelled'.tr()} (${_requests.where((r) => r.status == HrmRequestStatus.cancelled).length})'},
+      {'key': 'REJECTED', 'label': '${'common.reject'.tr()} (${_requests.where((r) => r.status == HrmRequestStatus.rejected).length})'},
     ];
 
     showModalBottomSheet(
@@ -1019,9 +1020,9 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text('Lọc theo Trạng thái', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              child: Text('hrm_requests.filter_by_status'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
             ),
             const Divider(),
             ...stats.map((s) {

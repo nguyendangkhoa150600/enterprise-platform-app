@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../services/hrm_service.dart';
 
 /// Cấu hình Quy định chấm công (Attendance Policy Sub-view) - Chuẩn Web 1:1 Pixel-Perfect
@@ -26,59 +27,59 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
         : <Map<String, dynamic>>[
             {
               'version': 'v4',
-              'title': 'v4 Quy định chấm công',
+              'title': 'hrm_config.attendance.sample.title_v4'.tr(),
               'validity': '07/10/2026 - 30/11/2026',
-              'scope': 'Toàn công ty',
+              'scope': 'hrm_config.attendance.scope.company'.tr(),
               'conditions': ['GPS 1000 m'],
               'isActive': true,
-              'statusText': 'Đang áp dụng',
+              'statusText': 'hrm_config.attendance.status.in_effect'.tr(),
               'gpsRadiusMeters': 1000.0,
               'requireIp': false,
               'requireDevice': false,
               'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'Chưa cấu hình',
+              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
             },
             {
               'version': 'v3',
-              'title': 'v3 Quy định chấm công',
+              'title': 'hrm_config.attendance.sample.title_v3'.tr(),
               'validity': '02/10/2026 - 06/10/2026',
-              'scope': 'Toàn công ty',
+              'scope': 'hrm_config.attendance.scope.company'.tr(),
               'conditions': ['GPS 100 m'],
               'isActive': false,
-              'statusText': 'Hết hiệu lực',
+              'statusText': 'hrm_config.attendance.status.expired'.tr(),
               'gpsRadiusMeters': 100.0,
               'requireIp': false,
               'requireDevice': false,
               'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'Chưa cấu hình',
+              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
             },
             {
               'version': 'v2',
-              'title': 'v2 Quy định chấm công',
+              'title': 'hrm_config.attendance.sample.title_v2'.tr(),
               'validity': '01/10/2026 - 01/10/2026',
-              'scope': 'Toàn công ty',
+              'scope': 'hrm_config.attendance.scope.company'.tr(),
               'conditions': ['GPS 100 m'],
               'isActive': false,
-              'statusText': 'Hết hiệu lực',
+              'statusText': 'hrm_config.attendance.status.expired'.tr(),
               'gpsRadiusMeters': 100.0,
               'requireIp': false,
               'requireDevice': false,
               'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'Chưa cấu hình',
+              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
             },
             {
               'version': 'v1',
-              'title': 'v1 Quy định chấm công',
+              'title': 'hrm_config.attendance.sample.title_v1'.tr(),
               'validity': '30/09/2026 - 30/09/2026',
-              'scope': 'Toàn công ty',
-              'conditions': ['IP', 'GPS 100 m', 'Thiết bị'],
+              'scope': 'hrm_config.attendance.scope.company'.tr(),
+              'conditions': ['IP', 'GPS 100 m', 'hrm_config.attendance.cond.device'.tr()],
               'isActive': false,
-              'statusText': 'Hết hiệu lực',
+              'statusText': 'hrm_config.attendance.status.expired'.tr(),
               'gpsRadiusMeters': 100.0,
               'requireIp': true,
               'requireDevice': true,
               'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'Chưa cấu hình',
+              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
             },
           ];
 
@@ -101,12 +102,12 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Quy định chấm công',
+                    'hrm_config.attendance.title'.tr(),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -116,7 +117,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                   ),
                   SizedBox(height: 3),
                   Text(
-                    'Thiết lập quy tắc chấm công, điều kiện hợp lệ',
+                    'hrm_config.attendance.subtitle'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                 ],
@@ -133,7 +134,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                     border: Border.all(color: const Color(0xFFA7F3D0)),
                   ),
                   child: Text(
-                    'Đang áp dụng · ${activeVersion['version'] ?? 'v4'}',
+                    'hrm_config.attendance.badge_active'.tr(args: {'version': activeVersion['version'] ?? 'v4'}),
                     style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                   ),
                 ),
@@ -154,13 +155,13 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                         ),
                       ],
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.add, size: 14, color: Color(0xFF0F172A)),
                         SizedBox(width: 3),
                         Text(
-                          'Tạo phiên bản mới',
+                          'hrm_config.attendance.create_new_version'.tr(),
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                       ],
@@ -205,17 +206,17 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                     child: const Icon(Icons.history_rounded, size: 17, color: Color(0xFF2563EB)),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Phiên bản quy định',
+                          'hrm_config.attendance.versions.title'.tr(),
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Mỗi phiên bản có ngày hiệu lực riêng; phiên bản mới kết thúc phiên bản cũ cùng phạm vi.',
+                          'hrm_config.attendance.versions.subtitle'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
                         ),
                       ],
@@ -281,9 +282,9 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const SizedBox(
+                              SizedBox(
                                 width: 70,
-                                child: Text('Hiệu lực', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                child: Text('hrm_config.attendance.validity'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                               ),
                               Text(v['validity'] as String, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
                             ],
@@ -291,9 +292,9 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              const SizedBox(
+                              SizedBox(
                                 width: 70,
-                                child: Text('Phạm vi', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                child: Text('hrm_config.attendance.scope'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                               ),
                               Text(v['scope'] as String, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
                             ],
@@ -301,9 +302,9 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              const SizedBox(
+                              SizedBox(
                                 width: 70,
-                                child: Text('Điều kiện', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                child: Text('hrm_config.attendance.conditions'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                               ),
                               Wrap(
                                 spacing: 4,
@@ -371,13 +372,13 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Tóm tắt quy định đang áp dụng',
+                        Text(
+                          'hrm_config.attendance.summary.title'.tr(),
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Phiên bản ${activeVersion['version'] ?? 'v4'} · từ ${activeVersion['validity']?.toString().split('-').first.trim() ?? '07/10/2026'}',
+                          'hrm_config.attendance.summary.version_from'.tr(args: {'version': activeVersion['version'] ?? 'v4', 'date': activeVersion['validity']?.toString().split('-').first.trim() ?? '07/10/2026'}),
                           style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -388,17 +389,17 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
               const SizedBox(height: 14),
 
               // 6 Summary Rows
-              _buildPolicySummaryRow(Icons.calendar_month_outlined, const Color(0xFF2563EB), 'Phạm vi & hiệu lực', '${activeVersion['scope']} · ${activeVersion['validity']}'),
+              _buildPolicySummaryRow(Icons.calendar_month_outlined, const Color(0xFF2563EB), 'hrm_config.attendance.summary.scope_validity'.tr(), '${activeVersion['scope']} · ${activeVersion['validity']}'),
               const SizedBox(height: 8),
-              _buildPolicySummaryRow(Icons.hub_outlined, const Color(0xFFEA580C), 'Kiểm soát IP', reqIp ? 'Bắt buộc' : 'Không yêu cầu'),
+              _buildPolicySummaryRow(Icons.hub_outlined, const Color(0xFFEA580C), 'hrm_config.attendance.summary.ip_control'.tr(), reqIp ? 'hrm_config.attendance.required'.tr() : 'hrm_config.attendance.not_required'.tr()),
               const SizedBox(height: 8),
-              _buildPolicySummaryRow(Icons.location_on_outlined, const Color(0xFF059669), 'Kiểm soát GPS', 'Bắt buộc, dung sai ${gpsRadius.toInt()} m'),
+              _buildPolicySummaryRow(Icons.location_on_outlined, const Color(0xFF059669), 'hrm_config.attendance.summary.gps_control'.tr(), 'hrm_config.attendance.summary.gps_required'.tr(args: {'radius': gpsRadius.toInt()})),
               const SizedBox(height: 8),
-              _buildPolicySummaryRow(Icons.phone_iphone_outlined, const Color(0xFF7C3AED), 'Thiết bị chấm công', reqDevice ? 'Bắt buộc' : 'Không yêu cầu'),
+              _buildPolicySummaryRow(Icons.phone_iphone_outlined, const Color(0xFF7C3AED), 'hrm_config.attendance.summary.device'.tr(), reqDevice ? 'hrm_config.attendance.required'.tr() : 'hrm_config.attendance.not_required'.tr()),
               const SizedBox(height: 8),
-              _buildPolicySummaryRow(Icons.language_outlined, const Color(0xFF0284C7), 'Múi giờ', activeVersion['timezone']?.toString() ?? 'Asia/Ho_Chi_Minh'),
+              _buildPolicySummaryRow(Icons.language_outlined, const Color(0xFF0284C7), 'hrm_config.attendance.timezone'.tr(), activeVersion['timezone']?.toString() ?? 'Asia/Ho_Chi_Minh'),
               const SizedBox(height: 8),
-              _buildPolicySummaryRow(Icons.calendar_today_outlined, const Color(0xFFDC2626), 'Ngày nghỉ hằng tuần', activeVersion['weeklyOff']?.toString() ?? 'Chưa cấu hình'),
+              _buildPolicySummaryRow(Icons.calendar_today_outlined, const Color(0xFFDC2626), 'hrm_config.attendance.summary.weekly_off'.tr(), activeVersion['weeklyOff']?.toString() ?? 'hrm_config.attendance.not_configured'.tr()),
             ],
           ),
         ),
@@ -412,14 +413,14 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
-          child: const Row(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFD97706)),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Thay đổi quy định ảnh hưởng đến cách xác thực chấm công từ ngày hiệu lực; kiểm tra kỹ trước khi tạo phiên bản.',
+                  'hrm_config.attendance.summary.warning'.tr(),
                   style: TextStyle(fontSize: 11.5, color: Color(0xFF92400E), height: 1.35),
                 ),
               ),
@@ -493,19 +494,19 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
               ],
             ),
             const SizedBox(height: 12),
-            _buildDetailRow('Hiệu lực', v['validity'] as String),
+            _buildDetailRow('hrm_config.attendance.validity'.tr(), v['validity'] as String),
             const SizedBox(height: 8),
-            _buildDetailRow('Phạm vi', v['scope'] as String),
+            _buildDetailRow('hrm_config.attendance.scope'.tr(), v['scope'] as String),
             const SizedBox(height: 8),
-            _buildDetailRow('Điều kiện', ((v['conditions'] as List<dynamic>?)?.join(', ') ?? 'GPS 1000 m')),
+            _buildDetailRow('hrm_config.attendance.conditions'.tr(), ((v['conditions'] as List<dynamic>?)?.join(', ') ?? 'GPS 1000 m')),
             const SizedBox(height: 8),
-            _buildDetailRow('Trạng thái', v['statusText'] as String),
+            _buildDetailRow('common.status'.tr(), v['statusText'] as String),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Đóng'),
+                child: Text('common.close'.tr()),
               ),
             ),
           ],
@@ -567,8 +568,8 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Tạo phiên bản quy định chấm công',
+                    Text(
+                      'hrm_config.attendance.modal.title'.tr(),
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     IconButton(
@@ -600,16 +601,16 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Icon(Icons.calendar_month_outlined, size: 17, color: Color(0xFF7C3AED)),
                                 SizedBox(width: 10),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Hiệu lực & phạm vi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                    Text('hrm_config.attendance.modal.sec1.title'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                                     SizedBox(height: 1),
-                                    Text('Thời gian áp dụng và nhân viên được áp dụng.', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                                    Text('hrm_config.attendance.modal.sec1.subtitle'.tr(), style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                                   ],
                                 ),
                               ],
@@ -622,7 +623,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Hiệu lực từ *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                                      Text('hrm_config.attendance.modal.effective_from'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                                       const SizedBox(height: 6),
                                       InkWell(
                                         onTap: () async {
@@ -668,7 +669,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Đến ngày (tùy chọn)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                                      Text('hrm_config.attendance.modal.to_date'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                                       const SizedBox(height: 6),
                                       InkWell(
                                         onTap: () async {
@@ -727,7 +728,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                             const SizedBox(height: 12),
 
                             // Scope
-                            const Text('Phạm vi áp dụng *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                            Text('hrm_config.attendance.modal.scope'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                             const SizedBox(height: 6),
                             Container(
                               height: 38,
@@ -745,9 +746,9 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                                   borderRadius: BorderRadius.circular(10),
                                   icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
                                   style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
-                                  items: const [
-                                    DropdownMenuItem(value: 'ALL', child: Text('Toàn công ty')),
-                                    DropdownMenuItem(value: 'PILOT', child: Text('Thử nghiệm (Pilot)')),
+                                  items: [
+                                    DropdownMenuItem(value: 'ALL', child: Text('hrm_config.attendance.scope.company'.tr())),
+                                    DropdownMenuItem(value: 'PILOT', child: Text('hrm_config.attendance.modal.scope_pilot'.tr())),
                                   ],
                                   onChanged: (v) {
                                     if (v != null) setSheetState(() => scope = v);
@@ -771,16 +772,16 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Icon(Icons.fact_check_outlined, size: 17, color: Color(0xFF059669)),
                                 SizedBox(width: 10),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Điều kiện chấm công hợp lệ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                    Text('hrm_config.attendance.modal.sec2.title'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                                     SizedBox(height: 1),
-                                    Text('Các ràng buộc để lượt chấm công được chấp nhận.', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                                    Text('hrm_config.attendance.modal.sec2.subtitle'.tr(), style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                                   ],
                                 ),
                               ],
@@ -791,7 +792,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Kiểm soát IP mạng văn phòng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                                Text('hrm_config.attendance.modal.ip_control'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
                                 Switch(
                                   value: reqIp,
                                   onChanged: (v) => setSheetState(() => reqIp = v),
@@ -805,7 +806,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                                 controller: ipController,
                                 style: const TextStyle(fontSize: 12),
                                 decoration: InputDecoration(
-                                  hintText: 'Nhập dải IP được phép (phân tách bằng dấu phẩy)...',
+                                  hintText: 'hrm_config.attendance.modal.ip_hint'.tr(),
                                   hintStyle: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -818,7 +819,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Kiểm soát định vị GPS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                                Text('hrm_config.attendance.modal.gps_control'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
                                 Switch(
                                   value: reqGps,
                                   onChanged: (v) => setSheetState(() => reqGps = v),
@@ -830,7 +831,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                               const SizedBox(height: 6),
                               Row(
                                 children: [
-                                  const Text('Dung sai bán kính:', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                  Text('hrm_config.attendance.modal.radius_tolerance'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                                   const SizedBox(width: 8),
                                   Text('${gpsTolerance.toInt()} m', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
                                 ],
@@ -850,7 +851,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Yêu cầu thiết bị đã duyệt', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                                Text('hrm_config.attendance.modal.require_device'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
                                 Switch(
                                   value: reqApprovedDevice,
                                   onChanged: (v) => setSheetState(() => reqApprovedDevice = v),
@@ -874,23 +875,23 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Icon(Icons.schedule_outlined, size: 17, color: Color(0xFFD97706)),
                                 SizedBox(width: 10),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Múi giờ & ngày nghỉ tuần', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                    Text('hrm_config.attendance.modal.sec3.title'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                                     SizedBox(height: 1),
-                                    Text('Cấu hình múi giờ chuẩn và các ngày nghỉ tuần cố định.', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                                    Text('hrm_config.attendance.modal.sec3.subtitle'.tr(), style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                                   ],
                                 ),
                               ],
                             ),
                             const SizedBox(height: 14),
 
-                            const Text('Múi giờ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                            Text('hrm_config.attendance.timezone'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                             const SizedBox(height: 6),
                             TextField(
                               controller: tzController,
@@ -902,14 +903,14 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                             ),
                             const SizedBox(height: 12),
 
-                            const Text('Ngày nghỉ tuần cố định', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                            Text('hrm_config.attendance.modal.fixed_off'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                             const SizedBox(height: 6),
                             Wrap(
                               spacing: 6,
                               children: ['CN', 'T7'].map((d) {
                                 final isSel = selectedOffDays.contains(d);
                                 return FilterChip(
-                                  label: Text(d, style: TextStyle(fontSize: 11, fontWeight: isSel ? FontWeight.bold : FontWeight.normal)),
+                                  label: Text((d == 'CN' ? 'hrm_config.attendance.day.sun' : 'hrm_config.attendance.day.sat').tr(), style: TextStyle(fontSize: 11, fontWeight: isSel ? FontWeight.bold : FontWeight.normal)),
                                   selected: isSel,
                                   selectedColor: const Color(0xFFEFF6FF),
                                   checkmarkColor: const Color(0xFF2563EB),
@@ -941,11 +942,11 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Icon(Icons.edit_note_outlined, size: 18, color: Color(0xFF475569)),
                                 SizedBox(width: 10),
-                                Text('Lý do thay đổi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                Text('hrm_config.attendance.modal.reason'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -954,7 +955,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                               maxLines: 2,
                               style: const TextStyle(fontSize: 12),
                               decoration: InputDecoration(
-                                hintText: 'Nhập lý do tạo phiên bản quy định mới này (nếu có)...',
+                                hintText: 'hrm_config.attendance.modal.reason_hint'.tr(),
                                 hintStyle: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                                 contentPadding: const EdgeInsets.all(10),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -992,7 +993,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                         side: const BorderSide(color: Color(0xFFCBD5E1)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       ),
-                      child: const Text('Hủy', style: TextStyle(fontSize: 12, color: Color(0xFF475569))),
+                      child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF475569))),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -1047,7 +1048,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('❌ Không thể tạo: ${result.message}'),
+                                    content: Text('hrm_config.attendance.create_failed'.tr(args: {'message': result.message})),
                                     backgroundColor: const Color(0xFFDC2626),
                                   ),
                                 );
@@ -1059,7 +1060,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF78350F)),
                             )
-                          : const Text('Tạo phiên bản', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          : Text('hrm_config.attendance.modal.create'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

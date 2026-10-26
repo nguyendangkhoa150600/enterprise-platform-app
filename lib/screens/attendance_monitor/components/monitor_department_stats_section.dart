@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class MonitorDepartmentStatsSection extends StatelessWidget {
   final List<Map<String, dynamic>> departmentStats;
@@ -25,27 +26,27 @@ class MonitorDepartmentStatsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Tình hình theo phòng ban',
+          Text(
+            'att_monitor.dept.title'.tr(),
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
           ),
           const SizedBox(height: 10),
 
           if (departmentStats.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Text(
-                'Chưa có dữ liệu phòng ban cho ngày này.',
+                'att_monitor.dept.empty'.tr(),
                 style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               ),
             )
           else ...[
             // Header
             Row(
-              children: const [
-                Expanded(flex: 5, child: Text('Phòng ban', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
-                Expanded(flex: 4, child: Text('Đã vào ca / Tổng', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
-                SizedBox(width: 40, child: Text('Tỷ lệ', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
+              children: [
+                Expanded(flex: 5, child: Text('att_monitor.dept.col_department'.tr(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
+                Expanded(flex: 4, child: Text('att_monitor.dept.col_checked_in_total'.tr(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
+                SizedBox(width: 40, child: Text('att_monitor.dept.col_rate'.tr(), textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
               ],
             ),
             const SizedBox(height: 8),
@@ -122,7 +123,7 @@ class MonitorDepartmentStatsSection extends StatelessWidget {
                 const Icon(Icons.access_time, size: 14, color: Color(0xFF94A3B8)),
                 const SizedBox(width: 6),
                 Text(
-                  'Số liệu cập nhật lúc $updatedTime',
+                  'att_monitor.dept.updated_at'.tr(args: {'time': updatedTime}),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                 ),
               ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../../models/hrm_models.dart';
 import 'decision_dialog_helpers.dart';
+import '../../../../../../core/i18n/app_i18n.dart';
 
 class DecisionPositionPicker extends StatefulWidget {
   final List<HrmPositionItem> positions;
@@ -93,7 +94,7 @@ class _DecisionPositionPickerState extends State<DecisionPositionPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildDecisionFieldLabel('Chức danh mới'),
+        buildDecisionFieldLabel('hrm_decisions.field_new_position'.tr()),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -141,8 +142,8 @@ class _DecisionPositionPickerState extends State<DecisionPositionPicker> {
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF0F172A),
                   ),
-                  decoration: const InputDecoration(
-                    hintText: 'Chọn chức danh',
+                  decoration: InputDecoration(
+                    hintText: 'hrm_decisions.position_hint'.tr(),
                     hintStyle: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.normal,
@@ -208,11 +209,11 @@ class _DecisionPositionPickerState extends State<DecisionPositionPicker> {
               ],
             ),
             child: _filteredPositions.isEmpty
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                     child: Center(
                       child: Text(
-                        'Không tìm thấy chức danh phù hợp',
+                        'hrm_decisions.position_not_found'.tr(),
                         style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ),
@@ -295,10 +296,10 @@ class _DecisionPositionPickerState extends State<DecisionPositionPicker> {
         ],
         if (widget.hasError) ...[
           const SizedBox(height: 4),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(left: 4),
             child: Text(
-              'Vui lòng chọn chức danh mới',
+              'hrm_decisions.position_required'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFFEF4444)),
             ),
           ),

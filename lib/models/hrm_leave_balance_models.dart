@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 // Models for HRM Leave Balances (Quỹ phép năm & Thâm niên - Web 1:1 Parity)
 
 class HrmLeaveBalanceItem {
@@ -76,7 +77,7 @@ class HrmLeaveBalanceItem {
       department: json['department']?.toString() ?? json['departmentName']?.toString(),
       leaveTypeId: json['leaveTypeId']?.toString() ?? json['leave_type_id']?.toString() ?? '',
       leaveTypeCode: json['leaveTypeCode']?.toString() ?? json['leave_type_code']?.toString() ?? 'ANNUAL',
-      leaveTypeName: json['leaveTypeName']?.toString() ?? json['leave_type_name']?.toString() ?? 'Nghỉ phép năm',
+      leaveTypeName: json['leaveTypeName']?.toString() ?? json['leave_type_name']?.toString() ?? 'models.leave.annual'.tr(),
       year: _toInt(json['year'], DateTime.now().year),
       hasBalance: json['hasBalance'] == true || json['has_balance'] == true,
       entitlement: _toDouble(json['entitlement'] ?? json['annualGranted']),
@@ -98,20 +99,20 @@ class HrmLeaveBalanceItem {
   }
 
   String get balanceState {
-    if (!hasBalance) return 'Chưa có quỹ';
-    if (signDate == null && eligibleFrom == null) return 'Chưa có HĐLĐ';
+    if (!hasBalance) return 'models.leave.no_balance'.tr();
+    if (signDate == null && eligibleFrom == null) return 'models.leave.no_contract'.tr();
     final nowIso = DateTime.now().toIso8601String().substring(0, 10);
     if (eligibleFrom != null && eligibleFrom!.compareTo(nowIso) > 0) {
-      return 'Chưa đến ngày hưởng';
+      return 'models.leave.not_yet_eligible'.tr();
     }
-    if (remaining < 0) return 'Vượt quỹ';
-    if (remaining == 0) return 'Đã hết phép';
+    if (remaining < 0) return 'models.leave.over_balance'.tr();
+    if (remaining == 0) return 'models.leave.exhausted'.tr();
     final accrued = entitledToDate ?? (entitlement + seniorityDays);
     final usedAndPending = used + pending;
     if (advanceAllowed && usedAndPending > accrued && remaining > 0) {
-      return 'Đang ứng phép';
+      return 'models.leave.advanced'.tr();
     }
-    return 'Còn phép';
+    return 'models.leave.available'.tr();
   }
 
   double get advanceLimit {
@@ -167,7 +168,7 @@ class HrmLeaveTransactionItem {
     this.actorLabel,
     this.actorEmail,
     this.isReversed = false,
-    this.employeeName = 'Nhân viên',
+    this.employeeName,
     this.employeeCode = '—',
     this.department,
     this.balanceYear,
@@ -180,7 +181,7 @@ class HrmLeaveTransactionItem {
   double get safeBalanceBefore => balanceBefore ?? 0.0;
   double get safeBalanceAfter => balanceAfter ?? 0.0;
   DateTime get safeCreatedAt => createdAt ?? DateTime.now();
-  String get safeEmployeeName => employeeName ?? 'Nhân viên';
+  String get safeEmployeeName => employeeName ?? 'models.common.employee'.tr();
   String get safeEmployeeCode => employeeCode ?? '—';
 
   factory HrmLeaveTransactionItem.fromJson(Map<String, dynamic> json) {
@@ -202,7 +203,7 @@ class HrmLeaveTransactionItem {
         json['employee_name']?.toString() ??
         empObj?['fullName']?.toString() ??
         empObj?['name']?.toString() ??
-        'Nhân viên';
+        'models.common.employee'.tr();
 
     final empCode = json['employeeCode']?.toString() ??
         json['employee_code']?.toString() ??
@@ -274,25 +275,25 @@ class HrmLeaveTransactionItem {
     final t = safeType.toUpperCase();
     switch (t) {
       case 'ACCRUAL':
-        return 'Cộng phép định kỳ';
+        return 'models.leave.tx_accrual'.tr();
       case 'SENIORITY_ACCRUAL':
-        return 'Cộng phép thâm niên';
+        return 'models.leave.tx_seniority'.tr();
       case 'USAGE':
-        return 'Nghỉ phép (đã duyệt)';
+        return 'models.leave.tx_leave_approved'.tr();
       case 'ADJUSTMENT':
-        return 'Điều chỉnh';
+        return 'models.leave.tx_adjustment'.tr();
       case 'CARRYOVER_IN':
-        return 'Chuyển từ năm trước';
+        return 'models.leave.tx_carry_over'.tr();
       case 'CARRYOVER_EXPIRE':
-        return 'Hết hạn phép năm cũ';
+        return 'models.leave.tx_expired'.tr();
       case 'REVERSAL':
-        return 'Đảo điều chỉnh';
+        return 'models.leave.tx_reversal'.tr();
       case 'RECOVERY':
-        return 'Thu hồi phép';
+        return 'models.leave.tx_clawback'.tr();
       case 'YEAR_END_RESET':
-        return 'Chốt sổ cuối năm';
+        return 'models.leave.tx_year_end'.tr();
       default:
-        return t.isNotEmpty ? t : 'Điều chỉnh';
+        return t.isNotEmpty ? t : 'models.leave.tx_adjustment'.tr();
     }
   }
 

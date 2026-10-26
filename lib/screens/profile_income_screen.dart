@@ -22,6 +22,7 @@ import 'profile_income/components/profile_personal_tab.dart';
 import 'profile_income/components/profile_work_history_tab.dart';
 import 'profile_income/components/profile_bank_tax_tab.dart';
 import 'profile_income/components/profile_payslips_tab.dart';
+import '../core/i18n/app_i18n.dart';
 
 class ProfileIncomeScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -252,7 +253,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'Đã lưu và đồng bộ thông tin liên hệ thành công!' : 'Đã lưu thông tin liên hệ vào hệ thống.'),
+          content: Text(success ? 'profile.screen.contact_saved_synced'.tr() : 'profile.screen.contact_saved_local'.tr()),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFF059669),
         ),
@@ -317,7 +318,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Đã tải lên và đồng bộ tệp $docLabel (${file.name}) thành công!'),
+              content: Text('profile.screen.upload_success'.tr(args: {'label': docLabel, 'name': file.name})),
               behavior: SnackBarBehavior.floating,
               backgroundColor: const Color(0xFF059669),
             ),
@@ -328,7 +329,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi chọn tệp: $e'),
+            content: Text('profile.screen.pick_file_error'.tr(args: {'error': e})),
             behavior: SnackBarBehavior.floating,
             backgroundColor: const Color(0xFFDC2626),
           ),
@@ -354,14 +355,14 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận xóa người thân'),
-        content: Text('Bạn có chắc chắn muốn xóa hồ sơ người thân "$name" khỏi danh sách?'),
+        title: Text('profile.screen.delete_dependent_title'.tr()),
+        content: Text('profile.screen.delete_dependent_message'.tr(args: {'name': name})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
-            child: const Text('Xóa', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('common.delete'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -375,7 +376,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã xóa người thân "$name" khỏi danh sách.'),
+            content: Text('profile.screen.delete_dependent_done'.tr(args: {'name': name})),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -409,19 +410,19 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
   Future<void> _deleteQualification(int index) async {
     if (index < 0 || index >= _qualifications.length) return;
     final item = _qualifications[index];
-    final name = item['name']?.toString() ?? 'Chứng chỉ';
+    final name = item['name']?.toString() ?? 'profile.screen.default_certificate_name'.tr();
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận xóa bằng cấp / chứng chỉ'),
-        content: Text('Bạn có chắc chắn muốn xóa "$name" khỏi hồ sơ?'),
+        title: Text('profile.screen.delete_qualification_title'.tr()),
+        content: Text('profile.screen.delete_qualification_message'.tr(args: {'name': name})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
-            child: const Text('Xóa', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('common.delete'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -454,7 +455,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã xóa "$name" khỏi danh sách.'),
+            content: Text('profile.screen.delete_qualification_done'.tr(args: {'name': name})),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -475,7 +476,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     final userFullName = _profile?['fullName']?.toString() ??
         _profile?['full_name']?.toString() ??
         auth.fullName ??
-        'Chưa cập nhật';
+        'profile.common.not_updated'.tr();
 
     final userEmail = _profile?['workEmail']?.toString() ??
         _profile?['email']?.toString() ??
@@ -488,16 +489,16 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
 
     final department = _profile?['department']?.toString() ??
         _profile?['departmentName']?.toString() ??
-        'Chưa phân bổ';
+        'profile.common.not_assigned'.tr();
 
     final position = _profile?['position']?.toString() ??
         _profile?['positionTitle']?.toString() ??
-        'Chưa có chức danh';
+        'profile.common.no_job_title'.tr();
 
     final employmentStatus = _profile?['employmentStatus']?.toString() ?? 'OFFICIAL';
     final statusLabel = employmentStatus == 'OFFICIAL'
-        ? 'CHÍNH THỨC (Official)'
-        : (employmentStatus == 'PROBATION' ? 'THỬ VIỆC (Probation)' : 'HOẠT ĐỘNG');
+        ? 'profile.screen.status_official'.tr()
+        : (employmentStatus == 'PROBATION' ? 'profile.screen.status_probation'.tr() : 'profile.screen.status_active'.tr());
 
     try {
       await PdfExportService.exportProfilePdf(
@@ -516,7 +517,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi xuất PDF: $e'),
+            content: Text('profile.screen.export_pdf_error'.tr(args: {'error': e})),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -558,7 +559,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     final userFullName = _profile?['fullName']?.toString() ??
         _profile?['full_name']?.toString() ??
         auth.fullName ??
-        'Chưa cập nhật';
+        'profile.common.not_updated'.tr();
 
     final userEmail = _profile?['workEmail']?.toString() ??
         _profile?['email']?.toString() ??
@@ -571,16 +572,16 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
 
     final department = _profile?['department']?.toString() ??
         _profile?['departmentName']?.toString() ??
-        'Chưa phân bổ';
+        'profile.common.not_assigned'.tr();
 
     final position = _profile?['position']?.toString() ??
         _profile?['positionTitle']?.toString() ??
-        'Chưa có chức danh';
+        'profile.common.no_job_title'.tr();
 
     final employmentStatus = _profile?['employmentStatus']?.toString() ?? 'OFFICIAL';
     final statusLabel = employmentStatus == 'OFFICIAL'
-        ? 'CHÍNH THỨC (Official)'
-        : (employmentStatus == 'PROBATION' ? 'THỬ VIỆC (Probation)' : 'HOẠT ĐỘNG');
+        ? 'profile.screen.status_official'.tr()
+        : (employmentStatus == 'PROBATION' ? 'profile.screen.status_probation'.tr() : 'profile.screen.status_active'.tr());
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -591,30 +592,30 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
         iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
-              'Hồ sơ & Thu nhập',
-              style: TextStyle(
+              'profile.screen.title'.tr(),
+              style: const TextStyle(
                 fontSize: 16.5,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF0F172A),
               ),
             ),
-            SizedBox(height: 1),
+            const SizedBox(height: 1),
             Text(
-              'Không gian tra cứu thông tin nhân sự & phiếu lương (Self-Service)',
-              style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+              'profile.screen.subtitle'.tr(),
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
             ),
           ],
         ),
         actions: [
           IconButton(
-            tooltip: 'Xuất hồ sơ PDF',
+            tooltip: 'profile.screen.export_pdf_tooltip'.tr(),
             icon: const Icon(Icons.picture_as_pdf_outlined, size: 20, color: Color(0xFF1E3A8A)),
             onPressed: _exportProfilePdf,
           ),
           IconButton(
-            tooltip: 'Tải lại dữ liệu từ Server',
+            tooltip: 'profile.screen.reload_tooltip'.tr(),
             icon: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF475569)),
             onPressed: _loadData,
           ),
@@ -634,14 +635,14 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
               indicatorWeight: 3,
               labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              tabs: const [
+              tabs: [
                 Tab(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.badge_outlined, size: 17),
-                      SizedBox(width: 8),
-                      Text('Hồ sơ của tôi'),
+                      const Icon(Icons.badge_outlined, size: 17),
+                      const SizedBox(width: 8),
+                      Text('profile.screen.tab_my_profile'.tr()),
                     ],
                   ),
                 ),
@@ -649,9 +650,9 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.receipt_long_rounded, size: 17),
-                      SizedBox(width: 8),
-                      Text('Phiếu lương'),
+                      const Icon(Icons.receipt_long_rounded, size: 17),
+                      const SizedBox(width: 8),
+                      Text('profile.screen.tab_payslips'.tr()),
                     ],
                   ),
                 ),
@@ -661,13 +662,13 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
         ),
       ),
       body: _isLoading
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4F46E5)),
-                  SizedBox(height: 14),
-                  Text('Đang đồng bộ hồ sơ nhân sự từ máy chủ...', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                  const CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4F46E5)),
+                  const SizedBox(height: 14),
+                  Text('profile.screen.syncing'.tr(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
                 ],
               ),
             )
@@ -799,7 +800,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                                     border: Border.all(color: const Color(0xFFE2E8F0)),
                                   ),
                                   child: Text(
-                                    'Mã: $employeeCode',
+                                    'profile.screen.code_prefix'.tr(args: {'code': employeeCode}),
                                     style: const TextStyle(color: Color(0xFF475569), fontSize: 9.5, fontWeight: FontWeight.bold),
                                   ),
                                 ),
@@ -842,10 +843,10 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                       ),
                       Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.admin_panel_settings_outlined, size: 13, color: Color(0xFF64748B)),
-                          SizedBox(width: 4),
-                          Text('Vai trò: Tenant Administrator', style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
+                        children: [
+                          const Icon(Icons.admin_panel_settings_outlined, size: 13, color: Color(0xFF64748B)),
+                          const SizedBox(width: 4),
+                          Text('profile.screen.role_tenant_admin'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
                         ],
                       ),
                     ],
@@ -868,7 +869,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                           _profile?['hireDate']?.toString() ??
                           _profile?['createdAt']?.toString();
 
-                      String tenureText = 'Chưa xác định';
+                      String tenureText = 'profile.screen.tenure_unknown'.tr();
                       if (startStr != null && startStr.isNotEmpty) {
                         final startDt = DateTime.tryParse(startStr);
                         if (startDt != null) {
@@ -885,13 +886,13 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                             months = 0;
                           }
                           if (years > 0 && months > 0) {
-                            tenureText = '$years năm $months tháng';
+                            tenureText = 'profile.screen.tenure_years_months'.tr(args: {'years': years, 'months': months});
                           } else if (years > 0) {
-                            tenureText = '$years năm';
+                            tenureText = 'profile.screen.tenure_years'.tr(args: {'years': years});
                           } else if (months > 0) {
-                            tenureText = '$months tháng';
+                            tenureText = 'profile.screen.tenure_months'.tr(args: {'months': months});
                           } else {
-                            tenureText = 'Dưới 1 tháng';
+                            tenureText = 'profile.screen.tenure_under_month'.tr();
                           }
                         }
                       }
@@ -907,9 +908,9 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Thâm niên công tác:',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                            Text(
+                              'profile.screen.tenure_label'.tr(),
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                             ),
                             Row(
                               children: [
@@ -926,7 +927,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                                     border: Border.all(color: projSeniority > 0 ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
                                   ),
                                   child: Text(
-                                    projSeniority > 0 ? '+$projSeniority ngày phép/năm' : 'Phép tiêu chuẩn ($standardLeave ngày)',
+                                    projSeniority > 0 ? 'profile.screen.leave_bonus'.tr(args: {'days': projSeniority}) : 'profile.screen.leave_standard'.tr(args: {'days': standardLeave}),
                                     style: TextStyle(
                                       fontSize: 9.5,
                                       fontWeight: FontWeight.bold,
@@ -954,21 +955,21 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                   _buildSubTabButton(
                     index: 0,
                     icon: Icons.person_outline_rounded,
-                    label: 'Thông tin cá nhân',
+                    label: 'profile.screen.subtab_personal'.tr(),
                     isSelected: _profileSubTab == 0,
                   ),
                   const SizedBox(width: 8),
                   _buildSubTabButton(
                     index: 1,
                     icon: Icons.history_edu_rounded,
-                    label: 'Quá trình công tác',
+                    label: 'profile.screen.subtab_work_history'.tr(),
                     isSelected: _profileSubTab == 1,
                   ),
                   const SizedBox(width: 8),
                   _buildSubTabButton(
                     index: 2,
                     icon: Icons.account_balance_outlined,
-                    label: 'Lương - Thuế - Ngân hàng',
+                    label: 'profile.screen.subtab_bank_tax'.tr(),
                     isSelected: _profileSubTab == 2,
                   ),
                 ],
@@ -1027,7 +1028,7 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
                   color: Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('Đang xem', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text('profile.screen.viewing'.tr(), style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ],

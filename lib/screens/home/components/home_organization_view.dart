@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 import '../../../services/platform_service.dart';
 import '../../../theme/colors.dart';
@@ -54,25 +55,25 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
       children: [
         // 1. Breadcrumbs
         Row(
-          children: const [
+          children: [
             Text('Tenant Portal', style: TextStyle(fontSize: 11.5, color: AppColors.slate500)),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 4),
               child: Icon(Icons.chevron_right, size: 14, color: AppColors.slate400),
             ),
-            Text('Quản trị', style: TextStyle(fontSize: 11.5, color: AppColors.slate500)),
+            Text('home.org.breadcrumb_admin'.tr(), style: TextStyle(fontSize: 11.5, color: AppColors.slate500)),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 4),
               child: Icon(Icons.chevron_right, size: 14, color: AppColors.slate400),
             ),
-            Text('Sơ đồ tổ chức', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.slate700)),
+            Text('home.org.org_chart'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.slate700)),
           ],
         ),
         const SizedBox(height: 8),
 
         // 2. Title & Subtitle
-        const Text(
-          'Sơ đồ tổ chức',
+        Text(
+          'home.org.org_chart'.tr(),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -81,8 +82,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Quản lý cấu trúc tổ chức trực tiếp trong dữ liệu lõi của tenant.',
+        Text(
+          'home.org.subtitle'.tr(),
           style: TextStyle(fontSize: 12.5, color: AppColors.slate500),
         ),
         const SizedBox(height: 16),
@@ -96,13 +97,13 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
             children: [
               _buildOrgSubTabButton(
                 index: 0,
-                title: 'Cây tổ chức',
+                title: 'home.org.tab_trees'.tr(),
                 icon: Icons.account_tree_outlined,
               ),
               const SizedBox(width: 8),
               _buildOrgSubTabButton(
                 index: 1,
-                title: 'Bổ nhiệm',
+                title: 'home.org.tab_assignments'.tr(),
                 icon: Icons.person_add_alt_1_outlined,
               ),
             ],
@@ -165,21 +166,21 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
     final orgTrees = [
       {
         'code': 'SAVINA-MAIN',
-        'name': 'Sơ đồ tổ chức SAVINA',
+        'name': 'home.org.savina_chart'.tr(),
         'isPrimary': true,
-        'description': 'Cây tổ chức chính, gồm SAVINA và các pháp nhân...',
-        'type': 'Sơ đồ chính',
+        'description': 'home.org.main_tree_desc'.tr(),
+        'type': 'home.org.type_main'.tr(),
         'nodeCount': '${snapshot.nodes.length}',
-        'status': 'Hoạt động',
+        'status': 'home.org.status_active'.tr(),
       },
       {
         'code': '123',
         'name': 'CBC_IT',
         'isPrimary': false,
         'description': 'TEST',
-        'type': 'Sơ đồ phụ',
+        'type': 'home.org.type_secondary'.tr(),
         'nodeCount': '0',
-        'status': 'Hoạt động',
+        'status': 'home.org.status_active'.tr(),
       },
     ];
 
@@ -226,8 +227,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                           controller: _orgSearchController,
                           onChanged: (val) => setState(() => _orgSearchQuery = val),
                           style: const TextStyle(fontSize: 12.5),
-                          decoration: const InputDecoration(
-                            hintText: 'Tìm kiếm sơ đồ theo tên, mã...',
+                          decoration: InputDecoration(
+                            hintText: 'home.org.search_tree_hint'.tr(),
                             hintStyle: TextStyle(fontSize: 12, color: AppColors.slate400),
                             prefixIcon: Icon(Icons.search, size: 18, color: AppColors.slate400),
                             border: InputBorder.none,
@@ -240,11 +241,11 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                     ElevatedButton.icon(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Chức năng thêm sơ đồ đang được hoàn thiện')),
+                          SnackBar(content: Text('home.org.add_tree_wip'.tr())),
                         );
                       },
                       icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Thêm sơ đồ mới', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      label: Text('home.org.add_tree'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
@@ -317,8 +318,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                                     borderRadius: BorderRadius.circular(4),
                                     border: Border.all(color: const Color(0xFF93C5FD)),
                                   ),
-                                  child: const Text(
-                                    'CHÍNH',
+                                  child: Text(
+                                    'home.org.badge_main'.tr(),
                                     style: TextStyle(
                                       fontSize: 9,
                                       fontWeight: FontWeight.bold,
@@ -428,7 +429,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                             );
                           },
                           icon: const Icon(Icons.remove_red_eye_outlined, size: 14),
-                          label: const Text('Xem chi tiết', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          label: Text('common.view_detail'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
@@ -441,14 +442,14 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                         IconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.slate500),
-                          tooltip: 'Chỉnh sửa',
+                          tooltip: 'common.edit'.tr(),
                           constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                           padding: EdgeInsets.zero,
                         ),
                         IconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
-                          tooltip: 'Xóa',
+                          tooltip: 'common.delete'.tr(),
                           constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                           padding: EdgeInsets.zero,
                         ),
@@ -468,11 +469,11 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Hiển thị ${filteredTrees.length} / ${orgTrees.length} sơ đồ',
+                  'home.org.showing_trees'.tr(args: {'shown': filteredTrees.length, 'total': orgTrees.length}),
                   style: const TextStyle(fontSize: 11, color: AppColors.slate500),
                 ),
-                const Text(
-                  'Nhấp "Xem chi tiết" để mở sơ đồ',
+                Text(
+                  'home.org.click_to_open'.tr(),
                   style: TextStyle(fontSize: 10.5, color: Color(0xFF2563EB), fontWeight: FontWeight.w500),
                 ),
               ],
@@ -491,7 +492,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
         (u) => u.id == a.userId,
         orElse: () => TenantUser(
           id: a.userId,
-          fullName: 'Nhân viên',
+          fullName: 'home.org.employee'.tr(),
           email: '',
           systemRole: 'tenant-user',
           status: 'active',
@@ -507,7 +508,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
           treeId: 't-1',
           nodeTypeId: 'nt-dept',
           code: 'NODE',
-          name: 'Đơn vị',
+          name: 'home.org.unit'.tr(),
           status: 'active',
         ),
       );
@@ -578,7 +579,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                           onChanged: (val) => setState(() => _assignmentSearchQuery = val),
                           style: const TextStyle(fontSize: 12.5),
                           decoration: InputDecoration(
-                            hintText: 'Tìm nhân sự, vị trí bổ nhiệm...',
+                            hintText: 'home.org.search_assign_hint'.tr(),
                             hintStyle: const TextStyle(fontSize: 12, color: AppColors.slate400),
                             prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.slate400),
                             suffixIcon: _assignmentSearchQuery.isNotEmpty
@@ -600,8 +601,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                     ElevatedButton.icon(
                       onPressed: () => _showCreateAppointmentDialog(snapshot),
                       icon: const Icon(Icons.add, size: 16),
-                      label: const Text(
-                        'Bổ nhiệm người dùng',
+                      label: Text(
+                        'home.org.assign_user'.tr(),
                         style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -624,19 +625,19 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                     children: [
                       // Role filter
                       _buildAssignmentFilterChip(
-                        label: 'Tất cả vai trò',
+                        label: 'home.org.all_roles'.tr(),
                         isSelected: _assignmentRoleFilter == 'ALL',
                         onTap: () => setState(() => _assignmentRoleFilter = 'ALL'),
                       ),
                       const SizedBox(width: 6),
                       _buildAssignmentFilterChip(
-                        label: 'Bổ nhiệm chính',
+                        label: 'home.org.primary_assignment'.tr(),
                         isSelected: _assignmentRoleFilter == 'primary',
                         onTap: () => setState(() => _assignmentRoleFilter = 'primary'),
                       ),
                       const SizedBox(width: 6),
                       _buildAssignmentFilterChip(
-                        label: 'Kiêm nhiệm',
+                        label: 'home.org.concurrent'.tr(),
                         isSelected: _assignmentRoleFilter == 'concurrent',
                         onTap: () => setState(() => _assignmentRoleFilter = 'concurrent'),
                       ),
@@ -646,25 +647,25 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
 
                       // Status filter matching Web: Tất cả, Hoạt động, Không hoạt động, Đã kết thúc
                       _buildAssignmentFilterChip(
-                        label: 'Tất cả trạng thái',
+                        label: 'home.org.all_status'.tr(),
                         isSelected: _assignmentStatusFilter == 'ALL',
                         onTap: () => setState(() => _assignmentStatusFilter = 'ALL'),
                       ),
                       const SizedBox(width: 6),
                       _buildAssignmentFilterChip(
-                        label: 'Hoạt động',
+                        label: 'home.org.status_active'.tr(),
                         isSelected: _assignmentStatusFilter == 'active',
                         onTap: () => setState(() => _assignmentStatusFilter = 'active'),
                       ),
                       const SizedBox(width: 6),
                       _buildAssignmentFilterChip(
-                        label: 'Không hoạt động',
+                        label: 'home.org.status_inactive'.tr(),
                         isSelected: _assignmentStatusFilter == 'inactive',
                         onTap: () => setState(() => _assignmentStatusFilter = 'inactive'),
                       ),
                       const SizedBox(width: 6),
                       _buildAssignmentFilterChip(
-                        label: 'Đã kết thúc',
+                        label: 'home.org.status_ended'.tr(),
                         isSelected: _assignmentStatusFilter == 'ended',
                         onTap: () => setState(() => _assignmentStatusFilter = 'ended'),
                       ),
@@ -680,13 +681,13 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
           if (filteredAssignments.isEmpty)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-              child: const Center(
+              child: Center(
                 child: Column(
                   children: [
                     Icon(Icons.person_search_outlined, size: 40, color: AppColors.slate300),
                     SizedBox(height: 8),
                     Text(
-                      'Không tìm thấy nhân sự bổ nhiệm phù hợp',
+                      'home.org.no_assignments'.tr(),
                       style: TextStyle(fontSize: 13, color: AppColors.slate500, fontWeight: FontWeight.w500),
                     ),
                   ],
@@ -705,7 +706,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                   (u) => u.id == assignment.userId,
                   orElse: () => TenantUser(
                     id: assignment.userId,
-                    fullName: 'Nhân viên',
+                    fullName: 'home.org.employee'.tr(),
                     email: '',
                     systemRole: 'tenant-user',
                     status: 'active',
@@ -721,7 +722,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                     treeId: 't-1',
                     nodeTypeId: 'nt-dept',
                     code: 'NODE',
-                    name: 'Đơn vị',
+                    name: 'home.org.unit'.tr(),
                     status: 'active',
                   ),
                 );
@@ -746,23 +747,23 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                   badgeBorder = const Color(0xFFA7F3D0);
                   badgeDot = const Color(0xFF059669);
                   badgeTextColor = const Color(0xFF059669);
-                  badgeLabel = 'Hoạt động';
+                  badgeLabel = 'home.org.status_active'.tr();
                 } else if (assignment.status == 'ended') {
                   badgeBg = const Color(0xFFF1F5F9);
                   badgeBorder = const Color(0xFFCBD5E1);
                   badgeDot = const Color(0xFF64748B);
                   badgeTextColor = const Color(0xFF64748B);
-                  badgeLabel = 'Đã kết thúc';
+                  badgeLabel = 'home.org.status_ended'.tr();
                 } else {
                   badgeBg = const Color(0xFFFEF2F2);
                   badgeBorder = const Color(0xFFFECACA);
                   badgeDot = const Color(0xFFDC2626);
                   badgeTextColor = const Color(0xFFDC2626);
-                  badgeLabel = 'Không hoạt động';
+                  badgeLabel = 'home.org.status_inactive'.tr();
                 }
 
                 // Date range duration
-                String durationText = 'Không thời hạn';
+                String durationText = 'home.org.no_expiry'.tr();
                 if (assignment.startDate != null || assignment.endDate != null) {
                   final startFormatted = assignment.startDate != null && assignment.startDate!.length >= 10
                       ? '${assignment.startDate!.substring(8, 10)}/${assignment.startDate!.substring(5, 7)}/${assignment.startDate!.substring(0, 4)}'
@@ -773,9 +774,9 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                   if (startFormatted.isNotEmpty && endFormatted.isNotEmpty) {
                     durationText = '$startFormatted - $endFormatted';
                   } else if (startFormatted.isNotEmpty) {
-                    durationText = 'Từ $startFormatted';
+                    durationText = 'home.org.from_date'.tr(args: {'date': startFormatted});
                   } else if (endFormatted.isNotEmpty) {
-                    durationText = 'Đến $endFormatted';
+                    durationText = 'home.org.to_date'.tr(args: {'date': endFormatted});
                   }
                 }
 
@@ -822,7 +823,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  user.email.isNotEmpty ? user.email : 'chưa có email',
+                                  user.email.isNotEmpty ? user.email : 'home.org.no_email'.tr(),
                                   style: const TextStyle(
                                     fontSize: 11.5,
                                     color: Color(0xFF64748B),
@@ -844,7 +845,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                               ),
                             ),
                             child: Text(
-                              isPrimary ? 'Bổ nhiệm chính' : 'Kiêm nhiệm',
+                              isPrimary ? 'home.org.primary_assignment'.tr() : 'home.org.concurrent'.tr(),
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.bold,
@@ -949,14 +950,14 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                           // Edit & Delete actions
                           IconButton(
                             icon: const Icon(Icons.edit_outlined, size: 17, color: Color(0xFF64748B)),
-                            tooltip: 'Chỉnh sửa bổ nhiệm',
+                            tooltip: 'home.org.edit_assignment'.tr(),
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                             padding: EdgeInsets.zero,
                             onPressed: () => _showCreateAppointmentDialog(snapshot, assignment),
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete_outline, size: 17, color: Color(0xFFEF4444)),
-                            tooltip: 'Xóa bổ nhiệm',
+                            tooltip: 'home.org.delete_assignment'.tr(),
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                             padding: EdgeInsets.zero,
                             onPressed: () => _confirmDeleteAssignment(assignment, user.fullName, node.name),
@@ -977,11 +978,11 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Hiển thị ${filteredAssignments.length} / ${snapshot.assignments.length} bổ nhiệm',
+                  'home.org.showing_assignments'.tr(args: {'shown': filteredAssignments.length, 'total': snapshot.assignments.length}),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  '$primaryCount chính · $concurrentCount kiêm nhiệm',
+                  'home.org.primary_concurrent_count'.tr(args: {'primary': primaryCount, 'concurrent': concurrentCount}),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A), fontWeight: FontWeight.bold),
                 ),
               ],
@@ -1083,7 +1084,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isEditing ? 'Chỉnh sửa bổ nhiệm nhân sự' : 'Tạo mới bổ nhiệm nhân sự',
+                              isEditing ? 'home.org.edit_assignment_title'.tr() : 'home.org.create_assignment_title'.tr(),
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
@@ -1091,8 +1092,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            const Text(
-                              'Lưu trực tiếp vào cơ sở dữ liệu của tenant.',
+                            Text(
+                              'home.org.saved_to_db'.tr(),
                               style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                             ),
                           ],
@@ -1107,8 +1108,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                   const SizedBox(height: 16),
 
                   // 1. Chức danh (Org Node / Position)
-                  const Text(
-                    'Chức danh',
+                  Text(
+                    'home.org.job_title'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                   ),
                   const SizedBox(height: 6),
@@ -1123,7 +1124,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                       child: DropdownButton<String>(
                         value: selectedNodeId.isNotEmpty ? selectedNodeId : null,
                         isExpanded: true,
-                        hint: const Text('Chọn chức danh', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                        hint: Text('home.org.select_job_title'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
                         items: snapshot.nodes.map((n) {
                           return DropdownMenuItem(
                             value: n.id,
@@ -1143,8 +1144,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                   const SizedBox(height: 14),
 
                   // 2. Người dùng
-                  const Text(
-                    'Người dùng',
+                  Text(
+                    'home.org.user'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                   ),
                   const SizedBox(height: 6),
@@ -1159,7 +1160,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                       child: DropdownButton<String>(
                         value: selectedUserId.isNotEmpty ? selectedUserId : null,
                         isExpanded: true,
-                        hint: const Text('Chọn người dùng', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                        hint: Text('home.org.select_user'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
                         items: snapshot.users.map((u) {
                           return DropdownMenuItem(
                             value: u.id,
@@ -1187,7 +1188,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Từ ngày', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                            Text('common.from_date'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                             const SizedBox(height: 6),
                             InkWell(
                               onTap: () async {
@@ -1235,7 +1236,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Đến ngày', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                            Text('common.to_date'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                             const SizedBox(height: 6),
                             InkWell(
                               onTap: () async {
@@ -1283,8 +1284,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                   const SizedBox(height: 14),
 
                   // 4. Ghi chú
-                  const Text(
-                    'Ghi chú',
+                  Text(
+                    'common.note'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                   ),
                   const SizedBox(height: 6),
@@ -1293,7 +1294,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                     maxLines: 3,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Nhập ghi chú...',
+                      hintText: 'home.org.note_hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: Colors.white,
@@ -1335,8 +1336,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'Vị trí chính',
+                          Text(
+                            'home.org.primary_position'.tr(),
                             style: TextStyle(fontSize: 13, color: Color(0xFF334155), fontWeight: FontWeight.w500),
                           ),
                         ],
@@ -1346,8 +1347,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                   const SizedBox(height: 14),
 
                   // 6. Trạng thái
-                  const Text(
-                    'Trạng thái',
+                  Text(
+                    'common.status'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                   ),
                   const SizedBox(height: 6),
@@ -1362,18 +1363,18 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                       child: DropdownButton<String>(
                         value: status,
                         isExpanded: true,
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'active',
-                            child: Text('Hoạt động', style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            child: Text('home.org.status_active'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
                           ),
                           DropdownMenuItem(
                             value: 'inactive',
-                            child: Text('Không hoạt động', style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            child: Text('home.org.status_inactive'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
                           ),
                           DropdownMenuItem(
                             value: 'ended',
-                            child: Text('Đã kết thúc', style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            child: Text('home.org.status_ended'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
                           ),
                         ],
                         onChanged: (val) {
@@ -1396,14 +1397,14 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                           side: const BorderSide(color: Color(0xFFCBD5E1)),
                           foregroundColor: const Color(0xFF334155),
                         ),
-                        child: const Text('Hủy', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        child: Text('common.cancel'.tr(), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       ),
                       const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: () async {
                           if (selectedUserId.isEmpty || selectedNodeId.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Vui lòng chọn người dùng và chức danh.')),
+                              SnackBar(content: Text('home.org.err_select_user_title'.tr())),
                             );
                             return;
                           }
@@ -1438,7 +1439,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                           if (success && mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(isEditing ? 'Đã cập nhật bổ nhiệm thành công!' : 'Đã tạo bổ nhiệm thành công!'),
+                                content: Text(isEditing ? 'home.org.updated'.tr() : 'home.org.created'.tr()),
                                 backgroundColor: const Color(0xFF059669),
                               ),
                             );
@@ -1452,8 +1453,8 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Lưu thay đổi',
+                        child: Text(
+                          'home.org.save_changes'.tr(),
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                       ),
@@ -1474,15 +1475,15 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hủy bổ nhiệm nhân sự', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text('home.org.revoke_title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         content: Text(
-          'Bạn có chắc chắn muốn hủy bổ nhiệm nhân sự "$userName" khỏi vị trí "$nodeName" không?',
+          'home.org.revoke_confirm'.tr(args: {'user': userName, 'node': nodeName}),
           style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1490,7 +1491,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
               final success = await widget.platformService.deleteAssignment(assignment.id);
               if (success && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã hủy bổ nhiệm thành công!'), backgroundColor: Color(0xFFEF4444)),
+                  SnackBar(content: Text('home.org.revoked'.tr()), backgroundColor: Color(0xFFEF4444)),
                 );
                 widget.onRefresh();
               }
@@ -1499,7 +1500,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
             ),
-            child: const Text('Xóa bổ nhiệm'),
+            child: Text('home.org.delete_assignment'.tr()),
           ),
         ],
       ),

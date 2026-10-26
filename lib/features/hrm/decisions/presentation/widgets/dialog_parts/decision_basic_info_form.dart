@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'decision_dialog_helpers.dart';
+import '../../../../../../core/i18n/app_i18n.dart';
 
 class DecisionBasicInfoForm extends StatelessWidget {
   final String decisionType;
@@ -40,7 +41,7 @@ class DecisionBasicInfoForm extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  buildDecisionFieldLabel('Loại quyết định'),
+                  buildDecisionFieldLabel('hrm_decisions.field_type'.tr()),
                   DropdownButtonFormField<String>(
                     initialValue: decisionType,
                     isExpanded: true,
@@ -82,7 +83,7 @@ class DecisionBasicInfoForm extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  buildDecisionFieldLabel('Ngày hiệu lực'),
+                  buildDecisionFieldLabel('hrm_decisions.field_effective_date'.tr()),
                   InkWell(
                     onTap: () async {
                       final picked = await showDatePicker(
@@ -120,7 +121,7 @@ class DecisionBasicInfoForm extends StatelessWidget {
 
         // Hình thức (Thay thế vs Kiêm nhiệm - 1:1 Web)
         if (isPositionChanging) ...[
-          buildDecisionFieldLabel('Hình thức'),
+          buildDecisionFieldLabel('hrm_decisions.field_mode'.tr()),
           Row(
             children: [
               Expanded(
@@ -138,7 +139,7 @@ class DecisionBasicInfoForm extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        'Thay thế',
+                        'hrm_decisions.mode_replace'.tr(),
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,
@@ -165,7 +166,7 @@ class DecisionBasicInfoForm extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        'Kiêm nhiệm',
+                        'hrm_decisions.type_concurrent'.tr(),
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,
@@ -182,12 +183,12 @@ class DecisionBasicInfoForm extends StatelessWidget {
         ],
 
         // Lý do / căn cứ
-        buildDecisionFieldLabel('Lý do / căn cứ'),
+        buildDecisionFieldLabel('hrm_decisions.field_reason'.tr()),
         TextFormField(
           controller: reasonCtrl,
           maxLines: 2,
           decoration: InputDecoration(
-            hintText: 'Nhập lý do hoặc căn cứ ban hành quyết định',
+            hintText: 'hrm_decisions.reason_hint'.tr(),
             hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
             contentPadding: const EdgeInsets.all(12),
             border: OutlineInputBorder(
@@ -199,7 +200,7 @@ class DecisionBasicInfoForm extends StatelessWidget {
               borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
             ),
           ),
-          validator: (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập lý do / căn cứ' : null,
+          validator: (v) => (v == null || v.trim().isEmpty) ? 'hrm_decisions.reason_required'.tr() : null,
         ),
         const SizedBox(height: 14),
 
@@ -211,14 +212,14 @@ class DecisionBasicInfoForm extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          child: const Row(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.info_outline, size: 16, color: Color(0xFF64748B)),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Quyết định chỉ được ghi vào lịch sử bổ nhiệm và công tác của nhân viên. Không thay đổi chức danh, đơn vị, quản lý trực tiếp hay lương hiện tại.',
+                  'hrm_decisions.info_banner'.tr(),
                   style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.35),
                 ),
               ),

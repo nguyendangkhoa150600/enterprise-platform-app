@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_fleet_models.dart';
 
 String getVietnameseWeekday(DateTime dt) {
   switch (dt.weekday) {
     case DateTime.monday:
-      return 'Thứ 2';
+      return 'fleet.weekday.mon'.tr();
     case DateTime.tuesday:
-      return 'Thứ 3';
+      return 'fleet.weekday.tue'.tr();
     case DateTime.wednesday:
-      return 'Thứ 4';
+      return 'fleet.weekday.wed'.tr();
     case DateTime.thursday:
-      return 'Thứ 5';
+      return 'fleet.weekday.thu'.tr();
     case DateTime.friday:
-      return 'Thứ 6';
+      return 'fleet.weekday.fri'.tr();
     case DateTime.saturday:
-      return 'Thứ 7';
+      return 'fleet.weekday.sat'.tr();
     case DateTime.sunday:
     default:
-      return 'CN';
+      return 'fleet.weekday.sun'.tr();
   }
 }
 
@@ -66,7 +67,7 @@ class FleetTimelineMatrix extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         alignment: Alignment.center,
-        child: const Text('Không tìm thấy xe phù hợp với bộ lọc.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        child: Text('fleet.schedule.no_match_filter'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
       );
     }
 
@@ -110,8 +111,8 @@ class FleetTimelineMatrix extends StatelessWidget {
                     width: vehicleColWidth,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                     alignment: Alignment.centerLeft,
-                    child: const Text(
-                      'Xe',
+                    child: Text(
+                      'fleet.timeline.vehicle_col'.tr(),
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                   ),
@@ -181,7 +182,7 @@ class FleetTimelineMatrix extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${v.plateNo} • ${v.seats} chỗ',
+                            'fleet.vehicle.plate_seats'.tr(args: {'plate': v.plateNo, 'seats': v.seats}),
                             style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -238,7 +239,7 @@ class FleetTimelineMatrix extends StatelessWidget {
                               child: Text(
                                 b.purpose?.trim().isNotEmpty == true
                                     ? b.purpose!
-                                    : (b.destination?.trim().isNotEmpty == true ? b.destination! : (isConfirmed ? 'Đã duyệt' : 'Giữ chỗ')),
+                                    : (b.destination?.trim().isNotEmpty == true ? b.destination! : (isConfirmed ? 'fleet.booking.approved'.tr() : 'fleet.booking.reserved'.tr())),
                                 style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.bold,
@@ -283,7 +284,7 @@ class FleetVehicleCard extends StatelessWidget {
     final isAvailable = vehicle.status == 'ACTIVE';
     final subtitleParts = <String>[
       vehicle.plateNo,
-      '${vehicle.seats} chỗ',
+      'fleet.vehicle.seats_count'.tr(args: {'seats': vehicle.seats}),
       if (vehicle.note != null && vehicle.note!.trim().isNotEmpty) vehicle.note!.trim(),
     ];
 
@@ -320,7 +321,7 @@ class FleetVehicleCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          isAvailable ? 'Đang sử dụng' : 'Ngừng sử dụng',
+                          isAvailable ? 'fleet.status.in_use'.tr() : 'fleet.status.out_of_use'.tr(),
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.bold,
@@ -345,7 +346,7 @@ class FleetVehicleCard extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF334155)),
-                  label: const Text('Sửa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  label: Text('fleet.action.edit'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -365,7 +366,7 @@ class FleetVehicleCard extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    isAvailable ? 'Ngừng sử dụng' : 'Sử dụng lại',
+                    isAvailable ? 'fleet.status.out_of_use'.tr() : 'fleet.action.reactivate'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -427,7 +428,7 @@ class FleetDriverCard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          driver.employeeName ?? 'Tài xế',
+                          driver.employeeName ?? 'fleet.driver.default_name'.tr(),
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -440,7 +441,7 @@ class FleetDriverCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          isAvailable ? 'Đang sử dụng' : 'Ngừng sử dụng',
+                          isAvailable ? 'fleet.status.in_use'.tr() : 'fleet.status.out_of_use'.tr(),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -455,7 +456,7 @@ class FleetDriverCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Mã NV: ${driver.employeeCode ?? "—"} · Giấy phép lái xe: ${driver.licenseNo ?? "—"}',
+              'fleet.driver.code_license'.tr(args: {'code': driver.employeeCode ?? "—", 'license': driver.licenseNo ?? "—"}),
               style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 12),
@@ -465,7 +466,7 @@ class FleetDriverCard extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF334155)),
-                  label: const Text('Sửa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  label: Text('fleet.action.edit'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -485,7 +486,7 @@ class FleetDriverCard extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    isAvailable ? 'Ngừng sử dụng' : 'Sử dụng lại',
+                    isAvailable ? 'fleet.status.out_of_use'.tr() : 'fleet.action.reactivate'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

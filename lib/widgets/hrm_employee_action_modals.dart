@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/hrm_models.dart';
 import '../services/hrm_service.dart';
 import 'hrm_profile_modals.dart';
+import '../core/i18n/app_i18n.dart';
 
 /// Reusable Modals for HRM Employee Actions, Decisions, Quick Sheets, and Requests
 class HrmEmployeeActionModals {
@@ -78,8 +79,8 @@ class HrmEmployeeActionModals {
             // Action 1: Xem hồ sơ nhân sự
             _buildActionItem(
               icon: Icons.badge_outlined,
-              title: 'Xem hồ sơ nhân sự chi tiết',
-              subtitle: 'Hồ sơ 8 mục, hợp đồng, giấy tờ, gia đình & xuất PDF',
+              title: 'hrm_modals.employee_action.xem_ho_so_nhan_su_chi'.tr(),
+              subtitle: 'hrm_modals.employee_action.ho_so_8_muc_hop_dong'.tr(),
               iconColor: const Color(0xFF2563EB),
               onTap: () {
                 Navigator.pop(ctx);
@@ -90,8 +91,8 @@ class HrmEmployeeActionModals {
             // Action 2: Tạo quyết định nhân sự
             _buildActionItem(
               icon: Icons.gavel_outlined,
-              title: 'Tạo Quyết định Nhân sự',
-              subtitle: 'Bổ nhiệm, điều chuyển, nâng lương, khen thưởng/kỷ luật',
+              title: 'hrm_modals.employee_action.tao_quyet_dinh_nhan_su'.tr(),
+              subtitle: 'hrm_modals.employee_action.bo_nhiem_dieu_chuyen_nang_luong'.tr(),
               iconColor: const Color(0xFFD97706),
               onTap: () {
                 Navigator.pop(ctx);
@@ -102,8 +103,8 @@ class HrmEmployeeActionModals {
             // Action 3: Sửa thông tin nhân viên
             _buildActionItem(
               icon: Icons.edit_outlined,
-              title: 'Chỉnh sửa thông tin cơ bản',
-              subtitle: 'Cập nhật email, số điện thoại, chức vụ, phòng ban',
+              title: 'hrm_modals.employee_action.chinh_sua_thong_tin_co_ban'.tr(),
+              subtitle: 'hrm_modals.employee_action.cap_nhat_email_so_dien_thoai'.tr(),
               iconColor: const Color(0xFF059669),
               onTap: () {
                 Navigator.pop(ctx);
@@ -114,8 +115,8 @@ class HrmEmployeeActionModals {
             // Action 4: Ngừng hoạt động
             _buildActionItem(
               icon: Icons.block_outlined,
-              title: 'Ngừng hoạt động / Tạm khóa tài khoản',
-              subtitle: 'Chuyển trạng thái nghỉ việc hoặc tạm đình chỉ',
+              title: 'hrm_modals.employee_action.ngung_hoat_dong_tam_khoa_tai'.tr(),
+              subtitle: 'hrm_modals.employee_action.chuyen_trang_thai_nghi_viec_hoac'.tr(),
               iconColor: const Color(0xFFDC2626),
               isDestructive: true,
               onTap: () {
@@ -157,47 +158,47 @@ class HrmEmployeeActionModals {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Tạo Quyết định Nhân sự', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    Text('hrm_modals.employee_action.tao_quyet_dinh_nhan_su'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                     IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
-                Text('Áp dụng cho: ${emp.fullName} (${emp.code})', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text('hrm_modals.employee_action.ap_dung_cho_full_name_code'.tr(args: {'full_name': emp.fullName, 'code': emp.code}), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                 const SizedBox(height: 14),
 
                 DropdownButtonFormField<String>(
                   value: selectedType,
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
-                  items: const [
-                    DropdownMenuItem(value: 'APPOINTMENT', child: Text('Bổ nhiệm chức danh')),
-                    DropdownMenuItem(value: 'TRANSFER', child: Text('Điều chuyển phòng ban / đơn vị')),
-                    DropdownMenuItem(value: 'SALARY_RAISE', child: Text('Nâng bậc / Điều chỉnh lương')),
-                    DropdownMenuItem(value: 'REWARD_DISCIPLINE', child: Text('Khen thưởng & Kỷ luật')),
-                    DropdownMenuItem(value: 'TERMINATION', child: Text('Thôi việc / Chấm dứt HĐLĐ')),
+                  items: [
+                    DropdownMenuItem(value: 'APPOINTMENT', child: Text('hrm_modals.employee_action.bo_nhiem_chuc_danh'.tr())),
+                    DropdownMenuItem(value: 'TRANSFER', child: Text('hrm_modals.employee_action.dieu_chuyen_phong_ban_don_vi'.tr())),
+                    DropdownMenuItem(value: 'SALARY_RAISE', child: Text('hrm_modals.employee_action.nang_bac_dieu_chinh_luong'.tr())),
+                    DropdownMenuItem(value: 'REWARD_DISCIPLINE', child: Text('hrm_modals.employee_action.khen_thuong_ky_luat'.tr())),
+                    DropdownMenuItem(value: 'TERMINATION', child: Text('hrm_modals.employee_action.thoi_viec_cham_dut_hdld'.tr())),
                   ],
                   onChanged: (val) {
                     if (val != null) setModalState(() => selectedType = val);
                   },
-                  decoration: const InputDecoration(labelText: 'Loại quyết định *', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'hrm_modals.employee_action.loai_quyet_dinh'.tr(), border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 10),
 
                 TextField(
                   controller: codeController,
-                  decoration: const InputDecoration(labelText: 'Số quyết định *', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'hrm_modals.employee_action.so_quyet_dinh'.tr(), border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 10),
 
                 TextField(
                   controller: effectiveDateController,
-                  decoration: const InputDecoration(labelText: 'Ngày có hiệu lực *', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'hrm_modals.employee_action.ngay_co_hieu_luc'.tr(), border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 10),
 
                 TextField(
                   controller: descController,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Trích yếu nội dung quyết định *', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'hrm_modals.employee_action.trich_yeu_noi_dung_quyet_dinh'.tr(), border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 16),
 
@@ -206,7 +207,7 @@ class HrmEmployeeActionModals {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Đã ban hành quyết định ${codeController.text} cho nhân sự ${emp.fullName}!'),
+                        content: Text('hrm_modals.employee_action.da_ban_hanh_quyet_dinh_text'.tr(args: {'code': codeController.text, 'full_name': emp.fullName})),
                         backgroundColor: const Color(0xFF059669),
                       ),
                     );
@@ -217,7 +218,7 @@ class HrmEmployeeActionModals {
                     minimumSize: const Size(double.infinity, 44),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text('BAN HÀNG QUYẾT ĐỊNH', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text('hrm_modals.employee_action.ban_hang_quyet_dinh'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -255,34 +256,34 @@ class HrmEmployeeActionModals {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Sửa Thông tin: ${emp.code}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('hrm_modals.employee_action.sua_thong_tin_code'.tr(args: {'code': emp.code}), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Họ và tên *', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'hrm_modals.employee_action.ho_va_ten'.tr(), border: OutlineInputBorder()),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: emailController,
-                decoration: const InputDecoration(labelText: 'Email công việc', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'hrm_modals.employee_action.email_cong_viec'.tr(), border: OutlineInputBorder()),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: phoneController,
-                decoration: const InputDecoration(labelText: 'Số điện thoại', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'hrm_modals.employee_action.so_dien_thoai'.tr(), border: OutlineInputBorder()),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: posController,
-                decoration: const InputDecoration(labelText: 'Chức danh / Vị trí *', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'hrm_modals.employee_action.chuc_danh_vi_tri'.tr(), border: OutlineInputBorder()),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: deptController,
-                decoration: const InputDecoration(labelText: 'Đơn vị / Phòng ban *', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'hrm_modals.employee_action.don_vi_phong_ban'.tr(), border: OutlineInputBorder()),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -290,7 +291,7 @@ class HrmEmployeeActionModals {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Đã cập nhật thông tin nhân sự ${nameController.text} thành công!'),
+                      content: Text('hrm_modals.employee_action.da_cap_nhat_thong_tin_nhan'.tr(args: {'name': nameController.text})),
                       backgroundColor: const Color(0xFF059669),
                     ),
                   );
@@ -301,7 +302,7 @@ class HrmEmployeeActionModals {
                   minimumSize: const Size(double.infinity, 44),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('LƯU THAY ĐỔI', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Text('hrm_modals.employee_action.luu_thay_doi'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -317,25 +318,25 @@ class HrmEmployeeActionModals {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
             SizedBox(width: 8),
-            Text('Ngừng hoạt động nhân sự', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('hrm_modals.employee_action.ngung_hoat_dong_nhan_su'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text('Bạn có chắc chắn muốn chuyển trạng thái ngừng hoạt động đối với nhân viên ${emp.fullName} (${emp.code})? Tài khoản sẽ bị tạm khóa truy cập vào hệ thống.'),
+        content: Text('hrm_modals.employee_action.ban_co_chac_chan_muon_chuyen'.tr(args: {'full_name': emp.fullName, 'code': emp.code})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
+            child: Text('common.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Đã chuyển nhân sự ${emp.fullName} sang trạng thái ngừng hoạt động!'),
+                  content: Text('hrm_modals.employee_action.da_chuyen_nhan_su_full_name'.tr(args: {'full_name': emp.fullName})),
                   backgroundColor: const Color(0xFFDC2626),
                 ),
               );
@@ -344,7 +345,7 @@ class HrmEmployeeActionModals {
               backgroundColor: const Color(0xFFDC2626),
               foregroundColor: Colors.white,
             ),
-            child: const Text('Xác nhận Ngừng'),
+            child: Text('hrm_modals.employee_action.xac_nhan_ngung'.tr()),
           ),
         ],
       ),
@@ -383,30 +384,30 @@ class HrmEmployeeActionModals {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Tạo Đơn từ / Yêu cầu mới', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                Text('hrm_modals.employee_action.tao_don_tu_yeu_cau_moi'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<HrmRequestType>(
                   value: selectedType,
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
-                  items: const [
-                    DropdownMenuItem(value: HrmRequestType.leave, child: Text('Đơn xin nghỉ phép')),
-                    DropdownMenuItem(value: HrmRequestType.overtime, child: Text('Đơn đăng ký làm thêm giờ (OT)')),
-                    DropdownMenuItem(value: HrmRequestType.advance, child: Text('Đơn đề nghị tạm ứng lương')),
-                    DropdownMenuItem(value: HrmRequestType.attendanceCorrection, child: Text('Đơn giải trình quẹt công')),
-                    DropdownMenuItem(value: HrmRequestType.shiftChange, child: Text('Đơn xin đổi ca làm việc')),
-                    DropdownMenuItem(value: HrmRequestType.businessTrip, child: Text('Đơn đề xuất công tác xa')),
+                  items: [
+                    DropdownMenuItem(value: HrmRequestType.leave, child: Text('hrm_modals.employee_action.don_xin_nghi_phep'.tr())),
+                    DropdownMenuItem(value: HrmRequestType.overtime, child: Text('hrm_modals.employee_action.don_dang_ky_lam_them_gio'.tr())),
+                    DropdownMenuItem(value: HrmRequestType.advance, child: Text('hrm_modals.employee_action.don_de_nghi_tam_ung_luong'.tr())),
+                    DropdownMenuItem(value: HrmRequestType.attendanceCorrection, child: Text('hrm_modals.employee_action.don_giai_trinh_quet_cong'.tr())),
+                    DropdownMenuItem(value: HrmRequestType.shiftChange, child: Text('hrm_modals.employee_action.don_xin_doi_ca_lam_viec'.tr())),
+                    DropdownMenuItem(value: HrmRequestType.businessTrip, child: Text('hrm_modals.employee_action.don_de_xuat_cong_tac_xa'.tr())),
                   ],
                   onChanged: (val) {
                     if (val != null) setModalState(() => selectedType = val);
                   },
-                  decoration: const InputDecoration(labelText: 'Loại đơn từ', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'hrm_modals.employee_action.loai_don_tu'.tr(), border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: reasonController,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Lý do chi tiết *', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: 'hrm_modals.employee_action.ly_do_chi_tiet'.tr(), border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
@@ -415,7 +416,7 @@ class HrmEmployeeActionModals {
                     Navigator.pop(ctx);
                     await _hrmService.createRequest(
                       type: selectedType,
-                      title: titleController.text.trim().isNotEmpty ? titleController.text.trim() : 'Đơn ${selectedType.name}',
+                      title: titleController.text.trim().isNotEmpty ? titleController.text.trim() : 'hrm_modals.employee_action.don_name'.tr(args: {'name': selectedType.name}),
                       reason: reasonController.text.trim(),
                       durationHours: double.tryParse(hoursController.text),
                       amount: double.tryParse(amountController.text),
@@ -427,7 +428,7 @@ class HrmEmployeeActionModals {
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 44),
                   ),
-                  child: const Text('GỬI ĐƠN PHÊ DUYỆT', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text('hrm_modals.employee_action.gui_don_phe_duyet'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),

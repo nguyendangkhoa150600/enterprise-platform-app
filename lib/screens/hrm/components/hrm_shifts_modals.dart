@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class HrmShiftsModals {
   static void showShiftsCatalogModal(BuildContext context) {
@@ -17,29 +18,29 @@ class HrmShiftsModals {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(Icons.format_list_bulleted_rounded, size: 20, color: Color(0xFF7C3AED)),
                     SizedBox(width: 8),
-                    Text('Danh mục Ca làm việc', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    Text('hrm_screens.shifts.catalog_title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   ],
                 ),
                 IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
-            const Text('Quy định khung giờ check-in/out, thời gian nghỉ và cách tính công theo ca', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+            Text('hrm_screens.shifts.catalog_subtitle'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
             const SizedBox(height: 14),
 
             Expanded(
               child: ListView(
                 children: [
-                  _buildShiftCard('Ca Hành chính (HC)', '08:00 — 17:30', 'Nghỉ trưa 90p (12:00 - 13:30)', '8.0 giờ', '1.0 công', const Color(0xFF2563EB)),
+                  _buildShiftCard('hrm_screens.shifts.hc'.tr(), '08:00 — 17:30', 'hrm_screens.shifts.hc_break'.tr(), 'hrm_screens.shifts.hours_8'.tr(), 'hrm_screens.shifts.credit_1'.tr(), const Color(0xFF2563EB)),
                   const SizedBox(height: 10),
-                  _buildShiftCard('Ca Sáng (CA1)', '06:00 — 14:00', 'Nghỉ giữa ca 30p (10:00 - 10:30)', '8.0 giờ', '1.0 công', const Color(0xFF059669)),
+                  _buildShiftCard('hrm_screens.shifts.ca1'.tr(), '06:00 — 14:00', 'hrm_screens.shifts.ca1_break'.tr(), 'hrm_screens.shifts.hours_8'.tr(), 'hrm_screens.shifts.credit_1'.tr(), const Color(0xFF059669)),
                   const SizedBox(height: 10),
-                  _buildShiftCard('Ca Chiều (CA2)', '14:00 — 22:00', 'Nghỉ giữa ca 30p (18:00 - 18:30)', '8.0 giờ', '1.0 công', const Color(0xFFD97706)),
+                  _buildShiftCard('hrm_screens.shifts.ca2'.tr(), '14:00 — 22:00', 'hrm_screens.shifts.ca2_break'.tr(), 'hrm_screens.shifts.hours_8'.tr(), 'hrm_screens.shifts.credit_1'.tr(), const Color(0xFFD97706)),
                   const SizedBox(height: 10),
-                  _buildShiftCard('Ca Đêm (CA3)', '22:00 — 06:00', 'Nghỉ giữa ca 30p (02:00 - 02:30)', '8.0 giờ', '1.0 công (+30% lương)', const Color(0xFF7C3AED)),
+                  _buildShiftCard('hrm_screens.shifts.ca3'.tr(), '22:00 — 06:00', 'hrm_screens.shifts.ca3_break'.tr(), 'hrm_screens.shifts.hours_8'.tr(), 'hrm_screens.shifts.credit_night'.tr(), const Color(0xFF7C3AED)),
                 ],
               ),
             ),
@@ -49,7 +50,7 @@ class HrmShiftsModals {
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Tạo ca làm việc mới', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                label: Text('hrm_screens.shifts.create_new'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7C3AED),
                   foregroundColor: Colors.white,
@@ -104,18 +105,18 @@ class HrmShiftsModals {
 
   static void showStandardWorkdaysModal(BuildContext context) {
     final standardMonths = [
-      {'month': 'Tháng 01/2026', 'workdays': '25 ngày', 'note': 'Trừ 4 Chủ nhật & 1 Tết DL'},
-      {'month': 'Tháng 02/2026', 'workdays': '20 ngày', 'note': 'Nghỉ Tết Bính Ngọ (5 ngày)'},
-      {'month': 'Tháng 03/2026', 'workdays': '26 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 04/2026', 'workdays': '25 ngày', 'note': 'Trừ Giỗ Tổ & 30/4'},
-      {'month': 'Tháng 05/2026', 'workdays': '25 ngày', 'note': 'Trừ 01/5'},
-      {'month': 'Tháng 06/2026', 'workdays': '26 ngày', 'note': 'Trừ 4 Chủ nhật'},
-      {'month': 'Tháng 07/2026', 'workdays': '26 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 08/2026', 'workdays': '26 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 09/2026', 'workdays': '25 ngày', 'note': 'Trừ 2 ngày Quốc khánh'},
-      {'month': 'Tháng 10/2026', 'workdays': '26 ngày', 'note': 'Tháng hiện tại (Đang áp dụng)'},
-      {'month': 'Tháng 11/2026', 'workdays': '25 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 12/2026', 'workdays': '26 ngày', 'note': 'Trừ 4 Chủ nhật'},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '01', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 25}), 'note': 'hrm_screens.shifts.note_sun4_tet'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '02', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 20}), 'note': 'hrm_screens.shifts.note_tet'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '03', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 26}), 'note': 'hrm_screens.shifts.note_sun5'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '04', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 25}), 'note': 'hrm_screens.shifts.note_hung'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '05', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 25}), 'note': 'hrm_screens.shifts.note_may1'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '06', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 26}), 'note': 'hrm_screens.shifts.note_sun4'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '07', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 26}), 'note': 'hrm_screens.shifts.note_sun5'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '08', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 26}), 'note': 'hrm_screens.shifts.note_sun5'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '09', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 25}), 'note': 'hrm_screens.shifts.note_natl'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '10', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 26}), 'note': 'hrm_screens.shifts.note_cur'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '11', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 25}), 'note': 'hrm_screens.shifts.note_sun5'.tr()},
+      {'month': 'hrm_screens.shifts.month_label'.tr(args: {'month': '12', 'year': '2026'}), 'workdays': 'hrm_screens.shifts.days_count'.tr(args: {'count': 26}), 'note': 'hrm_screens.shifts.note_sun4'.tr()},
     ];
 
     showModalBottomSheet(
@@ -133,17 +134,17 @@ class HrmShiftsModals {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(Icons.event_available_outlined, size: 20, color: Color(0xFF059669)),
                     SizedBox(width: 8),
-                    Text('Công chuẩn bảng công 2026', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    Text('hrm_screens.shifts.std_title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   ],
                 ),
                 IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
-            const Text('Số công chuẩn theo từng tháng; tính động theo lịch ca và lịch ngày làm trừ Chủ nhật & ngày Lễ', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+            Text('hrm_screens.shifts.std_subtitle'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
             const SizedBox(height: 14),
 
             Expanded(
@@ -200,7 +201,7 @@ class HrmShiftsModals {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Đóng'),
+                child: Text('common.close'.tr()),
               ),
             ),
           ],

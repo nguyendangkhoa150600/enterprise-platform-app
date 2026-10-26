@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/hrm_attendance_monitor_models.dart';
 import '../../hrm_hub_screen.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class MonitorMetricCard extends StatelessWidget {
   final String label;
@@ -169,11 +170,11 @@ void showMonitorDetailBottomSheet(
                     Row(
                       children: [
                         Expanded(
-                          child: MonitorMetricCard(label: 'Ca làm', value: row.shiftName ?? 'Ca Hành Chính'),
+                          child: MonitorMetricCard(label: 'att_monitor.detail.shift'.tr(), value: row.shiftName ?? 'att_monitor.detail.default_shift'.tr()),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: MonitorMetricCard(label: 'Giờ dự kiến', value: row.shiftTimeText),
+                          child: MonitorMetricCard(label: 'att_monitor.detail.expected_time'.tr(), value: row.shiftTimeText),
                         ),
                       ],
                     ),
@@ -181,11 +182,11 @@ void showMonitorDetailBottomSheet(
                     Row(
                       children: [
                         Expanded(
-                          child: MonitorMetricCard(label: 'Giờ vào', value: row.checkIn ?? 'Chưa chấm'),
+                          child: MonitorMetricCard(label: 'att_monitor.detail.check_in'.tr(), value: row.checkIn ?? 'att_monitor.detail.not_punched'.tr()),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: MonitorMetricCard(label: 'Giờ ra', value: row.checkOut ?? 'Chưa chấm'),
+                          child: MonitorMetricCard(label: 'att_monitor.detail.check_out'.tr(), value: row.checkOut ?? 'att_monitor.detail.not_punched'.tr()),
                         ),
                       ],
                     ),
@@ -193,26 +194,26 @@ void showMonitorDetailBottomSheet(
                     Row(
                       children: [
                         Expanded(
-                          child: MonitorMetricCard(label: 'Đi trễ', value: row.lateMinutes > 0 ? '${row.lateMinutes} phút' : 'Không'),
+                          child: MonitorMetricCard(label: 'att_monitor.detail.late'.tr(), value: row.lateMinutes > 0 ? 'att_monitor.detail.minutes'.tr(args: {'count': row.lateMinutes}) : 'att_monitor.detail.none'.tr()),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: MonitorMetricCard(label: 'Về sớm', value: row.earlyLeaveMinutes > 0 ? '${row.earlyLeaveMinutes} phút' : 'Không'),
+                          child: MonitorMetricCard(label: 'att_monitor.detail.early_leave'.tr(), value: row.earlyLeaveMinutes > 0 ? 'att_monitor.detail.minutes'.tr(args: {'count': row.earlyLeaveMinutes}) : 'att_monitor.detail.none'.tr()),
                         ),
                       ],
                     ),
                     if (row.leaveName != null || row.leaveDays > 0) ...[
                       const SizedBox(height: 10),
                       MonitorMetricCard(
-                        label: 'Nghỉ phép',
-                        value: [row.leaveName, row.leaveDays > 0 ? '${row.leaveDays} ngày' : null].where((e) => e != null).join(' · '),
+                        label: 'att_monitor.detail.leave'.tr(),
+                        value: [row.leaveName, row.leaveDays > 0 ? 'att_monitor.detail.days'.tr(args: {'count': row.leaveDays}) : null].where((e) => e != null).join(' · '),
                       ),
                     ],
                     const SizedBox(height: 22),
 
                     // Section: Đơn từ liên quan
                     Text(
-                      'Đơn từ liên quan (${row.requests.length})',
+                      'att_monitor.detail.related_requests'.tr(args: {'count': row.requests.length}),
                       style: const TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.bold,
@@ -221,8 +222,8 @@ void showMonitorDetailBottomSheet(
                     ),
                     const SizedBox(height: 8),
                     if (row.requests.isEmpty)
-                      const Text(
-                        'Không có đơn từ nào liên quan tới ngày này.',
+                      Text(
+                        'att_monitor.requests.empty'.tr(),
                         style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                       )
                     else
@@ -282,8 +283,8 @@ void showMonitorDetailBottomSheet(
                           ),
                         );
                       },
-                      child: const Text(
-                        'Xem bảng công của tháng',
+                      child: Text(
+                        'att_monitor.detail.view_timesheet'.tr(),
                         style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,

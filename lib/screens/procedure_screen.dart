@@ -6,6 +6,7 @@ import 'procedure/components/procedure_overview_widgets.dart';
 import 'procedure/components/procedure_flow_diagram_card.dart';
 import 'procedure/components/procedure_instances_view.dart';
 import 'procedure/components/procedure_modals.dart';
+import '../core/i18n/app_i18n.dart';
 
 class ProcedureScreen extends StatefulWidget {
   final int initialTab;
@@ -129,10 +130,10 @@ class _ProcedureScreenState extends State<ProcedureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _activeTab == 0 ? 'Quy trình · Tổng quan' : 'Quy trình · Hồ sơ xử lý';
+    final title = _activeTab == 0 ? 'procedure.screen.title_overview'.tr() : 'procedure.screen.title_instances'.tr();
     final subtitle = _activeTab == 0
-        ? 'Workspace điều hành quy trình, luồng duyệt & theo dõi SLA'
-        : 'Danh sách hồ sơ quy trình đang vận hành & chờ duyệt';
+        ? 'procedure.screen.subtitle_overview'.tr()
+        : 'procedure.screen.subtitle_instances'.tr();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -161,7 +162,7 @@ class _ProcedureScreenState extends State<ProcedureScreen> {
           if (_activeTab == 1)
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
-              tooltip: 'Mở hồ sơ mới',
+              tooltip: 'procedure.screen.open_new'.tr(),
               onPressed: () => showCreateProcedureInstanceDialog(
                 context: context,
                 definitions: _definitions,
@@ -171,7 +172,7 @@ class _ProcedureScreenState extends State<ProcedureScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadData,
           ),
         ],
@@ -264,7 +265,7 @@ class _ProcedureScreenState extends State<ProcedureScreen> {
                 const Icon(Icons.assignment_outlined, size: 18, color: Color(0xFF2563EB)),
                 const SizedBox(width: 8),
                 Text(
-                  'Xem toàn bộ ${_instances.length} hồ sơ đang xử lý',
+                  'procedure.screen.view_all_instances'.tr(args: {'count': _instances.length}),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,

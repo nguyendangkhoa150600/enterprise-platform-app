@@ -1,8 +1,38 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../models/hrm_attendance_models.dart';
 import '../../../services/hrm_attendance_service.dart';
 import '../../../utils/error_handler.dart';
+
+String _leaveTypeLabel(String t) {
+  switch (t) {
+    case 'Phép năm (Hưởng nguyên lương)':
+      return 'requests.form.type_annual'.tr();
+    case 'Nghỉ phép':
+      return 'requests.form.type_leave'.tr();
+    case 'Đi công tác':
+      return 'requests.form.type_trip'.tr();
+    case 'Làm thêm giờ (Overtime)':
+      return 'requests.form.type_ot'.tr();
+    case 'Đơn đổi ca làm việc':
+      return 'requests.form.type_shift_change'.tr();
+    case 'Đơn giải trình / Bổ sung công':
+      return 'requests.form.type_explanation'.tr();
+    case 'Đơn xin tạm ứng lương':
+      return 'requests.form.type_advance'.tr();
+    case 'Đơn điều chỉnh thông tin nhân sự':
+      return 'requests.form.type_info'.tr();
+    case 'Nghỉ ốm (Hưởng BHXH)':
+      return 'requests.form.type_sick'.tr();
+    case 'Nghỉ việc riêng (Có lương)':
+      return 'requests.form.type_personal'.tr();
+    case 'Nghỉ không hưởng lương':
+      return 'requests.form.type_unpaid'.tr();
+    default:
+      return t;
+  }
+}
 
 Widget _buildQuickPill(String label, double value, bool isSelected, VoidCallback onTap) {
   return Expanded(
@@ -150,12 +180,12 @@ void showCorrectionFormDialog({
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            draftItem != null ? 'Chỉnh sửa bản nháp' : 'Tạo đơn mới',
+                            draftItem != null ? 'requests.form.edit_draft'.tr() : 'requests.form.create_new'.tr(),
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           ),
-                          const Text(
-                            'Gửi đề nghị trực tiếp tới cấp quản lý phê duyệt',
-                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          Text(
+                            'requests.form.subtitle'.tr(),
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                           ),
                         ],
                       ),
@@ -197,7 +227,7 @@ void showCorrectionFormDialog({
                         ],
 
                         // 1. Loại đơn
-                        const Text('Loại đơn đề nghị *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                        Text('requests.form.type_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -212,7 +242,7 @@ void showCorrectionFormDialog({
                               menuMaxHeight: 280,
                               borderRadius: BorderRadius.circular(12),
                               value: selectedLeaveType,
-                              items: leaveTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
+                              items: leaveTypes.map((t) => DropdownMenuItem(value: t, child: Text(_leaveTypeLabel(t), style: const TextStyle(fontSize: 13)))).toList(),
                               onChanged: (val) {
                                 if (val != null) setModalState(() => selectedLeaveType = val);
                               },
@@ -228,7 +258,7 @@ void showCorrectionFormDialog({
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Từ ngày *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                                  Text('requests.form.from_date'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                                   const SizedBox(height: 6),
                                   InkWell(
                                     onTap: () async {
@@ -270,7 +300,7 @@ void showCorrectionFormDialog({
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Đến ngày *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                                  Text('requests.form.to_date'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                                   const SizedBox(height: 6),
                                   InkWell(
                                     onTap: () async {
@@ -313,15 +343,15 @@ void showCorrectionFormDialog({
                         // 3. Quick Pills for Duration
                         Row(
                           children: [
-                            _buildQuickPill('Nửa ngày (0.5)', 0.5, durationDays == 0.5, () {
+                            _buildQuickPill('requests.form.half_day'.tr(), 0.5, durationDays == 0.5, () {
                               setModalState(() => durationDays = 0.5);
                             }),
                             const SizedBox(width: 8),
-                            _buildQuickPill('1 ngày', 1.0, durationDays == 1.0, () {
+                            _buildQuickPill('requests.form.one_day'.tr(), 1.0, durationDays == 1.0, () {
                               setModalState(() => durationDays = 1.0);
                             }),
                             const SizedBox(width: 8),
-                            _buildQuickPill('2 ngày', 2.0, durationDays == 2.0, () {
+                            _buildQuickPill('requests.form.two_days'.tr(), 2.0, durationDays == 2.0, () {
                               setModalState(() => durationDays = 2.0);
                             }),
                           ],
@@ -329,14 +359,14 @@ void showCorrectionFormDialog({
                         const SizedBox(height: 14),
 
                         // 4. Reason TextField
-                        const Text('Lý do đề nghị *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                        Text('requests.form.reason_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                         const SizedBox(height: 6),
                         TextField(
                           controller: reasonController,
                           maxLines: 3,
                           style: const TextStyle(fontSize: 13),
                           decoration: InputDecoration(
-                            hintText: 'Nhập chi tiết lý do gửi đơn để quản lý phê duyệt nhanh chóng...',
+                            hintText: 'requests.form.reason_hint'.tr(),
                             hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                             filled: true,
                             fillColor: const Color(0xFFF8FAFC),
@@ -347,7 +377,7 @@ void showCorrectionFormDialog({
                         const SizedBox(height: 14),
 
                         // 5. File Attachment Picker
-                        const Text('Đính kèm tài liệu / Ảnh minh chứng', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                        Text('requests.form.attachment_label'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                         const SizedBox(height: 6),
                         InkWell(
                           onTap: () async {
@@ -374,7 +404,7 @@ void showCorrectionFormDialog({
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    selectedFileName != null ? '$selectedFileName (${((selectedFileSize ?? 0) / 1024).toStringAsFixed(1)} KB)' : 'Nhấn để chọn tệp (PDF, ảnh, giấy xác nhận...)',
+                                    selectedFileName != null ? '$selectedFileName (${((selectedFileSize ?? 0) / 1024).toStringAsFixed(1)} KB)' : 'requests.form.pick_file'.tr(),
                                     style: TextStyle(fontSize: 12, color: selectedFileName != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8), fontWeight: selectedFileName != null ? FontWeight.w600 : FontWeight.normal),
                                   ),
                                 ),
@@ -396,11 +426,11 @@ void showCorrectionFormDialog({
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFBFDBFE))),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 18),
-                                SizedBox(width: 8),
-                                Expanded(child: Text('Quỹ phép năm hiện có: 12.0 ngày. Đơn này sẽ tự động trừ quỹ sau khi được duyệt.', style: TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF)))),
+                                const Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text('requests.form.leave_balance_info'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF)))),
                               ],
                             ),
                           ),
@@ -411,11 +441,11 @@ void showCorrectionFormDialog({
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(color: const Color(0xFFFAF5FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE9D5FF))),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.payments_outlined, color: Color(0xFF7C3AED), size: 18),
-                                SizedBox(width: 8),
-                                Expanded(child: Text('Hạn mức tạm ứng tối đa: 50% lương cơ bản theo quy định công ty.', style: TextStyle(fontSize: 11.5, color: Color(0xFF6B21A8)))),
+                                const Icon(Icons.payments_outlined, color: Color(0xFF7C3AED), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text('requests.form.advance_limit_info'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF6B21A8)))),
                               ],
                             ),
                           ),
@@ -461,7 +491,7 @@ void showCorrectionFormDialog({
                                   }
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Đã lưu vào danh sách Bản nháp.'), behavior: SnackBarBehavior.floating),
+                                      SnackBar(content: Text('requests.form.draft_saved'.tr()), behavior: SnackBarBehavior.floating),
                                     );
                                   }
                                 },
@@ -472,7 +502,7 @@ void showCorrectionFormDialog({
                           ),
                           child: isSavingDraft
                               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Text('Lưu nháp', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                              : Text('requests.form.save_draft'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -485,7 +515,7 @@ void showCorrectionFormDialog({
                               ? null
                               : () async {
                                   if (reasonController.text.trim().isEmpty) {
-                                    setModalState(() => modalErrorMessage = 'Vui lòng nhập lý do đề nghị.');
+                                    setModalState(() => modalErrorMessage = 'requests.form.reason_required'.tr());
                                     return;
                                   }
 
@@ -543,7 +573,7 @@ void showCorrectionFormDialog({
                                             children: [
                                               const Icon(Icons.check_circle, color: Colors.white, size: 20),
                                               const SizedBox(width: 8),
-                                              Text('Đã nộp "$selectedLeaveType" thành công.'),
+                                              Text('requests.form.submitted_ok'.tr(args: {'type': _leaveTypeLabel(selectedLeaveType)})),
                                             ],
                                           ),
                                           backgroundColor: const Color(0xFF059669),
@@ -555,7 +585,7 @@ void showCorrectionFormDialog({
                                     final rawMsg = e.toString().replaceFirst('Exception: ', '').trim();
                                     final parsedMsg = rawMsg.isNotEmpty
                                         ? rawMsg
-                                        : ApiErrorHandler.parse(e, defaultMessage: 'Không thể nộp đơn. Vui lòng kiểm tra lại.');
+                                        : ApiErrorHandler.parse(e, defaultMessage: 'requests.form.submit_failed'.tr());
                                     setModalState(() {
                                       isSubmitting = false;
                                       modalErrorMessage = parsedMsg;
@@ -571,7 +601,7 @@ void showCorrectionFormDialog({
                           ),
                           child: isSubmitting
                               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text('Gửi phê duyệt', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                              : Text('requests.form.submit_approval'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],

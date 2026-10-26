@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'dart:convert';
+import '../core/i18n/app_i18n.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -183,15 +184,15 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         backgroundColor: const Color(0xFF0F172A), // Slate 900
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Đơn Từ Của Tôi',
+              'my_requests.app_title'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Khởi tạo và theo dõi tiến độ đơn từ nhân viên (ESS)',
+              'my_requests.app_subtitle'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
@@ -199,7 +200,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Làm mới dữ liệu',
+            tooltip: 'my_requests.refresh_tooltip'.tr(),
             onPressed: _loadAllRequestsData,
           ),
         ],
@@ -236,8 +237,8 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        const Text(
-                          'Đơn từ & Yêu cầu',
+                        Text(
+                          'my_requests.header_title'.tr(),
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         Container(
@@ -247,13 +248,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFC7D2FE)),
                           ),
-                          child: const Text('ESS / 7 loại đơn', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                          child: Text('my_requests.ess_badge'.tr(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
-                    const Text(
-                      'Trung tâm khởi tạo và giám sát tiến độ giao dịch nhân viên.',
+                    Text(
+                      'my_requests.header_subtitle'.tr(),
                       style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
                     ),
                   ],
@@ -265,12 +266,12 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.file_download_outlined, size: 20, color: Color(0xFF475569)),
-                    tooltip: 'Xuất lịch sử đơn',
+                    tooltip: 'my_requests.export_tooltip'.tr(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đang xuất tệp lịch sử đơn từ (Excel)...'), behavior: SnackBarBehavior.floating),
+                        SnackBar(content: Text('my_requests.exporting'.tr()), behavior: SnackBarBehavior.floating),
                       );
                     },
                   ),
@@ -278,7 +279,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                   ElevatedButton.icon(
                     onPressed: () => _openCorrectionFormDialog(),
                     icon: const Icon(Icons.add, size: 14),
-                    label: const Text('Tạo đơn mới', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    label: Text('requests.form.create_new'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
                       foregroundColor: Colors.white,
@@ -303,7 +304,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                   ? auth.fullName!
                   : ((_context != null && _context!.fullName.isNotEmpty)
                       ? _context!.fullName
-                      : (auth.email?.split('@').first ?? 'Nhân viên'));
+                      : (auth.email?.split('@').first ?? 'my_requests.employee_default'.tr()));
               final employeeCode = (_context != null && _context!.employeeCode.isNotEmpty)
                   ? _context!.employeeCode
                   : '--';
@@ -381,8 +382,8 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                                         color: const Color(0xFFECFDF5),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: const Text(
-                                        'CHÍNH THỨC (Official)',
+                                      child: Text(
+                                        'my_requests.official_badge'.tr(),
                                         style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                                       ),
                                     ),
@@ -391,7 +392,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'Mã: $employeeCode',
+                                'my_requests.employee_code'.tr(args: {'code': employeeCode}),
                                 style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                               ),
                             ],
@@ -423,7 +424,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                                         ? 'Tenant Administrator'
                                         : (auth.isPlatformAdmin
                                             ? 'Platform Administrator'
-                                            : (auth.roles.isNotEmpty ? auth.roles.first : 'Tài khoản nhân viên')),
+                                            : (auth.roles.isNotEmpty ? auth.roles.first : 'my_requests.employee_account'.tr())),
                                     style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                                   ),
                                 ],
@@ -464,25 +465,25 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               children: [
                 _buildRequestSubTabButton(
                   index: 0,
-                  label: 'Bản nháp',
+                  label: 'my_requests.tab_drafts'.tr(),
                   count: _drafts.isNotEmpty ? _drafts.length : null,
                 ),
                 const SizedBox(width: 6),
                 _buildRequestSubTabButton(
                   index: 1,
-                  label: 'Tạo đơn mới (Request Catalog)',
-                  badge: '7 loại đơn',
+                  label: 'my_requests.tab_catalog'.tr(),
+                  badge: 'my_requests.tab_catalog_badge'.tr(),
                 ),
                 const SizedBox(width: 6),
                 _buildRequestSubTabButton(
                   index: 2,
-                  label: 'Đơn đang chờ duyệt (Pending)',
+                  label: 'my_requests.tab_pending'.tr(),
                   count: pendingCount,
                 ),
                 const SizedBox(width: 6),
                 _buildRequestSubTabButton(
                   index: 3,
-                  label: 'Lịch sử đơn từ (History)',
+                  label: 'my_requests.tab_history'.tr(),
                   count: historyCount,
                 ),
               ],
@@ -499,13 +500,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               icon: Icons.description_outlined,
               iconBgColor: const Color(0xFFEFF6FF),
               iconColor: const Color(0xFF2563EB),
-              badgeText: 'Tự động trừ quỹ phép',
+              badgeText: 'my_requests.leave_badge'.tr(),
               badgeBgColor: const Color(0xFFECFDF5),
               badgeTextColor: const Color(0xFF059669),
-              title: 'Đơn xin nghỉ phép',
-              description: 'Nghỉ phép năm, nghỉ ốm BHXH, việc riêng có hưởng lương, nghỉ không lương theo quy chế.',
-              infoBoxText: 'Quỹ phép khả dụng: 12.0 ngày',
-              buttonText: '+ Khởi tạo đơn này',
+              title: 'requests.type.leave'.tr(),
+              description: 'my_requests.leave_desc'.tr(),
+              infoBoxText: 'my_requests.leave_info'.tr(),
+              buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Phép năm (Hưởng nguyên lương)'),
             ),
             const SizedBox(height: 12),
@@ -514,13 +515,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               icon: Icons.access_time_filled_rounded,
               iconBgColor: const Color(0xFFFEF3C7),
               iconColor: const Color(0xFFD97706),
-              badgeText: 'Cần duyệt trước ca làm',
+              badgeText: 'my_requests.ot_badge'.tr(),
               badgeBgColor: const Color(0xFFFEF3C7),
               badgeTextColor: const Color(0xFFD97706),
-              title: 'Đơn làm thêm giờ (OT)',
-              description: 'Đăng ký làm thêm ngày thường (1.5x), làm đêm (2.0x), cuối tuần (2.0x) hoặc Lễ Tết (3.0x).',
-              infoBoxText: 'Hệ số tính: 1.5x ~ 3.0x lương',
-              buttonText: '+ Khởi tạo đơn này',
+              title: 'requests.type.ot'.tr(),
+              description: 'my_requests.ot_desc'.tr(),
+              infoBoxText: 'my_requests.ot_info'.tr(),
+              buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Làm thêm giờ (Overtime)'),
             ),
             const SizedBox(height: 12),
@@ -529,13 +530,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               icon: Icons.flight_takeoff_rounded,
               iconBgColor: const Color(0xFFEFF6FF),
               iconColor: const Color(0xFF2563EB),
-              badgeText: 'Nội địa / Quốc tế',
+              badgeText: 'my_requests.trip_badge'.tr(),
               badgeBgColor: const Color(0xFFEFF6FF),
               badgeTextColor: const Color(0xFF2563EB),
-              title: 'Đơn đi công tác',
-              description: 'Công tác thực địa, hỗ trợ dự án tỉnh xa, hội thảo chuyên môn; kèm chế độ phụ cấp công tác.',
-              infoBoxText: 'Chế độ: Phụ cấp + Lưu trú',
-              buttonText: '+ Khởi tạo đơn này',
+              title: 'requests.type.trip'.tr(),
+              description: 'my_requests.trip_desc'.tr(),
+              infoBoxText: 'my_requests.trip_info'.tr(),
+              buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đi công tác / Giải trình công'),
             ),
             const SizedBox(height: 12),
@@ -544,13 +545,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               icon: Icons.swap_horiz_rounded,
               iconBgColor: const Color(0xFFECFDF5),
               iconColor: const Color(0xFF059669),
-              badgeText: 'Cần xác nhận chéo',
+              badgeText: 'my_requests.shift_badge'.tr(),
               badgeBgColor: const Color(0xFFECFDF5),
               badgeTextColor: const Color(0xFF059669),
-              title: 'Đơn đổi ca làm việc',
-              description: 'Đổi ca tạm thời/vĩnh viễn; hoán đổi ca trực tương đương với đồng nghiệp cùng bộ phận.',
-              infoBoxText: 'Hình thức: Đổi ca / Hoán đổi',
-              buttonText: '+ Khởi tạo đơn này',
+              title: 'requests.type.shift_change'.tr(),
+              description: 'my_requests.shift_desc'.tr(),
+              infoBoxText: 'my_requests.shift_info'.tr(),
+              buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đơn đổi ca làm việc'),
             ),
             const SizedBox(height: 12),
@@ -559,13 +560,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               icon: Icons.edit_calendar_rounded,
               iconBgColor: const Color(0xFFFFE4E6),
               iconColor: const Color(0xFFE11D48),
-              badgeText: 'Bù công / Giải trình',
+              badgeText: 'my_requests.explain_badge'.tr(),
               badgeBgColor: const Color(0xFFFFE4E6),
               badgeTextColor: const Color(0xFFE11D48),
-              title: 'Đơn giải trình / Bổ sung công',
-              description: 'Giải trình quên quẹt thẻ, sự cố thiết bị nhận diện, bổ sung mốc giờ vào/ra thực tế theo phê duyệt.',
-              infoBoxText: 'So sánh: Giờ hiện tại vs Đề xuất',
-              buttonText: '+ Khởi tạo đơn này',
+              title: 'my_requests.explain_title'.tr(),
+              description: 'my_requests.explain_desc'.tr(),
+              infoBoxText: 'my_requests.explain_info'.tr(),
+              buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đi công tác / Giải trình công'),
             ),
             const SizedBox(height: 12),
@@ -574,13 +575,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               icon: Icons.payments_outlined,
               iconBgColor: const Color(0xFFF3E8FF),
               iconColor: const Color(0xFF7C3AED),
-              badgeText: 'Khấu trừ bảng lương',
+              badgeText: 'my_requests.advance_badge'.tr(),
               badgeBgColor: const Color(0xFFF3E8FF),
               badgeTextColor: const Color(0xFF7C3AED),
-              title: 'Đơn xin tạm ứng lương',
-              description: 'Đề nghị tạm ứng lương theo quy định công ty, phân bổ khấu trừ vào các kỳ bảng lương.',
-              infoBoxText: 'Hạn mức: Tối đa 50% lương cơ bản',
-              buttonText: '+ Khởi tạo đơn này',
+              title: 'my_requests.advance_title'.tr(),
+              description: 'my_requests.advance_desc'.tr(),
+              infoBoxText: 'my_requests.advance_info'.tr(),
+              buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đơn xin tạm ứng lương'),
             ),
             const SizedBox(height: 12),
@@ -589,13 +590,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               icon: Icons.badge_outlined,
               iconBgColor: const Color(0xFFEEF2FF),
               iconColor: const Color(0xFF4F46E5),
-              badgeText: 'Phê duyệt HR & Pháp lý',
+              badgeText: 'my_requests.info_badge'.tr(),
               badgeBgColor: const Color(0xFFEEF2FF),
               badgeTextColor: const Color(0xFF4F46E5),
-              title: 'Đơn điều chỉnh thông tin nhân sự',
-              description: 'Đề nghị đính chính thông tin định danh: số CCCD, ngày cấp, nơi cấp, ngày sinh hoặc họ tên pháp lý.',
-              infoBoxText: 'Kèm minh chứng: Ảnh CCCD / Giấy tờ',
-              buttonText: '+ Khởi tạo đơn này',
+              title: 'my_requests.info_title'.tr(),
+              description: 'my_requests.info_desc'.tr(),
+              infoBoxText: 'my_requests.info_info'.tr(),
+              buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đơn điều chỉnh thông tin nhân sự'),
             ),
           ] else if (_requestsSubTab == 2) ...[
@@ -632,13 +633,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                             child: const Icon(Icons.inbox_outlined, size: 36, color: Color(0xFF94A3B8)),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Không có đơn nào đang chờ duyệt',
+                          Text(
+                            'my_requests.pending_empty_title'.tr(),
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            'Tất cả các đề nghị của bạn đã được quản lý tiếp nhận và xử lý.',
+                          Text(
+                            'my_requests.pending_empty_desc'.tr(),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           ),
@@ -684,13 +685,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                             child: const Icon(Icons.history_rounded, size: 36, color: Color(0xFF94A3B8)),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Chưa có lịch sử đơn từ',
+                          Text(
+                            'my_requests.history_empty_title'.tr(),
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            'Các đơn đã được phê duyệt, từ chối hoặc hủy sẽ được lưu trữ tại đây.',
+                          Text(
+                            'my_requests.history_empty_desc'.tr(),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           ),
@@ -728,13 +729,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                         child: const Icon(Icons.drafts_outlined, size: 36, color: Color(0xFF94A3B8)),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Không có bản nháp nào',
+                      Text(
+                        'my_requests.drafts_empty_title'.tr(),
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Khi tạo đơn mới, bạn có thể chọn "Lưu nháp" để hoàn thiện và gửi sau.',
+                      Text(
+                        'my_requests.drafts_empty_desc'.tr(),
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
@@ -744,7 +745,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                           setState(() => _requestsSubTab = 1);
                         },
                         icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Xem danh mục 7 loại đơn'),
+                        label: Text('my_requests.view_catalog'.tr()),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0F172A),
                           foregroundColor: Colors.white,
@@ -764,7 +765,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Danh sách bản nháp (${_drafts.length})',
+                        'my_requests.drafts_list'.tr(args: {'count': _drafts.length}),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       TextButton.icon(
@@ -772,13 +773,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Xóa tất cả bản nháp?'),
-                              content: const Text('Hành động này sẽ xóa toàn bộ các bản nháp đang lưu cục bộ và máy chủ.'),
+                              title: Text('my_requests.delete_all_title'.tr()),
+                              content: Text('my_requests.delete_all_desc'.tr()),
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Xóa hết', style: TextStyle(color: Colors.red)),
+                                  child: Text('my_requests.delete_all_confirm'.tr(), style: TextStyle(color: Colors.red)),
                                 ),
                               ],
                             ),
@@ -794,7 +795,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                           }
                         },
                         icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Color(0xFFEF4444)),
-                        label: const Text('Xóa tất cả', style: TextStyle(fontSize: 12, color: Color(0xFFEF4444))),
+                        label: Text('my_requests.delete_all'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFFEF4444))),
                       ),
                     ],
                   ),
@@ -919,7 +920,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
   }
 
   // ==========================================
-  // MODAL CHI TIáº¾T ÄÆ N (100% THEO WEB)
+  // MODAL CHI TIET DON (100% THEO WEB)
   // ==========================================
   void _showCorrectionDetailDialog(AttendanceCorrection c) {
     showCorrectionDetailDialog(
@@ -933,13 +934,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('XÃ¡c nháº­n há»§y Ä‘Æ¡n?'),
-        content: Text('Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n há»§y Ä‘Æ¡n #${c.id.substring(c.id.length >= 8 ? c.id.length - 8 : 0).toUpperCase()}?'),
+        title: Text('my_requests.cancel_confirm_title'.tr()),
+        content: Text('my_requests.cancel_confirm_msg'.tr(args: {'code': c.id.substring(c.id.length >= 8 ? c.id.length - 8 : 0).toUpperCase()})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('KhÃ´ng')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.no'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Há»§y Ä‘Æ¡n', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: Text('my_requests.cancel_request'.tr(), style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -954,12 +955,12 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ÄÃ£ há»§y Ä‘Æ¡n thÃ nh cÃ´ng.'), behavior: SnackBarBehavior.floating),
+            SnackBar(content: Text('my_requests.cancel_success'.tr()), behavior: SnackBarBehavior.floating),
           );
         }
       } catch (e) {
         if (mounted) {
-          final msg = ApiErrorHandler.parse(e, defaultMessage: 'KhÃ´ng thá»ƒ há»§y Ä‘Æ¡n.');
+          final msg = ApiErrorHandler.parse(e, defaultMessage: 'my_requests.cancel_failed'.tr());
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(msg), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
           );
@@ -978,13 +979,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('XÃ¡c nháº­n xÃ³a báº£n nhÃ¡p?'),
-            content: const Text('Báº£n nhÃ¡p sáº½ bá»‹ xÃ³a vÄ©nh viá»…n vÃ  khÃ´ng thá»ƒ khÃ´i phá»¥c.'),
+            title: Text('my_requests.delete_draft_title'.tr()),
+            content: Text('my_requests.delete_draft_desc'.tr()),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Há»§y')),
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('XÃ³a', style: TextStyle(color: Colors.red)),
+                child: Text('common.delete'.tr(), style: TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -1000,7 +1001,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         }
       },
       onEdit: () {
-        String draftType = 'Nghá»‰ phÃ©p';
+        String draftType = 'Nghỉ phép';
         final match = RegExp(r'^\[(.*?)\]').firstMatch(draft.reason);
         if (match != null) {
           draftType = match.group(1)!;

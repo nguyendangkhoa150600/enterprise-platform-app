@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/procedure_models.dart';
 import '../../../theme/colors.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class ProcedureFlowDiagramCard extends StatelessWidget {
   final List<ProcedureDefinition> definitions;
@@ -45,9 +46,9 @@ class ProcedureFlowDiagramCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'SƠ ĐỒ LUỒNG CÁC BƯỚC QUY TRÌNH',
-            style: TextStyle(
+          Text(
+            'procedure.flow.title'.tr(),
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -75,7 +76,7 @@ class ProcedureFlowDiagramCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        currentDef?.displayName ?? 'Chưa có quy trình',
+                        currentDef?.displayName ?? 'procedure.flow.no_procedure'.tr(),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -97,9 +98,9 @@ class ProcedureFlowDiagramCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 20),
               alignment: Alignment.center,
-              child: const Text(
-                'Chưa có bước thiết lập cho quy trình này',
-                style: TextStyle(fontSize: 13, color: AppColors.slate400),
+              child: Text(
+                'procedure.flow.no_steps'.tr(),
+                style: const TextStyle(fontSize: 13, color: AppColors.slate400),
               ),
             )
           else
@@ -139,9 +140,9 @@ class ProcedureFlowDiagramCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'QUY TRÌNH · BƯỚC',
-          style: TextStyle(
+        Text(
+          'procedure.flow.legend_title'.tr(),
+          style: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
@@ -151,17 +152,17 @@ class ProcedureFlowDiagramCard extends StatelessWidget {
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _buildRaciLegendItem('S', 'khởi tạo', const Color(0xFFFEF9C3), const Color(0xFF854D0E), const Color(0xFFFEF08A))),
-            Expanded(child: _buildRaciLegendItem('R', 'xem xét', const Color(0xFFDBEAFE), const Color(0xFF1E40AF), const Color(0xFFBFDBFE))),
-            Expanded(child: _buildRaciLegendItem('E', 'thực thi', const Color(0xFFFFEDD5), const Color(0xFF9A3412), const Color(0xFFFED7AA))),
+            Expanded(child: _buildRaciLegendItem('S', 'procedure.raci.s_label'.tr(), const Color(0xFFFEF9C3), const Color(0xFF854D0E), const Color(0xFFFEF08A))),
+            Expanded(child: _buildRaciLegendItem('R', 'procedure.raci.r_label'.tr(), const Color(0xFFDBEAFE), const Color(0xFF1E40AF), const Color(0xFFBFDBFE))),
+            Expanded(child: _buildRaciLegendItem('E', 'procedure.raci.e_label'.tr(), const Color(0xFFFFEDD5), const Color(0xFF9A3412), const Color(0xFFFED7AA))),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _buildRaciLegendItem('C', 'kiểm soát', const Color(0xFFF3E8FF), const Color(0xFF6B21A8), const Color(0xFFE9D5FF))),
-            Expanded(child: _buildRaciLegendItem('A', 'phê duyệt', const Color(0xFFDCFCE7), const Color(0xFF166534), const Color(0xFFBBF7D0))),
-            Expanded(child: _buildRaciLegendItem('I', 'nhận thông tin', const Color(0xFFF1F5F9), const Color(0xFF475569), const Color(0xFFE2E8F0))),
+            Expanded(child: _buildRaciLegendItem('C', 'procedure.raci.c_label'.tr(), const Color(0xFFF3E8FF), const Color(0xFF6B21A8), const Color(0xFFE9D5FF))),
+            Expanded(child: _buildRaciLegendItem('A', 'procedure.raci.a_label'.tr(), const Color(0xFFDCFCE7), const Color(0xFF166534), const Color(0xFFBBF7D0))),
+            Expanded(child: _buildRaciLegendItem('I', 'procedure.raci.i_label'.tr(), const Color(0xFFF1F5F9), const Color(0xFF475569), const Color(0xFFE2E8F0))),
           ],
         ),
       ],

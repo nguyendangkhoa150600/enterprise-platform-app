@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'profile_common_widgets.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class BankTaxTabContent extends StatelessWidget {
   final Map<String, dynamic>? profile;
@@ -41,13 +42,13 @@ class BankTaxTabContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.account_balance_rounded, size: 20, color: Color(0xFF4338CA)),
-                  SizedBox(width: 8),
+                  const Icon(Icons.account_balance_rounded, size: 20, color: Color(0xFF4338CA)),
+                  const SizedBox(width: 8),
                   Text(
-                    'Thông tin ngân hàng nhận lương',
-                    style: TextStyle(
+                    'profile.bank.title'.tr(),
+                    style: const TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0F172A),
@@ -61,9 +62,9 @@ class BankTaxTabContent extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: buildWebInputDisplayField('Ngân hàng', bankName)),
+                  Expanded(child: buildWebInputDisplayField('profile.bank.bank_name'.tr(), bankName)),
                   const SizedBox(width: 12),
-                  Expanded(child: buildWebInputDisplayField('Số tài khoản', bankAccount, icon: Icons.credit_card_outlined)),
+                  Expanded(child: buildWebInputDisplayField('profile.bank.account_number'.tr(), bankAccount, icon: Icons.credit_card_outlined)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -72,9 +73,9 @@ class BankTaxTabContent extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: buildWebInputDisplayField('Chủ tài khoản', userFullName, icon: Icons.person_outline_rounded)),
+                  Expanded(child: buildWebInputDisplayField('profile.bank.account_holder'.tr(), userFullName, icon: Icons.person_outline_rounded)),
                   const SizedBox(width: 12),
-                  Expanded(child: buildWebInputDisplayField('Chi nhánh', bankBranch, icon: Icons.place_outlined)),
+                  Expanded(child: buildWebInputDisplayField('profile.bank.branch'.tr(), bankBranch, icon: Icons.place_outlined)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -83,25 +84,25 @@ class BankTaxTabContent extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: buildWebInputDisplayField('Mã số thuế cá nhân', taxCode)),
+                  Expanded(child: buildWebInputDisplayField('profile.bank.tax_code'.tr(), taxCode)),
                   const SizedBox(width: 12),
-                  Expanded(child: buildWebInputDisplayField('Số sổ BHXH', bhxh)),
+                  Expanded(child: buildWebInputDisplayField('profile.bank.social_insurance_no'.tr(), bhxh)),
                 ],
               ),
               const SizedBox(height: 16),
 
-              const Row(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
+                  const Padding(
                     padding: EdgeInsets.only(top: 1),
                     child: Icon(Icons.shield_outlined, size: 15, color: Color(0xFF64748B)),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Thông tin tài khoản ngân hàng được bảo mật và chỉ hiển thị cho các vai trò có thẩm quyền. Cần thay đổi vui lòng liên hệ phòng Nhân sự.',
-                      style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.35),
+                      'profile.bank.security_note'.tr(),
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.35),
                     ),
                   ),
                 ],
@@ -125,11 +126,11 @@ class BankTaxTabContent extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Người thân và gia đình', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('profile.bank.dependents_title'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   ElevatedButton.icon(
                     onPressed: onAddDependent,
                     icon: const Icon(Icons.add, size: 13),
-                    label: const Text('Thêm người thân', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    label: Text('profile.bank.add_dependent'.tr(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
                       foregroundColor: Colors.white,
@@ -141,21 +142,21 @@ class BankTaxTabContent extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 2),
-              const Text(
-                'Thông tin tự khai. Giảm trừ chỉ áp dụng sau khi HR xác minh đăng ký.',
-                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              Text(
+                'profile.bank.dependents_note'.tr(),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 12),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
               const SizedBox(height: 10),
 
               if (dependents.isEmpty)
-                const Center(
+                Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      'Chưa có thông tin người thân',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                      'profile.bank.no_dependents'.tr(),
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     ),
                   ),
                 )
@@ -167,8 +168,8 @@ class BankTaxTabContent extends StatelessWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (ctx, idx) {
                     final dep = dependents[idx];
-                    final name = dep['fullName']?.toString() ?? dep['full_name']?.toString() ?? 'Người thân';
-                    final relation = dep['relationship']?.toString() ?? 'Quan hệ';
+                    final name = dep['fullName']?.toString() ?? dep['full_name']?.toString() ?? 'profile.bank.default_dependent_name'.tr();
+                    final relation = dep['relationship']?.toString() ?? 'profile.bank.default_relation'.tr();
                     final dob = dep['dateOfBirth']?.toString() ?? dep['date_of_birth']?.toString() ?? '----';
                     final phone = dep['phone']?.toString() ?? '----';
                     final tax = dep['taxCode']?.toString() ?? dep['tax_code']?.toString() ?? '----';
@@ -210,13 +211,13 @@ class BankTaxTabContent extends StatelessWidget {
                                         color: const Color(0xFFEEF2FF),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: Text(relation, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                                      child: Text(profileRelationLabel(relation), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Ngày sinh: $dob • SĐT: $phone ${tax != '----' ? '• MST: $tax' : ''}',
+                                  'profile.bank.dependent_info'.tr(args: {'dob': dob, 'phone': phone, 'tax': tax != '----' ? '• ${'profile.bank.tax_short'.tr()}: $tax' : ''}),
                                   style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                                 ),
                               ],
@@ -225,7 +226,7 @@ class BankTaxTabContent extends StatelessWidget {
                           IconButton(
                             icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
                             onPressed: () => onDeleteDependent(id, name),
-                            tooltip: 'Xóa người thân',
+                            tooltip: 'profile.bank.delete_dependent'.tr(),
                           ),
                         ],
                       ),

@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 class LeaveType {
   final String id;
   final String code;
@@ -19,7 +20,7 @@ class LeaveType {
     return LeaveType(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? json['name']?.toString() ?? '',
-      name: json['name']?.toString() ?? json['title']?.toString() ?? json['code']?.toString() ?? 'Nghỉ phép',
+      name: json['name']?.toString() ?? json['title']?.toString() ?? json['code']?.toString() ?? 'models.request.leave'.tr(),
       daysAllowed: (json['days_allowed'] ?? json['daysAllowed'] ?? json['quota']) != null
           ? double.tryParse(json['days_allowed']?.toString() ?? json['daysAllowed']?.toString() ?? json['quota']?.toString() ?? '')
           : null,
@@ -54,7 +55,7 @@ class HrmShift {
     return HrmShift(
       id: json['id']?.toString() ?? 's-01',
       code: json['code']?.toString() ?? 'CA_HC',
-      name: json['name']?.toString() ?? 'Ca Hành chính',
+      name: json['name']?.toString() ?? 'models.shift.office_hours'.tr(),
       startTime: json['start_time']?.toString() ?? json['startTime']?.toString() ?? '08:00:00',
       endTime: json['end_time']?.toString() ?? json['endTime']?.toString() ?? '17:30:00',
       breakMinutes: (json['break_minutes'] ?? json['breakMinutes'] as num?)?.toInt() ?? 90,
@@ -82,7 +83,7 @@ class HrmSite {
   factory HrmSite.fromJson(Map<String, dynamic> json) {
     return HrmSite(
       id: json['id']?.toString() ?? 'site-01',
-      name: json['name']?.toString() ?? 'Trụ sở chính SAVINA',
+      name: json['name']?.toString() ?? 'models.site.hq_savina'.tr(),
       latitude: (json['latitude'] as num?)?.toDouble() ?? 10.776889,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 106.700806,
       radiusM: (json['radius_m'] ?? json['radiusM'] as num?)?.toDouble() ?? 100.0,
@@ -121,7 +122,7 @@ class AttendanceContext {
       employeeId: emp['id']?.toString() ?? json['employee_id']?.toString() ?? '',
       employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? json['employee_code']?.toString() ?? '',
       fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? emp['name']?.toString() ?? json['full_name']?.toString() ?? '',
-      shift: json['shift'] != null ? HrmShift.fromJson(json['shift']) : HrmShift(id: 's-01', code: 'CA_HC', name: 'Ca Hành chính', startTime: '08:00:00', endTime: '17:30:00'),
+      shift: json['shift'] != null ? HrmShift.fromJson(json['shift']) : HrmShift(id: 's-01', code: 'CA_HC', name: 'models.shift.office_hours'.tr(), startTime: '08:00:00', endTime: '17:30:00'),
       allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['GPS', 'WIFI_WAN_IP'],
       sites: rawSites.map((e) => HrmSite.fromJson(e as Map<String, dynamic>)).toList(),
     );
@@ -152,7 +153,7 @@ class PrecheckResult {
     return PrecheckResult(
       eligible: json['eligible'] == true,
       matchedSiteId: matched['id']?.toString(),
-      matchedSiteName: matched['name']?.toString() ?? 'Trụ sở chính SAVINA',
+      matchedSiteName: matched['name']?.toString() ?? 'models.site.hq_savina'.tr(),
       distanceM: (matched['distance_m'] as num?)?.toDouble() ?? 15.0,
       verificationMethod: json['verification_method']?.toString() ?? 'GPS',
       canCheckIn: json['can_check_in'] == true,
@@ -233,7 +234,7 @@ class AttendanceRecord {
       earlyLeaveMinutes: (json['early_leave_minutes'] ?? json['earlyLeaveMinutes'] as num?)?.toInt() ?? 0,
       status: json['status']?.toString() ?? 'VALID',
       attendanceSource: json['attendance_source']?.toString() ?? json['attendanceSource']?.toString() ?? 'MOBILE_APP',
-      matchedSiteName: json['matched_site_name']?.toString() ?? json['matchedSiteName']?.toString() ?? 'Trụ sở chính',
+      matchedSiteName: json['matched_site_name']?.toString() ?? json['matchedSiteName']?.toString() ?? 'models.site.hq'.tr(),
       note: json['note']?.toString(),
       punches: rawPunches.map((p) => AttendancePunch.fromJson(p as Map<String, dynamic>)).toList(),
     );
@@ -292,7 +293,7 @@ class AttendanceCorrection {
     final rawReason = json['reason']?.toString() ?? json['notes']?.toString() ?? json['description']?.toString() ?? '';
     final combinedReason = title.isNotEmpty && rawReason.isNotEmpty && !rawReason.contains(title)
         ? '[$title] $rawReason'
-        : (rawReason.isNotEmpty ? rawReason : (title.isNotEmpty ? title : 'Đơn đề xuất'));
+        : (rawReason.isNotEmpty ? rawReason : (title.isNotEmpty ? title : 'models.request.default_title'.tr()));
 
     double? parsedDuration;
     if (json['duration'] != null) {
@@ -436,11 +437,11 @@ class HrmBoardMonthInfo {
   String get stateLabel {
     switch (state) {
       case 'OPEN':
-        return 'Đang mở';
+        return 'models.period.open'.tr();
       case 'LOCKED':
-        return 'Đã chốt';
+        return 'models.period.locked'.tr();
       case 'REQUESTS_CLOSED':
-        return 'Đã đóng đơn';
+        return 'models.period.closed'.tr();
       default:
         return state;
     }
@@ -872,7 +873,7 @@ class TimesheetCell {
     required this.date,
     this.status = 'PRESENT',
     this.shiftCode = 'CA_HC',
-    this.shiftName = 'Ca Hành chính',
+    String? shiftName,
     this.firstIn,
     this.lastOut,
     this.lateMinutes = 0,
@@ -885,7 +886,7 @@ class TimesheetCell {
     this.leaveType,
     this.punches = const [],
     this.rawBoardDay,
-  });
+  }) : shiftName = shiftName ?? 'models.shift.office_hours'.tr();
 
   factory TimesheetCell.fromBoardDay(int day, HrmBoardDay d) {
     final punches = <AttendancePunch>[];
@@ -896,7 +897,7 @@ class TimesheetCell {
       punches.add(AttendancePunch(punchType: 'OUT', occurredAt: d.checkOut!));
     }
     final isLv = d.status.contains('LEAVE') || d.requests.any((r) => r.kind == 'LEAVE');
-    final String? lvType = d.requests.where((r) => r.kind == 'LEAVE').firstOrNull?.label ?? (isLv ? 'Nghỉ phép' : null);
+    final String? lvType = d.requests.where((r) => r.kind == 'LEAVE').firstOrNull?.label ?? (isLv ? 'models.request.leave'.tr() : null);
     final isAbs = d.status == 'ABSENT';
     final isAbn = d.status == 'ABNORMAL' || isAbs;
     final isLt = d.lateMinutes > 0 || d.earlyLeaveMinutes > 0 || d.status == 'LATE' || d.status == 'LATE_EARLY' || d.status == 'EARLY_LEAVE';
@@ -906,7 +907,7 @@ class TimesheetCell {
       date: d.date,
       status: d.status,
       shiftCode: d.shiftCode ?? 'CA_HC',
-      shiftName: d.shiftName ?? 'Ca Hành chính',
+      shiftName: d.shiftName ?? 'models.shift.office_hours'.tr(),
       firstIn: d.checkIn,
       lastOut: d.checkOut,
       lateMinutes: d.lateMinutes,
@@ -946,7 +947,7 @@ class MonthlyTimesheetSummary {
 
   MonthlyTimesheetSummary({
     this.standardWorkDays = 22.0,
-    this.standardHint = 'Động theo ngày công của tháng',
+    String? standardHint,
     this.actualWorkDays = 0.0,
     this.lateDays = 0,
     this.lateMinutes = 0,
@@ -964,7 +965,7 @@ class MonthlyTimesheetSummary {
     this.holidayDays = 0.0,
     this.totalWorkHours = 0.0,
     this.completionRate = 0.0,
-  });
+  }) : standardHint = standardHint ?? 'models.standard.dynamic'.tr();
 }
 
 class MonthlyTimesheetRow {
@@ -1003,7 +1004,7 @@ class MonthlyTimesheetRow {
     final combinedMissing = totalAbsent > 0 ? (totalAbsent + totalAbnormal) : totalAbnormal;
     final standardDays = standard?.workdays ?? 22.0;
     final isFixed = standard?.mode == 'FIXED' || standard?.mode == 'MINUTES';
-    final stdHint = isFixed ? 'Cố định theo cấu hình' : 'Động theo ngày công của tháng';
+    final stdHint = isFixed ? 'models.standard.fixed'.tr() : 'models.standard.dynamic'.tr();
     final totalLeaves = (emp.totals.annualLeaveDays + emp.totals.paidLeaveDays + emp.totals.unpaidLeaveDays).toDouble();
     final otHours = emp.totals.otMinutes / 60.0;
     final rate = standardDays > 0 ? ((emp.totals.workdayUnits / standardDays) * 100.0).clamp(0.0, 100.0) : 0.0;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 
 class HrmPersonnelDecision {
   final String id;
@@ -156,19 +157,19 @@ class HrmPersonnelDecision {
   String get typeLabel {
     switch (decisionType) {
       case 'APPOINT':
-        return 'Bổ nhiệm';
+        return 'models.decision.appointment'.tr();
       case 'PROMOTE':
-        return 'Thăng chức';
+        return 'models.decision.promotion'.tr();
       case 'TRANSFER':
-        return 'Điều chuyển';
+        return 'models.decision.transfer'.tr();
       case 'CONCURRENT':
-        return 'Kiêm nhiệm';
+        return 'models.decision.concurrent'.tr();
       case 'DISMISS':
-        return 'Miễn nhiệm';
+        return 'models.decision.dismissal'.tr();
       case 'REVOKE':
-        return 'Bãi nhiệm';
+        return 'models.decision.removal'.tr();
       case 'CHANGE_MANAGER':
-        return 'Đổi quản lý';
+        return 'models.decision.manager_change'.tr();
       default:
         return decisionType;
     }
@@ -177,19 +178,19 @@ class HrmPersonnelDecision {
   String get statusLabel {
     switch (status) {
       case 'DRAFT':
-        return 'Nháp';
+        return 'models.decision.draft'.tr();
       case 'APPROVED':
-        return 'Đã duyệt';
+        return 'models.status.approved'.tr();
       case 'APPLY_PENDING':
-        return 'Chờ áp dụng';
+        return 'models.decision.pending_apply'.tr();
       case 'APPLIED':
-        return 'Đã áp dụng';
+        return 'models.decision.applied'.tr();
       case 'REJECTED':
-        return 'Từ chối';
+        return 'common.reject'.tr();
       case 'CANCELLED':
-        return 'Đã hủy';
+        return 'models.decision.cancelled'.tr();
       case 'RECORDED':
-        return 'Đã ghi nhận';
+        return 'models.decision.recorded'.tr();
       default:
         return status;
     }
@@ -238,7 +239,7 @@ class HrmPersonnelDecision {
     if (toU.isNotEmpty) return toU;
     final fromU = (fromUnitName ?? '').trim();
     if (fromU.isNotEmpty) return fromU;
-    return 'Chưa xác định đơn vị';
+    return 'models.decision.unit_unknown'.tr();
   }
 
   String get changeSummary {
@@ -247,12 +248,12 @@ class HrmPersonnelDecision {
       parts.add('${fromPositionName ?? '----'} → ${toPositionName ?? '----'}');
     }
     if (toManagerName != null || fromManagerName != null) {
-      parts.add('QL: ${fromManagerName ?? '----'} → ${toManagerName ?? 'Không có'}');
+      parts.add('models.decision.manager_diff'.tr(args: {'from': fromManagerName ?? '----', 'to': toManagerName ?? 'common.none'.tr()}));
     }
     if (salaryChanged) {
       final fSal = fromBaseSalary != null ? '${fromBaseSalary!.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')} đ' : '----';
       final tSal = toBaseSalary != null ? '${toBaseSalary!.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')} đ' : '----';
-      parts.add('Lương: $fSal → $tSal');
+      parts.add('models.decision.salary_diff'.tr(args: {'from': fSal, 'to': tSal}));
     }
     return parts.isEmpty ? '----' : parts.join(' | ');
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
@@ -138,7 +139,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
   String get _timesheetMonthLabel {
     final parts = _timesheetMonthKey.split('-');
     if (parts.length == 2) {
-      return 'Tháng ${parts[1]}/${parts[0]}';
+      return 'hrm_ops.timesheet.month_label'.tr(args: {'month': parts[1], 'year': parts[0]});
     }
     return _timesheetMonthKey;
   }
@@ -156,13 +157,13 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
     final m = int.tryParse(parts[1]) ?? 10;
     final dt = DateTime(y, m, day);
     switch (dt.weekday) {
-      case DateTime.monday: return 'T2';
-      case DateTime.tuesday: return 'T3';
-      case DateTime.wednesday: return 'T4';
-      case DateTime.thursday: return 'T5';
-      case DateTime.friday: return 'T6';
-      case DateTime.saturday: return 'T7';
-      case DateTime.sunday: return 'CN';
+      case DateTime.monday: return 'hrm_ops.timesheet.wd.mon'.tr();
+      case DateTime.tuesday: return 'hrm_ops.timesheet.wd.tue'.tr();
+      case DateTime.wednesday: return 'hrm_ops.timesheet.wd.wed'.tr();
+      case DateTime.thursday: return 'hrm_ops.timesheet.wd.thu'.tr();
+      case DateTime.friday: return 'hrm_ops.timesheet.wd.fri'.tr();
+      case DateTime.saturday: return 'hrm_ops.timesheet.wd.sat'.tr();
+      case DateTime.sunday: return 'hrm_ops.timesheet.wd.sun'.tr();
       default: return '';
     }
   }
@@ -248,7 +249,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
           kind: isSunday ? 'OFF' : 'WORK',
           status: st,
           shiftCode: isSunday ? 'OFF' : 'CA_HC',
-          shiftName: isSunday ? 'Nghỉ tuần' : 'Ca Hành chính',
+          shiftName: isSunday ? 'hrm_ops.timesheet.day.off'.tr() : 'hrm_ops.timesheet.shift_name.office'.tr(),
           workdayUnits: (st == 'PRESENT' && !isFuture) ? 1.0 : 0.0,
           lateMinutes: (isFirstEmp && d == 5) ? 14 : 0,
         );
@@ -350,18 +351,18 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
             children: [
               Flexible(
                 child: Row(
-                  children: const [
+                  children: [
                     Icon(Icons.home_outlined, size: 14, color: Color(0xFFD97706)),
                     SizedBox(width: 4),
                     Text('›', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                     SizedBox(width: 4),
-                    Text('Nhân sự', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                    Text('hrm_ops.timesheet.crumb.hr'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                     SizedBox(width: 4),
                     Text('›', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                     SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        'Bảng công',
+                        'hrm_ops.timesheet.title'.tr(),
                         style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -396,8 +397,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                     const SizedBox(width: 5),
                     Text(
                       _timesheetPeriodState == 'REQUESTS_CLOSED'
-                          ? 'Đã đóng đơn'
-                          : (_timesheetPeriodState == 'LOCKED' ? 'Đã chốt' : 'Đang mở'),
+                          ? 'hrm_ops.timesheet.period.closed'.tr()
+                          : (_timesheetPeriodState == 'LOCKED' ? 'hrm_ops.timesheet.period.locked'.tr() : 'hrm_ops.timesheet.period.open'.tr()),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -422,13 +423,13 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
           const SizedBox(height: 8),
 
           // Title & Description
-          const Text(
-            'Bảng công',
+          Text(
+            'hrm_ops.timesheet.title'.tr(),
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.5),
           ),
           const SizedBox(height: 2),
-          const Text(
-            'Theo dõi và tổng hợp công, phép, tăng ca của nhân viên trong tháng.',
+          Text(
+            'hrm_ops.timesheet.subtitle'.tr(),
             style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 14),
@@ -442,7 +443,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bảng công',
+                      'hrm_ops.timesheet.title'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -468,7 +469,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Dữ liệu chấm công',
+                      'hrm_ops.timesheet.tab.data'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -539,7 +540,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                     }),
                     style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
                     decoration: InputDecoration(
-                      hintText: 'Tìm theo mã hoặc tên...',
+                      hintText: 'hrm_ops.timesheet.search.hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                       prefixIcon: const Icon(Icons.search, size: 16, color: Color(0xFF64748B)),
                       filled: true,
@@ -561,11 +562,11 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildLightActionButton(icon: Icons.lock_outline_rounded, label: 'Chốt đơn từ', onTap: _showCloseRequestsModal),
+                _buildLightActionButton(icon: Icons.lock_outline_rounded, label: 'hrm_ops.timesheet.action.close_requests'.tr(), onTap: _showCloseRequestsModal),
                 const SizedBox(width: 6),
                 _buildLightActionButton(
                   icon: _isCalculatingTimesheet ? Icons.hourglass_top_rounded : Icons.calculate_outlined,
-                  label: _isCalculatingTimesheet ? 'Đang tính...' : 'Tính công',
+                  label: _isCalculatingTimesheet ? 'hrm_ops.timesheet.action.calculating'.tr() : 'hrm_ops.timesheet.action.calculate'.tr(),
                   onTap: _handleCalculateTimesheet,
                 ),
                 const SizedBox(width: 6),
@@ -587,11 +588,11 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                       ],
                     ),
                     child: Row(
-                      children: const [
+                      children: [
                         Icon(Icons.lock_rounded, size: 14, color: Colors.white),
                         SizedBox(width: 4),
                         Text(
-                          'Chốt công',
+                          'hrm_ops.timesheet.action.close_timesheet'.tr(),
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
                         ),
                       ],
@@ -599,11 +600,11 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                _buildLightActionButton(icon: Icons.lock_open_rounded, label: 'Mở lại', onTap: _showReopenTimesheetModal),
+                _buildLightActionButton(icon: Icons.lock_open_rounded, label: 'hrm_ops.timesheet.action.reopen'.tr(), onTap: _showReopenTimesheetModal),
                 const SizedBox(width: 6),
                 _buildLightActionButton(
                   icon: Icons.file_download_outlined,
-                  label: _selectedTimesheetEmpIds.isNotEmpty ? 'Xuất CSV (${_selectedTimesheetEmpIds.length})' : 'Xuất CSV',
+                  label: _selectedTimesheetEmpIds.isNotEmpty ? 'hrm_ops.timesheet.export_csv_count'.tr(args: {'count': _selectedTimesheetEmpIds.length}) : 'hrm_ops.timesheet.action.export_csv'.tr(),
                   onTap: _exportTimesheetCsv,
                 ),
               ],
@@ -616,15 +617,15 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildLightFilterTab('Tất cả (${_countTimesheetFilter('ALL')})', 'ALL', null),
+                _buildLightFilterTab('hrm_ops.timesheet.filter.all'.tr(args: {'count': _countTimesheetFilter('ALL')}), 'ALL', null),
                 const SizedBox(width: 6),
-                _buildLightFilterTab('Đi trễ, về sớm (${_countTimesheetFilter('LATE_EARLY')})', 'LATE_EARLY', const Color(0xFFF59E0B)),
+                _buildLightFilterTab('hrm_ops.timesheet.filter.late_early'.tr(args: {'count': _countTimesheetFilter('LATE_EARLY')}), 'LATE_EARLY', const Color(0xFFF59E0B)),
                 const SizedBox(width: 6),
-                _buildLightFilterTab('Bất thường (${_countTimesheetFilter('ABNORMAL')})', 'ABNORMAL', const Color(0xFFEAB308)),
+                _buildLightFilterTab('hrm_ops.timesheet.filter.abnormal'.tr(args: {'count': _countTimesheetFilter('ABNORMAL')}), 'ABNORMAL', const Color(0xFFEAB308)),
                 const SizedBox(width: 6),
-                _buildLightFilterTab('Vắng không phép (${_countTimesheetFilter('ABSENT')})', 'ABSENT', const Color(0xFFEF4444)),
+                _buildLightFilterTab('hrm_ops.timesheet.filter.absent'.tr(args: {'count': _countTimesheetFilter('ABSENT')}), 'ABSENT', const Color(0xFFEF4444)),
                 const SizedBox(width: 6),
-                _buildLightFilterTab('Có đơn chờ duyệt (${_countTimesheetFilter('PENDING')})', 'PENDING', const Color(0xFF3B82F6)),
+                _buildLightFilterTab('hrm_ops.timesheet.filter.pending'.tr(args: {'count': _countTimesheetFilter('PENDING')}), 'PENDING', const Color(0xFF3B82F6)),
               ],
             ),
           ),
@@ -635,19 +636,19 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                children: const [
+                children: [
                   Icon(Icons.swipe_left_rounded, size: 15, color: Color(0xFFD97706)),
                   SizedBox(width: 5),
                   Text(
-                    'Vuốt ngang để xem 31 ngày & cột tổng kết',
+                    'hrm_ops.timesheet.swipe_hint'.tr(),
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFD97706)),
                   ),
                 ],
               ),
               InkWell(
                 onTap: () => _showTimesheetLegendBottomSheet(),
-                child: const Text(
-                  'ⓘ Chú thích',
+                child: Text(
+                  'hrm_ops.timesheet.legend_link'.tr(),
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
                 ),
               ),
@@ -715,12 +716,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const Text(
-                                        'Nhân viên',
+                                      Text(
+                                        'hrm_ops.timesheet.col.employee'.tr(),
                                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                       ),
                                       Text(
-                                        '${pagedList.length} NV (chuẩn 24.5)',
+                                        'hrm_ops.timesheet.page_headcount'.tr(args: {'count': pagedList.length}),
                                         style: const TextStyle(fontSize: 9, color: Color(0xFF64748B)),
                                       ),
                                     ],
@@ -825,7 +826,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                   ...List.generate(daysInMonth, (dIdx) {
                                     final d = dIdx + 1;
                                     final weekday = _getDayWeekdayLabel(d);
-                                    final isSunday = weekday == 'CN';
+                                    final isSunday = weekday == 'hrm_ops.timesheet.wd.sun'.tr();
                                     final parts = _timesheetMonthKey.split('-');
                                     final y = int.tryParse(parts[0]) ?? 2026;
                                     final m = int.tryParse(parts[1]) ?? 10;
@@ -871,12 +872,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                   }),
 
                                   // Summary Columns Header (Công, T/S, P, KP, !, TC)
-                                  _buildSummaryHeaderCell('Công', 38, const Color(0xFF0284C7)),
-                                  _buildSummaryHeaderCell('T/S', 34, const Color(0xFFD97706)),
+                                  _buildSummaryHeaderCell('hrm_ops.timesheet.col.work_short'.tr(), 38, const Color(0xFF0284C7)),
+                                  _buildSummaryHeaderCell('hrm_ops.timesheet.col.late_early_short'.tr(), 34, const Color(0xFFD97706)),
                                   _buildSummaryHeaderCell('P', 34, const Color(0xFF64748B)),
-                                  _buildSummaryHeaderCell('KP', 34, const Color(0xFFE11D48)),
+                                  _buildSummaryHeaderCell('hrm_ops.timesheet.col.absent_short'.tr(), 34, const Color(0xFFE11D48)),
                                   _buildSummaryHeaderCell('!', 32, const Color(0xFFE11D48)),
-                                  _buildSummaryHeaderCell('TC', 36, const Color(0xFF059669)),
+                                  _buildSummaryHeaderCell('hrm_ops.timesheet.col.ot_short'.tr(), 36, const Color(0xFF059669)),
                                 ],
                               ),
                             ),
@@ -901,7 +902,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                       final dayKey = '$d';
                                       final dayObj = emp.days[dayKey];
                                       final weekday = _getDayWeekdayLabel(d);
-                                      final isSunday = weekday == 'CN';
+                                      final isSunday = weekday == 'hrm_ops.timesheet.wd.sun'.tr();
 
                                       final parts = _timesheetMonthKey.split('-');
                                       final y = int.tryParse(parts[0]) ?? 2026;
@@ -958,7 +959,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                     children: [
                       Flexible(
                         child: Text(
-                          'Hiển thị $startIdx-$endIdx / $totalCount NV',
+                          'hrm_ops.timesheet.page_showing'.tr(args: {'start': startIdx, 'end': endIdx, 'total': totalCount}),
                           style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1053,13 +1054,13 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildLegendItem('0', const Color(0xFFEF4444), 'Vắng không phép', bgColor: const Color(0xFFFEE2E2)),
+                  _buildLegendItem('0', const Color(0xFFEF4444), 'hrm_ops.timesheet.legend_short.absent_full'.tr(), bgColor: const Color(0xFFFEE2E2)),
                   const SizedBox(width: 14),
-                  _buildLegendItem('HC', const Color(0xFF0284C7), 'Hành chính (đủ)', bgColor: const Color(0xFFE0F2FE)),
+                  _buildLegendItem('HC', const Color(0xFF0284C7), 'hrm_ops.timesheet.legend_short.hc'.tr(), bgColor: const Color(0xFFE0F2FE)),
                   const SizedBox(width: 14),
-                  _buildLegendItem('OFF', const Color(0xFFEF4444), 'Nghỉ tuần/Lễ', bgColor: const Color(0xFFFEE2E2)),
+                  _buildLegendItem('OFF', const Color(0xFFEF4444), 'hrm_ops.timesheet.legend_short.off'.tr(), bgColor: const Color(0xFFFEE2E2)),
                   const SizedBox(width: 14),
-                  _buildLegendItem('P', const Color(0xFF9333EA), 'Nghỉ phép', bgColor: const Color(0xFFF3E8FF)),
+                  _buildLegendItem('P', const Color(0xFF9333EA), 'hrm_ops.timesheet.legend_short.leave'.tr(), bgColor: const Color(0xFFF3E8FF)),
                 ],
               ),
             ),
@@ -1265,17 +1266,17 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
               ),
             ),
             const SizedBox(height: 14),
-            const Text('Chú thích ký hiệu Bảng công', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+            Text('hrm_ops.timesheet.legend.title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
             const SizedBox(height: 14),
-            _buildLegendDetailRow('0', const Color(0xFFEF4444), 'Vắng không phép / Chưa có dữ liệu chấm công', bgColor: const Color(0xFFFEE2E2)),
+            _buildLegendDetailRow('0', const Color(0xFFEF4444), 'hrm_ops.timesheet.legend_detail.absent'.tr(), bgColor: const Color(0xFFFEE2E2)),
             const SizedBox(height: 8),
-            _buildLegendDetailRow('HC', const Color(0xFF0284C7), 'Ca Hành chính (chuẩn 8 giờ)', bgColor: const Color(0xFFE0F2FE)),
+            _buildLegendDetailRow('HC', const Color(0xFF0284C7), 'hrm_ops.timesheet.legend_detail.hc'.tr(), bgColor: const Color(0xFFE0F2FE)),
             const SizedBox(height: 8),
-            _buildLegendDetailRow('OFF', const Color(0xFFEF4444), 'Nghỉ tuần (Chủ nhật / Thứ 7) hoặc Lễ Tết', bgColor: const Color(0xFFFEE2E2)),
+            _buildLegendDetailRow('OFF', const Color(0xFFEF4444), 'hrm_ops.timesheet.legend_detail.off'.tr(), bgColor: const Color(0xFFFEE2E2)),
             const SizedBox(height: 8),
-            _buildLegendDetailRow('P', const Color(0xFF9333EA), 'Nghỉ phép năm / Nghỉ phép hưởng lương', bgColor: const Color(0xFFF3E8FF)),
+            _buildLegendDetailRow('P', const Color(0xFF9333EA), 'hrm_ops.timesheet.legend_detail.leave'.tr(), bgColor: const Color(0xFFF3E8FF)),
             const SizedBox(height: 8),
-            _buildLegendDetailRow('Chưa tới', const Color(0xFF94A3B8), 'Ngày chưa diễn ra trong tháng: màu xám nhạt', bgColor: const Color(0xFFF1F5F9)),
+            _buildLegendDetailRow('hrm_ops.timesheet.legend_detail.future_tag'.tr(), const Color(0xFF94A3B8), 'hrm_ops.timesheet.legend_detail.future'.tr(), bgColor: const Color(0xFFF1F5F9)),
             const SizedBox(height: 20),
           ],
         ),
@@ -1313,14 +1314,14 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
-          children: const [
+          children: [
             SizedBox(
               width: 15,
               height: 15,
               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
             ),
             SizedBox(width: 10),
-            Text('Đang tính lại công cho toàn bộ nhân sự...'),
+            Text('hrm_ops.timesheet.calc.in_progress'.tr()),
           ],
         ),
         duration: const Duration(seconds: 2),
@@ -1334,8 +1335,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
       if (!mounted) return;
       if (res != null) {
         final notice = res.abnormal > 0
-            ? 'Đã tính công ${res.count} dòng, còn ${res.abnormal} dòng bất thường cần xử lý trước khi chốt.'
-            : 'Đã tính công ${res.count} dòng, không có dòng bất thường.';
+            ? 'hrm_ops.timesheet.calc.done_abnormal'.tr(args: {'count': res.count, 'abnormal': res.abnormal})
+            : 'hrm_ops.timesheet.calc.done_ok'.tr(args: {'count': res.count});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(notice),
@@ -1345,8 +1346,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể tính công hoặc máy chủ đang bận.'),
+          SnackBar(
+            content: Text('hrm_ops.timesheet.calc.failed'.tr()),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -1355,7 +1356,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi khi tính công: $e'),
+            content: Text('hrm_ops.timesheet.calc.error'.tr(args: {'error': e})),
             backgroundColor: const Color(0xFFEF4444),
           ),
         );
@@ -1419,12 +1420,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Chốt đơn từ tháng $_timesheetMonthKey',
+                                'hrm_ops.timesheet.close_requests.title'.tr(args: {'month': _timesheetMonthKey}),
                                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                               ),
                               const SizedBox(height: 5),
-                              const Text(
-                                'Từ lúc chốt, không tạo, sửa hay duyệt đơn nào có ngày thuộc tháng này.',
+                              Text(
+                                'hrm_ops.timesheet.close_requests.desc'.tr(),
                                 style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.35),
                               ),
                             ],
@@ -1448,10 +1449,10 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         alignment: Alignment.center,
                         child: Column(
-                          children: const [
+                          children: [
                             SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFF59E0B))),
                             SizedBox(height: 10),
-                            Text('Đang kiểm tra điều kiện chốt đơn từ...', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                            Text('hrm_ops.timesheet.close_requests.checking'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                           ],
                         ),
                       )
@@ -1469,8 +1470,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Còn vướng, chưa thể thực hiện:',
+                            Text(
+                              'hrm_ops.timesheet.blockers'.tr(),
                               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
                             ),
                             const SizedBox(height: 8),
@@ -1516,13 +1517,13 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: const Color(0xFFBBF7D0)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 20),
                             SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Tất cả đơn từ trong tháng đã được xử lý. Bạn có thể tiến hành chốt đơn từ.',
+                                'hrm_ops.timesheet.close_requests.all_clear'.tr(),
                                 style: TextStyle(fontSize: 12.5, color: Color(0xFF166534), height: 1.35),
                               ),
                             ),
@@ -1545,7 +1546,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9.5),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Bỏ qua', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: Text('hrm_ops.timesheet.skip'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -1553,8 +1554,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                               ? (hasBlockers
                                   ? () {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Còn vướng đơn từ chưa duyệt trong tháng, chưa thể chốt đơn từ!'),
+                                        SnackBar(
+                                          content: Text('hrm_ops.timesheet.close_requests.blocked'.tr()),
                                           backgroundColor: Color(0xFFDC2626),
                                         ),
                                       );
@@ -1571,7 +1572,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                     if (mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text('Đã chốt đơn từ tháng $_timesheetMonthKey thành công!'),
+                                          content: Text('hrm_ops.timesheet.close_requests.done'.tr(args: {'month': _timesheetMonthKey})),
                                           backgroundColor: const Color(0xFF16A34A),
                                         ),
                                       );
@@ -1581,7 +1582,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                     if (mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text(res['message']?.toString() ?? 'Chốt đơn từ thất bại.'),
+                                          content: Text(res['message']?.toString() ?? 'hrm_ops.timesheet.close_requests.failed'.tr()),
                                           backgroundColor: const Color(0xFFDC2626),
                                         ),
                                       );
@@ -1598,7 +1599,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                           child: isSubmitting
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : Text(
-                                  'Xác nhận chốt đơn từ',
+                                  'hrm_ops.timesheet.close_requests.confirm'.tr(),
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
@@ -1637,12 +1638,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                 setModalState(() {
                   closeState = state;
                   isLoadingState = false;
-                  loadError = state == null ? 'Không thể tải điều kiện chốt công' : null;
+                  loadError = state == null ? 'hrm_ops.timesheet.close.load_error'.tr() : null;
                 });
               } catch (e) {
                 setModalState(() {
                   isLoadingState = false;
-                  loadError = 'Lỗi kết nối khi kiểm tra chốt công: $e';
+                  loadError = 'hrm_ops.timesheet.close.load_conn_error'.tr(args: {'error': e});
                 });
               }
             }
@@ -1676,12 +1677,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Chốt công tháng $_timesheetMonthKey',
+                                  'hrm_ops.timesheet.close.title'.tr(args: {'month': _timesheetMonthKey}),
                                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                 ),
                                 const SizedBox(height: 5),
-                                const Text(
-                                  'Tính lại và khóa bảng công của tháng để phục vụ tính lương. Sau khi chốt không thể chỉnh sửa.',
+                                Text(
+                                  'hrm_ops.timesheet.close.desc'.tr(),
                                   style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.35),
                                 ),
                               ],
@@ -1702,7 +1703,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
 
                       // Loading or Content
                       if (isLoadingState)
-                        const Center(
+                        Center(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 24),
                             child: Column(
@@ -1714,7 +1715,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                 ),
                                 SizedBox(height: 12),
                                 Text(
-                                  'Đang kiểm tra điều kiện chốt công...',
+                                  'hrm_ops.timesheet.close.checking'.tr(),
                                   style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                                 ),
                               ],
@@ -1745,7 +1746,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                   });
                                   fetchState();
                                 },
-                                child: const Text('Thử lại', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                child: Text('common.retry'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
@@ -1764,8 +1765,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Còn vướng, chưa thể thực hiện:',
+                              Text(
+                                'hrm_ops.timesheet.blockers'.tr(),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
@@ -1828,13 +1829,13 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                                               });
                                                               ScaffoldMessenger.of(context).showSnackBar(
                                                                 SnackBar(
-                                                                  content: Text('Đang lọc tới nhân viên ${item.employeeCode} - ${item.employeeName} (${item.reason})'),
+                                                                  content: Text('hrm_ops.timesheet.close.filter_to'.tr(args: {'code': item.employeeCode, 'name': item.employeeName, 'reason': item.reason})),
                                                                   backgroundColor: const Color(0xFFD97706),
                                                                 ),
                                                               );
                                                             },
-                                                            child: const Text(
-                                                              'Mở ô công',
+                                                            child: Text(
+                                                              'hrm_ops.timesheet.close.open_cell'.tr(),
                                                               style: TextStyle(
                                                                 fontSize: 11.5,
                                                                 fontWeight: FontWeight.w600,
@@ -1868,13 +1869,13 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFBBF7D0)),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
                               Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 20),
                               SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Tất cả điều kiện đã thỏa mãn. Bạn có thể tiến hành chốt bảng công.',
+                                  'hrm_ops.timesheet.close.all_clear'.tr(),
                                   style: TextStyle(fontSize: 12.5, color: Color(0xFF166534), height: 1.35),
                                 ),
                               ),
@@ -1897,7 +1898,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9.5),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: const Text('Bỏ qua', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            child: Text('hrm_ops.timesheet.skip'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                           ),
                           const SizedBox(width: 10),
                           ElevatedButton(
@@ -1906,8 +1907,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                 : hasBlockers
                                     ? () {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Chưa thể thực hiện: Còn các điều kiện vướng mắc cần xử lý trước khi chốt công!'),
+                                          SnackBar(
+                                            content: Text('hrm_ops.timesheet.close.blocked'.tr()),
                                             backgroundColor: Color(0xFFDC2626),
                                           ),
                                         );
@@ -1921,7 +1922,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                           if (mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(
-                                                content: Text('Đã chốt công tháng $_timesheetMonthKey thành công!'),
+                                                content: Text('hrm_ops.timesheet.close.done'.tr(args: {'month': _timesheetMonthKey})),
                                                 backgroundColor: const Color(0xFF16A34A),
                                               ),
                                             );
@@ -1931,7 +1932,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                           if (mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(
-                                                content: Text(res['message']?.toString() ?? 'Không thể chốt công. Vui lòng thử lại!'),
+                                                content: Text(res['message']?.toString() ?? 'hrm_ops.timesheet.close.failed'.tr()),
                                                 backgroundColor: const Color(0xFFDC2626),
                                               ),
                                             );
@@ -1952,7 +1953,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
                                 : Text(
-                                    'Xác nhận chốt công',
+                                    'hrm_ops.timesheet.close.confirm'.tr(),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
@@ -2000,12 +2001,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Mở lại kỳ công tháng $_timesheetMonthKey',
+                            'hrm_ops.timesheet.reopen.title'.tr(args: {'month': _timesheetMonthKey}),
                             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           ),
                           const SizedBox(height: 5),
-                          const Text(
-                            'Bạn có chắc chắn muốn mở lại kỳ công này? Sau khi mở lại, trạng thái sẽ chuyển về Đang mở để cho phép điều chỉnh công và đơn từ.',
+                          Text(
+                            'hrm_ops.timesheet.reopen.desc'.tr(),
                             style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.35),
                           ),
                         ],
@@ -2026,8 +2027,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                 TextField(
                   controller: reasonCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Lý do mở lại (tùy chọn)',
-                    hintText: 'Nhập lý do mở lại kỳ công...',
+                    labelText: 'hrm_ops.timesheet.reopen.reason_label'.tr(),
+                    hintText: 'hrm_ops.timesheet.reopen.reason_hint'.tr(),
                     hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2047,7 +2048,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9.5),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Bỏ qua', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      child: Text('hrm_ops.timesheet.skip'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton(
@@ -2065,7 +2066,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Đã mở lại kỳ công tháng $_timesheetMonthKey thành công.'),
+                                      content: Text('hrm_ops.timesheet.reopen.done'.tr(args: {'month': _timesheetMonthKey})),
                                       backgroundColor: const Color(0xFF16A34A),
                                     ),
                                   );
@@ -2075,7 +2076,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(res['message']?.toString() ?? 'Không thể mở lại kỳ công. Vui lòng thử lại!'),
+                                      content: Text(res['message']?.toString() ?? 'hrm_ops.timesheet.reopen.failed'.tr()),
                                       backgroundColor: const Color(0xFFDC2626),
                                     ),
                                   );
@@ -2095,8 +2096,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text(
-                              'Xác nhận mở lại',
+                          : Text(
+                              'hrm_ops.timesheet.reopen.confirm'.tr(),
                               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                     ),
@@ -2120,8 +2121,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
 
     if (chosen.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không có dữ liệu nhân viên nào để xuất CSV.'),
+        SnackBar(
+          content: Text('hrm_ops.timesheet.csv.no_data'.tr()),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -2146,9 +2147,9 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
 
     // 1. Header row matching web: Mã NV, Họ tên, Đơn vị, [01/10/2026 ... 31/10/2026], [BOARD_TOTAL_COLUMNS]
     final headers = <String>[
-      'Mã NV',
-      'Họ tên',
-      'Đơn vị',
+      'hrm_ops.timesheet.csv.h.code'.tr(),
+      'hrm_ops.timesheet.csv.h.name'.tr(),
+      'hrm_ops.timesheet.csv.h.unit'.tr(),
     ];
 
     for (int d = 1; d <= daysInMonth; d++) {
@@ -2158,15 +2159,15 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
     }
 
     headers.addAll([
-      'Công',
-      'Đi trễ',
-      'Về sớm',
-      'Bất thường',
-      'Nghỉ không phép',
-      'Phép năm',
-      'Nghỉ có phép',
-      'Không lương',
-      'Công tác',
+      'hrm_ops.timesheet.csv.h.work'.tr(),
+      'hrm_ops.timesheet.csv.h.late'.tr(),
+      'hrm_ops.timesheet.csv.h.early'.tr(),
+      'hrm_ops.timesheet.csv.h.abnormal'.tr(),
+      'hrm_ops.timesheet.csv.h.absent'.tr(),
+      'hrm_ops.timesheet.csv.h.annual'.tr(),
+      'hrm_ops.timesheet.csv.h.paid'.tr(),
+      'hrm_ops.timesheet.csv.h.unpaid'.tr(),
+      'hrm_ops.timesheet.csv.h.trip'.tr(),
       'OT',
     ]);
 
@@ -2227,8 +2228,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
       // Totals columns matching web BOARD_TOTAL_COLUMNS
       final t = emp.totals;
       row.add(t.workdayUnits % 1 == 0 ? t.workdayUnits.toInt().toString() : t.workdayUnits.toString());
-      row.add(t.lateDays > 0 ? '${t.lateDays} ngày / ${t.lateMinutes} phút' : '0');
-      row.add(t.earlyLeaveDays > 0 ? '${t.earlyLeaveDays} ngày / ${t.earlyLeaveMinutes} phút' : '0');
+      row.add(t.lateDays > 0 ? 'hrm_ops.timesheet.csv.late'.tr(args: {'days': t.lateDays, 'minutes': t.lateMinutes}) : '0');
+      row.add(t.earlyLeaveDays > 0 ? 'hrm_ops.timesheet.csv.early'.tr(args: {'days': t.earlyLeaveDays, 'minutes': t.earlyLeaveMinutes}) : '0');
       row.add(t.abnormalDays % 1 == 0 ? t.abnormalDays.toInt().toString() : t.abnormalDays.toString());
       row.add(t.absentDays % 1 == 0 ? t.absentDays.toInt().toString() : t.absentDays.toString());
       row.add(t.annualLeaveDays % 1 == 0 ? t.annualLeaveDays.toInt().toString() : t.annualLeaveDays.toString());
@@ -2322,13 +2323,13 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Xuất CSV Bảng công thành công',
+                      Text(
+                        'hrm_ops.timesheet.csv.done_title'.tr(),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Kỳ công: $_timesheetMonthLabel · $employeeCount nhân sự',
+                        'hrm_ops.timesheet.csv.done_subtitle'.tr(args: {'period': _timesheetMonthLabel, 'count': employeeCount}),
                         style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -2346,16 +2347,16 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
               ),
               child: Column(
                 children: [
-                  _buildCsvDetailRow('Tên tệp:', fileName, isBold: true),
+                  _buildCsvDetailRow('hrm_ops.timesheet.csv.file_name'.tr(), fileName, isBold: true),
                   const SizedBox(height: 8),
-                  _buildCsvDetailRow('Dung lượng:', '$fileSizeKb KB'),
+                  _buildCsvDetailRow('hrm_ops.timesheet.csv.size'.tr(), '$fileSizeKb KB'),
                   const SizedBox(height: 8),
-                  _buildCsvDetailRow('Số nhân sự:', '$employeeCount nhân sự'),
+                  _buildCsvDetailRow('hrm_ops.timesheet.csv.employees'.tr(), 'hrm_ops.timesheet.csv.employee_count'.tr(args: {'count': employeeCount})),
                   const SizedBox(height: 8),
-                  _buildCsvDetailRow('Mã hóa:', 'UTF-8 with BOM (tương thích Excel & Sheets)'),
+                  _buildCsvDetailRow('hrm_ops.timesheet.csv.encoding'.tr(), 'hrm_ops.timesheet.csv.encoding_val'.tr()),
                   if (savedPath != null) ...[
                     const SizedBox(height: 8),
-                    _buildCsvDetailRow('Đã lưu tại:', savedPath, isSmall: true),
+                    _buildCsvDetailRow('hrm_ops.timesheet.csv.saved_at'.tr(), savedPath, isSmall: true),
                   ],
                 ],
               ),
@@ -2368,15 +2369,15 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: csvContent));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đã sao chép nội dung CSV vào bộ nhớ tạm!'),
+                        SnackBar(
+                          content: Text('hrm_ops.timesheet.csv.copied'.tr()),
                           backgroundColor: Color(0xFF16A34A),
                           duration: Duration(seconds: 2),
                         ),
                       );
                     },
                     icon: const Icon(Icons.copy_rounded, size: 16),
-                    label: const Text('Sao chép CSV', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    label: Text('hrm_ops.timesheet.csv.copy'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF334155),
                       backgroundColor: Colors.white,
@@ -2393,7 +2394,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                       await Printing.sharePdf(bytes: bytes, filename: fileName);
                     },
                     icon: const Icon(Icons.share_rounded, size: 16),
-                    label: const Text('Lưu / Chia sẻ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    label: Text('hrm_ops.timesheet.csv.save_share'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF59E0B),
                       foregroundColor: Colors.white,
@@ -2410,7 +2411,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Đóng', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                child: Text('common.close'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
               ),
             ),
           ],
@@ -2447,7 +2448,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
   void _showDayDetailModal(HrmBoardEmployee emp, int dayNumber, HrmBoardDay? dayObj, {bool isFuture = false}) {
     final parts = _timesheetMonthKey.split('-');
     final weekday = _getDayWeekdayLabel(dayNumber);
-    final dateStr = '$weekday, ngày ${dayNumber.toString().padLeft(2, '0')}/${parts[1]}/${parts[0]}';
+    final dateStr = 'hrm_ops.timesheet.day.date_line'.tr(args: {'weekday': weekday, 'date': '${dayNumber.toString().padLeft(2, '0')}/${parts[1]}/${parts[0]}'});
 
     showModalBottomSheet(
       context: context,
@@ -2499,7 +2500,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Trạng thái công:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                Text('hrm_ops.timesheet.day.status_label'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -2519,12 +2520,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                   ),
                   child: Text(
                     isFuture
-                        ? (dayObj?.status == 'OFF' ? 'Nghỉ tuần (Chưa tới)' : 'Dự kiến: Ca Hành chính')
+                        ? (dayObj?.status == 'OFF' ? 'hrm_ops.timesheet.day.future_off'.tr() : 'hrm_ops.timesheet.day.future_hc'.tr())
                         : (dayObj?.status == 'HC'
-                            ? 'Ca Hành chính (đủ)'
+                            ? 'hrm_ops.timesheet.day.hc_full'.tr()
                             : (dayObj?.status == 'PRESENT'
-                                ? 'Đủ công (8h)'
-                                : (dayObj?.status == 'OFF' ? 'Nghỉ tuần' : 'Vắng không phép / Chưa quẹt thẻ'))),
+                                ? 'hrm_ops.timesheet.day.full_work'.tr()
+                                : (dayObj?.status == 'OFF' ? 'hrm_ops.timesheet.day.off'.tr() : 'hrm_ops.timesheet.day.absent_nopunch'.tr()))),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -2544,8 +2545,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Ca làm việc:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-                Text(dayObj?.shiftName ?? 'Ca Hành chính (08:00 - 17:30)', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                Text('hrm_ops.timesheet.day.shift_label'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                Text(dayObj?.shiftName ?? 'hrm_ops.timesheet.day.default_shift'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
               ],
             ),
             const SizedBox(height: 10),
@@ -2554,9 +2555,9 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Giờ chấm công:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                Text('hrm_ops.timesheet.day.punch_label'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                 Text(
-                  dayObj?.checkIn != null ? 'Vào: ${dayObj!.checkIn} · Ra: ${dayObj.checkOut ?? '--:--'}' : 'Chưa có dữ liệu quẹt thẻ',
+                  dayObj?.checkIn != null ? 'hrm_ops.timesheet.day.punch'.tr(args: {'in': dayObj!.checkIn, 'out': dayObj.checkOut ?? '--:--'}) : 'hrm_ops.timesheet.day.no_punch'.tr(),
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                 ),
               ],
@@ -2566,8 +2567,8 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Đi trễ:', style: TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
-                  Text('${dayObj.lateMinutes} phút', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                  Text('hrm_ops.timesheet.day.late_label'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+                  Text('hrm_ops.timesheet.day.late_minutes'.tr(args: {'minutes': dayObj.lateMinutes}), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
                 ],
               ),
             ],

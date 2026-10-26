@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../models/hrm_models.dart';
 
 /// Cấu hình Thiết bị chấm công (Hardware Devices Config View) - Chuẩn Web 1:1 Pixel-Perfect
@@ -19,32 +20,32 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
             'name': d.name,
             'location': d.location,
             'ip': d.ipAddress,
-            'sync': 'Trạng thái: ${d.status}',
+            'sync': 'hrm_config.hardware.status_line'.tr(args: {'status': d.status}),
             'status': d.status,
             'type': d.type,
           }).toList()
         : [
             {
               'name': 'Hikvision FaceID DS-K1T671MF',
-              'location': 'Cửa chính Tầng 1 - Trụ sở SVN DTS',
+              'location': 'hrm_config.hardware.sample.loc1'.tr(),
               'ip': '192.168.1.201 : 8000',
-              'sync': 'Đồng bộ: 2 phút trước',
+              'sync': 'hrm_config.hardware.sample.sync1'.tr(),
               'status': 'ONLINE',
               'type': 'FaceID AI',
             },
             {
-              'name': 'ZKTeco F22 Vân tay & Thẻ từ',
-              'location': 'Cửa xưởng Tầng 2 - Nhà máy Long Hậu',
+              'name': 'hrm_config.hardware.sample.name2'.tr(),
+              'location': 'hrm_config.hardware.sample.loc2'.tr(),
               'ip': '192.168.1.202 : 4370',
-              'sync': 'Đồng bộ: 5 phút trước',
+              'sync': 'hrm_config.hardware.sample.sync2'.tr(),
               'status': 'ONLINE',
-              'type': 'Vân tay & RFID',
+              'type': 'hrm_config.hardware.sample.type2'.tr(),
             },
             {
               'name': 'Mobile App SVN DTS (GPS & Wi-Fi)',
-              'location': 'Toàn bộ nhân sự di động',
+              'location': 'hrm_config.hardware.sample.loc3'.tr(),
               'ip': 'Cloud sync / WebSocket',
-              'sync': 'Đồng bộ: Vừa xong',
+              'sync': 'hrm_config.hardware.sample.sync3'.tr(),
               'status': 'ONLINE',
               'type': 'Mobile App',
             },
@@ -58,18 +59,18 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Thiết bị',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    'hrm_config.hardware.title'.tr(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
-                  SizedBox(height: 3),
+                  const SizedBox(height: 3),
                   Text(
-                    'Quản lý thiết bị chấm công, máy chấm, app',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                    'hrm_config.hardware.subtitle'.tr(),
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                 ],
               ),
@@ -84,7 +85,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                     border: Border.all(color: const Color(0xFFA7F3D0)),
                   ),
                   child: Text(
-                    '${devList.length} thiết bị · Sẵn sàng',
+                    'hrm_config.hardware.count_ready'.tr(args: {'count': devList.length}),
                     style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                   ),
                 ),
@@ -98,14 +99,14 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                       color: const Color(0xFFFBBF24),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add, size: 14, color: Color(0xFF78350F)),
-                        SizedBox(width: 4),
+                        const Icon(Icons.add, size: 14, color: Color(0xFF78350F)),
+                        const SizedBox(width: 4),
                         Text(
-                          'Thêm thiết bị',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF78350F)),
+                          'hrm_config.hardware.add_device'.tr(),
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF78350F)),
                         ),
                       ],
                     ),
@@ -136,18 +137,18 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.router_outlined, size: 18, color: Color(0xFF4F46E5)),
-                  SizedBox(width: 10),
+                  const Icon(Icons.router_outlined, size: 18, color: Color(0xFF4F46E5)),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Danh sách máy chấm công & thiết bị', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                        SizedBox(height: 2),
-                        Text('Kết nối máy nhận diện khuôn mặt (FaceID), vân tay và ứng dụng di động', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                        Text('hrm_config.hardware.list.title'.tr(), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                        const SizedBox(height: 2),
+                        Text('hrm_config.hardware.list.subtitle'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                       ],
                     ),
                   ),
@@ -252,7 +253,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                           children: [
                             OutlinedButton.icon(
                               icon: const Icon(Icons.refresh_rounded, size: 13),
-                              label: const Text('Test Ping', style: TextStyle(fontSize: 11)),
+                              label: Text('hrm_config.hardware.test_ping'.tr(), style: const TextStyle(fontSize: 11)),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF2563EB),
                                 side: const BorderSide(color: Color(0xFFBFDBFE)),
@@ -263,7 +264,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Ping ${dev['name']} thành công! Độ trễ: 14ms (ONLINE)'),
+                                    content: Text('hrm_config.hardware.ping_ok'.tr(args: {'name': dev['name']})),
                                     backgroundColor: const Color(0xFF059669),
                                   ),
                                 );
@@ -272,7 +273,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                             const SizedBox(width: 8),
                             OutlinedButton.icon(
                               icon: const Icon(Icons.tune_rounded, size: 13),
-                              label: const Text('Cấu hình', style: TextStyle(fontSize: 11)),
+                              label: Text('hrm_config.hardware.configure'.tr(), style: const TextStyle(fontSize: 11)),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF475569),
                                 side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -283,7 +284,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Mở thông số cấu hình: ${dev['name']}'),
+                                    content: Text('hrm_config.hardware.open_config'.tr(args: {'name': dev['name']})),
                                     backgroundColor: const Color(0xFF334155),
                                   ),
                                 );
@@ -301,7 +302,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.sync_rounded, size: 16),
-                  label: const Text('Đồng bộ toàn bộ thiết bị ngay', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  label: Text('hrm_config.hardware.sync_all'.tr(), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF4F46E5),
                     side: const BorderSide(color: Color(0xFFC7D2FE)),
@@ -335,18 +336,18 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.hub_outlined, size: 18, color: Color(0xFF4F46E5)),
-                  SizedBox(width: 10),
+                  const Icon(Icons.hub_outlined, size: 18, color: Color(0xFF4F46E5)),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Tóm tắt tích hợp phần cứng', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                        SizedBox(height: 2),
-                        Text('Cơ chế truyền nhận & đồng bộ log máy chấm công', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                        Text('hrm_config.hardware.summary.title'.tr(), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                        const SizedBox(height: 2),
+                        Text('hrm_config.hardware.summary.subtitle'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                       ],
                     ),
                   ),
@@ -354,13 +355,13 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
               ),
               const SizedBox(height: 14),
 
-              _buildSummaryRow(Icons.cable_rounded, const Color(0xFF2563EB), 'Giao thức kết nối', 'TCP/IP, HTTP Webhook, Cloud Sync'),
+              _buildSummaryRow(Icons.cable_rounded, const Color(0xFF2563EB), 'hrm_config.hardware.summary.protocol.label'.tr(), 'hrm_config.hardware.summary.protocol.value'.tr()),
               const SizedBox(height: 8),
-              _buildSummaryRow(Icons.timer_outlined, const Color(0xFF059669), 'Chu kỳ đồng bộ log', 'Tự động mỗi 3 phút (Polling & Push)'),
+              _buildSummaryRow(Icons.timer_outlined, const Color(0xFF059669), 'hrm_config.hardware.summary.cycle.label'.tr(), 'hrm_config.hardware.summary.cycle.value'.tr()),
               const SizedBox(height: 8),
-              _buildSummaryRow(Icons.face_rounded, const Color(0xFF7C3AED), 'Cơ chế nhận diện', 'Khuôn mặt 3D + Vân tay + RFID + App'),
+              _buildSummaryRow(Icons.face_rounded, const Color(0xFF7C3AED), 'hrm_config.hardware.summary.recog.label'.tr(), 'hrm_config.hardware.summary.recog.value'.tr()),
               const SizedBox(height: 8),
-              _buildSummaryRow(Icons.cloud_off_rounded, const Color(0xFFD97706), 'Xử lý khi mất mạng', 'Bộ đệm offline 50,000 sự kiện, tự đẩy khi có mạng'),
+              _buildSummaryRow(Icons.cloud_off_rounded, const Color(0xFFD97706), 'hrm_config.hardware.summary.offline.label'.tr(), 'hrm_config.hardware.summary.offline.value'.tr()),
             ],
           ),
         ),
@@ -375,15 +376,15 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
-          child: const Row(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFD97706)),
-              SizedBox(width: 10),
+              const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFD97706)),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Máy chấm công phần cứng cần cài đặt đúng IP mạng LAN nội bộ hoặc Port Forwarding. Khi đồng bộ, log check-in/out sẽ nạp trực tiếp vào dữ liệu Bảng công.',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF92400E), height: 1.4),
+                  'hrm_config.hardware.warning'.tr(),
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E), height: 1.4),
                 ),
               ),
             ],
@@ -444,24 +445,24 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.router_outlined, size: 20, color: Color(0xFF2563EB)),
-                    SizedBox(width: 8),
-                    Text('Thêm thiết bị chấm công', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    const Icon(Icons.router_outlined, size: 20, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 8),
+                    Text('hrm_config.hardware.modal.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   ],
                 ),
                 IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
             const SizedBox(height: 16),
-            const Text('Hệ thống hỗ trợ tự động nhận diện thiết bị qua mạng nội bộ hoặc cấu hình IP/Port.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+            Text('hrm_config.hardware.modal.hint'.tr(), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.search_rounded, size: 16),
-                label: const Text('Quét thiết bị trong mạng LAN'),
+                label: Text('hrm_config.hardware.modal.scan'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0F172A),
                   foregroundColor: Colors.white,
@@ -471,7 +472,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
                 onPressed: () {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đang quét subnet 192.168.1.0/24 để tìm máy chấm công...'), backgroundColor: Color(0xFF2563EB)),
+                    SnackBar(content: Text('hrm_config.hardware.modal.scanning'.tr()), backgroundColor: const Color(0xFF2563EB)),
                   );
                 },
               ),

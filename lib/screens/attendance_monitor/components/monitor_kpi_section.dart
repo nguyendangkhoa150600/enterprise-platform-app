@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/hrm_attendance_monitor_models.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class MonitorKpiCard extends StatelessWidget {
   final IconData icon;
@@ -118,11 +119,11 @@ class MonitorAttentionQuickBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Có $count nhân sự cần theo dõi',
+                    'att_monitor.banner.title'.tr(args: {'count': count}),
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
                   ),
-                  const Text(
-                    'Chưa vào ca, đi trễ, về sớm hoặc thiếu lượt chấm',
+                  Text(
+                    'att_monitor.banner.subtitle'.tr(),
                     style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C)),
                   ),
                 ],
@@ -159,9 +160,9 @@ class MonitorKpiSection extends StatelessWidget {
                 icon: Icons.people_outline,
                 iconBg: const Color(0xFFEFF6FF),
                 iconColor: const Color(0xFF2563EB),
-                label: 'Tổng nhân sự\nđi ca ${isToday ? 'hôm nay' : 'ngày này'}',
+                label: (isToday ? 'att_monitor.kpi.total_today' : 'att_monitor.kpi.total_day').tr(),
                 value: '${summary.scheduled}',
-                subText: '/ ${summary.totalPeople} nhân sự',
+                subText: 'att_monitor.kpi.of_people'.tr(args: {'count': summary.totalPeople}),
                 onTap: () => onSelectKpiFilter(tab: 'ALL', status: 'ALL'),
               ),
             ),
@@ -171,7 +172,7 @@ class MonitorKpiSection extends StatelessWidget {
                 icon: Icons.check_circle_outline,
                 iconBg: const Color(0xFFECFDF5),
                 iconColor: const Color(0xFF059669),
-                label: 'Đã vào ca',
+                label: 'att_monitor.kpi.checked_in'.tr(),
                 value: '${summary.checkedIn}',
                 subText: summary.percentText(summary.checkedIn),
                 onTap: () => onSelectKpiFilter(tab: 'CHECKED_IN', status: 'ALL'),
@@ -187,7 +188,7 @@ class MonitorKpiSection extends StatelessWidget {
                 icon: Icons.schedule_outlined,
                 iconBg: const Color(0xFFFEF2F2),
                 iconColor: const Color(0xFFDC2626),
-                label: 'Chưa chấm công',
+                label: 'att_monitor.kpi.not_checked_in'.tr(),
                 value: '${summary.notCheckedIn}',
                 subText: summary.percentText(summary.notCheckedIn),
                 onTap: () => onSelectKpiFilter(tab: 'NOT_CHECKED_IN', status: 'NOT_CHECKED_IN'),
@@ -199,7 +200,7 @@ class MonitorKpiSection extends StatelessWidget {
                 icon: Icons.warning_amber_rounded,
                 iconBg: const Color(0xFFFFFBEB),
                 iconColor: const Color(0xFFD97706),
-                label: 'Đi trễ',
+                label: 'att_monitor.kpi.late'.tr(),
                 value: '${summary.late}',
                 subText: summary.percentText(summary.late),
                 onTap: () => onSelectKpiFilter(tab: 'LATE', status: 'LATE'),
@@ -215,7 +216,7 @@ class MonitorKpiSection extends StatelessWidget {
                 icon: Icons.logout_rounded,
                 iconBg: const Color(0xFFFFF7ED),
                 iconColor: const Color(0xFFEA580C),
-                label: 'Về sớm',
+                label: 'att_monitor.kpi.early_leave'.tr(),
                 value: '${summary.earlyLeave}',
                 subText: summary.percentText(summary.earlyLeave),
                 onTap: () => onSelectKpiFilter(tab: 'EARLY_LEAVE', status: 'EARLY_LEAVE'),
@@ -227,7 +228,7 @@ class MonitorKpiSection extends StatelessWidget {
                 icon: Icons.calendar_month_outlined,
                 iconBg: const Color(0xFFFAF5FF),
                 iconColor: const Color(0xFF7C3AED),
-                label: 'Đang nghỉ phép',
+                label: 'att_monitor.kpi.on_leave'.tr(),
                 value: '${summary.onLeave}',
                 subText: summary.percentText(summary.onLeave),
                 onTap: () => onSelectKpiFilter(tab: 'ALL', status: 'ALL'),

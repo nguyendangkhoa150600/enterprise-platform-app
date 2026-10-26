@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/procedure_models.dart';
 import '../../../theme/colors.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 // Thanh tìm kiếm và bộ lọc trạng thái (Đồng bộ 100% với Web)
 class ProcedureSearchFilterControls extends StatelessWidget {
@@ -62,13 +63,13 @@ class ProcedureSearchFilterControls extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildStatusTab('Đang xử lý', 'RUNNING', runningCount),
-                _buildStatusTab('Duyệt gấp / SLA', 'SLA_RISK', slaRiskCount, isSlaRisk: true),
-                _buildStatusTab('Hoàn thành', 'COMPLETED', completedCount),
-                _buildStatusTab('Từ chối', 'REJECTED', rejectedCount),
-                _buildStatusTab('Đã huỷ', 'CANCELLED', cancelledCount),
-                _buildStatusTab('Đã huỷ hiệu lực', 'REVERSED', reversedCount),
-                _buildStatusTab('Tất cả', 'ALL', instances.length),
+                _buildStatusTab('procedure.status.running'.tr(), 'RUNNING', runningCount),
+                _buildStatusTab('procedure.status.sla_risk'.tr(), 'SLA_RISK', slaRiskCount, isSlaRisk: true),
+                _buildStatusTab('procedure.status.completed'.tr(), 'COMPLETED', completedCount),
+                _buildStatusTab('procedure.status.rejected'.tr(), 'REJECTED', rejectedCount),
+                _buildStatusTab('procedure.status.cancelled'.tr(), 'CANCELLED', cancelledCount),
+                _buildStatusTab('procedure.status.reversed'.tr(), 'REVERSED', reversedCount),
+                _buildStatusTab('procedure.status.all'.tr(), 'ALL', instances.length),
               ],
             ),
           ),
@@ -78,7 +79,7 @@ class ProcedureSearchFilterControls extends StatelessWidget {
           TextField(
             onChanged: onSearchChanged,
             decoration: InputDecoration(
-              hintText: 'Tìm mã PROC, tiêu đề...',
+              hintText: 'procedure.filter.search_hint'.tr(),
               hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
               filled: true,
@@ -108,11 +109,11 @@ class ProcedureSearchFilterControls extends StatelessWidget {
                 child: _buildFilterDropdown(
                   label: _getSlaLabel(selectedSlaFilter),
                   value: selectedSlaFilter,
-                  items: const [
-                    DropdownMenuItem(value: 'ALL', child: Text('SLA: Tất cả', style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: 'ON_TIME', child: Text('SLA: Đúng hạn', style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: 'AT_RISK', child: Text('SLA: Sắp quá hạn', style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: 'BREACHED', child: Text('SLA: Quá hạn', style: TextStyle(fontSize: 12))),
+                  items: [
+                    DropdownMenuItem(value: 'ALL', child: Text('procedure.filter.sla_all'.tr(), style: const TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: 'ON_TIME', child: Text('procedure.filter.sla_on_time'.tr(), style: const TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: 'AT_RISK', child: Text('procedure.filter.sla_at_risk'.tr(), style: const TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: 'BREACHED', child: Text('procedure.filter.sla_breached'.tr(), style: const TextStyle(fontSize: 12))),
                   ],
                   onChanged: (val) {
                     if (val != null) onSlaFilterChanged(val);
@@ -124,10 +125,10 @@ class ProcedureSearchFilterControls extends StatelessWidget {
                 child: _buildFilterDropdown(
                   label: _getSourceLabel(selectedSourceFilter),
                   value: selectedSourceFilter,
-                  items: const [
-                    DropdownMenuItem(value: 'ALL', child: Text('Nguồn: Tất cả', style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: 'MANUAL', child: Text('Nguồn: Tạo thủ công', style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: 'SYSTEM', child: Text('Nguồn: Hệ thống', style: TextStyle(fontSize: 12))),
+                  items: [
+                    DropdownMenuItem(value: 'ALL', child: Text('procedure.filter.source_all'.tr(), style: const TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: 'MANUAL', child: Text('procedure.filter.source_manual'.tr(), style: const TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: 'SYSTEM', child: Text('procedure.filter.source_system'.tr(), style: const TextStyle(fontSize: 12))),
                   ],
                   onChanged: (val) {
                     if (val != null) onSourceFilterChanged(val);
@@ -245,24 +246,24 @@ class ProcedureSearchFilterControls extends StatelessWidget {
   String _getSlaLabel(String val) {
     switch (val) {
       case 'ON_TIME':
-        return 'SLA: Đúng hạn';
+        return 'procedure.filter.sla_on_time'.tr();
       case 'AT_RISK':
-        return 'SLA: Sắp quá hạn';
+        return 'procedure.filter.sla_at_risk'.tr();
       case 'BREACHED':
-        return 'SLA: Quá hạn';
+        return 'procedure.filter.sla_breached'.tr();
       default:
-        return 'SLA: Tất cả';
+        return 'procedure.filter.sla_all'.tr();
     }
   }
 
   String _getSourceLabel(String val) {
     switch (val) {
       case 'MANUAL':
-        return 'Nguồn: Tạo thủ công';
+        return 'procedure.filter.source_manual'.tr();
       case 'SYSTEM':
-        return 'Nguồn: Hệ thống';
+        return 'procedure.filter.source_system'.tr();
       default:
-        return 'Nguồn: Tất cả';
+        return 'procedure.filter.source_all'.tr();
     }
   }
 }
@@ -282,25 +283,25 @@ class ProcedureInstanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     Color statusBg = const Color(0xFFEFF6FF);
     Color statusColor = const Color(0xFF2563EB);
-    String statusText = 'Đang xử lý';
+    String statusText = 'procedure.status.running'.tr();
 
     if (item.isCompleted) {
       statusBg = const Color(0xFFECFDF5);
       statusColor = const Color(0xFF059669);
-      statusText = 'Hoàn thành';
+      statusText = 'procedure.status.completed'.tr();
     } else if (item.isRejected) {
       statusBg = const Color(0xFFFEF2F2);
       statusColor = const Color(0xFFDC2626);
-      statusText = 'Từ chối';
+      statusText = 'procedure.status.rejected'.tr();
     } else if (item.isCancelled) {
       statusBg = const Color(0xFFF1F5F9);
       statusColor = const Color(0xFF64748B);
-      statusText = 'Đã hủy';
+      statusText = 'procedure.card.status_cancelled'.tr();
     }
 
     Color slaBg = const Color(0xFFECFDF5);
     Color slaColor = const Color(0xFF059669);
-    String slaText = item.slaCountdownText ?? 'Còn hạn';
+    String slaText = item.slaCountdownText ?? 'procedure.sla.on_time'.tr();
 
     switch (item.slaState) {
       case ProcedureSlaState.none:
@@ -311,17 +312,17 @@ class ProcedureInstanceCard extends StatelessWidget {
       case ProcedureSlaState.ok:
         slaBg = const Color(0xFFECFDF5);
         slaColor = const Color(0xFF059669);
-        slaText = item.slaCountdownText ?? 'Còn hạn';
+        slaText = item.slaCountdownText ?? 'procedure.sla.on_time'.tr();
         break;
       case ProcedureSlaState.warning:
         slaBg = const Color(0xFFFFFBEB);
         slaColor = const Color(0xFFD97706);
-        slaText = item.slaCountdownText ?? 'Sắp hết hạn';
+        slaText = item.slaCountdownText ?? 'procedure.sla.warning'.tr();
         break;
       case ProcedureSlaState.breached:
         slaBg = const Color(0xFFFEF2F2);
         slaColor = const Color(0xFFDC2626);
-        slaText = item.slaCountdownText ?? 'Quá hạn';
+        slaText = item.slaCountdownText ?? 'procedure.sla.breached'.tr();
         break;
     }
 
@@ -484,14 +485,14 @@ class ProcedureInstanceCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: const Color(0xFFFDE68A)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.flash_on, size: 12, color: Color(0xFFD97706)),
-                        SizedBox(width: 3),
+                        const Icon(Icons.flash_on, size: 12, color: Color(0xFFD97706)),
+                        const SizedBox(width: 3),
                         Text(
-                          'Chờ bạn xử lý',
-                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                          'procedure.card.awaiting_you'.tr(),
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
                         ),
                       ],
                     ),
@@ -500,7 +501,7 @@ class ProcedureInstanceCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onTap,
                     icon: const Icon(Icons.touch_app_outlined, size: 14),
-                    label: const Text('Xử lý ngay', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    label: Text('procedure.card.process_now'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF2563EB),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -520,13 +521,13 @@ class ProcedureInstanceCard extends StatelessWidget {
 
 // Trạng thái rỗng khi không có kết quả tìm kiếm hoặc danh sách trống
 class ProcedureEmptyState extends StatelessWidget {
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
 
   const ProcedureEmptyState({
     super.key,
-    this.title = 'Không tìm thấy hồ sơ phù hợp',
-    this.subtitle = 'Thử thay đổi từ khóa hoặc bộ lọc tìm kiếm.',
+    this.title,
+    this.subtitle,
   });
 
   @override
@@ -544,12 +545,12 @@ class ProcedureEmptyState extends StatelessWidget {
           const Icon(Icons.inbox_outlined, size: 48, color: AppColors.slate300),
           const SizedBox(height: 12),
           Text(
-            title,
+            title ?? 'procedure.empty.title'.tr(),
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.slate700),
           ),
           const SizedBox(height: 4),
           Text(
-            subtitle,
+            subtitle ?? 'procedure.empty.subtitle'.tr(),
             style: const TextStyle(fontSize: 12, color: AppColors.slate400),
           ),
         ],

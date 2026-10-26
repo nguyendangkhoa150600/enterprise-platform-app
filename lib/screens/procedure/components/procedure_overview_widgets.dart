@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/procedure_models.dart';
 import '../../../theme/colors.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 // 1. Thống kê 4 thẻ trên cùng
 class ProcedureTopMetrics extends StatelessWidget {
@@ -26,7 +27,7 @@ class ProcedureTopMetrics extends StatelessWidget {
           child: Column(
             children: [
               _buildMetricBox(
-                title: 'Chờ tôi xử lý',
+                title: 'procedure.overview.metric_awaiting_me'.tr(),
                 value: '$actionableCount',
                 icon: Icons.access_time_rounded,
                 bgColor: actionableCount > 0 ? const Color(0xFFFFFBEB) : Colors.white,
@@ -36,7 +37,7 @@ class ProcedureTopMetrics extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               _buildMetricBox(
-                title: 'Hồ sơ đang chạy',
+                title: 'procedure.overview.metric_running'.tr(),
                 value: '$runningCount',
                 icon: Icons.play_circle_outline_rounded,
                 bgColor: Colors.white,
@@ -52,7 +53,7 @@ class ProcedureTopMetrics extends StatelessWidget {
           child: Column(
             children: [
               _buildMetricBox(
-                title: 'Đã hoàn thành',
+                title: 'procedure.overview.metric_completed'.tr(),
                 value: '$completedCount',
                 icon: Icons.check_circle_outline_rounded,
                 bgColor: Colors.white,
@@ -62,7 +63,7 @@ class ProcedureTopMetrics extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               _buildMetricBox(
-                title: 'Quy trình công bố',
+                title: 'procedure.overview.metric_published'.tr(),
                 value: '$publishedCount',
                 icon: Icons.verified_outlined,
                 bgColor: Colors.white,
@@ -183,9 +184,9 @@ class _ProcedureActionRequiredCardState extends State<ProcedureActionRequiredCar
         children: [
           Row(
             children: [
-              const Text(
-                'VIỆC CẦN LÀM',
-                style: TextStyle(
+              Text(
+                'procedure.overview.todo_title'.tr(),
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -202,7 +203,7 @@ class _ProcedureActionRequiredCardState extends State<ProcedureActionRequiredCar
                     border: Border.all(color: const Color(0xFFFDE68A)),
                   ),
                   child: Text(
-                    '${pendingTasks.length} việc',
+                    'procedure.overview.todo_count'.tr(args: {'count': pendingTasks.length}),
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -217,9 +218,9 @@ class _ProcedureActionRequiredCardState extends State<ProcedureActionRequiredCar
             Container(
               padding: const EdgeInsets.symmetric(vertical: 20),
               alignment: Alignment.center,
-              child: const Text(
-                'Không có hồ sơ nào đang chờ bạn xử lý.',
-                style: TextStyle(color: AppColors.slate400, fontSize: 13),
+              child: Text(
+                'procedure.overview.todo_empty'.tr(),
+                style: const TextStyle(color: AppColors.slate400, fontSize: 13),
               ),
             )
           else if (pendingTasks.length <= 3)
@@ -331,7 +332,7 @@ class _ProcedureActionRequiredCardState extends State<ProcedureActionRequiredCar
                 border: Border.all(color: const Color(0xFFDBEAFE)),
               ),
               child: Text(
-                'Vai ${task.currentRole}',
+                'procedure.overview.role_prefix'.tr(args: {'role': task.currentRole}),
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -397,13 +398,13 @@ class ProcedureStatusDonutCard extends StatelessWidget {
       byStage[stage] = (byStage[stage] ?? 0) + 1;
     }
     const stageOrder = ['S', 'R', 'E', 'C', 'A', 'I'];
-    const stageLabels = {
-      'S': 'S - Khởi tạo',
-      'R': 'R - Xem xét',
-      'E': 'E - Thực thi',
-      'C': 'C - Kiểm soát',
-      'A': 'A - Phê duyệt',
-      'I': 'I - Thông tin',
+    final stageLabels = {
+      'S': 'procedure.overview.stage_s'.tr(),
+      'R': 'procedure.overview.stage_r'.tr(),
+      'E': 'procedure.overview.stage_e'.tr(),
+      'C': 'procedure.overview.stage_c'.tr(),
+      'A': 'procedure.overview.stage_a'.tr(),
+      'I': 'procedure.overview.stage_i'.tr(),
     };
     const stageColors = {
       'S': Color(0xFF2563EB),
@@ -435,9 +436,9 @@ class ProcedureStatusDonutCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'HỒ SƠ THEO TRẠNG THÁI',
-            style: TextStyle(
+          Text(
+            'procedure.overview.by_status_title'.tr(),
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -470,9 +471,9 @@ class ProcedureStatusDonutCard extends StatelessWidget {
                           '$total',
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
-                        const Text(
-                          'hồ sơ',
-                          style: TextStyle(fontSize: 9, color: AppColors.slate500),
+                        Text(
+                          'procedure.overview.cases_unit'.tr(),
+                          style: const TextStyle(fontSize: 9, color: AppColors.slate500),
                         ),
                       ],
                     ),
@@ -483,15 +484,15 @@ class ProcedureStatusDonutCard extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    _buildStatusLegendRow('Đang xử lý', running, const Color(0xFF2563EB), '$percentRunning%'),
+                    _buildStatusLegendRow('procedure.status.running'.tr(), running, const Color(0xFF2563EB), '$percentRunning%'),
                     const SizedBox(height: 6),
-                    _buildStatusLegendRow('Hoàn thành', completed, const Color(0xFF059669), '$percentCompleted%'),
+                    _buildStatusLegendRow('procedure.status.completed'.tr(), completed, const Color(0xFF059669), '$percentCompleted%'),
                     const SizedBox(height: 6),
-                    _buildStatusLegendRow('Từ chối', rejected, const Color(0xFFDC2626), '$percentRejected%'),
+                    _buildStatusLegendRow('procedure.status.rejected'.tr(), rejected, const Color(0xFFDC2626), '$percentRejected%'),
                     const SizedBox(height: 6),
-                    _buildStatusLegendRow('Đã huỷ', cancelled, const Color(0xFFEA580C), '$percentCancelled%'),
+                    _buildStatusLegendRow('procedure.status.cancelled'.tr(), cancelled, const Color(0xFFEA580C), '$percentCancelled%'),
                     const SizedBox(height: 6),
-                    _buildStatusLegendRow('Đã huỷ hiệu lực', 0, const Color(0xFF94A3B8), '0%'),
+                    _buildStatusLegendRow('procedure.status.reversed'.tr(), 0, const Color(0xFF94A3B8), '0%'),
                   ],
                 ),
               ),
@@ -505,7 +506,7 @@ class ProcedureStatusDonutCard extends StatelessWidget {
 
           // Sub-section: 9 HỒ SƠ ĐANG XỬ LÝ - THEO HẠN SLA
           Text(
-            '$running HỒ SƠ ĐANG XỬ LÝ · THEO HẠN SLA',
+            'procedure.overview.sla_title'.tr(args: {'count': running}),
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -555,10 +556,10 @@ class ProcedureStatusDonutCard extends StatelessWidget {
             spacing: 12,
             runSpacing: 6,
             children: [
-              if (conHan > 0) _buildDotIndicator(const Color(0xFF16845E), 'Còn hạn $conHan'),
-              if (sapHetHan > 0) _buildDotIndicator(const Color(0xFFE0A83A), 'Sắp hết hạn $sapHetHan'),
-              if (quaHan > 0) _buildDotIndicator(const Color(0xFFB23B3B), 'Quá hạn $quaHan'),
-              if (khongCai > 0) _buildDotIndicator(const Color(0xFF8494A8), 'Không cài SLA $khongCai'),
+              if (conHan > 0) _buildDotIndicator(const Color(0xFF16845E), 'procedure.overview.sla_on_time'.tr(args: {'count': conHan})),
+              if (sapHetHan > 0) _buildDotIndicator(const Color(0xFFE0A83A), 'procedure.overview.sla_warning'.tr(args: {'count': sapHetHan})),
+              if (quaHan > 0) _buildDotIndicator(const Color(0xFFB23B3B), 'procedure.overview.sla_breached'.tr(args: {'count': quaHan})),
+              if (khongCai > 0) _buildDotIndicator(const Color(0xFF8494A8), 'procedure.overview.sla_none'.tr(args: {'count': khongCai})),
             ],
           ),
 
@@ -568,9 +569,9 @@ class ProcedureStatusDonutCard extends StatelessWidget {
           ),
 
           // Sub-section: ĐANG CHỜ VAI NÀO
-          const Text(
-            'ĐANG CHỜ VAI NÀO',
-            style: TextStyle(
+          Text(
+            'procedure.overview.waiting_role_title'.tr(),
+            style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.3,
@@ -580,7 +581,7 @@ class ProcedureStatusDonutCard extends StatelessWidget {
           const SizedBox(height: 10),
           ...activeStages.map((stage) {
             final count = byStage[stage] ?? 0;
-            final label = stageLabels[stage] ?? '$stage - Vai $stage';
+            final label = stageLabels[stage] ?? 'procedure.overview.stage_unknown'.tr(args: {'stage': stage});
             final color = stageColors[stage] ?? const Color(0xFF2563EB);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -732,9 +733,9 @@ class ProcedureByDefinitionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'HỒ SƠ THEO QUY TRÌNH',
-            style: TextStyle(
+          Text(
+            'procedure.overview.by_procedure_title'.tr(),
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -746,7 +747,7 @@ class ProcedureByDefinitionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               alignment: Alignment.center,
-              child: const Text('Chưa có hồ sơ', style: TextStyle(color: AppColors.slate400, fontSize: 12)),
+              child: Text('procedure.overview.no_cases'.tr(), style: const TextStyle(color: AppColors.slate400, fontSize: 12)),
             )
           else
             Column(

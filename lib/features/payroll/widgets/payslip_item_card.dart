@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
@@ -32,7 +33,7 @@ class PayslipItemCard extends StatelessWidget {
     final periodInfo = snapshot?['period'] as Map?;
     final totalInfo = snapshot?['total'] as Map?;
 
-    final periodCode = periodInfo?['periodCode']?.toString() ?? item['periodCode']?.toString() ?? 'Kỳ hiện tại';
+    final periodCode = periodInfo?['periodCode']?.toString() ?? item['periodCode']?.toString() ?? 'payroll_widgets.payslip.current_period'.tr();
     final fromDate = periodInfo?['fromDate']?.toString() ?? item['fromDate']?.toString() ?? '';
     final toDate = periodInfo?['toDate']?.toString() ?? item['toDate']?.toString() ?? '';
     final paymentDate = periodInfo?['paymentDate']?.toString() ?? item['issuedAt']?.toString() ?? '';
@@ -72,14 +73,14 @@ class PayslipItemCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Kỳ $periodCode (${Formatters.formatDate(fromDate)} - ${Formatters.formatDate(toDate)})',
+                        'payroll_widgets.payslip.period'.tr(args: {'code': periodCode, 'from': Formatters.formatDate(fromDate), 'to': Formatters.formatDate(toDate)}),
                         style: AppTextStyles.caption.copyWith(color: AppColors.slate500),
                       ),
                     ],
                   ),
                 ],
               ),
-              AppStatusBadge(status: status, customLabel: status == 'PAID' ? 'ĐÃ CHI TRẢ' : 'CHỜ DUYỆT'),
+              AppStatusBadge(status: status, customLabel: status == 'PAID' ? 'payroll_widgets.payslip.paid'.tr() : 'payroll_widgets.payslip.pending'.tr()),
             ],
           ),
           const SizedBox(height: 14),
@@ -93,7 +94,7 @@ class PayslipItemCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('TỔNG THU NHẬP (GROSS)', style: AppTextStyles.caption),
+                    Text('payroll_widgets.payslip.gross_income'.tr(), style: AppTextStyles.caption),
                     const SizedBox(height: 4),
                     Text(
                       Formatters.formatCurrency(grossSalary),
@@ -108,7 +109,7 @@ class PayslipItemCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('THỰC LĨNH (NET)', style: AppTextStyles.caption.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
+                    Text('payroll_widgets.payslip.net_pay'.tr(), style: AppTextStyles.caption.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text(
                       Formatters.formatCurrency(netSalary),
@@ -139,7 +140,7 @@ class PayslipItemCard extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.visibility_outlined, size: 15),
-                  label: const Text('Xem bảng kê', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: Text('payroll_widgets.payslip.view_breakdown'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.slate700,
                     side: const BorderSide(color: AppColors.slate300),
@@ -160,7 +161,7 @@ class PayslipItemCard extends StatelessWidget {
                   );
                 },
                 icon: const Icon(Icons.picture_as_pdf_outlined, size: 15, color: AppColors.primary),
-                label: const Text('In PDF', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                label: Text('payroll_widgets.payslip.print_pdf'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.primaryBorder),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),

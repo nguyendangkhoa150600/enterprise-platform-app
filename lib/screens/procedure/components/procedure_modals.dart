@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/procedure_models.dart';
 import '../../../services/module_business_service.dart';
 import '../../../theme/colors.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 String _formatDateTime(String? raw) {
   if (raw == null || raw.isEmpty) return '-';
@@ -55,11 +56,11 @@ void showCreateProcedureInstanceDialog({
       builder: (context, setDialogState) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.add_circle_outline, color: Color(0xFF2563EB)),
-              SizedBox(width: 8),
-              Text('Mở hồ sơ mới', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Icon(Icons.add_circle_outline, color: Color(0xFF2563EB)),
+              const SizedBox(width: 8),
+              Text('procedure.create.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ],
           ),
           content: SingleChildScrollView(
@@ -67,7 +68,7 @@ void showCreateProcedureInstanceDialog({
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Chọn quy trình áp dụng *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
+                Text('procedure.create.select_procedure'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -93,12 +94,12 @@ void showCreateProcedureInstanceDialog({
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text('Tiêu đề hồ sơ *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
+                Text('procedure.create.case_title'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: titleController,
                   decoration: InputDecoration(
-                    hintText: 'Nhập tiêu đề hồ sơ cần mở...',
+                    hintText: 'procedure.create.title_hint'.tr(),
                     hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -110,7 +111,7 @@ void showCreateProcedureInstanceDialog({
           actions: [
             TextButton(
               onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-              child: const Text('Hủy'),
+              child: Text('common.cancel'.tr()),
             ),
             ElevatedButton(
               onPressed: isSubmitting
@@ -119,7 +120,7 @@ void showCreateProcedureInstanceDialog({
                       final title = titleController.text.trim();
                       if (title.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Vui lòng nhập tiêu đề hồ sơ')),
+                          SnackBar(content: Text('procedure.create.title_required'.tr())),
                         );
                         return;
                       }
@@ -134,12 +135,12 @@ void showCreateProcedureInstanceDialog({
                         Navigator.pop(ctx);
                         if (newInst != null) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Mở hồ sơ "${newInst.code}" thành công!')),
+                            SnackBar(content: Text('procedure.create.success'.tr(args: {'code': newInst.code}))),
                           );
                           onCreated();
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Mở hồ sơ thất bại, vui lòng kiểm tra lại')),
+                            SnackBar(content: Text('procedure.create.failed'.tr())),
                           );
                         }
                       }
@@ -151,7 +152,7 @@ void showCreateProcedureInstanceDialog({
               ),
               child: isSubmitting
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Khởi tạo hồ sơ'),
+                  : Text('procedure.create.submit'.tr()),
             ),
           ],
         );
@@ -426,7 +427,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                           ),
                         ),
                         child: Text(
-                          currentItem.isCompleted ? 'Hoàn thành' : (currentItem.isRejected ? 'Từ chối' : 'Đang xử lý'),
+                          currentItem.isCompleted ? 'procedure.status.completed'.tr() : (currentItem.isRejected ? 'procedure.status.rejected'.tr() : 'procedure.status.running'.tr()),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -474,14 +475,14 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                title: const Text('Huỷ hồ sơ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                                content: const Text('Bạn có chắc chắn muốn huỷ hồ sơ quy trình này?'),
+                                title: Text('procedure.detail.cancel_case'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                content: Text('procedure.detail.cancel_confirm_message'.tr()),
                                 actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Đóng')),
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.close'.tr())),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
                                     onPressed: () => Navigator.pop(ctx, true),
-                                    child: const Text('Xác nhận huỷ'),
+                                    child: Text('procedure.detail.cancel_confirm_button'.tr()),
                                   ),
                                 ],
                               ),
@@ -501,7 +502,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                             side: const BorderSide(color: Color(0xFFCBD5E1)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           ),
-                          child: const Text('Huỷ hồ sơ', style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
+                          child: Text('procedure.detail.cancel_case'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
                         ),
                       if (auth?.canDelete == true) ...[
                         const SizedBox(width: 6),
@@ -510,14 +511,14 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                title: const Text('Xoá đơn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                                content: const Text('Hành động này sẽ xoá vĩnh viễn hồ sơ quy trình này. Bạn có chắc không?'),
+                                title: Text('procedure.detail.delete_case'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                                content: Text('procedure.detail.delete_confirm_message'.tr()),
                                 actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Đóng')),
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.close'.tr())),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
                                     onPressed: () => Navigator.pop(ctx, true),
-                                    child: const Text('Xác nhận xoá'),
+                                    child: Text('procedure.detail.delete_confirm_button'.tr()),
                                   ),
                                 ],
                               ),
@@ -540,7 +541,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                             side: const BorderSide(color: Color(0xFFFCA5A5)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           ),
-                          child: const Text('Xoá đơn', style: TextStyle(fontSize: 11, color: Color(0xFFDC2626))),
+                          child: Text('procedure.detail.delete_case'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFFDC2626))),
                         ),
                       ],
                       const SizedBox(width: 4),
@@ -580,7 +581,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                             text: TextSpan(
                               style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               children: [
-                                const TextSpan(text: 'Khởi tạo '),
+                                TextSpan(text: 'procedure.detail.meta_initiated_by'.tr()),
                                 TextSpan(text: submitterName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                               ],
                             ),
@@ -589,17 +590,8 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                             text: TextSpan(
                               style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               children: [
-                                const TextSpan(text: 'Quy trình '),
+                                TextSpan(text: 'procedure.detail.meta_procedure'.tr()),
                                 TextSpan(text: '${currentItem.definitionName} · v${currentItem.definitionVersion}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                              ],
-                            ),
-                          ),
-                          RichText(
-                            text: const TextSpan(
-                              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                              children: [
-                                TextSpan(text: 'Nguồn '),
-                                TextSpan(text: 'Tạo thủ công', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                               ],
                             ),
                           ),
@@ -607,7 +599,16 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                             text: TextSpan(
                               style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               children: [
-                                const TextSpan(text: 'Mở đơn '),
+                                TextSpan(text: 'procedure.detail.meta_source'.tr()),
+                                TextSpan(text: 'procedure.detail.meta_source_manual'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                              ],
+                            ),
+                          ),
+                          RichText(
+                            text: TextSpan(
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                              children: [
+                                TextSpan(text: 'procedure.detail.meta_opened_at'.tr()),
                                 TextSpan(text: _formatDateTime(currentItem.startedAt), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                               ],
                             ),
@@ -632,7 +633,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                     Tab(
                       child: Row(
                         children: [
-                          const Text('Tiến trình', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          Text('procedure.detail.tab_progress'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 5),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -645,7 +646,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                     Tab(
                       child: Row(
                         children: [
-                          const Text('Trao đổi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          Text('procedure.detail.tab_discussion'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                           if (comments.isNotEmpty) ...[
                             const SizedBox(width: 5),
                             Container(
@@ -657,11 +658,11 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                         ],
                       ),
                     ),
-                    const Tab(text: 'Tệp & tài liệu'),
+                    Tab(text: 'procedure.detail.tab_files'.tr()),
                     Tab(
                       child: Row(
                         children: [
-                          const Text('Nhật ký', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          Text('procedure.detail.tab_log'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                           if (historyActivities.isNotEmpty) ...[
                             const SizedBox(width: 5),
                             Container(
@@ -740,7 +741,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                               text: TextSpan(
                                                 children: [
                                                   TextSpan(
-                                                    text: 'BƯỚC ${step.order} · ĐANG THỰC HIỆN  ',
+                                                    text: '${'procedure.detail.step_in_progress'.tr(args: {'order': step.order})}  ',
                                                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
                                                   ),
                                                   TextSpan(
@@ -786,16 +787,16 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
 
                                       // If user can act on this step: input note & action buttons
                                       if (availableActions.any((a) => a != 'comment')) ...[
-                                        const Text(
-                                          'Nội dung đề nghị / ghi chú gửi kèm',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                        Text(
+                                          'procedure.detail.request_note_label'.tr(),
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                                         ),
                                         const SizedBox(height: 6),
                                         TextField(
                                           controller: stepNoteController,
                                           maxLines: 3,
                                           decoration: InputDecoration(
-                                            hintText: 'Ghi rõ nội dung đề nghị, căn cứ hoặc thông tin bổ sung cho người duyệt...',
+                                            hintText: 'procedure.detail.request_note_hint'.tr(),
                                             hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                                             filled: true,
                                             fillColor: Colors.white,
@@ -821,18 +822,18 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                             borderRadius: BorderRadius.circular(8),
                                             border: Border.all(color: const Color(0xFFCBD5E1), style: BorderStyle.solid),
                                           ),
-                                          child: const Row(
+                                          child: Row(
                                             children: [
-                                              Icon(Icons.attach_file, size: 14, color: Color(0xFF64748B)),
-                                              SizedBox(width: 6),
+                                              const Icon(Icons.attach_file, size: 14, color: Color(0xFF64748B)),
+                                              const SizedBox(width: 6),
                                               Text(
-                                                'Đính kèm tài liệu kèm lượt duyệt',
-                                                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                                'procedure.detail.attach_label'.tr(),
+                                                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                               ),
-                                              Spacer(),
+                                              const Spacer(),
                                               Text(
-                                                '+ Thêm tệp',
-                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                                                'procedure.detail.add_file'.tr(),
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                                               ),
                                             ],
                                           ),
@@ -867,7 +868,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
-                                                child: const Text('Từ chối', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                child: Text('common.reject'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                                               ),
                                             if (auth.canReturn) ...[
                                               const SizedBox(width: 8),
@@ -894,7 +895,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
-                                                child: const Text('Trả lại', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                child: Text('procedure.action.return'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                                               ),
                                             ],
                                             const SizedBox(width: 8),
@@ -926,7 +927,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                               child: isExecutingAction
                                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                                                   : Text(
-                                                      auth.canApprove ? 'Phê duyệt' : 'Hoàn tất',
+                                                      auth.canApprove ? 'common.approve'.tr() : 'procedure.action.complete'.tr(),
                                                       style: const TextStyle(fontWeight: FontWeight.bold),
                                                     ),
                                             ),
@@ -983,7 +984,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                           children: [
                                             Expanded(
                                               child: Text(
-                                                'BƯỚC ${step.order}  ${step.name}',
+                                                'procedure.detail.step_label'.tr(args: {'order': step.order, 'name': step.name}),
                                                 style: TextStyle(
                                                   fontSize: 12.5,
                                                   fontWeight: FontWeight.w600,
@@ -1020,8 +1021,8 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                         children: [
                           Expanded(
                             child: comments.isEmpty
-                                ? const Center(
-                                    child: Text('Chưa có trao đổi nào trong hồ sơ', style: TextStyle(color: AppColors.slate400, fontSize: 13)),
+                                ? Center(
+                                    child: Text('procedure.detail.no_discussion'.tr(), style: const TextStyle(color: AppColors.slate400, fontSize: 13)),
                                   )
                                 : ListView.separated(
                                     padding: const EdgeInsets.all(16),
@@ -1075,7 +1076,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                   child: TextField(
                                     controller: chatController,
                                     decoration: InputDecoration(
-                                      hintText: 'Nhập nội dung trao đổi...',
+                                      hintText: 'procedure.detail.discussion_hint'.tr(),
                                       hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                       filled: true,
@@ -1115,8 +1116,8 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                           }
                           final list = snapshot.data ?? [];
                           if (list.isEmpty) {
-                            return const Center(
-                              child: Text('Không có tệp đính kèm trong hồ sơ', style: TextStyle(color: AppColors.slate400, fontSize: 13)),
+                            return Center(
+                              child: Text('procedure.detail.no_files'.tr(), style: const TextStyle(color: AppColors.slate400, fontSize: 13)),
                             );
                           }
                           return ListView.separated(
@@ -1142,7 +1143,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(att.fileName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                                          Text('$sizeKb KB · Tải lên bởi ${att.uploadedBy}', style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
+                                          Text('procedure.detail.file_meta'.tr(args: {'size': sizeKb, 'user': att.uploadedBy}), style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
                                         ],
                                       ),
                                     ),
@@ -1158,8 +1159,8 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                       // TAB 4: NHẬT KÝ (AUDIT TRAIL)
                       // ==========================================
                       historyActivities.isEmpty
-                          ? const Center(
-                              child: Text('Chưa có lịch sử hoạt động', style: TextStyle(color: AppColors.slate400, fontSize: 13)),
+                          ? Center(
+                              child: Text('procedure.detail.no_history'.tr(), style: const TextStyle(color: AppColors.slate400, fontSize: 13)),
                             )
                           : ListView.separated(
                               padding: const EdgeInsets.all(16),
@@ -1195,7 +1196,7 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                             Row(
                                               children: [
                                                 Text(
-                                                  act.actorName.isNotEmpty ? act.actorName : 'Hệ thống',
+                                                  act.actorName.isNotEmpty ? act.actorName : 'procedure.detail.system_actor'.tr(),
                                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                                 ),
                                                 const Spacer(),
@@ -1235,17 +1236,17 @@ void handleProcedureActionDialog({
   required ValueChanged<ProcedureInstance> onUpdated,
 }) {
   final commentController = TextEditingController();
-  String actionLabel = 'Hoàn tất';
+  String actionLabel = 'procedure.action.complete'.tr();
   Color confirmColor = const Color(0xFF2563EB);
 
   if (action == 'approve') {
-    actionLabel = 'Phê duyệt';
+    actionLabel = 'common.approve'.tr();
     confirmColor = const Color(0xFF16A34A);
   } else if (action == 'return') {
-    actionLabel = 'Trả lại';
+    actionLabel = 'procedure.action.return'.tr();
     confirmColor = const Color(0xFFD97706);
   } else if (action == 'reject') {
-    actionLabel = 'Từ chối';
+    actionLabel = 'common.reject'.tr();
     confirmColor = const Color(0xFFDC2626);
   }
 
@@ -1253,17 +1254,17 @@ void handleProcedureActionDialog({
     context: context,
     builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Xác nhận $actionLabel', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      title: Text('procedure.action.confirm_title'.tr(args: {'action': actionLabel}), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Bạn đang thực hiện thao tác "$actionLabel" trên bước hiện tại của hồ sơ ${item.code}.'),
+          Text('procedure.action.confirm_message'.tr(args: {'action': actionLabel, 'code': item.code})),
           const SizedBox(height: 12),
           TextField(
             controller: commentController,
             decoration: InputDecoration(
-              hintText: 'Nhập ý kiến xử lý (tùy chọn)...',
+              hintText: 'procedure.action.comment_hint'.tr(),
               hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1273,7 +1274,7 @@ void handleProcedureActionDialog({
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
         ElevatedButton(
           onPressed: () async {
             Navigator.pop(ctx);
@@ -1286,13 +1287,13 @@ void handleProcedureActionDialog({
               onUpdated(updated);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã thực hiện $actionLabel thành công!')),
+                  SnackBar(content: Text('procedure.action.success'.tr(args: {'action': actionLabel}))),
                 );
               }
             } else {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Thao tác không thành công, vui lòng thử lại')),
+                  SnackBar(content: Text('procedure.action.failed'.tr())),
                 );
               }
             }
@@ -1357,21 +1358,21 @@ void showProcedureSelectorBottomSheet({
                         child: const Icon(Icons.alt_route, size: 20, color: Color(0xFF2563EB)),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Chọn quy trình',
-                              style: TextStyle(
+                              'procedure.selector.title'.tr(),
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF0F172A),
                               ),
                             ),
                             Text(
-                              'Xem sơ đồ luồng các bước thực hiện',
-                              style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                              'procedure.selector.subtitle'.tr(),
+                              style: const TextStyle(fontSize: 12, color: AppColors.slate500),
                             ),
                           ],
                         ),
@@ -1390,7 +1391,7 @@ void showProcedureSelectorBottomSheet({
                     autofocus: false,
                     onChanged: (val) => setSheetState(() => query = val),
                     decoration: InputDecoration(
-                      hintText: 'Tìm kiếm quy trình...',
+                      hintText: 'procedure.selector.search_hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
                       prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.slate400),
                       suffixIcon: query.isNotEmpty
@@ -1421,10 +1422,10 @@ void showProcedureSelectorBottomSheet({
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
                 Expanded(
                   child: filtered.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
-                            'Không tìm thấy quy trình phù hợp',
-                            style: TextStyle(fontSize: 13, color: AppColors.slate500),
+                            'procedure.selector.empty'.tr(),
+                            style: const TextStyle(fontSize: 13, color: AppColors.slate500),
                           ),
                         )
                       : ListView.separated(
@@ -1475,7 +1476,7 @@ void showProcedureSelectorBottomSheet({
                                             Row(
                                               children: [
                                                 Text(
-                                                  '${def.steps.length} bước',
+                                                  'procedure.selector.steps_count'.tr(args: {'count': def.steps.length}),
                                                   style: const TextStyle(fontSize: 11, color: AppColors.slate500),
                                                 ),
                                                 const SizedBox(width: 6),
@@ -1491,7 +1492,7 @@ void showProcedureSelectorBottomSheet({
                                                     ),
                                                   ),
                                                   child: Text(
-                                                    isPublished ? 'Đã công bố' : 'Bản nháp',
+                                                    isPublished ? 'procedure.selector.published'.tr() : 'procedure.selector.draft'.tr(),
                                                     style: TextStyle(
                                                       fontSize: 10,
                                                       fontWeight: FontWeight.bold,

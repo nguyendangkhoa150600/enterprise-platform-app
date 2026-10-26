@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 import '../../../theme/colors.dart';
 
@@ -71,7 +72,7 @@ Widget buildOrgTreeNodeItem(OrgNode node, int depth, OrganizationSnapshot snapsh
   Color borderColor = isRoot ? const Color(0xFFBAE6FD) : const Color(0xFFE2E8F0);
   IconData nodeIcon = isRoot ? Icons.corporate_fare : (isLevel1 ? Icons.business_outlined : Icons.group_work_outlined);
   Color iconColor = isRoot ? const Color(0xFF0284C7) : (isLevel1 ? const Color(0xFF475569) : const Color(0xFF64748B));
-  String levelBadge = isRoot ? 'Ban Lãnh Đạo' : (isLevel1 ? 'Phòng ban' : 'Đội / Nhóm');
+  String levelBadge = isRoot ? 'home.org.level_leadership'.tr() : (isLevel1 ? 'home.org.level_department'.tr() : 'home.org.level_team'.tr());
 
   return Container(
     margin: EdgeInsets.only(
@@ -176,7 +177,7 @@ Widget buildOrgTreeNodeItem(OrgNode node, int depth, OrganizationSnapshot snapsh
                         (u) => u.id == a.userId,
                         orElse: () => TenantUser(
                           id: a.userId,
-                          fullName: 'Nhân viên',
+                          fullName: 'home.org.employee'.tr(),
                           email: '',
                           systemRole: 'tenant-user',
                           status: 'active',

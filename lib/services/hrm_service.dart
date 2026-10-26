@@ -8,6 +8,7 @@ import '../models/hrm_work_schedule_models.dart';
 import '../models/hrm_personnel_decision_model.dart';
 import '../providers/auth_provider.dart';
 import 'api_client_helper.dart';
+import '../core/i18n/app_i18n.dart';
 
 class PolicyActionResult {
   final bool isSuccess;
@@ -119,14 +120,14 @@ class HrmService {
     } catch (_) {}
 
     // Fallback for special users if not in employee directory
-    empMap['e1e0cc28-0c3c-416d-a1f9-557031cc564a'] ??= const HrmEmployeeItem(
+    empMap['e1e0cc28-0c3c-416d-a1f9-557031cc564a'] ??= HrmEmployeeItem(
       id: 'e1e0cc28-0c3c-416d-a1f9-557031cc564a',
       code: 'NV051',
       fullName: 'admin',
       email: 'admin@savinajsc.com',
       phone: '',
       department: 'Khối Văn phòng',
-      position: 'Quản trị viên',
+      position: 'svc_hrm.administrator'.tr(),
       status: 'OFFICIAL',
     );
 
@@ -216,7 +217,7 @@ class HrmService {
       _cachedRequests!.insert(0, newReq);
       return newReq;
     }
-    throw Exception('Không thể tạo đơn yêu cầu (Mã: ${response.statusCode})');
+    throw Exception('svc_hrm.request_create_failed'.tr(args: {'code': response.statusCode}));
   }
 
   // 4. Approve Request
@@ -495,7 +496,7 @@ class HrmService {
               if (config['requireIp'] == true) conditions.add('IP');
               final radius = config['maxGpsAccuracyMeters'] ?? 1000;
               conditions.add('GPS $radius m');
-              if (config['requireDevice'] == true) conditions.add('Thiết bị');
+              if (config['requireDevice'] == true) conditions.add('svc_hrm.cond_device'.tr());
 
               final versionNo = item['version_no']?.toString() ?? '4';
               final effFrom = item['effective_from']?.toString() ?? '07/10/2026';
@@ -505,17 +506,17 @@ class HrmService {
               return {
                 'id': item['id']?.toString() ?? '',
                 'version': 'v$versionNo',
-                'title': item['policy_name']?.toString() ?? 'Quy định chấm công',
+                'title': item['policy_name']?.toString() ?? 'svc_hrm.attendance_policy'.tr(),
                 'validity': '$effFrom - $effTo',
-                'scope': 'Toàn công ty',
+                'scope': 'svc_hrm.scope_company'.tr(),
                 'conditions': conditions.isNotEmpty ? conditions : ['GPS 1000 m'],
                 'isActive': isActive,
-                'statusText': isActive ? 'Đang áp dụng' : 'Hết hiệu lực',
+                'statusText': isActive ? 'svc_hrm.status_in_effect'.tr() : 'svc_hrm.status_expired'.tr(),
                 'gpsRadiusMeters': (radius as num).toDouble(),
                 'requireIp': config['requireIp'] == true,
                 'requireDevice': config['requireDevice'] == true,
                 'timezone': config['timezone']?.toString() ?? 'Asia/Ho_Chi_Minh',
-                'weeklyOff': 'Chưa cấu hình',
+                'weeklyOff': 'svc_hrm.not_configured'.tr(),
               };
             }
             return null;
@@ -532,59 +533,59 @@ class HrmService {
     return [
       {
         'version': 'v4',
-        'title': 'v4 Quy định chấm công',
+        'title': 'svc_hrm.policy_v4'.tr(),
         'validity': '07/10/2026 - 30/11/2026',
-        'scope': 'Toàn công ty',
+        'scope': 'svc_hrm.scope_company'.tr(),
         'conditions': ['GPS 1000 m'],
         'isActive': true,
-        'statusText': 'Đang áp dụng',
+        'statusText': 'svc_hrm.status_in_effect'.tr(),
         'gpsRadiusMeters': 1000.0,
         'requireIp': false,
         'requireDevice': false,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
       {
         'version': 'v3',
-        'title': 'v3 Quy định chấm công',
+        'title': 'svc_hrm.policy_v3'.tr(),
         'validity': '02/10/2026 - 06/10/2026',
-        'scope': 'Toàn công ty',
+        'scope': 'svc_hrm.scope_company'.tr(),
         'conditions': ['GPS 100 m'],
         'isActive': false,
-        'statusText': 'Hết hiệu lực',
+        'statusText': 'svc_hrm.status_expired'.tr(),
         'gpsRadiusMeters': 100.0,
         'requireIp': false,
         'requireDevice': false,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
       {
         'version': 'v2',
-        'title': 'v2 Quy định chấm công',
+        'title': 'svc_hrm.policy_v2'.tr(),
         'validity': '01/10/2026 - 01/10/2026',
-        'scope': 'Toàn công ty',
+        'scope': 'svc_hrm.scope_company'.tr(),
         'conditions': ['GPS 100 m'],
         'isActive': false,
-        'statusText': 'Hết hiệu lực',
+        'statusText': 'svc_hrm.status_expired'.tr(),
         'gpsRadiusMeters': 100.0,
         'requireIp': false,
         'requireDevice': false,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
       {
         'version': 'v1',
-        'title': 'v1 Quy định chấm công',
+        'title': 'svc_hrm.policy_v1'.tr(),
         'validity': '30/09/2026 - 30/09/2026',
-        'scope': 'Toàn công ty',
-        'conditions': ['IP', 'GPS 100 m', 'Thiết bị'],
+        'scope': 'svc_hrm.scope_company'.tr(),
+        'conditions': ['IP', 'GPS 100 m', 'svc_hrm.cond_device'.tr()],
         'isActive': false,
-        'statusText': 'Hết hiệu lực',
+        'statusText': 'svc_hrm.status_expired'.tr(),
         'gpsRadiusMeters': 100.0,
         'requireIp': true,
         'requireDevice': true,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
     ];
   }
@@ -603,10 +604,10 @@ class HrmService {
     String timezone = 'Asia/Ho_Chi_Minh',
     List<int> weeklyOff = const [7],
     String changeReason = '',
-    String title = 'Quy định chấm công',
+    String? title,
   }) async {
     final payload = {
-      'title': title,
+      'title': title ?? 'svc_hrm.attendance_policy'.tr(),
       'scope': scope,
       'start_date': startDate,
       if (endDate != null && endDate.isNotEmpty) 'end_date': endDate,
@@ -636,7 +637,7 @@ class HrmService {
       '/hrm/v1/policies',
     ];
 
-    String lastErrorMsg = 'Không thể kết nối đến máy chủ.';
+    String lastErrorMsg = 'svc_hrm.cannot_connect'.tr();
     int? lastStatusCode;
 
     for (final ep in endpoints) {
@@ -650,18 +651,18 @@ class HrmService {
 
         if (res.statusCode == 200 || res.statusCode == 201) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Tạo và kích hoạt phiên bản quy định chấm công thành công!')
-              : 'Tạo và kích hoạt phiên bản quy định chấm công thành công!';
+              ? (res.data['message'] ?? 'svc_hrm.policy_create_success'.tr())
+              : 'svc_hrm.policy_create_success'.tr();
           return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
         } else if (res.statusCode == 400 || res.statusCode == 409 || res.statusCode == 422) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? res.data['error'] ?? 'Dữ liệu không hợp lệ hoặc trùng khoảng hiệu lực.')
-              : 'Trùng khoảng hiệu lực hoặc dữ liệu không hợp lệ (${res.statusCode}).';
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_or_overlap'.tr())
+              : 'svc_hrm.overlap_or_invalid_code'.tr(args: {'code': res.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
         } else if (res.statusCode != 404) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Máy chủ phản hồi lỗi: ${res.statusCode}')
-              : 'Máy chủ phản hồi lỗi: ${res.statusCode}';
+              ? (res.data['message'] ?? 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode});
           lastErrorMsg = serverMsg.toString();
           lastStatusCode = res.statusCode;
         }
@@ -670,15 +671,15 @@ class HrmService {
         if (e.response != null) {
           final data = e.response?.data;
           final serverMsg = (data is Map<String, dynamic>)
-              ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-              : 'Máy chủ từ chối: ${e.response?.statusCode}';
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
           return PolicyActionResult(
             isSuccess: false,
             message: serverMsg.toString(),
             statusCode: e.response?.statusCode,
           );
         }
-        lastErrorMsg = e.message ?? 'Lỗi kết nối mạng';
+        lastErrorMsg = e.message ?? 'svc_hrm.network_error'.tr();
       } catch (e) {
         debugPrint('[HrmService] createAttendancePolicyVersion error on $ep: $e');
         lastErrorMsg = e.toString();
@@ -887,23 +888,23 @@ class HrmService {
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? 'Thêm địa điểm chấm công thành công!')
-            : 'Thêm địa điểm chấm công thành công!';
+            ? (res.data['message'] ?? 'svc_hrm.site_add_success'.tr())
+            : 'svc_hrm.site_add_success'.tr();
         return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
       } else if (res.statusCode == 400 || res.statusCode == 403 || res.statusCode == 409 || res.statusCode == 422) {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? res.data['error'] ?? 'Dữ liệu không hợp lệ hoặc không có quyền.')
-            : 'Yêu cầu không hợp lệ (${res.statusCode}).';
+            ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_or_forbidden'.tr())
+            : 'svc_hrm.bad_request_code'.tr(args: {'code': res.statusCode});
         return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
       } else if (res.statusCode == 500) {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? res.data['error'] ?? 'Máy chủ lỗi nội bộ (500).')
-            : 'Lỗi máy chủ (500): ${res.data}';
+            ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.server_500'.tr())
+            : 'svc_hrm.server_500_data'.tr(args: {'data': res.data});
         return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: 500);
       } else {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? 'Máy chủ phản hồi: ${res.statusCode}')
-            : 'Máy chủ phản hồi: ${res.statusCode}';
+            ? (res.data['message'] ?? 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode}))
+            : 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode});
         return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
       }
     } on DioException catch (e) {
@@ -912,8 +913,8 @@ class HrmService {
       if (e.response != null) {
         final data = e.response?.data;
         final serverMsg = (data is Map<String, dynamic>)
-            ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-            : 'Máy chủ từ chối: ${e.response?.statusCode}';
+            ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+            : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
         return PolicyActionResult(
           isSuccess: false,
           message: serverMsg.toString(),
@@ -922,7 +923,7 @@ class HrmService {
       }
       return PolicyActionResult(
         isSuccess: false,
-        message: e.message ?? 'Lỗi kết nối mạng',
+        message: e.message ?? 'svc_hrm.network_error'.tr(),
         statusCode: null,
       );
     } catch (e) {
@@ -942,7 +943,7 @@ class HrmService {
       try {
         final reason = (site['reason']?.toString().isNotEmpty == true)
             ? site['reason']
-            : 'Cập nhật từ mobile';
+            : 'svc_hrm.updated_from_mobile'.tr();
         final res = await _dio.patch(
           '/api/hrm/v1/time-settings/sites/$id',
           data: {
@@ -956,11 +957,11 @@ class HrmService {
           options: Options(validateStatus: (status) => status != null && status < 500),
         );
         if (res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300) {
-          return PolicyActionResult(isSuccess: true, message: 'Cập nhật thành công', statusCode: res.statusCode);
+          return PolicyActionResult(isSuccess: true, message: 'svc_hrm.update_success'.tr(), statusCode: res.statusCode);
         } else {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Máy chủ phản hồi: ${res.statusCode}')
-              : 'Máy chủ phản hồi: ${res.statusCode}';
+              ? (res.data['message'] ?? 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
         }
       } on DioException catch (e) {
@@ -968,11 +969,11 @@ class HrmService {
         if (e.response != null) {
           final data = e.response?.data;
           final serverMsg = (data is Map<String, dynamic>)
-              ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-              : 'Máy chủ từ chối: ${e.response?.statusCode}';
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: e.response?.statusCode);
         }
-        return PolicyActionResult(isSuccess: false, message: e.message ?? 'Lỗi kết nối mạng');
+        return PolicyActionResult(isSuccess: false, message: e.message ?? 'svc_hrm.network_error'.tr());
       } catch (e) {
         debugPrint('[HrmService] updateGpsSite remote error: $e');
         return PolicyActionResult(isSuccess: false, message: e.toString());
@@ -989,7 +990,7 @@ class HrmService {
           '/api/hrm/v1/time-settings/sites/$id/deactivate',
           data: {
             'expectedUpdatedAt': site['updated_at'] ?? DateTime.now().toIso8601String(),
-            'reason': 'Ngừng dùng từ mobile',
+            'reason': 'svc_hrm.deactivated_from_mobile'.tr(),
           },
           options: Options(validateStatus: (status) => status != null && status < 500),
         );
@@ -1022,10 +1023,10 @@ class HrmService {
               if (item is Map<String, dynamic>) {
                 return HrmIntegrationDevice(
                   id: item['id']?.toString() ?? '',
-                  name: item['name']?.toString() ?? 'Thiết bị chấm công',
+                  name: item['name']?.toString() ?? 'svc_hrm.attendance_device'.tr(),
                   type: item['type']?.toString() ?? 'FaceID',
                   ipAddress: item['ip']?.toString() ?? item['ipAddress']?.toString() ?? '192.168.1.1',
-                  location: item['location']?.toString() ?? 'Trụ sở chính',
+                  location: item['location']?.toString() ?? 'svc_hrm.head_office'.tr(),
                   status: item['status']?.toString() ?? 'ONLINE',
                   lastSync: DateTime.tryParse(item['lastSync']?.toString() ?? '') ?? DateTime.now(),
                 );
@@ -1457,7 +1458,7 @@ class HrmService {
       '/hrm/v1/annual-leave-policy',
     ];
 
-    String lastErrorMsg = 'Không thể lưu chính sách phép năm.';
+    String lastErrorMsg = 'svc_hrm.leave_policy_save_failed'.tr();
     int? lastStatusCode;
 
     for (final ep in endpoints) {
@@ -1480,18 +1481,18 @@ class HrmService {
             }
           }
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Cập nhật chính sách phép năm thành công!')
-              : 'Cập nhật chính sách phép năm thành công!';
+              ? (res.data['message'] ?? 'svc_hrm.leave_policy_update_success'.tr())
+              : 'svc_hrm.leave_policy_update_success'.tr();
           return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
         } else if (res.statusCode == 400 || res.statusCode == 422 || res.statusCode == 409) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? res.data['error'] ?? 'Dữ liệu không hợp lệ (${res.statusCode})')
-              : 'Dữ liệu không hợp lệ (${res.statusCode})';
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
         } else {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? res.data['error'] ?? 'Máy chủ phản hồi lỗi: ${res.statusCode}')
-              : 'Máy chủ phản hồi lỗi: ${res.statusCode}';
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode});
           lastErrorMsg = serverMsg.toString();
           lastStatusCode = res.statusCode;
         }
@@ -1500,11 +1501,11 @@ class HrmService {
         if (e.response != null && e.response?.data != null) {
           final data = e.response?.data;
           final serverMsg = (data is Map<String, dynamic>)
-              ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-              : 'Máy chủ từ chối: ${e.response?.statusCode}';
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: e.response?.statusCode);
         }
-        lastErrorMsg = e.message ?? 'Lỗi kết nối mạng';
+        lastErrorMsg = e.message ?? 'svc_hrm.network_error'.tr();
       } catch (e) {
         debugPrint('[HrmService] updateAnnualLeavePolicy error on $ep: $e');
         lastErrorMsg = e.toString();
@@ -1593,7 +1594,7 @@ class HrmService {
       '/api/hrm/v1/auto-attendance',
     ];
 
-    String lastErrorMsg = 'Không thể lưu cấu hình chấm công tự động.';
+    String lastErrorMsg = 'svc_hrm.auto_attendance_save_failed'.tr();
     int? lastStatusCode;
 
     for (final ep in endpoints) {
@@ -1616,18 +1617,18 @@ class HrmService {
             }
           }
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Cập nhật cấu hình chấm công tự động thành công!')
-              : 'Cập nhật cấu hình chấm công tự động thành công!';
+              ? (res.data['message'] ?? 'svc_hrm.auto_attendance_update_success'.tr())
+              : 'svc_hrm.auto_attendance_update_success'.tr();
           return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
         } else if (res.statusCode == 400 || res.statusCode == 422) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? res.data['error'] ?? 'Dữ liệu không hợp lệ (${res.statusCode})')
-              : 'Dữ liệu không hợp lệ (${res.statusCode})';
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
         } else {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? res.data['error'] ?? 'Máy chủ phản hồi lỗi: ${res.statusCode}')
-              : 'Máy chủ phản hồi lỗi: ${res.statusCode}';
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode});
           lastErrorMsg = serverMsg.toString();
           lastStatusCode = res.statusCode;
         }
@@ -1636,11 +1637,11 @@ class HrmService {
         if (e.response != null && e.response?.data != null) {
           final data = e.response?.data;
           final serverMsg = (data is Map<String, dynamic>)
-              ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-              : 'Máy chủ từ chối: ${e.response?.statusCode}';
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: e.response?.statusCode);
         }
-        lastErrorMsg = e.message ?? 'Lỗi kết nối mạng';
+        lastErrorMsg = e.message ?? 'svc_hrm.network_error'.tr();
       } catch (e) {
         debugPrint('[HrmService] updateAutoAttendanceConfig error on $ep: $e');
         lastErrorMsg = e.toString();
@@ -1680,12 +1681,12 @@ class HrmService {
         if (data.isNotEmpty) {
           return HrmSchedulePreviewResult.fromJson(data);
         }
-        final msg = res.data['message']?.toString() ?? 'Xung đột lịch phân ca';
+        final msg = res.data['message']?.toString() ?? 'svc_hrm.schedule_conflict'.tr();
         throw Exception(msg);
       } else {
         final msg = (res.data is Map && res.data['message'] != null)
             ? res.data['message'].toString()
-            : 'Không thể xem trước phân ca (Mã lỗi: ${res.statusCode})';
+            : 'svc_hrm.schedule_preview_failed'.tr(args: {'code': res.statusCode});
         throw Exception(msg);
       }
     } catch (e) {
@@ -1710,12 +1711,12 @@ class HrmService {
       if (res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 204) {
         final msg = (res.data is Map && res.data['message'] != null)
             ? res.data['message'].toString()
-            : 'Lưu phân ca thành công!';
+            : 'svc_hrm.schedule_save_success'.tr();
         return PolicyActionResult(isSuccess: true, message: msg, statusCode: res.statusCode);
       } else {
         final msg = (res.data is Map && res.data['message'] != null)
             ? res.data['message'].toString()
-            : 'Lỗi lưu phân ca (Mã lỗi: ${res.statusCode})';
+            : 'svc_hrm.schedule_save_failed'.tr(args: {'code': res.statusCode});
         return PolicyActionResult(isSuccess: false, message: msg, statusCode: res.statusCode);
       }
     } catch (e) {
@@ -1743,7 +1744,7 @@ class HrmService {
       } else {
         final msg = (res.data is Map && res.data['message'] != null)
             ? res.data['message'].toString()
-            : 'Không thể xử lý nhả ca (Mã lỗi: ${res.statusCode})';
+            : 'svc_hrm.schedule_release_failed'.tr(args: {'code': res.statusCode});
         throw Exception(msg);
       }
     } catch (e) {
@@ -1879,36 +1880,36 @@ class HrmService {
 
   // 22. Get Shift Schedule History & Audit Logs (Real backend data)
   // 22. Get Shift Schedule History (Raw and Grouped Batches matching Web 1:1)
-  static const Map<String, String> _auditActionLabels = {
-    'WORK_SCHEDULE_APPLIED': 'Phân ca',
-    'WORK_SCHEDULE_CANCELLED': 'Nhả ca',
-    'WORK_SCHEDULE_COPIED': 'Sao chép lịch',
-    'SCHEDULE_ASSIGN': 'Phân ca',
-    'SCHEDULE_OVERWRITE': 'Phân ca (ghi đè)',
-    'SCHEDULE_EXCEPTION': 'Ngoại lệ',
-    'SCHEDULE_CANCEL': 'Nhả ca',
-    'SCHEDULE_COPY': 'Sao chép lịch',
-    'RULE_CREATE': 'Phân ca định kỳ',
-    'RULE_REPLACE': 'Thay lịch định kỳ',
-    'RULE_OVERRIDE_DAYS': 'Thay lịch từng ngày',
-    'RULE_END': 'Kết thúc lịch định kỳ',
-    'RULE_CANCEL': 'Hủy lịch định kỳ',
-    'HOLIDAY_CANCEL': 'Hủy ngày lễ',
-    'SHIFT_CHANGE': 'Đổi ca theo đơn',
+  static Map<String, String> get _auditActionLabels => {
+    'WORK_SCHEDULE_APPLIED': 'svc_hrm.audit_assign'.tr(),
+    'WORK_SCHEDULE_CANCELLED': 'svc_hrm.audit_release'.tr(),
+    'WORK_SCHEDULE_COPIED': 'svc_hrm.audit_copy'.tr(),
+    'SCHEDULE_ASSIGN': 'svc_hrm.audit_assign'.tr(),
+    'SCHEDULE_OVERWRITE': 'svc_hrm.audit_overwrite'.tr(),
+    'SCHEDULE_EXCEPTION': 'svc_hrm.audit_exception'.tr(),
+    'SCHEDULE_CANCEL': 'svc_hrm.audit_release'.tr(),
+    'SCHEDULE_COPY': 'svc_hrm.audit_copy'.tr(),
+    'RULE_CREATE': 'svc_hrm.audit_rule_create'.tr(),
+    'RULE_REPLACE': 'svc_hrm.audit_rule_replace'.tr(),
+    'RULE_OVERRIDE_DAYS': 'svc_hrm.audit_rule_override_days'.tr(),
+    'RULE_END': 'svc_hrm.audit_rule_end'.tr(),
+    'RULE_CANCEL': 'svc_hrm.audit_rule_cancel'.tr(),
+    'HOLIDAY_CANCEL': 'svc_hrm.audit_holiday_cancel'.tr(),
+    'SHIFT_CHANGE': 'svc_hrm.audit_shift_change'.tr(),
   };
 
-  static const Map<int, String> _weekdayLabels = {
-    1: 'T2',
-    2: 'T3',
-    3: 'T4',
-    4: 'T5',
-    5: 'T6',
-    6: 'T7',
-    7: 'CN',
+  static Map<int, String> get _weekdayLabels => {
+    1: 'svc_hrm.wd_1'.tr(),
+    2: 'svc_hrm.wd_2'.tr(),
+    3: 'svc_hrm.wd_3'.tr(),
+    4: 'svc_hrm.wd_4'.tr(),
+    5: 'svc_hrm.wd_5'.tr(),
+    6: 'svc_hrm.wd_6'.tr(),
+    7: 'svc_hrm.wd_7'.tr(),
   };
 
   String _auditActionLabel(String action) {
-    return _auditActionLabels[action] ?? (action.isNotEmpty ? action : 'Thay lịch định kỳ');
+    return _auditActionLabels[action] ?? (action.isNotEmpty ? action : 'svc_hrm.audit_rule_replace'.tr());
   }
 
   String _formatVnDate(String dateStr) {
@@ -1924,7 +1925,7 @@ class HrmService {
   String _auditDateText(String? fromDate, String? toDate) {
     if (fromDate == null || fromDate.isEmpty) return '';
     final fVn = _formatVnDate(fromDate);
-    if (toDate == null || toDate.isEmpty) return 'Từ $fVn';
+    if (toDate == null || toDate.isEmpty) return 'svc_hrm.date_from'.tr(args: {'date': fVn});
     final tVn = _formatVnDate(toDate);
     return fromDate == toDate ? fVn : '$fVn - $tVn';
   }
@@ -1943,7 +1944,7 @@ class HrmService {
         groups.add({'from': w, 'to': w, 'label': label});
       }
     }
-    if (groups.isEmpty) return 'Chưa cấu hình';
+    if (groups.isEmpty) return 'svc_hrm.not_configured'.tr();
     return groups.map((g) {
       final fromW = g['from'] as int;
       final toW = g['to'] as int;
@@ -1961,9 +1962,9 @@ class HrmService {
         final dayType = r['dayType']?.toString();
         final code = r['shiftCode']?.toString();
         if (dayType == 'SHIFT') {
-          parts.add(code != null && code.isNotEmpty ? code : 'Ca');
+          parts.add(code != null && code.isNotEmpty ? code : 'svc_hrm.shift_short'.tr());
         } else if (dayType == 'OFF') {
-          parts.add('Nghỉ');
+          parts.add('svc_hrm.day_off'.tr());
         }
       }
     }
@@ -1994,7 +1995,7 @@ class HrmService {
       }
       if (after['shiftId'] != null) {
         final sid = after['shiftId'].toString();
-        return shiftCodeMap[sid] ?? after['shiftCode']?.toString() ?? 'Ca';
+        return shiftCodeMap[sid] ?? after['shiftCode']?.toString() ?? 'svc_hrm.shift_short'.tr();
       }
     }
 
@@ -2032,7 +2033,7 @@ class HrmService {
     final shiftCodeMap = <String, String>{};
     if (shifts != null) {
       for (final s in shifts) {
-        shiftCodeMap[s.id] = s.code.isNotEmpty ? s.code : (s.name.isNotEmpty ? s.name : 'Ca');
+        shiftCodeMap[s.id] = s.code.isNotEmpty ? s.code : (s.name.isNotEmpty ? s.name : 'svc_hrm.shift_short'.tr());
       }
     }
 
@@ -2070,13 +2071,13 @@ class HrmService {
       }
 
       if (count > 1) {
-        scopeText = '$count nhân viên';
+        scopeText = 'svc_hrm.n_employees'.tr(args: {'count': count});
       } else if (main['employeeCode'] != null && main['employeeCode'].toString().isNotEmpty) {
         final code = main['employeeCode'].toString();
         final name = main['employeeName']?.toString() ?? main['full_name']?.toString() ?? '';
         scopeText = name.isNotEmpty ? '$code - $name' : code;
       } else if (scopeLabel == 'COMPANY' || scopeLabel == 'ALL' || scopeLabel.isEmpty) {
-        scopeText = 'Toàn công ty';
+        scopeText = 'svc_hrm.scope_company'.tr();
       } else {
         scopeText = scopeLabel;
       }
@@ -2090,7 +2091,7 @@ class HrmService {
 
       final shiftText = _auditShiftText(main, shiftCodeMap);
 
-      final actorName = main['actorName']?.toString() ?? main['actor_name']?.toString() ?? main['createdByName']?.toString() ?? 'Quản trị viên';
+      final actorName = main['actorName']?.toString() ?? main['actor_name']?.toString() ?? main['createdByName']?.toString() ?? 'svc_hrm.administrator'.tr();
       final createdAtRaw = main['createdAt']?.toString() ?? main['created_at']?.toString() ?? '';
       String timeStr = createdAtRaw;
       final dt = DateTime.tryParse(createdAtRaw);
@@ -2108,7 +2109,7 @@ class HrmService {
         'action': action,
         'actionLabel': actionLabel,
         'title': actionLabel,
-        'effectiveDate': effectiveDate.isNotEmpty ? effectiveDate : 'Từ 01/01/2026',
+        'effectiveDate': effectiveDate.isNotEmpty ? effectiveDate : 'svc_hrm.date_from_default'.tr(),
         'scope': scopeText,
         'scopeText': scopeText,
         'sub': scopeText,
@@ -2119,7 +2120,7 @@ class HrmService {
         'timestamp': timeStr,
         'createdAt': timeStr,
         'before': beforeList,
-        'after': afterList.isNotEmpty ? afterList.join(', ') : (shiftText.isNotEmpty ? shiftText : 'Không có'),
+        'after': afterList.isNotEmpty ? afterList.join(', ') : (shiftText.isNotEmpty ? shiftText : 'svc_hrm.none'.tr()),
         'count': count,
       });
     }
@@ -2181,48 +2182,48 @@ class HrmService {
     return [
       {
         'id': 'hist-web-1',
-        'effectiveDate': 'Từ 01/01/2026',
-        'scope': 'Toàn công ty',
-        'scopeText': 'Toàn công ty',
+        'effectiveDate': 'svc_hrm.date_from_default'.tr(),
+        'scope': 'svc_hrm.scope_company'.tr(),
+        'scopeText': 'svc_hrm.scope_company'.tr(),
         'shiftPattern': 'T2-T6: HC; T7: HC-T7; CN: OFF',
         'actor': 'Hà Nguyên Hoàng',
         'actorName': 'Hà Nguyên Hoàng',
         'timestamp': '11/10/2026 20:55',
         'action': 'RULE_REPLACE',
-        'actionLabel': 'Thay lịch định kỳ',
-        'title': 'Thay lịch định kỳ',
+        'actionLabel': 'svc_hrm.audit_rule_replace'.tr(),
+        'title': 'svc_hrm.audit_rule_replace'.tr(),
         'before': ['01/01/2026: HC (Mẫu)'],
-        'after': 'Không có',
+        'after': 'svc_hrm.none'.tr(),
       },
       {
         'id': 'hist-web-2',
-        'effectiveDate': 'Từ 01/01/2026',
-        'scope': 'Toàn công ty',
-        'scopeText': 'Toàn công ty',
+        'effectiveDate': 'svc_hrm.date_from_default'.tr(),
+        'scope': 'svc_hrm.scope_company'.tr(),
+        'scopeText': 'svc_hrm.scope_company'.tr(),
         'shiftPattern': 'T2-T6: Ca?; T7: HC-T7; CN: OFF',
         'actor': 'Hà Nguyên Hoàng',
         'actorName': 'Hà Nguyên Hoàng',
         'timestamp': '11/10/2026 20:54',
         'action': 'RULE_REPLACE',
-        'actionLabel': 'Thay lịch định kỳ',
-        'title': 'Thay lịch định kỳ',
+        'actionLabel': 'svc_hrm.audit_rule_replace'.tr(),
+        'title': 'svc_hrm.audit_rule_replace'.tr(),
         'before': ['01/01/2026: Ca?'],
-        'after': 'Không có',
+        'after': 'svc_hrm.none'.tr(),
       },
       {
         'id': 'hist-web-3',
-        'effectiveDate': 'Từ 01/01/2026',
-        'scope': '1+ nhân viên',
-        'scopeText': '1+ nhân viên',
+        'effectiveDate': 'svc_hrm.date_from_default'.tr(),
+        'scope': 'svc_hrm.n_employees_plus'.tr(),
+        'scopeText': 'svc_hrm.n_employees_plus'.tr(),
         'shiftPattern': 'T2-T6: HC; T7: HC-T7; CN: OFF',
         'actor': 'Hà Nguyên Hoàng',
         'actorName': 'Hà Nguyên Hoàng',
         'timestamp': '11/10/2026 11:41',
         'action': 'RULE_REPLACE',
-        'actionLabel': 'Thay lịch định kỳ',
-        'title': 'Thay lịch định kỳ',
+        'actionLabel': 'svc_hrm.audit_rule_replace'.tr(),
+        'title': 'svc_hrm.audit_rule_replace'.tr(),
         'before': ['01/01/2026: HC (Mẫu)'],
-        'after': 'Không có',
+        'after': 'svc_hrm.none'.tr(),
       },
     ];
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../services/hrm_service.dart';
 
 /// Cấu hình Địa điểm GPS (GPS Locations Config View) - Chuẩn Web 1:1 Pixel-Perfect
@@ -36,7 +37,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
         : [
             {
               'id': '1',
-              'name': 'VP Đà Nẵng',
+              'name': 'hrm_config.gps.sample.name'.tr(),
               'coords': '16.0375, 108.212194',
               'radius': '1000 m',
               'status': 'Đang dùng',
@@ -73,18 +74,18 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Địa điểm GPS',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    'hrm_config.gps.title'.tr(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
-                  SizedBox(height: 3),
+                  const SizedBox(height: 3),
                   Text(
-                    'Quản lý địa điểm làm việc theo GPS',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                    'hrm_config.gps.subtitle'.tr(),
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                 ],
               ),
@@ -99,13 +100,13 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                     border: Border.all(color: const Color(0xFFBBF7D0)),
                   ),
                   child: Text(
-                    '$activeCount đang dùng',
+                    'hrm_config.gps.active_badge'.tr(args: {'count': activeCount}),
                     style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
                   ),
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  tooltip: 'Tải lại danh sách',
+                  tooltip: 'hrm_config.gps.reload'.tr(),
                   icon: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF64748B)),
                   onPressed: widget.onRefreshGpsSites,
                 ),
@@ -119,14 +120,14 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                       color: const Color(0xFFFBBF24),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add, size: 14, color: Color(0xFF78350F)),
-                        SizedBox(width: 4),
+                        const Icon(Icons.add, size: 14, color: Color(0xFF78350F)),
+                        const SizedBox(width: 4),
                         Text(
-                          'Thêm địa điểm',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF78350F)),
+                          'hrm_config.gps.add'.tr(),
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF78350F)),
                         ),
                       ],
                     ),
@@ -162,13 +163,13 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Địa điểm chấm công',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    Text(
+                      'hrm_config.gps.card_title'.tr(),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$activeCount địa điểm đang dùng',
+                      'hrm_config.gps.card_active'.tr(args: {'count': activeCount}),
                       style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 12),
@@ -189,7 +190,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               onChanged: (v) => setState(() => _searchQuery = v),
                               style: const TextStyle(fontSize: 11.5),
                               decoration: InputDecoration(
-                                hintText: 'Tìm theo tên hoặc tọa độ',
+                                hintText: 'hrm_config.gps.search_hint'.tr(),
                                 hintStyle: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                                 prefixIcon: const Icon(Icons.search, size: 16, color: Color(0xFF94A3B8)),
                                 suffixIcon: _searchQuery.isNotEmpty
@@ -213,10 +214,10 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                         PopupMenuButton<String>(
                           onSelected: (val) => setState(() => _statusFilter = val),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          itemBuilder: (ctx) => const [
-                            PopupMenuItem(value: 'ALL', child: Text('Tất cả trạng thái', style: TextStyle(fontSize: 12))),
-                            PopupMenuItem(value: 'ACTIVE', child: Text('Đang dùng', style: TextStyle(fontSize: 12))),
-                            PopupMenuItem(value: 'INACTIVE', child: Text('Ngừng dùng', style: TextStyle(fontSize: 12))),
+                          itemBuilder: (ctx) => [
+                            PopupMenuItem(value: 'ALL', child: Text('hrm_config.gps.filter.all'.tr(), style: const TextStyle(fontSize: 12))),
+                            PopupMenuItem(value: 'ACTIVE', child: Text('hrm_config.gps.filter.active'.tr(), style: const TextStyle(fontSize: 12))),
+                            PopupMenuItem(value: 'INACTIVE', child: Text('hrm_config.gps.filter.inactive'.tr(), style: const TextStyle(fontSize: 12))),
                           ],
                           child: Container(
                             height: 36,
@@ -230,10 +231,10 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               children: [
                                 Text(
                                   _statusFilter == 'ACTIVE'
-                                      ? 'Đang dùng'
+                                      ? 'hrm_config.gps.filter.active'.tr()
                                       : _statusFilter == 'INACTIVE'
-                                          ? 'Ngừng dùng'
-                                          : 'Tất cả trạng thái',
+                                          ? 'hrm_config.gps.filter.inactive'.tr()
+                                          : 'hrm_config.gps.filter.all'.tr(),
                                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
                                 ),
                                 const SizedBox(width: 4),
@@ -253,28 +254,28 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
               Container(
                 color: const Color(0xFFF8FAFC),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: const Row(
+                child: Row(
                   children: [
                     Expanded(
                       flex: 7,
-                      child: Text('Địa điểm', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('hrm_config.gps.col.site'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                     Expanded(
                       flex: 7,
-                      child: Text('Tọa độ', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('hrm_config.gps.col.coords'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                     Expanded(
                       flex: 5,
-                      child: Text('Bán kính', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('hrm_config.gps.col.radius'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                     Expanded(
                       flex: 6,
-                      child: Text('Trạng thái', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('common.status'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                     SizedBox(
                       width: 38,
                       child: Text(
-                        'Thao tác',
+                        'common.actions'.tr(),
                         textAlign: TextAlign.end,
                         style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                       ),
@@ -286,12 +287,12 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
 
               // Table Body Rows
               if (filtered.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
+                Padding(
+                  padding: const EdgeInsets.all(24),
                   child: Center(
                     child: Text(
-                      'Không tìm thấy địa điểm GPS phù hợp.',
-                      style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                      'hrm_config.gps.empty'.tr(),
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                     ),
                   ),
                 )
@@ -303,7 +304,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                   separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
                   itemBuilder: (ctx, idx) {
                     final site = filtered[idx];
-                    final name = site['name']?.toString() ?? 'VP Đà Nẵng';
+                    final name = site['name']?.toString() ?? 'hrm_config.gps.sample.name'.tr();
                     final rawCoords = site['coords']?.toString();
                     final coords = (site['latitude'] != null && site['longitude'] != null)
                         ? '${HrmService.formatCoordinate(site['latitude'])}, ${HrmService.formatCoordinate(site['longitude'])}'
@@ -351,7 +352,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                                   border: Border.all(color: isActive ? const Color(0xFFBBF7D0) : const Color(0xFFCBD5E1)),
                                 ),
                                 child: Text(
-                                  isActive ? 'Đang dùng' : 'Ngừng',
+                                  isActive ? 'hrm_config.gps.status.active'.tr() : 'hrm_config.gps.status.stopped'.tr(),
                                   maxLines: 1,
                                   softWrap: false,
                                   style: TextStyle(
@@ -384,19 +385,19 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                                     }
                                     setState(() {});
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Đã cập nhật trạng thái địa điểm "$name" thành ${site['status']}')),
+                                      SnackBar(content: Text('hrm_config.gps.status_updated'.tr(args: {'name': name, 'status': (action == 'activate' ? 'hrm_config.gps.status.active' : 'hrm_config.gps.status.stopped').tr()}))),
                                     );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Đã chọn $action cho $name')),
+                                      SnackBar(content: Text('hrm_config.gps.action_selected'.tr(args: {'action': action, 'name': name}))),
                                     );
                                   }
                                 },
                                 itemBuilder: (context) => [
-                                  const PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa', style: TextStyle(fontSize: 12))),
+                                  PopupMenuItem(value: 'edit', child: Text('common.edit'.tr(), style: const TextStyle(fontSize: 12))),
                                   PopupMenuItem(
                                     value: isActive ? 'deactivate' : 'activate',
-                                    child: Text(isActive ? 'Ngừng dùng' : 'Áp dụng', style: const TextStyle(fontSize: 12)),
+                                    child: Text(isActive ? 'hrm_config.gps.filter.inactive'.tr() : 'common.apply'.tr(), style: const TextStyle(fontSize: 12)),
                                   ),
                                 ],
                               ),
@@ -413,7 +414,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Text(
-                  'Tổng ${filtered.length} dòng',
+                  'hrm_config.gps.total_rows'.tr(args: {'count': filtered.length}),
                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                 ),
               ),
@@ -463,7 +464,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      isEditing ? 'Cập nhật địa điểm chấm công' : 'Thêm địa điểm chấm công',
+                      isEditing ? 'hrm_config.gps.modal.title_edit'.tr() : 'hrm_config.gps.modal.title_add'.tr(),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     IconButton(
@@ -474,9 +475,9 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                 ),
                 if (!isEditing) ...[
                   const SizedBox(height: 2),
-                  const Text(
-                    'Nhân viên chấm công trong bán kính quanh tọa độ này được coi là hợp lệ.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  Text(
+                    'hrm_config.gps.modal.hint'.tr(),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -507,9 +508,9 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
 
                 // Tên địa điểm *
                 RichText(
-                  text: const TextSpan(
-                    text: 'Tên địa điểm ',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                  text: TextSpan(
+                    text: '${'hrm_config.gps.label.name'.tr()} ',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     children: [TextSpan(text: '*', style: TextStyle(color: Color(0xFFEF4444)))],
                   ),
                 ),
@@ -534,9 +535,9 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           RichText(
-                            text: const TextSpan(
-                              text: 'Vĩ độ ',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                            text: TextSpan(
+                              text: '${'hrm_config.gps.label.lat'.tr()} ',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                               children: [TextSpan(text: '*', style: TextStyle(color: Color(0xFFEF4444)))],
                             ),
                           ),
@@ -552,7 +553,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text('Từ -90 đến 90.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                          Text('hrm_config.gps.hint.lat'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                         ],
                       ),
                     ),
@@ -562,9 +563,9 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           RichText(
-                            text: const TextSpan(
-                              text: 'Kinh độ ',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                            text: TextSpan(
+                              text: '${'hrm_config.gps.label.lng'.tr()} ',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                               children: [TextSpan(text: '*', style: TextStyle(color: Color(0xFFEF4444)))],
                             ),
                           ),
@@ -580,7 +581,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text('Từ -180 đến 180.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                          Text('hrm_config.gps.hint.lng'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                         ],
                       ),
                     ),
@@ -590,9 +591,9 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
 
                 // Bán kính (m) *
                 RichText(
-                  text: const TextSpan(
-                    text: 'Bán kính (m) ',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                  text: TextSpan(
+                    text: '${'hrm_config.gps.label.radius'.tr()} ',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     children: [TextSpan(text: '*', style: TextStyle(color: Color(0xFFEF4444)))],
                   ),
                 ),
@@ -608,15 +609,15 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text('Từ 1 đến 100000 m.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                Text('hrm_config.gps.hint.radius'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
 
                 // Lý do thay đổi * (1:1 Web: Chỉ hiển thị khi Cập nhật / Chỉnh sửa)
                 if (isEditing) ...[
                   const SizedBox(height: 14),
                   RichText(
-                    text: const TextSpan(
-                      text: 'Lý do thay đổi ',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                    text: TextSpan(
+                      text: '${'hrm_config.gps.label.reason'.tr()} ',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                       children: [TextSpan(text: '*', style: TextStyle(color: Color(0xFFEF4444)))],
                     ),
                   ),
@@ -625,7 +626,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                     controller: reasonCtrl,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Nhập lý do thay đổi...',
+                      hintText: 'hrm_config.gps.reason_hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -646,7 +647,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                       ),
                       onPressed: isSubmitting ? null : () => Navigator.pop(modalCtx),
-                      child: const Text('Hủy', style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.w600)),
+                      child: Text('common.cancel'.tr(), style: const TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.w600)),
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton(
@@ -663,7 +664,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               final name = nameCtrl.text.trim();
                               if (name.isEmpty) {
                                 setModalState(() {
-                                  validationError = 'Vui lòng nhập tên địa điểm.';
+                                  validationError = 'hrm_config.gps.err.name'.tr();
                                 });
                                 return;
                               }
@@ -671,7 +672,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               final lat = double.tryParse(latCtrl.text.trim());
                               if (lat == null || lat < -90 || lat > 90) {
                                 setModalState(() {
-                                  validationError = 'Vĩ độ phải nằm trong khoảng từ -90 đến 90.';
+                                  validationError = 'hrm_config.gps.err.lat'.tr();
                                 });
                                 return;
                               }
@@ -679,7 +680,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               final lng = double.tryParse(lngCtrl.text.trim());
                               if (lng == null || lng < -180 || lng > 180) {
                                 setModalState(() {
-                                  validationError = 'Kinh độ phải nằm trong khoảng từ -180 đến 180.';
+                                  validationError = 'hrm_config.gps.err.lng'.tr();
                                 });
                                 return;
                               }
@@ -687,7 +688,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               final rad = double.tryParse(radiusCtrl.text.trim());
                               if (rad == null || rad < 1 || rad > 100000) {
                                 setModalState(() {
-                                  validationError = 'Bán kính phải từ 1 đến 100.000 m.';
+                                  validationError = 'hrm_config.gps.err.radius'.tr();
                                 });
                                 return;
                               }
@@ -695,7 +696,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               final reason = reasonCtrl.text.trim();
                               if (isEditing && reason.isEmpty) {
                                 setModalState(() {
-                                  validationError = 'Vui lòng nhập lý do thay đổi.';
+                                  validationError = 'hrm_config.gps.err.reason'.tr();
                                 });
                                 return;
                               }
@@ -749,8 +750,8 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                                 SnackBar(
                                   content: Text(
                                     isEditing
-                                        ? 'Đã cập nhật địa điểm "$name" thành công!'
-                                        : 'Đã lưu địa điểm "$name" thành công!',
+                                        ? 'hrm_config.gps.saved_update'.tr(args: {'name': name})
+                                        : 'hrm_config.gps.saved_new'.tr(args: {'name': name}),
                                   ),
                                   backgroundColor: const Color(0xFF16A34A),
                                 ),
@@ -762,7 +763,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF78350F)),
                             )
-                          : Text(isEditing ? 'Xác nhận' : 'Lưu địa điểm', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          : Text(isEditing ? 'common.confirm'.tr() : 'hrm_config.gps.save'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

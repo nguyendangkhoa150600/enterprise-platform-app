@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
 
@@ -126,7 +127,7 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(c.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                      Text('${c.code} · ${c.note ?? 'Không có ghi chú'}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                      Text('workspace.contract.code_note'.tr(args: {'code': c.code, 'note': c.note ?? 'workspace.contract.no_note'.tr()}), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                     ],
                   ),
                 ),
@@ -142,10 +143,10 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Danh sách hợp đồng (${_contracts.length})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                Text('workspace.contract.list_title'.tr(args: {'count': _contracts.length}), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 TextButton.icon(
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Thêm hợp đồng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: Text('workspace.action.add_contract'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   onPressed: _showCreateContractDialog,
                 ),
               ],
@@ -157,7 +158,7 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFFD9AB00)))
                 : _contracts.isEmpty
-                    ? const Center(child: Text('Khách hàng này chưa có hợp đồng nào', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)))
+                    ? Center(child: Text('workspace.contract.empty'.tr(), style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)))
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         itemCount: _contracts.length,
@@ -194,7 +195,7 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('Giá trị: ${_formatVnd(ct.value)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF047857))),
+                                    Text('workspace.contract.value'.tr(args: {'value': _formatVnd(ct.value)}), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF047857))),
                                     if (ct.projectName != null && ct.projectName!.isNotEmpty)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
@@ -202,7 +203,7 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
                                           color: const Color(0xFFFEF3C7),
                                           borderRadius: BorderRadius.circular(4),
                                         ),
-                                        child: Text('Dự án: ${ct.projectName}', style: const TextStyle(fontSize: 10, color: Color(0xFFB45309), fontWeight: FontWeight.bold)),
+                                        child: Text('workspace.contract.project'.tr(args: {'name': ct.projectName}), style: const TextStyle(fontSize: 10, color: Color(0xFFB45309), fontWeight: FontWeight.bold)),
                                       ),
                                   ],
                                 ),
@@ -227,21 +228,21 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text('Thêm hợp đồng mới', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text('workspace.dialog.add_contract_title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: codeCtrl, decoration: const InputDecoration(labelText: 'Số / Mã hợp đồng *', isDense: true)),
+            TextField(controller: codeCtrl, decoration: InputDecoration(labelText: 'workspace.dialog.contract_code'.tr(), isDense: true)),
             const SizedBox(height: 8),
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên hợp đồng *', isDense: true)),
+            TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'workspace.dialog.contract_name'.tr(), isDense: true)),
             const SizedBox(height: 8),
-            TextField(controller: valueCtrl, decoration: const InputDecoration(labelText: 'Giá trị hợp đồng (VNĐ)', isDense: true), keyboardType: TextInputType.number),
+            TextField(controller: valueCtrl, decoration: InputDecoration(labelText: 'workspace.dialog.contract_value'.tr(), isDense: true), keyboardType: TextInputType.number),
             const SizedBox(height: 8),
-            TextField(controller: noteCtrl, decoration: const InputDecoration(labelText: 'Ghi chú', isDense: true)),
+            TextField(controller: noteCtrl, decoration: InputDecoration(labelText: 'common.note'.tr(), isDense: true)),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('workspace.action.cancel'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
             onPressed: () async {
@@ -261,7 +262,7 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
                 }
               }
             },
-            child: const Text('Lưu'),
+            child: Text('common.save'.tr()),
           ),
         ],
       ),
@@ -346,9 +347,9 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMetric('Tiến độ', '${p.progressPercent.toStringAsFixed(0)}%', const Color(0xFF059669)),
-                _buildMetric('Đã hoàn thành', '${p.closedItems}/${p.totalItems}', const Color(0xFF0F172A)),
-                _buildMetric('Quá hạn', '${p.overdueItems}', const Color(0xFFDC2626)),
+                _buildMetric('workspace.project.progress'.tr(), '${p.progressPercent.toStringAsFixed(0)}%', const Color(0xFF059669)),
+                _buildMetric('workspace.metric.completed'.tr(), '${p.closedItems}/${p.totalItems}', const Color(0xFF0F172A)),
+                _buildMetric('workspace.project.overdue'.tr(), '${p.overdueItems}', const Color(0xFFDC2626)),
               ],
             ),
           ),
@@ -361,9 +362,9 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
               children: [
                 const Icon(Icons.people_outline, size: 16, color: Color(0xFF0F172A)),
                 const SizedBox(width: 6),
-                const Text('Thành viên & Phân quyền vai trò', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                Text('workspace.project.members_roles'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 const Spacer(),
-                Text('${_members.length} thành viên', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                Text('workspace.project.member_count'.tr(args: {'count': _members.length}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
               ],
             ),
           ),
@@ -372,7 +373,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
             child: _isLoadingMembers
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFFD9AB00)))
                 : _members.isEmpty
-                    ? const Center(child: Text('Chưa phân bổ thành viên dự án', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)))
+                    ? Center(child: Text('workspace.project.no_members'.tr(), style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)))
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         itemCount: _members.length,
@@ -409,7 +410,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(m.fullName ?? 'Thành viên', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                      Text(m.fullName ?? 'workspace.project.default_member'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                                       if (m.email != null) Text(m.email!, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                                     ],
                                   ),
@@ -474,13 +475,13 @@ class TaskStatusSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(task.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-          Text('${task.code} · ${task.statusLabel} · Ưu tiên: ${task.priorityLabel}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+          Text('workspace.task.code_status_priority'.tr(args: {'code': task.code, 'status': task.statusLabel, 'priority': task.priorityLabel}), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
           if (task.description != null && task.description!.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(task.description!, style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
           ],
           const SizedBox(height: 16),
-          const Text('Cập nhật trạng thái công việc:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+          Text('workspace.task.update_status'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
           const SizedBox(height: 8),
 
           Row(
@@ -496,7 +497,7 @@ class TaskStatusSheet extends StatelessWidget {
                         onStatusChanged();
                       }
                     },
-                    child: const Text('Bắt đầu làm'),
+                    child: Text('workspace.task.start'.tr()),
                   ),
                 ),
               if (task.status == 'in_progress') ...[
@@ -510,7 +511,7 @@ class TaskStatusSheet extends StatelessWidget {
                         onStatusChanged();
                       }
                     },
-                    child: const Text('Gửi duyệt'),
+                    child: Text('workspace.task.submit_review'.tr()),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -524,7 +525,7 @@ class TaskStatusSheet extends StatelessWidget {
                         onStatusChanged();
                       }
                     },
-                    child: const Text('Hoàn thành'),
+                    child: Text('workspace.status.done'.tr()),
                   ),
                 ),
               ],
@@ -539,12 +540,12 @@ class TaskStatusSheet extends StatelessWidget {
                         onStatusChanged();
                       }
                     },
-                    child: const Text('Phê duyệt hoàn thành'),
+                    child: Text('workspace.task.approve_done'.tr()),
                   ),
                 ),
               if (task.status == 'done')
-                const Expanded(
-                  child: Center(child: Text('Công việc đã hoàn thành', style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold))),
+                Expanded(
+                  child: Center(child: Text('workspace.task.already_done'.tr(), style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold))),
                 ),
             ],
           ),

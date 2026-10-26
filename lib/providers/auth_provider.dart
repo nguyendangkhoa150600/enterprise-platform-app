@@ -1,3 +1,4 @@
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -124,7 +125,7 @@ class AuthProvider extends ChangeNotifier {
         .first;
 
     if (cleanSlug.isEmpty) {
-      _errorMessage = 'Tên doanh nghiệp không hợp lệ.';
+      _errorMessage = 'core_misc.auth.invalid_tenant'.tr();
       notifyListeners();
       return false;
     }
@@ -170,7 +171,7 @@ class AuthProvider extends ChangeNotifier {
         final principal = data['principal'];
         
         if (principal == null) {
-          throw Exception('Không nhận được thông tin xác thực từ máy chủ.');
+          throw Exception('core_misc.auth.no_credentials'.tr());
         }
 
         _kind = principal['kind']?.toString() ?? (portal == 'platform' ? 'platform-admin' : 'tenant-user');
@@ -217,7 +218,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        throw Exception('Đăng nhập thất bại.');
+        throw Exception('core_misc.auth.login_failed'.tr());
       }
     } on DioException catch (e) {
       _isLoading = false;
@@ -227,13 +228,13 @@ class AuthProvider extends ChangeNotifier {
         debugPrint("DioException Response Status: ${e.response!.statusCode}");
       }
       if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-        _errorMessage = 'Hết thời gian chờ kết nối (Timeout). Vui lòng kiểm tra lại đường truyền mạng hoặc máy chủ.';
+        _errorMessage = 'core_misc.auth.timeout'.tr();
       } else if (e.type == DioExceptionType.connectionError) {
-        _errorMessage = 'Không thể kết nối đến máy chủ (${AuthProvider.authBaseUrl}). Vui lòng kiểm tra kết nối mạng của thiết bị.';
+        _errorMessage = 'core_misc.auth.conn_error'.tr(args: {'url': AuthProvider.authBaseUrl});
       } else if (e.response != null && e.response!.data != null && e.response!.data['message'] != null) {
         _errorMessage = e.response!.data['message'].toString();
       } else {
-        _errorMessage = 'Email hoặc mật khẩu không chính xác.';
+        _errorMessage = 'core_misc.auth.bad_credentials'.tr();
       }
       notifyListeners();
       return false;
@@ -498,10 +499,10 @@ class AuthProvider extends ChangeNotifier {
           await updateCookiesFromSetCookie(setCookies);
         }
         notifyListeners();
-        return {'success': true, 'message': 'Đổi mật khẩu thành công!'};
+        return {'success': true, 'message': 'core_misc.auth.pwd_changed'.tr()};
       } else {
         final data = res.data;
-        String msg = 'Đổi mật khẩu thất bại.';
+        String msg = 'core_misc.auth.pwd_change_failed'.tr();
         if (data is Map && data['message'] != null) {
           msg = data['message'].toString();
         }
@@ -513,7 +514,7 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-      return {'success': false, 'message': 'Lỗi kết nối máy chủ: $e'};
+      return {'success': false, 'message': 'core_misc.auth.server_conn_error'.tr(args: {'error': e.toString()})};
     }
   }
 }

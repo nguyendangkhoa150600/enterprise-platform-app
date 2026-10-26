@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import 'package:provider/provider.dart';
 import '../../../models/platform_models.dart';
 import '../../../providers/notification_provider.dart';
@@ -90,7 +91,7 @@ class HomeMobileDashboardView extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Tenant Portal · ${tenantDisplay.toLowerCase()}',
+              'home.mobile.tenant_portal'.tr(args: {'tenant': tenantDisplay.toLowerCase()}),
               style: const TextStyle(fontSize: 12, color: AppColors.slate500, fontWeight: FontWeight.w500),
             ),
             const Spacer(),
@@ -107,7 +108,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                 ),
                 child: const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
               ),
-              tooltip: 'Trợ lý Savina AI',
+              tooltip: 'home.mobile.ai_assistant'.tr(),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const AssistantChatScreen()),
@@ -121,7 +122,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.notifications_outlined, size: 21, color: Color(0xFF334155)),
-                      tooltip: 'Trung tâm thông báo',
+                      tooltip: 'home.mobile.notification_center'.tr(),
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
@@ -160,8 +161,8 @@ class HomeMobileDashboardView extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Tổng quan hệ thống',
+            Text(
+              'home.mobile.system_overview'.tr(),
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -195,8 +196,8 @@ class HomeMobileDashboardView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Theo dõi nhanh các chỉ số và ứng dụng chính của tenant.',
+        Text(
+          'home.mobile.system_overview_desc'.tr(),
           style: TextStyle(fontSize: 12.5, color: AppColors.slate500),
         ),
       ],
@@ -216,8 +217,8 @@ class HomeMobileDashboardView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Xin chào',
+          Text(
+            'home.mobile.hello'.tr(),
             style: TextStyle(fontSize: 12, color: AppColors.slate500, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 4),
@@ -230,8 +231,8 @@ class HomeMobileDashboardView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          const Text(
-            'Chúc bạn một ngày làm việc hiệu quả.',
+          Text(
+            'home.mobile.welcome_wish'.tr(),
             style: TextStyle(fontSize: 12.5, color: AppColors.slate600),
           ),
           const SizedBox(height: 14),
@@ -242,43 +243,43 @@ class HomeMobileDashboardView extends StatelessWidget {
               children: [
                 _buildWelcomeActionButton(
                   icon: Icons.auto_awesome,
-                  label: 'Trợ lý Savina AI',
+                  label: 'home.mobile.ai_assistant'.tr(),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen())),
                 ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.fingerprint_rounded,
-                  label: 'Chấm công GPS',
+                  label: 'home.mobile.gps_attendance'.tr(),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
                 ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.assignment_outlined,
-                  label: 'Đơn từ của tôi',
+                  label: 'home.mobile.my_requests'.tr(),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen())),
                 ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.manage_accounts_outlined,
-                  label: 'Quản lý người dùng',
+                  label: 'home.mobile.user_management'.tr(),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())),
                 ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.verified_user_outlined,
-                  label: 'Vai trò & Phân quyền',
+                  label: 'home.mobile.roles_permissions'.tr(),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RolePermissionScreen())),
                 ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.account_tree_outlined,
-                  label: 'Thiết lập tổ chức',
+                  label: 'home.mobile.org_setup'.tr(),
                   onTap: () => onNavigateTab(2),
                 ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.apps_outlined,
-                  label: 'Quản lý ứng dụng',
+                  label: 'home.mobile.app_management'.tr(),
                   onTap: () => onNavigateTab(1),
                 ),
               ],
@@ -324,9 +325,9 @@ class HomeMobileDashboardView extends StatelessWidget {
           children: [
             Expanded(
               child: _buildMetricCard(
-                label: 'Người dùng hoạt động',
+                label: 'home.mobile.active_users'.tr(),
                 value: userCount,
-                note: 'Tài khoản đang hoạt động',
+                note: 'home.mobile.active_accounts'.tr(),
                 icon: Icons.people_outline,
                 tone: 'blue',
               ),
@@ -334,9 +335,9 @@ class HomeMobileDashboardView extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _buildMetricCard(
-                label: 'Ứng dụng đang bật',
+                label: 'home.mobile.enabled_apps'.tr(),
                 value: moduleCount,
-                note: 'Theo entitlement hiện tại',
+                note: 'home.mobile.per_entitlement'.tr(),
                 icon: Icons.layers_outlined,
                 tone: 'blue',
               ),
@@ -348,9 +349,9 @@ class HomeMobileDashboardView extends StatelessWidget {
           children: [
             Expanded(
               child: _buildMetricCard(
-                label: 'Hồ sơ chờ xử lý',
+                label: 'home.mobile.pending_records'.tr(),
                 value: '4',
-                note: 'Quy trình cần bạn thao tác',
+                note: 'home.mobile.procedures_need_action'.tr(),
                 icon: Icons.assignment_outlined,
                 tone: 'amber',
               ),
@@ -358,9 +359,9 @@ class HomeMobileDashboardView extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _buildMetricCard(
-                label: 'Sự cố đang xử lý',
+                label: 'home.mobile.incidents_in_progress'.tr(),
                 value: '0',
-                note: 'Sự cố chưa đóng',
+                note: 'home.mobile.incidents_open'.tr(),
                 icon: Icons.shield_outlined,
                 tone: 'red',
               ),
@@ -454,31 +455,31 @@ class HomeMobileDashboardView extends StatelessWidget {
   Widget _buildMobileAttentionSection() {
     final items = [
       {
-        'title': 'Thí nghiệm định kỳ tủ rơ le lộ 901',
+        'title': 'home.mobile.mock.t1_title'.tr(),
         'code': 'PR-20260918-D0A538',
-        'def': 'Thí nghiệm định kỳ thiết bị điện',
-        'step': 'Đăng ký thí nghiệm',
+        'def': 'home.mobile.mock.t1_def'.tr(),
+        'step': 'home.mobile.mock.t1_step'.tr(),
         'module': 'procedure',
       },
       {
-        'title': 'Mua dầu cách điện bù cho MBA T1',
+        'title': 'home.mobile.mock.t2_title'.tr(),
         'code': 'PR-20260918-038357',
-        'def': 'Mua sắm vật tư kỹ thuật',
-        'step': 'Đề nghị mua sắm',
+        'def': 'home.mobile.mock.t2_def'.tr(),
+        'step': 'home.mobile.mock.t2_step'.tr(),
         'module': 'procedure',
       },
       {
-        'title': 'Mua bổ sung sứ cách điện 24kV cho lộ 901',
+        'title': 'home.mobile.mock.t3_title'.tr(),
         'code': 'PR-20260918-7C50C5',
-        'def': 'Mua sắm vật tư kỹ thuật',
-        'step': 'Đề nghị mua sắm',
+        'def': 'home.mobile.mock.t2_def'.tr(),
+        'step': 'home.mobile.mock.t2_step'.tr(),
         'module': 'procedure',
       },
       {
-        'title': 'Bảo trì quý III/2026 — Máy biến áp T1',
+        'title': 'home.mobile.mock.t4_title'.tr(),
         'code': 'PR-20260918-4E0BCA',
-        'def': 'Bảo trì định kỳ máy biến áp lực',
-        'step': 'Lập phiếu công việc',
+        'def': 'home.mobile.mock.t4_def'.tr(),
+        'step': 'home.mobile.mock.t4_step'.tr(),
         'module': 'maintenance',
       },
     ];
@@ -509,8 +510,8 @@ class HomeMobileDashboardView extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Text(
-                            'Điểm cần chú ý',
+                          Text(
+                            'home.mobile.attention_points'.tr(),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -536,8 +537,8 @@ class HomeMobileDashboardView extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 3),
-                      const Text(
-                        'Các việc thực tế cần mở module để xử lý.',
+                      Text(
+                        'home.mobile.attention_desc'.tr(),
                         style: TextStyle(fontSize: 11.5, color: AppColors.slate500),
                       ),
                     ],
@@ -609,10 +610,10 @@ class HomeMobileDashboardView extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 4,
                     children: [
-                      _buildChipTag('Quy trình', const Color(0xFFEFF6FF), const Color(0xFF1D4ED8)),
+                      _buildChipTag('home.mobile.procedure'.tr(), const Color(0xFFEFF6FF), const Color(0xFF1D4ED8)),
                       _buildChipTag(it['code']!, const Color(0xFFF1F5F9), AppColors.slate700),
                       _buildChipTag(it['def']!, const Color(0xFFF8FAFC), AppColors.slate600),
-                      _buildChipTag('Bước: ${it['step']!}', const Color(0xFFF8FAFC), AppColors.slate600),
+                      _buildChipTag('home.mobile.step_label'.tr(args: {'step': it['step']!}), const Color(0xFFF8FAFC), AppColors.slate600),
                     ],
                   ),
                 ],
@@ -625,8 +626,8 @@ class HomeMobileDashboardView extends StatelessWidget {
                 color: const Color(0xFFFEF3C7),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text(
-                'Cần xử lý',
+              child: Text(
+                'home.mobile.need_action'.tr(),
                 style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
               ),
             ),
@@ -656,39 +657,39 @@ class HomeMobileDashboardView extends StatelessWidget {
     return Column(
       children: [
         _buildModuleSummaryCard(
-          title: 'Quy trình',
+          title: 'home.mobile.procedure'.tr(),
           icon: Icons.account_tree_outlined,
           onOpen: () => onOpenModule('procedure'),
           stats: [
-            {'label': 'Đang chạy', 'value': '4'},
-            {'label': 'Chờ xử lý', 'value': '4'},
-            {'label': 'Đã công bố', 'value': '16'},
+            {'label': 'home.mobile.running'.tr(), 'value': '4'},
+            {'label': 'home.mobile.pending'.tr(), 'value': '4'},
+            {'label': 'home.mobile.published'.tr(), 'value': '16'},
           ],
           customContent: _buildProcedureMiniChart(),
         ),
         const SizedBox(height: 12),
         _buildModuleSummaryCard(
-          title: 'Bảo trì',
+          title: 'home.mobile.maintenance'.tr(),
           icon: Icons.build_outlined,
           onOpen: () => onOpenModule('maintenance'),
           stats: [
-            {'label': 'Lịch đang chạy', 'value': '4'},
-            {'label': 'Sắp đến hạn', 'value': '2'},
-            {'label': 'Sự cố mở', 'value': '0'},
+            {'label': 'home.mobile.schedules_running'.tr(), 'value': '4'},
+            {'label': 'home.mobile.due_soon'.tr(), 'value': '2'},
+            {'label': 'home.mobile.open_incidents'.tr(), 'value': '0'},
           ],
-          emptyNote: 'Chưa có sự cố mở',
+          emptyNote: 'home.mobile.no_open_incidents'.tr(),
         ),
         const SizedBox(height: 12),
         _buildModuleSummaryCard(
-          title: 'Kho vật tư',
+          title: 'home.mobile.inventory'.tr(),
           icon: Icons.inventory_2_outlined,
           onOpen: () => onOpenModule('inventory'),
           stats: [
-            {'label': 'Kho hoạt động', 'value': '—'},
-            {'label': 'Mã vật tư', 'value': '—'},
-            {'label': 'Sắp thiếu', 'value': '—'},
+            {'label': 'home.mobile.active_warehouses'.tr(), 'value': '—'},
+            {'label': 'home.mobile.item_codes'.tr(), 'value': '—'},
+            {'label': 'home.mobile.low_stock'.tr(), 'value': '—'},
           ],
-          emptyNote: 'Chưa có vật tư',
+          emptyNote: 'home.mobile.no_items'.tr(),
         ),
       ],
     );
@@ -734,8 +735,8 @@ class HomeMobileDashboardView extends StatelessWidget {
               ),
               InkWell(
                 onTap: onOpen,
-                child: const Text(
-                  'Mở module',
+                child: Text(
+                  'home.mobile.open_module'.tr(),
                   style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                 ),
               ),
@@ -821,11 +822,11 @@ class HomeMobileDashboardView extends StatelessWidget {
               spacing: 8,
               runSpacing: 4,
               children: [
-                _buildMiniLegend(const Color(0xFF8B5CF6), 'Khởi tạo 4'),
-                _buildMiniLegend(const Color(0xFF2563EB), 'Xem xét 0'),
-                _buildMiniLegend(const Color(0xFFF97316), 'Thực hiện 0'),
-                _buildMiniLegend(const Color(0xFFA855F7), 'Kiểm soát 0'),
-                _buildMiniLegend(const Color(0xFFEAB308), 'Phê duyệt 0'),
+                _buildMiniLegend(const Color(0xFF8B5CF6), 'home.mobile.legend_initiate'.tr(args: {'count': 4})),
+                _buildMiniLegend(const Color(0xFF2563EB), 'home.mobile.legend_review'.tr(args: {'count': 0})),
+                _buildMiniLegend(const Color(0xFFF97316), 'home.mobile.legend_execute'.tr(args: {'count': 0})),
+                _buildMiniLegend(const Color(0xFFA855F7), 'home.mobile.legend_control'.tr(args: {'count': 0})),
+                _buildMiniLegend(const Color(0xFFEAB308), 'home.mobile.legend_approve'.tr(args: {'count': 0})),
               ],
             ),
           ),
@@ -858,21 +859,21 @@ class HomeMobileDashboardView extends StatelessWidget {
       {
         'key': 'inventory',
         'name': 'Inventory',
-        'desc': 'Tài sản, vật tư, kho và giao dịch tồn kho',
+        'desc': 'home.mobile.app_inventory_desc'.tr(),
         'icon': Icons.inventory_2_outlined,
         'color': AppColors.emerald,
       },
       {
         'key': 'maintenance',
         'name': 'Maintenance',
-        'desc': 'Thiết bị, kế hoạch và bảo trì phòng ngừa',
+        'desc': 'home.mobile.app_maintenance_desc'.tr(),
         'icon': Icons.build_outlined,
         'color': const Color(0xFFF97316),
       },
       {
         'key': 'procedure',
         'name': 'Procedure Engine',
-        'desc': 'Thiết kế và vận hành quy trình RCSI',
+        'desc': 'home.mobile.app_procedure_desc'.tr(),
         'icon': Icons.account_tree_outlined,
         'color': const Color(0xFF6366F1),
       },
@@ -886,23 +887,23 @@ class HomeMobileDashboardView extends StatelessWidget {
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'Ứng dụng doanh nghiệp',
+                  'home.mobile.enterprise_apps'.tr(),
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Truy cập nhanh các ứng dụng chính.',
+                  'home.mobile.enterprise_apps_desc'.tr(),
                   style: TextStyle(fontSize: 11.5, color: AppColors.slate500),
                 ),
               ],
             ),
             TextButton(
               onPressed: () => onNavigateTab(1),
-              child: const Row(
+              child: Row(
                 children: [
-                  Text('Xem tất cả', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
+                  Text('home.view_all'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
                   SizedBox(width: 2),
                   Icon(Icons.arrow_forward_ios, size: 10, color: Color(0xFF2563EB)),
                 ],
@@ -1012,12 +1013,12 @@ class HomeMobileDashboardView extends StatelessWidget {
                 child: const Icon(Icons.account_tree_outlined, size: 16, color: Color(0xFF0284C7)),
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'SƠ ĐỒ TỔ CHỨC',
+                      'home.mobile.org_chart_caps'.tr(),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1027,7 +1028,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Cây phân cấp cơ cấu & nhân sự phụ trách',
+                      'home.mobile.org_chart_desc'.tr(),
                       style: TextStyle(fontSize: 11, color: AppColors.slate500),
                     ),
                   ],
@@ -1045,9 +1046,9 @@ class HomeMobileDashboardView extends StatelessWidget {
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         Text(
-                          'Xem chi tiết',
+                          'common.view_detail'.tr(),
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0284C7)),
                         ),
                         SizedBox(width: 2),
@@ -1061,17 +1062,17 @@ class HomeMobileDashboardView extends StatelessWidget {
           const SizedBox(height: 14),
 
           if (snapshot == null)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('Đang tải sơ đồ tổ chức...', style: TextStyle(fontSize: 12, color: AppColors.slate500)),
+                child: Text('home.mobile.org_loading'.tr(), style: TextStyle(fontSize: 12, color: AppColors.slate500)),
               ),
             )
           else if (snapshot.nodes.isEmpty)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('Chưa có thông tin phòng ban', style: TextStyle(fontSize: 12, color: AppColors.slate500)),
+                child: Text('home.mobile.no_dept_info'.tr(), style: TextStyle(fontSize: 12, color: AppColors.slate500)),
               ),
             )
           else

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 Widget buildWebInputDisplayField(String label, String? value, {IconData? icon}) {
   final displayVal = (value != null && value.trim().isNotEmpty && value != '----') ? value.trim() : '';
@@ -82,7 +83,7 @@ Widget buildWebDataRow(
                     Clipboard.setData(ClipboardData(text: value));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Đã sao chép $label'),
+                        content: Text('profile.common.copied'.tr(args: {'label': label})),
                         duration: const Duration(seconds: 1),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -142,6 +143,21 @@ Widget buildProfileInputField({
   );
 }
 
+// Maps a stored (Vietnamese) relationship value to its localized display label.
+String profileRelationLabel(String value) {
+  const keys = {
+    'Vợ / Chồng': 'profile.relation.spouse',
+    'Bố': 'profile.relation.father',
+    'Mẹ': 'profile.relation.mother',
+    'Con': 'profile.relation.child',
+    'Anh / Chị / Em': 'profile.relation.sibling',
+    'Bạn bè': 'profile.relation.friend',
+    'Khác': 'profile.relation.other',
+  };
+  final key = keys[value];
+  return key != null ? key.tr() : value;
+}
+
 Widget buildProfileRelationshipDropdown({
   required TextEditingController relationController,
   required ValueChanged<String> onChanged,
@@ -157,10 +173,10 @@ Widget buildProfileRelationshipDropdown({
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Row(
+      Row(
         children: [
-          Text('Mối quan hệ', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-          Text(' *', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+          Text('profile.common.relationship'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+          const Text(' *', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
         ],
       ),
       const SizedBox(height: 5),
@@ -168,7 +184,7 @@ Widget buildProfileRelationshipDropdown({
         initialValue: effectiveVal,
         isExpanded: true,
         decoration: InputDecoration(
-          hintText: 'Chọn mối quan hệ...',
+          hintText: 'profile.common.relationship_hint'.tr(),
           hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
           prefixIcon: const Icon(Icons.people_outline_rounded, size: 16, color: Color(0xFF94A3B8)),
           prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -184,7 +200,7 @@ Widget buildProfileRelationshipDropdown({
         items: itemsList.map((rel) {
           return DropdownMenuItem<String>(
             value: rel,
-            child: Text(rel, style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A))),
+            child: Text(profileRelationLabel(rel), style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A))),
           );
         }).toList(),
         onChanged: (val) {
@@ -220,7 +236,7 @@ Widget buildWebDocumentCard({
           ),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('Bắt buộc', style: TextStyle(fontSize: 9.5, color: Color(0xFFDC2626), fontWeight: FontWeight.w600)),
+            Text('profile.common.required'.tr(), style: const TextStyle(fontSize: 9.5, color: Color(0xFFDC2626), fontWeight: FontWeight.w600)),
           ],
         ],
       ),
@@ -243,14 +259,14 @@ Widget buildWebDocumentCard({
                     const Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF2563EB)),
                     const SizedBox(height: 4),
                     Text(
-                      ((uploadedDoc is Map) ? uploadedDoc['name'] : null)?.toString() ?? 'Đã tải lên',
+                      ((uploadedDoc is Map) ? uploadedDoc['name'] : null)?.toString() ?? 'profile.common.uploaded'.tr(),
                       style: const TextStyle(fontSize: 10, color: Color(0xFF1E40AF), fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                   ],
                 )
-              : const Text('Chưa có', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+              : Text('profile.common.not_available'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
         ),
       ),
       const SizedBox(height: 6),
@@ -267,7 +283,7 @@ Widget buildWebDocumentCard({
             backgroundColor: Colors.white,
           ),
           child: Text(
-            hasFile ? 'Thay tệp' : 'Tải lên',
+            hasFile ? 'profile.common.replace_file'.tr() : 'common.upload'.tr(),
             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:power_quality_analysis/models/hrm_models.dart';
 import 'package:power_quality_analysis/services/hrm_service.dart';
 
@@ -91,8 +92,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- HEADER TITLE & SUBTITLE ---
-            const Text(
-              'Lương và chi trả',
+            Text(
+              'hrm_ops.payroll.title'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -101,8 +102,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
               ),
             ),
             const SizedBox(height: 3),
-            const Text(
-              'Quản lý kỳ lương, tính lương, phát hành phiếu lương và theo dõi lịch sử chi trả.',
+            Text(
+              'hrm_ops.payroll.subtitle'.tr(),
               style: TextStyle(
                 fontSize: 11.5,
                 color: Color(0xFF64748B),
@@ -118,8 +119,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                   child: OutlinedButton.icon(
                     onPressed: _showPayrollConfigBottomSheet,
                     icon: const Icon(Icons.settings_outlined, size: 15, color: Color(0xFF334155)),
-                    label: const Text(
-                      'Cấu hình lương/OT',
+                    label: Text(
+                      'hrm_ops.payroll.config_btn'.tr(),
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -134,8 +135,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                 ElevatedButton.icon(
                   onPressed: _showCreatePayrollPeriodDialog,
                   icon: const Icon(Icons.add, size: 16, color: Color(0xFF0F172A)),
-                  label: const Text(
-                    'Tạo kỳ lương',
+                  label: Text(
+                    'hrm_ops.payroll.create_period'.tr(),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -157,9 +158,9 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
               ),
               child: Row(
                 children: [
-                  _buildPayrollSubTabItem(0, 'Bảng lương'),
+                  _buildPayrollSubTabItem(0, 'hrm_ops.payroll.tab.payroll'.tr()),
                   const SizedBox(width: 20),
-                  _buildPayrollSubTabItem(1, 'Ứng và thu hồi'),
+                  _buildPayrollSubTabItem(1, 'hrm_ops.payroll.tab.advances'.tr()),
                 ],
               ),
             ),
@@ -174,7 +175,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                 children: [
                   Expanded(
                     child: _buildPayrollStatCard(
-                      title: 'Kỳ lương đang mở',
+                      title: 'hrm_ops.payroll.status.open'.tr(),
                       count: openCount,
                       icon: Icons.calendar_today_outlined,
                       iconColor: const Color(0xFF2563EB),
@@ -184,7 +185,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _buildPayrollStatCard(
-                      title: 'Chờ tính lương',
+                      title: 'hrm_ops.payroll.status.pending_calc'.tr(),
                       count: pendingCalcCount,
                       icon: Icons.description_outlined,
                       iconColor: const Color(0xFFD97706),
@@ -198,7 +199,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                 children: [
                   Expanded(
                     child: _buildPayrollStatCard(
-                      title: 'Chờ chốt lương',
+                      title: 'hrm_ops.payroll.status.pending_lock'.tr(),
                       count: pendingLockCount,
                       icon: Icons.access_time_rounded,
                       iconColor: const Color(0xFF7C3AED),
@@ -208,7 +209,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _buildPayrollStatCard(
-                      title: 'Đã phát hành',
+                      title: 'hrm_ops.payroll.status.published'.tr(),
                       count: publishedCount,
                       icon: Icons.check_circle_outline_rounded,
                       iconColor: const Color(0xFF059669),
@@ -250,11 +251,11 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                                 borderRadius: BorderRadius.circular(10),
                                 icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
                                 style: const TextStyle(fontSize: 11.5, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
-                                items: const [
-                                  DropdownMenuItem(value: 'ALL', child: Text('Tất cả các tháng')),
-                                  DropdownMenuItem(value: '2026-10', child: Text('Tháng 10/2026')),
-                                  DropdownMenuItem(value: '2026-09', child: Text('Tháng 09/2026')),
-                                  DropdownMenuItem(value: '2026-08', child: Text('Tháng 08/2026')),
+                                items: [
+                                  DropdownMenuItem(value: 'ALL', child: Text('hrm_ops.payroll.filter.all_months'.tr())),
+                                  DropdownMenuItem(value: '2026-10', child: Text('hrm_ops.payroll.filter.month_10'.tr())),
+                                  DropdownMenuItem(value: '2026-09', child: Text('hrm_ops.payroll.filter.month_09'.tr())),
+                                  DropdownMenuItem(value: '2026-08', child: Text('hrm_ops.payroll.filter.month_08'.tr())),
                                 ],
                                 onChanged: (v) {
                                   if (v != null) setState(() => _payrollMonthFilter = v);
@@ -283,12 +284,12 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                                 borderRadius: BorderRadius.circular(10),
                                 icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
                                 style: const TextStyle(fontSize: 11.5, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
-                                items: const [
-                                  DropdownMenuItem(value: 'ALL', child: Text('Tất cả trạng thái')),
-                                  DropdownMenuItem(value: 'OPEN', child: Text('Kỳ lương đang mở')),
-                                  DropdownMenuItem(value: 'PENDING_CALCULATION', child: Text('Chờ tính lương')),
-                                  DropdownMenuItem(value: 'CALCULATED', child: Text('Chờ chốt lương')),
-                                  DropdownMenuItem(value: 'PUBLISHED', child: Text('Đã phát hành')),
+                                items: [
+                                  DropdownMenuItem(value: 'ALL', child: Text('hrm_ops.payroll.filter.all_statuses'.tr())),
+                                  DropdownMenuItem(value: 'OPEN', child: Text('hrm_ops.payroll.status.open'.tr())),
+                                  DropdownMenuItem(value: 'PENDING_CALCULATION', child: Text('hrm_ops.payroll.status.pending_calc'.tr())),
+                                  DropdownMenuItem(value: 'CALCULATED', child: Text('hrm_ops.payroll.status.pending_lock'.tr())),
+                                  DropdownMenuItem(value: 'PUBLISHED', child: Text('hrm_ops.payroll.status.published'.tr())),
                                 ],
                                 onChanged: (v) {
                                   if (v != null) setState(() => _payrollStatusFilter = v);
@@ -308,7 +309,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                         onChanged: (val) => setState(() => _payrollSearchQuery = val.trim()),
                         style: const TextStyle(fontSize: 12),
                         decoration: InputDecoration(
-                          hintText: 'Tìm kỳ lương hoặc nhân viên...',
+                          hintText: 'hrm_ops.payroll.search.hint'.tr(),
                           hintStyle: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                           prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                           suffixIcon: _payrollSearchQuery.isNotEmpty
@@ -386,8 +387,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Chưa có kỳ lương',
+                      Text(
+                        'hrm_ops.payroll.empty.title'.tr(),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -395,10 +396,10 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'Tạo kỳ lương để tổng hợp dữ liệu từ bảng công đã khóa, tính lương và phát hành phiếu lương.',
+                          'hrm_ops.payroll.empty.desc'.tr(),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
@@ -411,8 +412,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                       ElevatedButton.icon(
                         onPressed: _showCreatePayrollPeriodDialog,
                         icon: const Icon(Icons.add, size: 16, color: Color(0xFF0F172A)),
-                        label: const Text(
-                          'Tạo kỳ lương đầu tiên',
+                        label: Text(
+                          'hrm_ops.payroll.empty.create_first'.tr(),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -469,12 +470,12 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                           child: const Icon(Icons.menu_book_rounded, size: 17, color: Color(0xFF475569)),
                         ),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Quy trình tạo kỳ lương',
+                                'hrm_ops.payroll.guide.title'.tr(),
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.bold,
@@ -483,7 +484,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Thực hiện theo 3 bước đơn giản để tạo và phát hành kỳ lương.',
+                                'hrm_ops.payroll.guide.subtitle'.tr(),
                                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               ),
                             ],
@@ -494,20 +495,20 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     const SizedBox(height: 14),
                     _buildPayrollProcessStep(
                       stepNum: '1',
-                      title: 'Chọn kỳ công đã khóa',
-                      desc: 'Chọn tháng và dữ liệu bảng công đã được khóa.',
+                      title: 'hrm_ops.payroll.guide.step1.title'.tr(),
+                      desc: 'hrm_ops.payroll.guide.step1.desc'.tr(),
                       isLast: false,
                     ),
                     _buildPayrollProcessStep(
                       stepNum: '2',
-                      title: 'Tính và kiểm tra lương',
-                      desc: 'Hệ thống tự động tính lương theo cấu hình. Kiểm tra và điều chỉnh (nếu có).',
+                      title: 'hrm_ops.payroll.guide.step2.title'.tr(),
+                      desc: 'hrm_ops.payroll.guide.step2.desc'.tr(),
                       isLast: false,
                     ),
                     _buildPayrollProcessStep(
                       stepNum: '3',
-                      title: 'Chốt và phát hành phiếu lương',
-                      desc: 'Chốt kỳ lương và phát hành phiếu lương cho nhân viên.',
+                      title: 'hrm_ops.payroll.guide.step3.title'.tr(),
+                      desc: 'hrm_ops.payroll.guide.step3.desc'.tr(),
                       isLast: true,
                     ),
                   ],
@@ -591,8 +592,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               const SizedBox(width: 4),
-              const Text(
-                'kỳ lương',
+              Text(
+                'hrm_ops.payroll.period_unit'.tr(),
                 style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
               ),
             ],
@@ -672,18 +673,18 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Danh sách ứng & thu hồi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                Text('Tổng cộng ${widget.advances.length} khoản tạm ứng', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                Text('hrm_ops.payroll.advances.list_title'.tr(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                Text('hrm_ops.payroll.advances.total'.tr(args: {'count': widget.advances.length}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
               ],
             ),
             ElevatedButton.icon(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng tạo đơn "Tạm ứng lương" từ mục Đơn từ & Yêu cầu.')),
+                  SnackBar(content: Text('hrm_ops.payroll.advances.create_hint'.tr())),
                 );
               },
               icon: const Icon(Icons.add, size: 15),
-              label: const Text('Tạo phiếu ứng', style: TextStyle(fontSize: 11.5)),
+              label: Text('hrm_ops.payroll.advances.create_btn'.tr(), style: TextStyle(fontSize: 11.5)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0F172A),
                 foregroundColor: Colors.white,
@@ -704,13 +705,13 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: const Column(
+            child: Column(
               children: [
                 Icon(Icons.price_check_outlined, size: 40, color: Color(0xFF94A3B8)),
                 SizedBox(height: 10),
-                Text('Chưa có khoản tạm ứng nào', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                Text('hrm_ops.payroll.advances.empty_title'.tr(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 SizedBox(height: 4),
-                Text('Các phiếu tạm ứng lương và lịch trình thu hồi sẽ hiển thị ở đây.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B)), textAlign: TextAlign.center),
+                Text('hrm_ops.payroll.advances.empty_desc'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B)), textAlign: TextAlign.center),
               ],
             ),
           )
@@ -745,8 +746,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Kỳ thu hồi: ${adv.repaymentPeriod}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                        Text('Đã thu: ${widget.formatCurrency(adv.repaidAmount)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
+                        Text('hrm_ops.payroll.advances.repayment_period'.tr(args: {'period': adv.repaymentPeriod}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                        Text('hrm_ops.payroll.advances.repaid'.tr(args: {'amount': widget.formatCurrency(adv.repaidAmount)}), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
                       ],
                     ),
                   ],
@@ -761,7 +762,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
   // --- PERIOD LIST CARD ---
   Widget _buildPayrollPeriodCard(Map<String, dynamic> p) {
     final code = p['code'] ?? p['periodCode'] ?? 'KL-2026';
-    final name = p['name'] ?? p['title'] ?? 'Kỳ lương';
+    final name = p['name'] ?? p['title'] ?? 'hrm_ops.payroll.period.default_name'.tr();
     final status = (p['status'] ?? p['state'] ?? 'OPEN').toString().toUpperCase();
     final paymentDate = p['paymentDate'] ?? p['expectedPaymentDate'] ?? '05/11/2026';
     final empCount = p['employeeCount'] ?? p['totalEmployees'] ?? 0;
@@ -775,26 +776,26 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
       case 'DRAFT':
         badgeBg = const Color(0xFFEFF6FF);
         badgeText = const Color(0xFF1D4ED8);
-        statusLabel = 'Đang mở';
+        statusLabel = 'hrm_ops.payroll.status.open_short'.tr();
         break;
       case 'PENDING_CALCULATION':
       case 'READY':
         badgeBg = const Color(0xFFFEF3C7);
         badgeText = const Color(0xFFB45309);
-        statusLabel = 'Chờ tính lương';
+        statusLabel = 'hrm_ops.payroll.status.pending_calc'.tr();
         break;
       case 'CALCULATED':
       case 'PENDING_LOCK':
         badgeBg = const Color(0xFFF3E8FF);
         badgeText = const Color(0xFF6B21A8);
-        statusLabel = 'Chờ chốt lương';
+        statusLabel = 'hrm_ops.payroll.status.pending_lock'.tr();
         break;
       case 'PUBLISHED':
       case 'CLOSED':
       case 'PAID':
         badgeBg = const Color(0xFFECFDF5);
         badgeText = const Color(0xFF047857);
-        statusLabel = 'Đã phát hành';
+        statusLabel = 'hrm_ops.payroll.status.published'.tr();
         break;
       default:
         badgeBg = const Color(0xFFF1F5F9);
@@ -852,15 +853,15 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Ngày chi trả: $paymentDate', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-              Text('Nhân sự: $empCount người', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              Text('hrm_ops.payroll.period.pay_date'.tr(args: {'date': paymentDate}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              Text('hrm_ops.payroll.period.headcount'.tr(args: {'count': empCount}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
             ],
           ),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Tổng chi trả thực lĩnh:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF334155))),
+              Text('hrm_ops.payroll.period.total_net'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF334155))),
               Text(widget.formatCurrency(totalNet.toDouble()), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF059669))),
             ],
           ),
@@ -877,14 +878,14 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                   side: const BorderSide(color: Color(0xFFCBD5E1)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                 ),
-                child: const Text('Xem chi tiết', style: TextStyle(fontSize: 11, color: Color(0xFF334155))),
+                child: Text('common.view_detail'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF334155))),
               ),
               const SizedBox(width: 6),
               if (status == 'OPEN' || status == 'DRAFT')
                 ElevatedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Đang tính lương cho kỳ ${p['code']}...')),
+                      SnackBar(content: Text('hrm_ops.payroll.period.calculating'.tr(args: {'code': p['code']}))),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -894,13 +895,13 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     elevation: 0,
                   ),
-                  child: const Text('Tính lương', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text('hrm_ops.payroll.period.calc_btn'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               if (status == 'CALCULATED')
                 ElevatedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Đã chốt kỳ lương ${p['code']}.')),
+                      SnackBar(content: Text('hrm_ops.payroll.period.finalized'.tr(args: {'code': p['code']}))),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -910,7 +911,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     elevation: 0,
                   ),
-                  child: const Text('Chốt lương', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text('hrm_ops.payroll.period.lock_btn'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
             ],
           ),
@@ -941,7 +942,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Cấu hình Lương & OT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('hrm_ops.payroll.config.title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
                     onPressed: () => Navigator.pop(ctx),
@@ -949,16 +950,16 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text('Thông số thiết lập công thức tính lương, hệ số OT và khấu trừ bắt buộc.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              Text('hrm_ops.payroll.config.subtitle'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
               const SizedBox(height: 16),
-              _buildConfigAttributeRow('Ngày công chuẩn', '26 ngày/tháng (Nghỉ Chủ Nhật)'),
-              _buildConfigAttributeRow('Hệ số làm thêm ngày thường', '150% đơn giá lương'),
-              _buildConfigAttributeRow('Hệ số làm thêm ngày nghỉ tuần', '200% đơn giá lương'),
-              _buildConfigAttributeRow('Hệ số làm thêm ngày lễ/Tết', '300% đơn giá lương'),
-              _buildConfigAttributeRow('Phụ cấp ca đêm (22h - 6h)', '+30% đơn giá lương'),
-              _buildConfigAttributeRow('Tỷ lệ đóng BHXH, BHYT, BHTN', '8% BHXH, 1.5% BHYT, 1% BHTN'),
-              _buildConfigAttributeRow('Giảm trừ bản thân', '11.000.000 ₫/tháng'),
-              _buildConfigAttributeRow('Giảm trừ người phụ thuộc', '4.400.000 ₫/người/tháng'),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.std_days'.tr(), 'hrm_ops.payroll.config.std_days_val'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.ot_weekday'.tr(), 'hrm_ops.payroll.config.ot_weekday_val'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.ot_weekend'.tr(), 'hrm_ops.payroll.config.ot_weekend_val'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.ot_holiday'.tr(), 'hrm_ops.payroll.config.ot_holiday_val'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.night'.tr(), 'hrm_ops.payroll.config.night_val'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.insurance'.tr(), 'hrm_ops.payroll.config.insurance_val'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.self_deduction'.tr(), 'hrm_ops.payroll.config.self_deduction_val'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.config.dependent_deduction'.tr(), 'hrm_ops.payroll.config.dependent_deduction_val'.tr()),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -968,7 +969,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     widget.onNavigateToView('config');
                   },
                   icon: const Icon(Icons.tune_rounded, size: 16),
-                  label: const Text('Đến Trung tâm cấu hình HRM'),
+                  label: Text('hrm_ops.payroll.config.goto_center'.tr()),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0F172A),
                     foregroundColor: Colors.white,
@@ -1007,9 +1008,9 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
     bool isSubmitting = false;
 
     final lockedOptions = [
-      {'code': 'KC-2026-10', 'name': 'Bảng công tháng 10/2026 (Khóa ngày 31/10/2026)'},
-      {'code': 'KC-2026-09', 'name': 'Bảng công tháng 09/2026 (Khóa ngày 30/09/2026)'},
-      {'code': 'KC-2026-08', 'name': 'Bảng công tháng 08/2026 (Khóa ngày 31/08/2026)'},
+      {'code': 'KC-2026-10', 'name': 'hrm_ops.payroll.create.ts1'.tr()},
+      {'code': 'KC-2026-09', 'name': 'hrm_ops.payroll.create.ts2'.tr()},
+      {'code': 'KC-2026-08', 'name': 'hrm_ops.payroll.create.ts3'.tr()},
     ];
 
     showModalBottomSheet(
@@ -1035,8 +1036,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Tạo kỳ lương mới',
+                        Text(
+                          'hrm_ops.payroll.create.title'.tr(),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -1054,7 +1055,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     const SizedBox(height: 20),
 
                     // 1. Mã kỳ (VD: KL-2026-09) *
-                    _buildRequiredLabel('Mã kỳ (VD: KL-2026-09)'),
+                    _buildRequiredLabel('hrm_ops.payroll.create.code_label'.tr()),
                     const SizedBox(height: 8),
                     TextField(
                       controller: codeCtrl,
@@ -1080,7 +1081,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     const SizedBox(height: 16),
 
                     // 2. Bảng công đã khóa *
-                    _buildRequiredLabel('Bảng công đã khóa'),
+                    _buildRequiredLabel('hrm_ops.payroll.create.timesheet_label'.tr()),
                     const SizedBox(height: 8),
                     InkWell(
                       onTap: () {
@@ -1109,7 +1110,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                selectedTimesheetName ?? 'Tìm mã hoặc tên để chọn (hỗ trợ tiếng Việt không dấu)...',
+                                selectedTimesheetName ?? 'hrm_ops.payroll.create.timesheet_hint'.tr(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -1126,7 +1127,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     const SizedBox(height: 16),
 
                     // 3. Ngày trả lương dự kiến *
-                    _buildRequiredLabel('Ngày trả lương dự kiến'),
+                    _buildRequiredLabel('hrm_ops.payroll.create.pay_date_label'.tr()),
                     const SizedBox(height: 8),
                     InkWell(
                       onTap: () async {
@@ -1179,7 +1180,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Hủy', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -1189,19 +1190,19 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                                   final code = codeCtrl.text.trim();
                                   if (code.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Vui lòng nhập Mã kỳ lương!')),
+                                      SnackBar(content: Text('hrm_ops.payroll.create.err_code'.tr())),
                                     );
                                     return;
                                   }
                                   if (selectedTimesheetName == null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Vui lòng chọn Bảng công đã khóa!')),
+                                      SnackBar(content: Text('hrm_ops.payroll.create.err_timesheet'.tr())),
                                     );
                                     return;
                                   }
                                   if (paymentDate == null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Vui lòng chọn Ngày trả lương dự kiến!')),
+                                      SnackBar(content: Text('hrm_ops.payroll.create.err_pay_date'.tr())),
                                     );
                                     return;
                                   }
@@ -1212,7 +1213,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
 
                                   final payload = {
                                     'code': code,
-                                    'name': 'Kỳ lương $code',
+                                    'name': 'hrm_ops.payroll.create.default_name'.tr(args: {'code': code}),
                                     'month': '2026-10',
                                     'timesheetPeriod': selectedTimesheetName,
                                     'paymentDate': paymentDateStr,
@@ -1233,7 +1234,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('✅ Đã tạo thành công kỳ lương $code!'),
+                                      content: Text('hrm_ops.payroll.create.success'.tr(args: {'code': code})),
                                       backgroundColor: const Color(0xFF059669),
                                     ),
                                   );
@@ -1251,7 +1252,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                                   height: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)),
                                 )
-                              : const Text('Xác nhận', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                              : Text('common.confirm'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -1305,8 +1306,8 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Chọn bảng công đã khóa',
+                      Text(
+                        'hrm_ops.payroll.picker.title'.tr(),
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       IconButton(
@@ -1321,7 +1322,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     onChanged: (v) => setPickerState(() => search = v.trim()),
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Tìm mã hoặc tên...',
+                      hintText: 'hrm_ops.payroll.picker.search_hint'.tr(),
                       prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
@@ -1351,7 +1352,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                             ),
                           ),
                           subtitle: Text(
-                            'Mã: ${item['code']}',
+                            'hrm_ops.payroll.picker.code'.tr(args: {'code': item['code']}),
                             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                           ),
                           trailing: isChosen ? const Icon(Icons.check, size: 18, color: Color(0xFF2563EB)) : null,
@@ -1390,7 +1391,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    p['name'] ?? 'Chi tiết kỳ lương',
+                    p['name'] ?? 'hrm_ops.payroll.detail.default_title'.tr(),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(
@@ -1400,12 +1401,12 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                 ],
               ),
               const SizedBox(height: 12),
-              _buildConfigAttributeRow('Mã kỳ lương', p['code']?.toString() ?? 'N/A'),
-              _buildConfigAttributeRow('Bảng công liên kết', p['timesheetPeriod']?.toString() ?? 'Kỳ công tháng 10/2026'),
-              _buildConfigAttributeRow('Ngày chi trả', p['paymentDate']?.toString() ?? '05/11/2026'),
-              _buildConfigAttributeRow('Số nhân viên', '${p['employeeCount'] ?? 12} người'),
-              _buildConfigAttributeRow('Tổng lương gộp', widget.formatCurrency((p['totalGross'] as num?)?.toDouble() ?? 125000000.0)),
-              _buildConfigAttributeRow('Tổng thực lĩnh (Net)', widget.formatCurrency((p['totalNet'] as num?)?.toDouble() ?? 108500000.0)),
+              _buildConfigAttributeRow('hrm_ops.payroll.detail.code'.tr(), p['code']?.toString() ?? 'N/A'),
+              _buildConfigAttributeRow('hrm_ops.payroll.detail.timesheet'.tr(), p['timesheetPeriod']?.toString() ?? 'hrm_ops.payroll.detail.timesheet_default'.tr()),
+              _buildConfigAttributeRow('hrm_ops.payroll.detail.pay_date'.tr(), p['paymentDate']?.toString() ?? '05/11/2026'),
+              _buildConfigAttributeRow('hrm_ops.payroll.detail.employees'.tr(), 'hrm_ops.payroll.detail.employees_val'.tr(args: {'count': p['employeeCount'] ?? 12})),
+              _buildConfigAttributeRow('hrm_ops.payroll.detail.gross'.tr(), widget.formatCurrency((p['totalGross'] as num?)?.toDouble() ?? 125000000.0)),
+              _buildConfigAttributeRow('hrm_ops.payroll.detail.net'.tr(), widget.formatCurrency((p['totalNet'] as num?)?.toDouble() ?? 108500000.0)),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -1415,7 +1416,7 @@ class _HrmPayrollViewState extends State<HrmPayrollView> {
                     padding: const EdgeInsets.symmetric(vertical: 11),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('Đóng'),
+                  child: Text('common.close'.tr()),
                 ),
               ),
             ],
@@ -1465,21 +1466,21 @@ class HrmSalaryAdvancesStandaloneView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ứng & Thu hồi lương', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                  Text('Theo dõi tạm ứng và khấu trừ qua các kỳ lương', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  Text('hrm_ops.payroll.advances.section_title'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('hrm_ops.payroll.advances.section_subtitle'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                 ],
               ),
               ElevatedButton.icon(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Vui lòng tạo đơn "Tạm ứng lương" từ mục Đơn từ & Yêu cầu.')),
+                    SnackBar(content: Text('hrm_ops.payroll.advances.create_hint'.tr())),
                   );
                 },
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Tạo phiếu ứng', style: TextStyle(fontSize: 12)),
+                label: Text('hrm_ops.payroll.advances.create_btn'.tr(), style: TextStyle(fontSize: 12)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0F172A),
                   foregroundColor: Colors.white,
@@ -1500,13 +1501,13 @@ class HrmSalaryAdvancesStandaloneView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Icon(Icons.price_check_outlined, size: 40, color: Color(0xFF94A3B8)),
                   SizedBox(height: 10),
-                  Text('Chưa có khoản tạm ứng nào', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('hrm_ops.payroll.advances.empty_title'.tr(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   SizedBox(height: 4),
-                  Text('Các phiếu tạm ứng lương và lịch trình thu hồi sẽ hiển thị ở đây.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B)), textAlign: TextAlign.center),
+                  Text('hrm_ops.payroll.advances.empty_desc'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B)), textAlign: TextAlign.center),
                 ],
               ),
             )
@@ -1541,8 +1542,8 @@ class HrmSalaryAdvancesStandaloneView extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Kỳ thu hồi: ${adv.repaymentPeriod}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                          Text('Đã thu: ${formatCurrency(adv.repaidAmount)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
+                          Text('hrm_ops.payroll.advances.repayment_period'.tr(args: {'period': adv.repaymentPeriod}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                          Text('hrm_ops.payroll.advances.repaid'.tr(args: {'amount': formatCurrency(adv.repaidAmount)}), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
                         ],
                       ),
                     ],
@@ -1574,8 +1575,8 @@ class HrmPersonalPayslipsView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Phiếu lương của tôi', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-          const Text('Tra cứu chi tiết thu nhập thực nhận hàng tháng', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+          Text('hrm_ops.payroll.payslip.title'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          Text('hrm_ops.payroll.payslip.subtitle'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
           const SizedBox(height: 14),
           if (payslips.isEmpty)
             Container(
@@ -1586,13 +1587,13 @@ class HrmPersonalPayslipsView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Icon(Icons.receipt_long_outlined, size: 40, color: Color(0xFF94A3B8)),
                   SizedBox(height: 10),
-                  Text('Chưa có phiếu lương nào', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('hrm_ops.payroll.payslip.empty_title'.tr(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   SizedBox(height: 4),
-                  Text('Phiếu lương hàng tháng sẽ được phát hành sau khi kỳ lương được chốt.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B)), textAlign: TextAlign.center),
+                  Text('hrm_ops.payroll.payslip.empty_desc'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B)), textAlign: TextAlign.center),
                 ],
               ),
             )
@@ -1624,24 +1625,24 @@ class HrmPersonalPayslipsView extends StatelessWidget {
                               color: const Color(0xFFECFDF5),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text('ĐÃ CHI TRẢ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
+                            child: Text('hrm_ops.payroll.payslip.paid'.tr(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       const Divider(color: Color(0xFFF1F5F9)),
                       const SizedBox(height: 6),
-                      _buildPayslipLine('Lương cơ bản:', formatCurrency(ps.baseSalary)),
-                      _buildPayslipLine('Phụ cấp & Thưởng:', formatCurrency(ps.allowances + ps.bonuses)),
-                      _buildPayslipLine('Làm thêm giờ (OT):', formatCurrency(ps.overtimePay)),
-                      _buildPayslipLine('Khấu trừ (BHXH & Thuế):', '-${formatCurrency(ps.deductions)}', isDeduction: true),
+                      _buildPayslipLine('hrm_ops.payroll.payslip.base'.tr(), formatCurrency(ps.baseSalary)),
+                      _buildPayslipLine('hrm_ops.payroll.payslip.allowances'.tr(), formatCurrency(ps.allowances + ps.bonuses)),
+                      _buildPayslipLine('hrm_ops.payroll.payslip.overtime'.tr(), formatCurrency(ps.overtimePay)),
+                      _buildPayslipLine('hrm_ops.payroll.payslip.deductions'.tr(), '-${formatCurrency(ps.deductions)}', isDeduction: true),
                       const SizedBox(height: 6),
                       const Divider(color: Color(0xFFF1F5F9)),
                       const SizedBox(height: 6),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('THỰC LĨNH (NET):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                          Text('hrm_ops.payroll.payslip.net'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                           Text(formatCurrency(ps.netSalary), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
                         ],
                       ),

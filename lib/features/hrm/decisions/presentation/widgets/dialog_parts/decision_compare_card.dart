@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../../core/i18n/app_i18n.dart';
 
 class DecisionCompareCard extends StatelessWidget {
   final String beforePosition;
@@ -36,8 +37,8 @@ class DecisionCompareCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'TRƯỚC / SAU',
+          Text(
+            'hrm_decisions.compare_title'.tr(),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
@@ -54,7 +55,7 @@ class DecisionCompareCard extends StatelessWidget {
             },
             children: [
               // Table Header
-              const TableRow(
+              TableRow(
                 children: [
                   Padding(
                     padding: EdgeInsets.only(bottom: 6),
@@ -63,7 +64,7 @@ class DecisionCompareCard extends StatelessWidget {
                   Padding(
                     padding: EdgeInsets.only(bottom: 6),
                     child: Text(
-                      'TRƯỚC',
+                      'hrm_decisions.compare_before'.tr(),
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
                     ),
                   ),
@@ -78,21 +79,21 @@ class DecisionCompareCard extends StatelessWidget {
               ),
               // Chức danh
               _buildRow(
-                label: 'Chức danh',
+                label: 'hrm_decisions.compare_position'.tr(),
                 before: beforePosition,
                 after: afterPosition,
                 isChanged: isPosChanged,
               ),
               // Đơn vị
               _buildRow(
-                label: 'Đơn vị',
+                label: 'hrm_decisions.compare_unit'.tr(),
                 before: beforeUnit,
                 after: afterUnit,
                 isChanged: isUnitChanged,
               ),
               // Lương cơ bản
               _buildRow(
-                label: 'Lương cơ bản',
+                label: 'hrm_decisions.compare_base_salary'.tr(),
                 before: beforeSalary,
                 after: afterSalary,
                 isChanged: isSalaryChanged,

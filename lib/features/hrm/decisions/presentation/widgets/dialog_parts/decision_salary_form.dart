@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../../models/hrm_personnel_decision_model.dart';
 import 'decision_dialog_helpers.dart';
+import '../../../../../../core/i18n/app_i18n.dart';
 
 class DecisionSalaryForm extends StatefulWidget {
   final bool salaryChanged;
@@ -106,7 +107,7 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
         orElse: () => null,
       );
       if (s != null) {
-        _stepSearchCtrl.text = 'Bậc ${s.stepNo} - ${formatDecisionMoney(s.baseSalary.toInt().toString())}';
+        _stepSearchCtrl.text = 'hrm_decisions.step_label'.tr(args: {'step': s.stepNo, 'amount': formatDecisionMoney(s.baseSalary.toInt().toString())});
       }
     } else {
       _stepSearchCtrl.clear();
@@ -158,11 +159,11 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
     if (query.isEmpty) return widget.salarySteps;
     final sel = _selectedSalaryStep;
     if (sel != null &&
-        query == 'Bậc ${sel.stepNo} - ${formatDecisionMoney(sel.baseSalary.toInt().toString())}'.toLowerCase()) {
+        query == 'hrm_decisions.step_label'.tr(args: {'step': sel.stepNo, 'amount': formatDecisionMoney(sel.baseSalary.toInt().toString())}).toLowerCase()) {
       return widget.salarySteps;
     }
     return widget.salarySteps.where((s) {
-      final label = 'bậc ${s.stepNo} - ${formatDecisionMoney(s.baseSalary.toInt().toString())}'.toLowerCase();
+      final label = 'hrm_decisions.step_label'.tr(args: {'step': s.stepNo, 'amount': formatDecisionMoney(s.baseSalary.toInt().toString())}).toLowerCase();
       final no = '${s.stepNo}';
       return label.contains(query) || no.contains(query);
     }).toList();
@@ -194,8 +195,8 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'Thay đổi lương',
+                Text(
+                  'hrm_decisions.salary_change'.tr(),
                   style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                 ),
               ],
@@ -212,9 +213,9 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildDecisionFieldLabel('Ngạch lương'),
+                      buildDecisionFieldLabel('hrm_decisions.salary_grade'.tr()),
                       _buildSelectBox(
-                        hintText: 'Chọn ngạch',
+                        hintText: 'hrm_decisions.select_grade'.tr(),
                         controller: _gradeSearchCtrl,
                         focusNode: _gradeFocusNode,
                         isOpen: _isGradeDropdownOpen,
@@ -242,9 +243,9 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildDecisionFieldLabel('Bậc lương'),
+                      buildDecisionFieldLabel('hrm_decisions.salary_step'.tr()),
                       _buildSelectBox(
-                        hintText: widget.selectedSalaryGradeId == null ? 'Chọn ngạch trước' : 'Chọn bậc',
+                        hintText: widget.selectedSalaryGradeId == null ? 'hrm_decisions.select_grade_first'.tr() : 'hrm_decisions.select_step'.tr(),
                         controller: _stepSearchCtrl,
                         focusNode: _stepFocusNode,
                         isOpen: _isStepDropdownOpen,
@@ -291,7 +292,7 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildDecisionFieldLabel('Loại lương'),
+                      buildDecisionFieldLabel('hrm_decisions.salary_type'.tr()),
                       DropdownButtonFormField<String>(
                         initialValue: widget.salaryType,
                         menuMaxHeight: 200,
@@ -331,7 +332,7 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildDecisionFieldLabel('Lương cơ bản (đ)'),
+                      buildDecisionFieldLabel('hrm_decisions.base_salary_vnd'.tr()),
                       TextFormField(
                         controller: widget.baseSalaryCtrl,
                         keyboardType: TextInputType.number,
@@ -342,7 +343,7 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                           color: Color(0xFF0F172A),
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Nhập lương cơ bản',
+                          hintText: 'hrm_decisions.base_salary_hint'.tr(),
                           hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           border: OutlineInputBorder(
@@ -460,10 +461,10 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
         ],
       ),
       child: _filteredGrades.isEmpty
-          ? const Padding(
+          ? Padding(
               padding: EdgeInsets.all(12),
               child: Center(
-                child: Text('Không tìm thấy ngạch lương', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                child: Text('hrm_decisions.grade_not_found'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
               ),
             )
           : ListView.builder(
@@ -540,10 +541,10 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
         ],
       ),
       child: _filteredSteps.isEmpty
-          ? const Padding(
+          ? Padding(
               padding: EdgeInsets.all(12),
               child: Center(
-                child: Text('Không có bậc lương cho ngạch này', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                child: Text('hrm_decisions.step_not_found'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
               ),
             )
           : ListView.builder(
@@ -556,7 +557,7 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                 return InkWell(
                   onTap: () {
                     setState(() {
-                      _stepSearchCtrl.text = 'Bậc ${step.stepNo} - ${formatDecisionMoney(step.baseSalary.toInt().toString())}';
+                      _stepSearchCtrl.text = 'hrm_decisions.step_label'.tr(args: {'step': step.stepNo, 'amount': formatDecisionMoney(step.baseSalary.toInt().toString())});
                       _isStepDropdownOpen = false;
                     });
                     _stepFocusNode.unfocus();
@@ -569,7 +570,7 @@ class _DecisionSalaryFormState extends State<DecisionSalaryForm> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Bậc ${step.stepNo} - ${formatDecisionMoney(step.baseSalary.toInt().toString())} đ',
+                            '${'hrm_decisions.step_label'.tr(args: {'step': step.stepNo, 'amount': formatDecisionMoney(step.baseSalary.toInt().toString())})} đ',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: isChosen ? FontWeight.w700 : FontWeight.w500,

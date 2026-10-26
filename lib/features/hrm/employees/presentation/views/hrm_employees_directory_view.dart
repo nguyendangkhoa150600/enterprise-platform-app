@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../models/hrm_models.dart';
 import '../../../../../shared/widgets/empty_state_view.dart';
 import '../../../../../widgets/hrm_employee_action_modals.dart';
@@ -93,22 +94,22 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
 
   String _getStatusDropdownLabel() {
     switch (_employeeStatusFilter) {
-      case 'OFFICIAL': return 'Chính thức';
-      case 'PROBATION': return 'Thử việc';
-      case 'SUSPENDED': return 'Tạm nghỉ';
-      case 'RESIGNED': return 'Đã nghỉ việc';
-      case 'TERMINATED': return 'Chấm dứt HĐ';
-      default: return 'Tất cả trạng thái';
+      case 'OFFICIAL': return 'hrm_ops.employees.status.official'.tr();
+      case 'PROBATION': return 'hrm_ops.employees.status.probation'.tr();
+      case 'SUSPENDED': return 'hrm_ops.employees.status.suspended'.tr();
+      case 'RESIGNED': return 'hrm_ops.employees.status.resigned'.tr();
+      case 'TERMINATED': return 'hrm_ops.employees.status.terminated'.tr();
+      default: return 'hrm_ops.employees.filter.all_statuses'.tr();
     }
   }
 
   String _getDepartmentDropdownLabel() {
-    if (_employeeDepartmentFilter == 'ALL') return 'Tất cả phòng ban';
+    if (_employeeDepartmentFilter == 'ALL') return 'hrm_ops.employees.filter.all_departments'.tr();
     return _employeeDepartmentFilter;
   }
 
   String _getPositionDropdownLabel() {
-    if (_employeePositionFilter == 'ALL') return 'Tất cả vị trí';
+    if (_employeePositionFilter == 'ALL') return 'hrm_ops.employees.filter.all_positions'.tr();
     return _employeePositionFilter;
   }
 
@@ -155,7 +156,7 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
                             Icon(Icons.people_outline, size: 16, color: _employeeSubTab == 0 ? const Color(0xFF2563EB) : const Color(0xFF64748B)),
                             const SizedBox(width: 6),
                             Text(
-                              'Nhân viên (${_employees.length})',
+                              'hrm_ops.employees.tab.employees'.tr(args: {'count': _employees.length}),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: _employeeSubTab == 0 ? FontWeight.bold : FontWeight.w500,
@@ -185,7 +186,7 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
                             Icon(Icons.description_outlined, size: 16, color: _employeeSubTab == 1 ? const Color(0xFF2563EB) : const Color(0xFF64748B)),
                             const SizedBox(width: 6),
                             Text(
-                              'Quyết định nhân sự',
+                              'hrm_ops.employees.tab.decisions'.tr(),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: _employeeSubTab == 1 ? FontWeight.bold : FontWeight.w500,
@@ -226,16 +227,16 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
                           child: const Icon(Icons.badge_outlined, size: 20, color: Color(0xFF2563EB)),
                         ),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Quản lý Nhân sự',
+                                'hrm_ops.employees.header.title'.tr(),
                                 style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                               ),
                               Text(
-                                'Hồ sơ nhân sự toàn hệ thống, hợp đồng và quan hệ lao động.',
+                                'hrm_ops.employees.header.subtitle'.tr(),
                                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               ),
                             ],
@@ -249,8 +250,8 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
                       totalEmployees: _employees.length,
                       probationCount: probationCount,
                       totalPositions: _positions.isNotEmpty ? _positions.length : 41,
-                      thirdTitle: 'QUYẾT ĐỊNH',
-                      thirdSubtitle: 'Bổ nhiệm & điều chuyển',
+                      thirdTitle: 'hrm_ops.employees.metric.decision_title'.tr(),
+                      thirdSubtitle: 'hrm_ops.employees.metric.decision_subtitle'.tr(),
                       thirdIcon: Icons.description_outlined,
                       onTotalTap: () => setState(() {
                         _employeeSubTab = 0;
@@ -278,8 +279,8 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
                 ),
                 child: TextField(
                   onChanged: (val) => setState(() => _employeeSearchQuery = val),
-                  decoration: const InputDecoration(
-                    hintText: 'Tìm kiếm theo tên, mã NV, phòng ban, vị trí...',
+                  decoration: InputDecoration(
+                    hintText: 'hrm_ops.employees.search.hint'.tr(),
                     hintStyle: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                     prefixIcon: Icon(Icons.search, size: 20, color: Color(0xFF64748B)),
                     border: InputBorder.none,
@@ -330,7 +331,7 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
                           _employeePositionFilter = 'ALL';
                         }),
                         icon: const Icon(Icons.refresh_rounded, size: 14),
-                        label: const Text('Xóa lọc', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                        label: Text('hrm_ops.employees.filter.clear'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ],
@@ -340,9 +341,9 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
 
               // Content List for Employees
               if (_searchedEmployees.isEmpty)
-                const EmptyStateView(
+                EmptyStateView(
                   icon: Icons.person_search_outlined,
-                  title: 'Không tìm thấy nhân viên phù hợp.',
+                  title: 'hrm_ops.employees.empty'.tr(),
                 )
               else
                 ListView.separated(
@@ -462,8 +463,8 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Lọc theo Phòng ban',
+                  Text(
+                    'hrm_ops.employees.filter.by_department'.tr(),
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(
@@ -475,7 +476,7 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
               const SizedBox(height: 10),
               ListTile(
                 dense: true,
-                title: const Text('Tất cả phòng ban', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                title: Text('hrm_ops.employees.filter.all_departments'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 trailing: _employeeDepartmentFilter == 'ALL'
                     ? const Icon(Icons.check_rounded, color: Color(0xFF2563EB), size: 18)
                     : Text('${_employees.length}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
@@ -551,8 +552,8 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Lọc theo Vị trí chức danh',
+                  Text(
+                    'hrm_ops.employees.filter.by_position'.tr(),
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(
@@ -564,7 +565,7 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
               const SizedBox(height: 10),
               ListTile(
                 dense: true,
-                title: const Text('Tất cả vị trí', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                title: Text('hrm_ops.employees.filter.all_positions'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 trailing: _employeePositionFilter == 'ALL'
                     ? const Icon(Icons.check_rounded, color: Color(0xFF2563EB), size: 18)
                     : Text('${_employees.length}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
@@ -612,12 +613,12 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
 
   void _showStatusFilterBottomSheet() {
     final statusList = [
-      {'key': 'ALL', 'label': 'Tất cả trạng thái'},
-      {'key': 'OFFICIAL', 'label': 'Chính thức'},
-      {'key': 'PROBATION', 'label': 'Thử việc'},
-      {'key': 'SUSPENDED', 'label': 'Tạm nghỉ'},
-      {'key': 'RESIGNED', 'label': 'Đã nghỉ việc'},
-      {'key': 'TERMINATED', 'label': 'Chấm dứt HĐ'},
+      {'key': 'ALL', 'label': 'hrm_ops.employees.filter.all_statuses'.tr()},
+      {'key': 'OFFICIAL', 'label': 'hrm_ops.employees.status.official'.tr()},
+      {'key': 'PROBATION', 'label': 'hrm_ops.employees.status.probation'.tr()},
+      {'key': 'SUSPENDED', 'label': 'hrm_ops.employees.status.suspended'.tr()},
+      {'key': 'RESIGNED', 'label': 'hrm_ops.employees.status.resigned'.tr()},
+      {'key': 'TERMINATED', 'label': 'hrm_ops.employees.status.terminated'.tr()},
     ];
 
     showModalBottomSheet(
@@ -647,8 +648,8 @@ class _HrmEmployeesDirectoryViewState extends State<HrmEmployeesDirectoryView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Lọc theo Trạng thái',
+                  Text(
+                    'hrm_ops.employees.filter.by_status'.tr(),
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(

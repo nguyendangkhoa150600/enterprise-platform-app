@@ -7,6 +7,7 @@ import './hrm_hub_screen.dart';
 import './procedure_screen.dart';
 import './maintenance_screen.dart';
 import './inventory_screen.dart';
+import '../core/i18n/app_i18n.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({super.key});
@@ -92,8 +93,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Cấu hình nhận thông báo',
+                      Text(
+                        'notif.settings.title'.tr(),
                         style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       IconButton(
@@ -102,8 +103,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       ),
                     ],
                   ),
-                  const Text(
-                    'Tùy chỉnh luồng tin và thông báo tức thì cho từng nhóm phân hệ.',
+                  Text(
+                    'notif.settings.subtitle'.tr(),
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 14),
@@ -111,8 +112,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   const SizedBox(height: 10),
                   Expanded(
                     child: prefs.isEmpty
-                        ? const Center(
-                            child: Text('Đang sử dụng cấu hình thông báo mặc định hệ thống.',
+                        ? Center(
+                            child: Text('notif.settings.using_default'.tr(),
                                 style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
                           )
                         : ListView.separated(
@@ -140,7 +141,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                                         ),
                                         Text(
-                                          'Phân hệ: ${p.module.displayName}',
+                                          'notif.module_label'.tr(args: {'module': p.module.displayName}),
                                           style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                         ),
                                       ],
@@ -174,8 +175,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                         provider.savePreferences(prefs);
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Đã cập nhật cài đặt thông báo thành công.'),
+                          SnackBar(
+                            content: Text('notif.settings.saved'.tr()),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -186,7 +187,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Lưu cài đặt', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      child: Text('notif.settings.save'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     ),
                   ),
                 ],
@@ -226,8 +227,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         scrolledUnderElevation: 0,
         title: Row(
           children: [
-            const Text(
-              'Trung tâm thông báo',
+            Text(
+              'notif.title'.tr(),
               style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
             ),
             const SizedBox(width: 8),
@@ -247,15 +248,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Cấu hình thông báo',
+            tooltip: 'notif.settings.tooltip'.tr(),
             onPressed: () => _showPreferencesDialog(context),
             icon: const Icon(Icons.tune_rounded, color: Color(0xFF475569), size: 21),
           ),
           if (notiProvider.unreadCount > 0)
             TextButton(
               onPressed: () => notiProvider.markAllAsRead(),
-              child: const Text(
-                'Đọc tất cả',
+              child: Text(
+                'notif.mark_all_read'.tr(),
                 style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
               ),
             ),
@@ -278,7 +279,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 controller: _searchController,
                 onChanged: (val) => setState(() => _searchKeyword = val),
                 decoration: InputDecoration(
-                  hintText: 'Tìm kiếm tiêu đề, nội dung thông báo...',
+                  hintText: 'notif.search_hint'.tr(),
                   hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                   prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
                   suffixIcon: _searchKeyword.isNotEmpty
@@ -310,19 +311,19 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    _buildFilterChip('ALL', 'Tất cả (${allNotifications.length})'),
+                    _buildFilterChip('ALL', 'notif.filter.all_count'.tr(args: {'count': allNotifications.length})),
                     const SizedBox(width: 6),
-                    _buildFilterChip('UNREAD', 'Chưa đọc (${notiProvider.unreadCount})', isUnreadTab: true),
+                    _buildFilterChip('UNREAD', 'notif.filter.unread_count'.tr(args: {'count': notiProvider.unreadCount}), isUnreadTab: true),
                     const SizedBox(width: 6),
-                    _buildFilterChip('hrm', 'Nhân sự & Đơn từ'),
+                    _buildFilterChip('hrm', 'notif.filter.hrm'.tr()),
                     const SizedBox(width: 6),
-                    _buildFilterChip('procedure', 'Quy trình'),
+                    _buildFilterChip('procedure', 'notif.filter.procedure'.tr()),
                     const SizedBox(width: 6),
-                    _buildFilterChip('maintenance', 'Bảo trì'),
+                    _buildFilterChip('maintenance', 'notif.filter.maintenance'.tr()),
                     const SizedBox(width: 6),
-                    _buildFilterChip('inventory', 'Kho vật tư'),
+                    _buildFilterChip('inventory', 'notif.filter.inventory'.tr()),
                     const SizedBox(width: 6),
-                    _buildFilterChip('identity', 'Bảo mật & Hệ thống'),
+                    _buildFilterChip('identity', 'notif.filter.identity'.tr()),
                   ],
                 ),
               ),
@@ -473,13 +474,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Phân hệ: ${n.module.displayName}',
+                        'notif.module_label'.tr(args: {'module': n.module.displayName}),
                         style: TextStyle(fontSize: 10.5, color: n.module.color, fontWeight: FontWeight.w600),
                       ),
                       Row(
                         children: [
                           Text(
-                            'Xem chi tiết',
+                            'common.view_detail'.tr(),
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: n.module.color),
                           ),
                           const SizedBox(width: 2),
@@ -513,13 +514,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
               child: const Icon(Icons.notifications_off_outlined, size: 44, color: Color(0xFF94A3B8)),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Không có thông báo nào',
+            Text(
+              'notif.empty.title'.tr(),
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Bạn đã xem hết các thông báo mới nhất hoặc bộ lọc hiện tại chưa có thông báo phù hợp.',
+            Text(
+              'notif.empty.desc'.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
             ),

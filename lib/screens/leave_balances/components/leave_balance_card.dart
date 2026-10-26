@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_leave_balance_models.dart';
 
 Widget buildLeaveStatCell(String label, String value, {Color? color}) {
@@ -32,35 +33,27 @@ class EmployeeLeaveBalanceCard extends StatelessWidget {
     Color stateTextColor;
     Color stateBgColor;
 
-    switch (state) {
-      case 'Còn phép':
-        stateTextColor = const Color(0xFF047857);
-        stateBgColor = const Color(0xFFD1FAE5);
-        break;
-      case 'Đang ứng phép':
-        stateTextColor = const Color(0xFF1D4ED8);
-        stateBgColor = const Color(0xFFDBEAFE);
-        break;
-      case 'Đã hết phép':
-        stateTextColor = const Color(0xFFB45309);
-        stateBgColor = const Color(0xFFFEF3C7);
-        break;
-      case 'Vượt quỹ':
-        stateTextColor = const Color(0xFFB91C1C);
-        stateBgColor = const Color(0xFFFEE2E2);
-        break;
-      case 'Chưa có HĐLĐ':
-        stateTextColor = const Color(0xFFB45309);
-        stateBgColor = const Color(0xFFFFFBEB);
-        break;
-      case 'Chưa có quỹ':
-      default:
-        stateTextColor = const Color(0xFF475569);
-        stateBgColor = const Color(0xFFF1F5F9);
-        break;
+    if (state == 'models.leave.available'.tr()) {
+      stateTextColor = const Color(0xFF047857);
+      stateBgColor = const Color(0xFFD1FAE5);
+    } else if (state == 'models.leave.advanced'.tr()) {
+      stateTextColor = const Color(0xFF1D4ED8);
+      stateBgColor = const Color(0xFFDBEAFE);
+    } else if (state == 'models.leave.exhausted'.tr()) {
+      stateTextColor = const Color(0xFFB45309);
+      stateBgColor = const Color(0xFFFEF3C7);
+    } else if (state == 'models.leave.over_balance'.tr()) {
+      stateTextColor = const Color(0xFFB91C1C);
+      stateBgColor = const Color(0xFFFEE2E2);
+    } else if (state == 'models.leave.no_contract'.tr()) {
+      stateTextColor = const Color(0xFFB45309);
+      stateBgColor = const Color(0xFFFFFBEB);
+    } else {
+      stateTextColor = const Color(0xFF475569);
+      stateBgColor = const Color(0xFFF1F5F9);
     }
 
-    final deptName = (row.department ?? '').trim().isNotEmpty ? row.department!.trim() : 'Chưa phân phòng ban';
+    final deptName = (row.department ?? '').trim().isNotEmpty ? row.department!.trim() : 'leave.card.no_department'.tr();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -167,21 +160,21 @@ class EmployeeLeaveBalanceCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    buildLeaveStatCell('Định mức', formatNumber(row.entitlement)),
+                    buildLeaveStatCell('leave.card.entitlement'.tr(), formatNumber(row.entitlement)),
                     const SizedBox(width: 10),
-                    buildLeaveStatCell('Thâm niên', '+${formatNumber(row.seniorityDays)}', color: const Color(0xFF059669)),
+                    buildLeaveStatCell('leave.card.seniority'.tr(), '+${formatNumber(row.seniorityDays)}', color: const Color(0xFF059669)),
                     const SizedBox(width: 10),
-                    buildLeaveStatCell('Năm cũ', formatNumber(row.carryover)),
+                    buildLeaveStatCell('leave.card.carryover_short'.tr(), formatNumber(row.carryover)),
                     const SizedBox(width: 10),
-                    buildLeaveStatCell('Đã dùng', formatNumber(row.used), color: const Color(0xFFDC2626)),
+                    buildLeaveStatCell('leave.card.used'.tr(), formatNumber(row.used), color: const Color(0xFFDC2626)),
                     const Spacer(),
                     // Remaining Days Box
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text('Còn lại', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                        Text('leave.card.remaining'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                         Text(
-                          '${formatNumber(row.remaining)} ngày',
+                          'leave.days_changed'.tr(args: {'days': formatNumber(row.remaining)}),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w900,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
@@ -99,15 +100,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Quản lý Người dùng',
+              'users.title'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             Text(
-              'Danh sách tài khoản & phân quyền hệ thống',
+              'users.subtitle'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
@@ -115,13 +116,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20, color: Colors.white),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadUsers,
           ),
           if (canCreate)
             IconButton(
               icon: const Icon(Icons.person_add_alt_1, size: 20, color: Colors.white),
-              tooltip: 'Thêm người dùng',
+              tooltip: 'users.add_user'.tr(),
               onPressed: () => _showAddUserDialog(),
             ),
         ],
@@ -155,7 +156,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         children: [
                           Expanded(
                             child: _buildStatItem(
-                              label: 'Tổng số',
+                              label: 'users.stat_total'.tr(),
                               val: '${_users.length}',
                               icon: Icons.people_outline,
                               color: const Color(0xFF2563EB),
@@ -164,7 +165,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
                           Expanded(
                             child: _buildStatItem(
-                              label: 'Hoạt động',
+                              label: 'users.status_active'.tr(),
                               val: '$_activeCount',
                               icon: Icons.check_circle_outline,
                               color: const Color(0xFF059669),
@@ -173,7 +174,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
                           Expanded(
                             child: _buildStatItem(
-                              label: 'Vô hiệu hóa',
+                              label: 'users.status_disabled'.tr(),
                               val: '$_disabledCount',
                               icon: Icons.block_outlined,
                               color: const Color(0xFFDC2626),
@@ -217,7 +218,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                     onChanged: (val) => setState(() => _searchQuery = val),
                                     style: const TextStyle(fontSize: 12.5),
                                     decoration: InputDecoration(
-                                      hintText: 'Tìm theo tên hoặc email...',
+                                      hintText: 'users.search_hint'.tr(),
                                       hintStyle: const TextStyle(fontSize: 12, color: AppColors.slate400),
                                       prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.slate400),
                                       suffixIcon: _searchQuery.isNotEmpty
@@ -240,7 +241,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 ElevatedButton.icon(
                                   onPressed: () => _showAddUserDialog(),
                                   icon: const Icon(Icons.add, size: 16),
-                                  label: const Text('Thêm người dùng', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                  label: Text('users.add_user'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF2563EB),
                                     foregroundColor: Colors.white,
@@ -283,11 +284,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       style: TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: _statusFilter != 'ALL' ? FontWeight.bold : FontWeight.w500,
-                                        color: _statusFilter != 'ALL' ? const Color(0xFF1D4ED8) : const Color(0xFF334155),
+                                        color: _statusFilter != 'ALL' ? Color(0xFF1D4ED8) : Color(0xFF334155),
                                       ),
                                       dropdownColor: Colors.white,
                                       borderRadius: BorderRadius.circular(10),
-                                      items: const [
+                                      items: [
                                         DropdownMenuItem(
                                           value: 'ALL',
                                           child: Row(
@@ -295,7 +296,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             children: [
                                               Icon(Icons.filter_list_rounded, size: 13, color: Color(0xFF64748B)),
                                               SizedBox(width: 5),
-                                              Expanded(child: Text('Tất cả trạng thái', style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
+                                              Expanded(child: Text('users.filter_all_status'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
                                             ],
                                           ),
                                         ),
@@ -306,7 +307,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             children: [
                                               Icon(Icons.check_circle_rounded, size: 13, color: Color(0xFF16A34A)),
                                               SizedBox(width: 5),
-                                              Expanded(child: Text('Hoạt động', style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                              Expanded(child: Text('users.status_active'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                             ],
                                           ),
                                         ),
@@ -317,7 +318,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             children: [
                                               Icon(Icons.cancel_rounded, size: 13, color: Color(0xFFDC2626)),
                                               SizedBox(width: 5),
-                                              Expanded(child: Text('Vô hiệu hóa', style: TextStyle(fontSize: 11, color: Color(0xFFDC2626), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                              Expanded(child: Text('users.status_disabled'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFFDC2626), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                             ],
                                           ),
                                         ),
@@ -358,11 +359,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       style: TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: _roleFilter != 'ALL' ? FontWeight.bold : FontWeight.w500,
-                                        color: _roleFilter != 'ALL' ? const Color(0xFF7E22CE) : const Color(0xFF334155),
+                                        color: _roleFilter != 'ALL' ? Color(0xFF7E22CE) : Color(0xFF334155),
                                       ),
                                       dropdownColor: Colors.white,
                                       borderRadius: BorderRadius.circular(10),
-                                      items: const [
+                                      items: [
                                         DropdownMenuItem(
                                           value: 'ALL',
                                           child: Row(
@@ -370,7 +371,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             children: [
                                               Icon(Icons.shield_outlined, size: 13, color: Color(0xFF64748B)),
                                               SizedBox(width: 5),
-                                              Expanded(child: Text('Tất cả vai trò', style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
+                                              Expanded(child: Text('users.filter_all_roles'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
                                             ],
                                           ),
                                         ),
@@ -381,7 +382,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             children: [
                                               Icon(Icons.shield, size: 13, color: Color(0xFF7E22CE)),
                                               SizedBox(width: 5),
-                                              Expanded(child: Text('Quản trị viên (Admin)', style: TextStyle(fontSize: 11, color: Color(0xFF7E22CE), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                              Expanded(child: Text('users.role_admin_full'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF7E22CE), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                             ],
                                           ),
                                         ),
@@ -392,7 +393,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             children: [
                                               Icon(Icons.person_outline, size: 13, color: Color(0xFF2563EB)),
                                               SizedBox(width: 5),
-                                              Expanded(child: Text('Thành viên (Member)', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                              Expanded(child: Text('users.role_member_full'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                             ],
                                           ),
                                         ),
@@ -424,11 +425,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         ),
                         child: Center(
                           child: Column(
-                            children: const [
+                            children: [
                               Icon(Icons.person_off_outlined, size: 40, color: AppColors.slate300),
                               SizedBox(height: 10),
                               Text(
-                                'Không tìm thấy người dùng phù hợp.',
+                                'users.not_found'.tr(),
                                 style: TextStyle(color: AppColors.slate500, fontSize: 13),
                               ),
                             ],
@@ -509,7 +510,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                 ),
                                                 child: const Icon(Icons.more_vert, size: 18, color: Color(0xFF64748B)),
                                               ),
-                                              tooltip: 'Thao tác',
+                                              tooltip: 'common.actions'.tr(),
                                               padding: EdgeInsets.zero,
                                               color: Colors.white,
                                               surfaceTintColor: Colors.transparent,
@@ -534,10 +535,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                   );
                                                   if (mounted) {
                                                     if (res.success) {
-                                                      _showToast(isActive ? 'Đã vô hiệu hóa tài khoản!' : 'Đã kích hoạt tài khoản!');
+                                                      _showToast(isActive ? 'users.toast_disabled'.tr() : 'users.toast_enabled'.tr());
                                                       _loadUsers();
                                                     } else {
-                                                      _showToast(res.error ?? 'Không thể cập nhật trạng thái.', isError: true);
+                                                      _showToast(res.error ?? 'users.err_update_status'.tr(), isError: true);
                                                     }
                                                   }
                                                 } else if (action == 'delete') {
@@ -560,8 +561,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                         child: const Icon(Icons.account_tree_outlined, size: 14, color: Color(0xFF059669)),
                                                       ),
                                                       const SizedBox(width: 10),
-                                                      const Text(
-                                                        'Hồ sơ tổ chức',
+                                                      Text(
+                                                        'users.menu_org_profile'.tr(),
                                                         style: TextStyle(
                                                           fontSize: 13,
                                                           fontWeight: FontWeight.w500,
@@ -587,8 +588,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                           child: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF2563EB)),
                                                         ),
                                                         const SizedBox(width: 10),
-                                                        const Text(
-                                                          'Sửa thông tin',
+                                                        Text(
+                                                          'users.menu_edit_info'.tr(),
                                                           style: TextStyle(
                                                             fontSize: 13,
                                                             fontWeight: FontWeight.w500,
@@ -613,8 +614,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                           child: const Icon(Icons.shield_outlined, size: 14, color: Color(0xFF7C3AED)),
                                                         ),
                                                         const SizedBox(width: 10),
-                                                        const Text(
-                                                          'Phân vai trò',
+                                                        Text(
+                                                          'users.menu_assign_role'.tr(),
                                                           style: TextStyle(
                                                             fontSize: 13,
                                                             fontWeight: FontWeight.w500,
@@ -644,7 +645,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                         ),
                                                         const SizedBox(width: 10),
                                                         Text(
-                                                          isActive ? 'Vô hiệu hóa tài khoản' : 'Kích hoạt tài khoản',
+                                                          isActive ? 'users.menu_disable'.tr() : 'users.menu_enable'.tr(),
                                                           style: const TextStyle(
                                                             fontSize: 13,
                                                             fontWeight: FontWeight.w500,
@@ -672,8 +673,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                           child: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFDC2626)),
                                                         ),
                                                         const SizedBox(width: 10),
-                                                        const Text(
-                                                          'Xóa người dùng',
+                                                        Text(
+                                                          'users.delete_user'.tr(),
                                                           style: TextStyle(
                                                             fontSize: 13,
                                                             fontWeight: FontWeight.w600,
@@ -691,7 +692,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        user.email.isNotEmpty ? user.email : 'chưa có email',
+                                        user.email.isNotEmpty ? user.email : 'users.no_email'.tr(),
                                         style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                                       ),
                                       const SizedBox(height: 8),
@@ -719,7 +720,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                 ),
                                                 const SizedBox(width: 3.5),
                                                 Text(
-                                                  isAdmin ? 'Quản trị viên' : 'Nhân viên mặc định',
+                                                  isAdmin ? 'users.role_admin'.tr() : 'users.role_default'.tr(),
                                                   style: TextStyle(
                                                     fontSize: 10.5,
                                                     fontWeight: FontWeight.w600,
@@ -751,7 +752,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
-                                                  isActive ? 'Hoạt động' : 'Vô hiệu hóa',
+                                                  isActive ? 'users.status_active'.tr() : 'users.status_disabled'.tr(),
                                                   style: TextStyle(
                                                     color: isActive ? const Color(0xFF059669) : const Color(0xFFDC2626),
                                                     fontSize: 10.5,
@@ -848,8 +849,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Hồ sơ tổ chức nhân sự',
+                            Text(
+                              'users.org_profile_title'.tr(),
                               style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                             ),
                             const SizedBox(height: 2),
@@ -894,7 +895,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  userNodeType?.name ?? 'Đơn vị / Phòng ban',
+                                  userNodeType?.name ?? 'users.unit_department'.tr(),
                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                                 ),
                               ),
@@ -905,8 +906,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   color: const Color(0xFFECFDF5),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
-                                  'Đã gán',
+                                child: Text(
+                                  'users.assigned'.tr(),
                                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                                 ),
                               ),
@@ -919,13 +920,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Mã vị trí: ${userNode.code}',
+                            'users.position_code'.tr(args: {'code': userNode.code}),
                             style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           ),
                           if (userAssignment?.startDate != null) ...[
                             const SizedBox(height: 8),
                             Text(
-                              'Ngày bổ nhiệm: ${userAssignment!.startDate}',
+                              'users.appointment_date'.tr(args: {'date': userAssignment!.startDate}),
                               style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                             ),
                           ],
@@ -939,19 +940,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFFBEB),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFFEF3C7)),
+                        border: Border.all(color: Color(0xFFFEF3C7)),
                       ),
                       child: Column(
-                        children: const [
+                        children: [
                           Icon(Icons.info_outline, color: Color(0xFFD97706), size: 32),
                           SizedBox(height: 10),
                           Text(
-                            'Chưa gán vào sơ đồ tổ chức',
+                            'users.not_assigned'.tr(),
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Nhân sự này chưa được phân bổ vào phòng ban hoặc vị trí nào trên cây tổ chức doanh nghiệp.',
+                            'users.not_assigned_desc'.tr(),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: Color(0xFFB45309)),
                           ),
@@ -972,7 +973,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             MaterialPageRoute(
                               builder: (_) => OrgChartWorkspaceScreen(
                                 snapshot: snapshot.data!,
-                                treeName: 'Sơ đồ tổ chức SAVINA',
+                                treeName: 'users.org_tree_name'.tr(),
                                 treeCode: 'SAVINA-MAIN',
                                 onDataChanged: _loadUsers,
                               ),
@@ -981,8 +982,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         }
                       },
                       icon: const Icon(Icons.account_tree_outlined, size: 18),
-                      label: const Text(
-                        'Mở Sơ đồ cây tổ chức',
+                      label: Text(
+                        'users.open_org_chart'.tr(),
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -1017,18 +1018,18 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 24),
             SizedBox(width: 8),
-            Text('Xóa người dùng', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('users.delete_user'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text('Bạn có chắc chắn muốn xóa tài khoản "${user.fullName}" khỏi hệ thống không? Hành động này không thể hoàn tác.'),
+        content: Text('users.delete_confirm'.tr(args: {'name': user.fullName})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -1037,7 +1038,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Xóa người dùng'),
+            child: Text('users.delete_user'.tr()),
           ),
         ],
       ),
@@ -1047,10 +1048,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       final res = await _platformService.deleteUser(user.id);
       if (mounted) {
         if (res.success) {
-          _showToast('Đã xóa người dùng "${user.fullName}" thành công!');
+          _showToast('users.deleted'.tr(args: {'name': user.fullName}));
           _loadUsers();
         } else {
-          _showToast(res.error ?? 'Không thể xóa người dùng.', isError: true);
+          _showToast(res.error ?? 'users.err_delete'.tr(), isError: true);
         }
       }
     }
@@ -1134,7 +1135,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        isEditing ? 'Chỉnh sửa người dùng' : 'Thêm người dùng',
+                        isEditing ? 'users.form_edit_title'.tr() : 'users.add_user'.tr(),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -1154,15 +1155,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   const SizedBox(height: 6),
                   Text(
                     isEditing
-                        ? 'Cập nhật phân quyền và thông tin thành viên'
-                        : 'Tài khoản mới chưa có quyền. Quản trị viên gán vai trò sau khi tạo.',
+                        ? 'users.form_edit_subtitle'.tr()
+                        : 'users.form_new_subtitle'.tr(),
                     style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.35),
                   ),
                   const SizedBox(height: 20),
 
                   // Field 1: Họ và tên
-                  const Text(
-                    'Họ và tên',
+                  Text(
+                    'users.full_name'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 6),
@@ -1187,8 +1188,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   const SizedBox(height: 16),
 
                   // Field 2: Email
-                  const Text(
-                    'Email',
+                  Text(
+                    'users.email'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 6),
@@ -1228,8 +1229,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   const SizedBox(height: 16),
 
                   // Field 3: Mật khẩu
-                  const Text(
-                    'Mật khẩu',
+                  Text(
+                    'users.password'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 6),
@@ -1261,8 +1262,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Từ 12 đến 128 ký tự.',
+                  Text(
+                    'users.password_hint'.tr(),
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
 
@@ -1315,8 +1316,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text(
-                          'Hủy',
+                        child: Text(
+                          'common.cancel'.tr(),
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                         ),
                       ),
@@ -1326,11 +1327,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             ? null
                             : () async {
                                 if (nameCtrl.text.trim().isEmpty || emailCtrl.text.trim().isEmpty) {
-                                  setModalState(() => inlineError = 'Vui lòng điền đầy đủ Họ tên và Email.');
+                                  setModalState(() => inlineError = 'users.err_required'.tr());
                                   return;
                                 }
                                 if (!isEditing && (passCtrl.text.trim().length < 6 || passCtrl.text.trim().length > 128)) {
-                                  setModalState(() => inlineError = 'Mật khẩu phải từ 6 đến 128 ký tự.');
+                                  setModalState(() => inlineError = 'users.err_password'.tr());
                                   return;
                                 }
 
@@ -1355,12 +1356,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   if (mounted) {
                                     if (res.success) {
                                       Navigator.pop(ctx);
-                                      _showToast('Đã cập nhật thông tin người dùng thành công!');
+                                      _showToast('users.toast_updated'.tr());
                                       _loadUsers();
                                     } else {
                                       setModalState(() {
                                         isSaving = false;
-                                        inlineError = res.error ?? 'Không thể cập nhật người dùng.';
+                                        inlineError = res.error ?? 'users.err_update'.tr();
                                       });
                                     }
                                   }
@@ -1373,12 +1374,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   if (mounted) {
                                     if (res.success) {
                                       Navigator.pop(ctx);
-                                      _showToast('Đã thêm người dùng thành công!');
+                                      _showToast('users.toast_added'.tr());
                                       _loadUsers();
                                     } else {
                                       setModalState(() {
                                         isSaving = false;
-                                        inlineError = res.error ?? 'Không thể tạo người dùng.';
+                                        inlineError = res.error ?? 'users.err_create'.tr();
                                       });
                                     }
                                   }
@@ -1398,7 +1399,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
                             : Text(
-                                isEditing ? 'Lưu thay đổi' : 'Lưu người dùng',
+                                isEditing ? 'users.save_changes'.tr() : 'users.save_user'.tr(),
                                 style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
                               ),
                       ),

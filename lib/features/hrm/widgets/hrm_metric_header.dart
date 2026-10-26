@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -37,9 +38,9 @@ class HrmMetricHeader extends StatelessWidget {
         children: [
           Expanded(
             child: _buildMetricCard(
-              title: 'TỔNG NHÂN SỰ',
+              title: 'hrm_widgets.metric.total_staff'.tr(),
               count: '$totalEmployees',
-              subtitle: 'Đang hoạt động',
+              subtitle: 'common.active'.tr(),
               icon: Icons.people_alt_rounded,
               iconColor: AppColors.primary,
               iconBgColor: AppColors.primaryLight,
@@ -49,9 +50,9 @@ class HrmMetricHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: _buildMetricCard(
-              title: 'THỬ VIỆC',
+              title: 'hrm_widgets.metric.probation'.tr(),
               count: '$probationCount',
-              subtitle: 'Cần đánh giá',
+              subtitle: 'hrm_widgets.metric.needs_review'.tr(),
               icon: Icons.hourglass_top_rounded,
               iconColor: AppColors.warningFg,
               iconBgColor: AppColors.warningBg,
@@ -61,9 +62,9 @@ class HrmMetricHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: _buildMetricCard(
-              title: thirdTitle ?? 'QUYẾT ĐỊNH',
+              title: thirdTitle ?? 'hrm_widgets.metric.decisions'.tr(),
               count: '${thirdCount ?? totalPositions}',
-              subtitle: thirdSubtitle ?? 'Bổ nhiệm & điều chuyển',
+              subtitle: thirdSubtitle ?? 'hrm_widgets.metric.appointments_transfers'.tr(),
               icon: thirdIcon ?? Icons.description_outlined,
               iconColor: AppColors.emerald600,
               iconBgColor: AppColors.emerald50,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/hrm_attendance_monitor_models.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class MonitorEmployeeAttentionCard extends StatelessWidget {
   final HrmMonitorRow row;
@@ -86,8 +87,8 @@ class MonitorEmployeeAttentionCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: const Color(0xFFCBD5E1)),
                   ),
-                  child: const Text(
-                    'Chi tiết',
+                  child: Text(
+                    'common.view_detail'.tr(),
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                   ),
                 ),
@@ -112,7 +113,7 @@ class MonitorEmployeeAttentionCard extends StatelessWidget {
                         flex: 5,
                         child: Row(
                           children: [
-                            const Text('Phòng: ', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                            Text('att_monitor.attention.dept_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                             Expanded(
                               child: Text(
                                 row.departmentName ?? '----',
@@ -129,7 +130,7 @@ class MonitorEmployeeAttentionCard extends StatelessWidget {
                         flex: 4,
                         child: Row(
                           children: [
-                            const Text('Ca: ', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                            Text('att_monitor.attention.shift_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                             Expanded(
                               child: Text(
                                 row.shiftName ?? '----',
@@ -150,7 +151,7 @@ class MonitorEmployeeAttentionCard extends StatelessWidget {
                         flex: 5,
                         child: Row(
                           children: [
-                            const Text('Dự kiến: ', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                            Text('att_monitor.attention.expected_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                             Expanded(
                               child: Text(
                                 row.shiftTimeText,
@@ -167,7 +168,7 @@ class MonitorEmployeeAttentionCard extends StatelessWidget {
                         flex: 4,
                         child: Row(
                           children: [
-                            const Text('Thực tế: ', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                            Text('att_monitor.attention.actual_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                             Expanded(
                               child: Text(
                                 row.actualText,
@@ -268,10 +269,10 @@ class MonitorAttentionSection extends StatelessWidget {
             children: [
               Text(
                 selectedTab == 'CHECKED_IN'
-                    ? 'Danh sách đã vào ca ($totalItems)'
+                    ? 'att_monitor.attention.title_checked_in'.tr(args: {'count': totalItems})
                     : (selectedTab == 'ALL'
-                        ? 'Danh sách toàn bộ nhân sự đi ca ($totalItems)'
-                        : 'Danh sách cần theo dõi ($totalItems)'),
+                        ? 'att_monitor.attention.title_all'.tr(args: {'count': totalItems})
+                        : 'att_monitor.attention.title_attention'.tr(args: {'count': totalItems})),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               if (totalItems > pageSize)
@@ -283,7 +284,7 @@ class MonitorAttentionSection extends StatelessWidget {
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Text(
-                    'Trang $validCurrentPage / $totalPages',
+                    'att_monitor.attention.page_of'.tr(args: {'page': validCurrentPage, 'total': totalPages}),
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                   ),
                 ),
@@ -292,10 +293,10 @@ class MonitorAttentionSection extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             selectedTab == 'CHECKED_IN'
-                ? 'Các nhân viên đã chấm công vào ca làm việc trong ngày.'
+                ? 'att_monitor.attention.desc_checked_in'.tr()
                 : (selectedTab == 'ALL'
-                    ? 'Tất cả nhân sự có lịch đi ca làm việc trong ngày.'
-                    : 'Các nhân viên chưa vào ca, đi trễ, về sớm hoặc thiếu lượt chấm công.'),
+                    ? 'att_monitor.attention.desc_all'.tr()
+                    : 'att_monitor.attention.desc_attention'.tr()),
             style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 12),
@@ -305,7 +306,7 @@ class MonitorAttentionSection extends StatelessWidget {
             controller: searchCtrl,
             onChanged: onSearchChanged,
             decoration: InputDecoration(
-              hintText: 'Tìm tên hoặc mã nhân viên...',
+              hintText: 'att_monitor.attention.search_hint'.tr(),
               hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
               suffixIcon: searchQuery.isNotEmpty
@@ -345,7 +346,7 @@ class MonitorAttentionSection extends StatelessWidget {
                       items: availableDepartments.map((dept) {
                         return DropdownMenuItem<String>(
                           value: dept,
-                          child: Text(dept == 'ALL' ? 'Tất cả phòng ban' : dept, overflow: TextOverflow.ellipsis),
+                          child: Text(dept == 'ALL' ? 'att_monitor.attention.all_departments'.tr() : dept, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -372,14 +373,14 @@ class MonitorAttentionSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
                       style: const TextStyle(fontSize: 11.5, color: Color(0xFF0F172A)),
-                      items: const [
-                        DropdownMenuItem(value: 'ALL', child: Text('Tất cả trạng thái')),
-                        DropdownMenuItem(value: 'CHECKED_IN', child: Text('Đã vào ca')),
-                        DropdownMenuItem(value: 'NOT_CHECKED_IN', child: Text('Chưa vào ca')),
-                        DropdownMenuItem(value: 'LATE', child: Text('Đi trễ')),
-                        DropdownMenuItem(value: 'EARLY_LEAVE', child: Text('Về sớm')),
-                        DropdownMenuItem(value: 'MISSING_PUNCH', child: Text('Thiếu lượt chấm')),
-                        DropdownMenuItem(value: 'ABSENT', child: Text('Vắng mặt')),
+                      items: [
+                        DropdownMenuItem(value: 'ALL', child: Text('att_monitor.attention.all_statuses'.tr())),
+                        DropdownMenuItem(value: 'CHECKED_IN', child: Text('att_monitor.attention.checked_in'.tr())),
+                        DropdownMenuItem(value: 'NOT_CHECKED_IN', child: Text('att_monitor.attention.not_checked_in'.tr())),
+                        DropdownMenuItem(value: 'LATE', child: Text('att_monitor.kpi.late'.tr())),
+                        DropdownMenuItem(value: 'EARLY_LEAVE', child: Text('att_monitor.kpi.early_leave'.tr())),
+                        DropdownMenuItem(value: 'MISSING_PUNCH', child: Text('att_monitor.attention.missing_punch'.tr())),
+                        DropdownMenuItem(value: 'ABSENT', child: Text('att_monitor.attention.absent'.tr())),
                       ],
                       onChanged: (val) {
                         if (val != null) onStatusChanged(val);
@@ -397,17 +398,17 @@ class MonitorAttentionSection extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildTabPill('ALL', 'Tất cả', countForTab('ALL'), const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
+                _buildTabPill('ALL', 'common.all'.tr(), countForTab('ALL'), const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
                 const SizedBox(width: 6),
-                _buildTabPill('CHECKED_IN', 'Đã vào ca', countForTab('CHECKED_IN'), const Color(0xFF059669), const Color(0xFFECFDF5)),
+                _buildTabPill('CHECKED_IN', 'att_monitor.attention.checked_in'.tr(), countForTab('CHECKED_IN'), const Color(0xFF059669), const Color(0xFFECFDF5)),
                 const SizedBox(width: 6),
-                _buildTabPill('NOT_CHECKED_IN', 'Chưa vào ca', countForTab('NOT_CHECKED_IN'), const Color(0xFFDC2626), const Color(0xFFFEF2F2)),
+                _buildTabPill('NOT_CHECKED_IN', 'att_monitor.attention.not_checked_in'.tr(), countForTab('NOT_CHECKED_IN'), const Color(0xFFDC2626), const Color(0xFFFEF2F2)),
                 const SizedBox(width: 6),
-                _buildTabPill('LATE', 'Đi trễ', countForTab('LATE'), const Color(0xFFD97706), const Color(0xFFFFFBEB)),
+                _buildTabPill('LATE', 'att_monitor.kpi.late'.tr(), countForTab('LATE'), const Color(0xFFD97706), const Color(0xFFFFFBEB)),
                 const SizedBox(width: 6),
-                _buildTabPill('EARLY_LEAVE', 'Về sớm', countForTab('EARLY_LEAVE'), const Color(0xFFEA580C), const Color(0xFFFFF7ED)),
+                _buildTabPill('EARLY_LEAVE', 'att_monitor.kpi.early_leave'.tr(), countForTab('EARLY_LEAVE'), const Color(0xFFEA580C), const Color(0xFFFFF7ED)),
                 const SizedBox(width: 6),
-                _buildTabPill('MISSING_PUNCH', 'Thiếu lượt chấm', countForTab('MISSING_PUNCH'), const Color(0xFFDC2626), const Color(0xFFFEF2F2)),
+                _buildTabPill('MISSING_PUNCH', 'att_monitor.attention.missing_punch'.tr(), countForTab('MISSING_PUNCH'), const Color(0xFFDC2626), const Color(0xFFFEF2F2)),
               ],
             ),
           ),
@@ -419,17 +420,17 @@ class MonitorAttentionSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 32),
               alignment: Alignment.center,
               child: Column(
-                children: const [
-                  Icon(Icons.check_circle_outline, size: 36, color: Color(0xFF10B981)),
-                  SizedBox(height: 8),
+                children: [
+                  const Icon(Icons.check_circle_outline, size: 36, color: Color(0xFF10B981)),
+                  const SizedBox(height: 8),
                   Text(
-                    'Không có nhân viên nào cần theo dõi',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                    'att_monitor.attention.empty_title'.tr(),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'Tất cả nhân sự trong ca đều đã chấm công đúng quy định.',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                    'att_monitor.attention.empty_desc'.tr(),
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                   ),
                 ],
               ),
@@ -528,7 +529,7 @@ class MonitorAttentionSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Hiển thị ${startIndex + 1} – $endIndex / $totalItems nhân sự',
+                'att_monitor.attention.showing'.tr(args: {'from': startIndex + 1, 'to': endIndex, 'total': totalItems}),
                 style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
               ),
               Container(
@@ -538,8 +539,8 @@ class MonitorAttentionSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: const Text(
-                  '10 người / trang',
+                child: Text(
+                  'att_monitor.attention.per_page'.tr(args: {'count': pageSize}),
                   style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                 ),
               ),
@@ -550,7 +551,7 @@ class MonitorAttentionSection extends StatelessWidget {
             children: [
               // Nút "Trước"
               _buildPageActionButton(
-                label: 'Trước',
+                label: 'att_monitor.attention.prev'.tr(),
                 icon: Icons.chevron_left,
                 enabled: currentPage > 1,
                 onTap: () => onGoToPage(currentPage - 1),
@@ -571,7 +572,7 @@ class MonitorAttentionSection extends StatelessWidget {
 
               // Nút "Sau"
               _buildPageActionButton(
-                label: 'Sau',
+                label: 'att_monitor.attention.next'.tr(),
                 icon: Icons.chevron_right,
                 iconAfter: true,
                 enabled: currentPage < totalPages,

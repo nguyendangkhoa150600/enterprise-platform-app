@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../../models/hrm_personnel_decision_model.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 class PersonnelDecisionCard extends StatelessWidget {
   final HrmPersonnelDecision decision;
@@ -148,8 +149,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text(
-                          'Ngày hiệu lực',
+                        Text(
+                          'hrm_decisions.field_effective_date'.tr(),
                           style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                         ),
                         Text(
@@ -181,8 +182,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Thay đổi (từ → đến):',
+                      Text(
+                        'hrm_decisions.changes_from_to'.tr(),
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
@@ -202,7 +203,7 @@ class PersonnelDecisionCard extends StatelessWidget {
                       if (decision.reason.trim().isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Lý do: ${decision.reason}',
+                          'hrm_decisions.reason_prefix'.tr(args: {'reason': decision.reason}),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -235,8 +236,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
                   icon: const Icon(Icons.visibility_outlined, size: 14, color: Color(0xFF334155)),
-                  label: const Text(
-                    'Chi tiết',
+                  label: Text(
+                    'hrm_decisions.card_detail'.tr(),
                     style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                   ),
                 ),
@@ -250,8 +251,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    child: const Text(
-                      'Sửa',
+                    child: Text(
+                      'hrm_decisions.card_edit'.tr(),
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     ),
                   ),
@@ -268,8 +269,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    child: const Text(
-                      'Duyệt',
+                    child: Text(
+                      'hrm_decisions.card_approve'.tr(),
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -285,8 +286,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                       foregroundColor: const Color(0xFFDC2626),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    child: const Text(
-                      'Từ chối',
+                    child: Text(
+                      'common.reject'.tr(),
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -303,8 +304,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                       foregroundColor: const Color(0xFFDC2626),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    child: const Text(
-                      'Hủy',
+                    child: Text(
+                      'common.cancel'.tr(),
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
                     ),
                   ),
@@ -320,8 +321,8 @@ class PersonnelDecisionCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    child: const Text(
-                      'Thử lại',
+                    child: Text(
+                      'hrm_decisions.card_retry'.tr(),
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
                     ),
                   ),

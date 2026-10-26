@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/hrm_models.dart';
 import '../models/hrm_attendance_models.dart';
 import '../services/hrm_service.dart';
@@ -100,7 +101,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã cập nhật danh sách địa điểm GPS (${sites.length} địa điểm)'),
+            content: Text('hrm_hub.gps_updated'.tr(args: {'count': sites.length})),
             duration: const Duration(seconds: 2),
             backgroundColor: const Color(0xFF0F766E),
           ),
@@ -168,77 +169,77 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
   String get _currentViewTitle {
     switch (_activeView) {
       case 'dashboard':
-        return 'Bàn làm việc (Dashboard)';
+        return 'hrm_hub.title.dashboard'.tr();
       case 'attendance_monitor':
-        return 'Giám sát chấm công';
+        return 'hrm_hub.title.attendance_monitor'.tr();
       case 'schedule':
-        return 'Lịch & Thông báo';
+        return 'hrm_hub.title.schedule'.tr();
       case 'requests':
       case 'approvals':
-        return 'Đơn từ cần xử lý';
+        return 'hrm_hub.title.approvals'.tr();
       case 'profile_income':
-        return 'Hồ sơ & Thu nhập';
+        return 'hrm_hub.title.profile_income'.tr();
       case 'my_profile':
-        return 'Hồ sơ của tôi';
+        return 'hrm_hub.title.my_profile'.tr();
       case 'my_payslips':
-        return 'Phiếu lương cá nhân';
+        return 'hrm_hub.title.my_payslips'.tr();
       case 'employees':
-        return 'Nhân sự';
+        return 'hrm_hub.title.employees'.tr();
       case 'dependents':
-        return 'Người phụ thuộc';
+        return 'hrm_hub.title.dependents'.tr();
       case 'shifts':
-        return 'Quản lý Ca & Chấm công';
+        return 'hrm_hub.title.shifts'.tr();
       case 'timesheet':
-        return 'Bảng công tổng hợp';
+        return 'hrm_hub.title.timesheet'.tr();
       case 'payroll':
-        return 'Tiền lương & Chi trả';
+        return 'hrm_hub.title.payroll'.tr();
       case 'advances':
-        return 'Ứng và thu hồi lương';
+        return 'hrm_hub.title.advances'.tr();
       case 'policy':
       case 'config':
       case 'settings':
-        return 'Cấu hình HRM';
+        return 'hrm_hub.title.config'.tr();
       case 'integrations':
-        return 'Hệ thống & Tích hợp';
+        return 'hrm_hub.title.integrations'.tr();
       default:
-        return 'Quản trị Nhân sự (HRM)';
+        return 'hrm_hub.title.default'.tr();
     }
   }
 
   String _getConfigSubTabSubtitle() {
     switch (_configSubTab) {
       case 'OVERVIEW':
-        return 'Tổng quan cấu hình';
+        return 'hrm_hub.config.overview'.tr();
       case 'LEAVE':
-        return 'Chính sách phép năm';
+        return 'hrm_hub.config.leave'.tr();
       case 'POLICY':
-        return 'Quy định chấm công';
+        return 'hrm_hub.config.policy'.tr();
       case 'HOLIDAYS':
-        return 'Lịch làm / OFF / Lễ';
+        return 'hrm_hub.config.holidays'.tr();
       case 'GPS':
-        return 'Địa điểm GPS';
+        return 'hrm_hub.config.gps'.tr();
       case 'DEVICES':
-        return 'Thiết bị';
+        return 'hrm_hub.config.devices'.tr();
       case 'AUTO':
-        return 'Chấm công tự động';
+        return 'hrm_hub.config.auto'.tr();
       case 'SHIFTS_ASSIGN':
-        return 'Phân ca';
+        return 'hrm_hub.config.shifts_assign'.tr();
       case 'SHIFTS':
-        return 'Danh mục ca';
+        return 'hrm_hub.config.shifts'.tr();
       case 'STANDARD':
-        return 'Công chuẩn';
+        return 'hrm_hub.config.standard'.tr();
       case 'REQUEST_TYPES':
-        return 'Loại đơn & lý do';
+        return 'hrm_hub.config.request_types'.tr();
       case 'APPROVAL_FLOWS':
-        return 'Quy trình duyệt';
+        return 'hrm_hub.config.approval_flows'.tr();
       case 'PAYROLL_CFG':
-        return 'Lương & OT';
+        return 'hrm_hub.config.payroll_cfg'.tr();
       case 'OPERATIONS':
-        return 'Vận hành & tích hợp';
+        return 'hrm_hub.config.operations'.tr();
       case 'PERMISSIONS':
-        return 'Quyền và vai trò';
+        return 'hrm_hub.config.permissions'.tr();
       default:
-        return 'Tổng quan cấu hình';
+        return 'hrm_hub.config.overview'.tr();
     }
   }
 
@@ -270,7 +271,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          tooltip: 'Quay lại',
+          tooltip: 'common.back'.tr(),
           onPressed: () {
             if ((_activeView == 'config' || _activeView == 'policy' || _activeView == 'settings') && _configSubTab != 'OVERVIEW') {
               setState(() => _configSubTab = 'OVERVIEW');
@@ -291,7 +292,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             Text(
               (_activeView == 'config' || _activeView == 'policy' || _activeView == 'settings')
                   ? 'SVN DTS / ${_getConfigSubTabSubtitle()}'
-                  : 'SVN DTS / Quản trị Nhân sự',
+                  : 'hrm_hub.appbar.breadcrumb'.tr(),
               style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
@@ -300,18 +301,18 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
           if (_activeView == 'config' || _activeView == 'policy' || _activeView == 'settings')
             IconButton(
               icon: const Icon(Icons.view_sidebar_outlined, size: 22),
-              tooltip: 'Menu Cấu hình',
+              tooltip: 'hrm_hub.appbar.config_menu'.tr(),
               onPressed: () => setState(() => _configSubTab = 'OVERVIEW'),
             ),
           if (_activeView != 'dashboard' && widget.initialView == null)
             IconButton(
               icon: const Icon(Icons.dashboard_outlined, size: 20),
-              tooltip: 'Về Bàn làm việc',
+              tooltip: 'hrm_hub.appbar.back_to_dashboard'.tr(),
               onPressed: () => _navigateToView('dashboard'),
             ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: () async {
               await _loadAllHrmData();
               if (_configSubTab == 'LEAVE') {
@@ -397,18 +398,18 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Breadcrumb & Page Title
-            const Text(
-              'SVN DTS / Quản trị Nhân sự / Bàn làm việc (Dashboard)',
+            Text(
+              'hrm_hub.dash.breadcrumb'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Bàn làm việc (Dashboard)',
+            Text(
+              'hrm_hub.title.dashboard'.tr(),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
             ),
             const SizedBox(height: 2),
-            const Text(
-              'Trung tâm điều hành và giám sát toàn diện hoạt động nhân sự, quân số và vận hành doanh nghiệp.',
+            Text(
+              'hrm_hub.dash.subtitle'.tr(),
               style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
             ),
             const SizedBox(height: 14),
@@ -433,8 +434,8 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'Tổng quan Nhân sự & Điều hành',
+                      Text(
+                        'hrm_hub.dash.banner_title'.tr(),
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       const SizedBox(width: 8),
@@ -445,16 +446,16 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFFBFDBFE)),
                         ),
-                        child: const Text(
-                          'Thời gian thực',
+                        child: Text(
+                          'hrm_hub.dash.realtime'.tr(),
                           style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Số liệu tổng hợp từ hồ sơ nhân viên, trạng thái chấm công hôm nay và luồng đơn từ phê duyệt của doanh nghiệp.',
+                  Text(
+                    'hrm_hub.dash.banner_desc'.tr(),
                     style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 12),
@@ -464,7 +465,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                         child: ElevatedButton.icon(
                           onPressed: () => _navigateToView('employees'),
                           icon: const Icon(Icons.people_outline, size: 16),
-                          label: const Text('Quản lý Nhân sự', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          label: Text('hrm_hub.dash.manage_hr'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
@@ -479,7 +480,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                         child: OutlinedButton.icon(
                           onPressed: () => _navigateToView('approvals'),
                           icon: const Icon(Icons.mail_outline, size: 16),
-                          label: const Text('Xử lý Đơn từ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          label: Text('hrm_hub.dash.process_requests'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF0F172A),
                             side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -499,16 +500,16 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             _buildSectionHeader(
               icon: Icons.people_outline,
               iconColor: const Color(0xFF2563EB),
-              title: 'QUY MÔ & LỰC LƯỢNG LAO ĐỘNG',
+              title: 'hrm_hub.dash.section_workforce'.tr(),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Tổng nhân viên đang làm',
+                    title: 'hrm_hub.dash.total_employees'.tr(),
                     value: '$empCount',
-                    subtitle: 'Tất cả hợp đồng đang hiệu lực',
+                    subtitle: 'hrm_hub.dash.total_employees_sub'.tr(),
                     icon: Icons.people_alt_outlined,
                     iconBgColor: const Color(0xFFEFF6FF),
                     iconColor: const Color(0xFF2563EB),
@@ -517,9 +518,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Hợp đồng chính thức',
+                    title: 'hrm_hub.dash.official_contracts'.tr(),
                     value: '$officialEmpCount',
-                    subtitle: '100% tổng quân số',
+                    subtitle: 'hrm_hub.dash.official_sub'.tr(),
                     icon: Icons.how_to_reg_outlined,
                     iconBgColor: const Color(0xFFECFDF5),
                     iconColor: const Color(0xFF059669),
@@ -528,9 +529,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Nhân sự thử việc',
+                    title: 'hrm_hub.dash.probation'.tr(),
                     value: '0',
-                    subtitle: 'Đang trong thời gian đánh giá',
+                    subtitle: 'hrm_hub.dash.probation_sub'.tr(),
                     icon: Icons.person_add_outlined,
                     iconBgColor: const Color(0xFFFFFBEB),
                     iconColor: const Color(0xFFD97706),
@@ -547,7 +548,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 _buildSectionHeader(
                   icon: Icons.access_time,
                   iconColor: const Color(0xFF059669),
-                  title: 'TÌNH HÌNH CHẤM CÔNG HÔM NAY',
+                  title: 'hrm_hub.dash.section_attendance'.tr(),
                 ),
                 InkWell(
                   onTap: () async {
@@ -563,8 +564,8 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                       _navigateToView('approvals');
                     }
                   },
-                  child: const Text(
-                    'Mở giám sát >',
+                  child: Text(
+                    'hrm_hub.dash.open_monitor'.tr(),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                   ),
                 ),
@@ -575,9 +576,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               children: [
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Đã chấm vào',
+                    title: 'hrm_hub.dash.checked_in'.tr(),
                     value: hasCheckedIn ? '1' : '0',
-                    subtitle: 'Có quẹt thẻ ghi nhận giờ vào',
+                    subtitle: 'hrm_hub.dash.checked_in_sub'.tr(),
                     icon: Icons.check_circle_outline,
                     iconBgColor: const Color(0xFFECFDF5),
                     iconColor: const Color(0xFF059669),
@@ -586,9 +587,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Đi trễ hôm nay',
+                    title: 'hrm_hub.dash.late_today'.tr(),
                     value: '0',
-                    subtitle: 'Sau giờ giới hạn trễ của ca',
+                    subtitle: 'hrm_hub.dash.late_sub'.tr(),
                     icon: Icons.schedule,
                     iconBgColor: const Color(0xFFFFFBEB),
                     iconColor: const Color(0xFFD97706),
@@ -601,9 +602,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               children: [
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Bất thường / Thiếu lượt',
+                    title: 'hrm_hub.dash.anomalies'.tr(),
                     value: '0',
-                    subtitle: 'Quên chấm vào hoặc ra',
+                    subtitle: 'hrm_hub.dash.anomalies_sub'.tr(),
                     icon: Icons.warning_amber_rounded,
                     iconBgColor: const Color(0xFFFEF2F2),
                     iconColor: const Color(0xFFDC2626),
@@ -612,9 +613,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Đang nghỉ phép',
+                    title: 'hrm_hub.dash.on_leave'.tr(),
                     value: '0',
-                    subtitle: 'Đã được duyệt đơn nghỉ',
+                    subtitle: 'hrm_hub.dash.on_leave_sub'.tr(),
                     icon: Icons.calendar_today_outlined,
                     iconBgColor: const Color(0xFFFAF5FF),
                     iconColor: const Color(0xFF9333EA),
@@ -628,16 +629,16 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             _buildSectionHeader(
               icon: Icons.mark_email_unread_outlined,
               iconColor: const Color(0xFFD97706),
-              title: 'ĐƠN TỪ & YÊU CẦU CHỜ XỬ LÝ',
+              title: 'hrm_hub.dash.section_requests'.tr(),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Đơn phép chờ duyệt',
+                    title: 'hrm_hub.dash.leave_pending'.tr(),
                     value: '$pendingLeaves',
-                    subtitle: 'Nghỉ phép năm, ốm, ...',
+                    subtitle: 'hrm_hub.dash.leave_pending_sub'.tr(),
                     icon: Icons.article_outlined,
                     iconBgColor: const Color(0xFFFFFBEB),
                     iconColor: const Color(0xFFD97706),
@@ -646,9 +647,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Tăng ca (OT) chờ duyệt',
+                    title: 'hrm_hub.dash.ot_pending'.tr(),
                     value: '$pendingOts',
-                    subtitle: 'Kế hoạch làm thêm ...',
+                    subtitle: 'hrm_hub.dash.ot_pending_sub'.tr(),
                     icon: Icons.schedule,
                     iconBgColor: const Color(0xFFEFF6FF),
                     iconColor: const Color(0xFF2563EB),
@@ -657,9 +658,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildWebStatCard(
-                    title: 'Giải trình công chờ duyệt',
+                    title: 'hrm_hub.dash.explain_pending'.tr(),
                     value: '$pendingAdvances',
-                    subtitle: 'Giải trình quên quẹt t...',
+                    subtitle: 'hrm_hub.dash.explain_pending_sub'.tr(),
                     icon: Icons.description_outlined,
                     iconBgColor: const Color(0xFFFAF5FF),
                     iconColor: const Color(0xFF9333EA),
@@ -673,41 +674,41 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             _buildSectionHeader(
               icon: Icons.bolt,
               iconColor: const Color(0xFF0F172A),
-              title: 'PHÂN KHU CHỨC NĂNG NGHIỆP VỤ',
+              title: 'hrm_hub.dash.section_modules'.tr(),
             ),
             const SizedBox(height: 10),
             _buildBusinessActionCard(
               icon: Icons.person_outline,
-              title: 'Hồ sơ Nhân viên & Chức danh',
-              description: 'Quản lý thông tin định danh, chức danh, ngạch bậc và hợp đồng',
+              title: 'hrm_hub.module.employees_title'.tr(),
+              description: 'hrm_hub.module.employees_desc'.tr(),
               onTap: () => _navigateToView('employees'),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.family_restroom_outlined,
-              title: 'Người phụ thuộc & Giảm trừ gia cảnh',
-              description: 'Hồ sơ người phụ thuộc, mã số thuế và trạng thái xác thực thuế TNCN',
+              title: 'hrm_hub.module.dependents_title'.tr(),
+              description: 'hrm_hub.module.dependents_desc'.tr(),
               onTap: () => _navigateToView('dependents'),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.calendar_month_outlined,
-              title: 'Quản lý Ca & Phân ca',
-              description: 'Thiết lập định nghĩa ca làm việc và bảng phân ca làm việc tuần/tháng',
+              title: 'hrm_hub.module.shifts_title'.tr(),
+              description: 'hrm_hub.module.shifts_desc'.tr(),
               onTap: () => _navigateToView('shifts'),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.access_time,
-              title: 'Chấm công & Điểm danh',
-              description: 'Ghi nhận giờ làm việc, định vị GPS và rà soát các lượt vào ra',
+              title: 'hrm_hub.module.attendance_title'.tr(),
+              description: 'hrm_hub.module.attendance_desc'.tr(),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.insights_rounded,
-              title: 'Giám sát chấm công',
-              description: 'Theo dõi tình hình vào ca, đi trễ, về sớm và các trường hợp cần xử lý trong ngày',
+              title: 'hrm_hub.title.attendance_monitor'.tr(),
+              description: 'hrm_hub.module.monitor_desc'.tr(),
               onTap: () async {
                 final res = await Navigator.push(
                   context,
@@ -725,43 +726,43 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.beach_access_rounded,
-              title: 'Quỹ phép năm & Thâm niên',
-              description: 'Theo dõi số dư phép năm, thâm niên tích luỹ, phần chuyển tiếp và lịch sử giao dịch quỹ',
+              title: 'hrm_hub.module.leave_title'.tr(),
+              description: 'hrm_hub.module.leave_desc'.tr(),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaveBalancesScreen())),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.assignment_turned_in_outlined,
-              title: 'Xử lý Đơn từ & Phê duyệt',
-              description: 'Tiếp nhận, kiểm tra tính hợp lệ chính sách và phê duyệt đơn từ nhân viên',
+              title: 'hrm_hub.module.approvals_title'.tr(),
+              description: 'hrm_hub.module.approvals_desc'.tr(),
               onTap: () => _navigateToView('approvals'),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.calculate_outlined,
-              title: 'Bảng công Tổng hợp',
-              description: 'Tổng hợp ngày công, tính toán giờ làm thêm, đi trễ và khóa kỳ công',
+              title: 'hrm_hub.module.timesheet_title'.tr(),
+              description: 'hrm_hub.module.timesheet_desc'.tr(),
               onTap: () => _navigateToView('timesheet'),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.account_balance_wallet_outlined,
-              title: 'Tiền lương & Chi trả',
-              description: 'Tính toán lương theo công thức, đối soát thu nhập và phát hành phiếu lương',
+              title: 'hrm_hub.title.payroll'.tr(),
+              description: 'hrm_hub.module.payroll_desc'.tr(),
               onTap: () => _navigateToView('payroll'),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.price_change_outlined,
-              title: 'Ứng và thu hồi lương',
-              description: 'Theo dõi các khoản tạm ứng lương cá nhân và tiến độ thu hồi qua các kỳ lương',
+              title: 'hrm_hub.title.advances'.tr(),
+              description: 'hrm_hub.module.advances_desc'.tr(),
               onTap: () => _navigateToView('advances'),
             ),
             const SizedBox(height: 8),
             _buildBusinessActionCard(
               icon: Icons.tune_rounded,
-              title: 'Trung tâm cấu hình HRM',
-              description: 'Chính sách chấm công, GPS, thiết bị, chấm công tự động, danh mục ca và công chuẩn',
+              title: 'hrm_hub.module.config_title'.tr(),
+              description: 'hrm_hub.module.config_desc'.tr(),
               onTap: () => _navigateToView('config'),
             ),
             const SizedBox(height: 20),
@@ -991,13 +992,13 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                     InkWell(
                       onTap: () => setState(() => _configSubTab = 'OVERVIEW'),
                       borderRadius: BorderRadius.circular(4),
-                      child: const Padding(
+                      child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                         child: Row(
                           children: [
                             Icon(Icons.arrow_back_ios_rounded, size: 12, color: Color(0xFF2563EB)),
                             SizedBox(width: 4),
-                            Text('Tổng quan cấu hình', style: TextStyle(fontSize: 11.5, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                            Text('hrm_hub.config.overview'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -1070,7 +1071,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
 
   void _syncIntegrationDevices() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đang đồng bộ dữ liệu từ các máy chấm công...'), backgroundColor: Color(0xFF2563EB)),
+      SnackBar(content: Text('hrm_hub.sync_devices'.tr()), backgroundColor: Color(0xFF2563EB)),
     );
   }
 
@@ -1095,7 +1096,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
       if (mounted) {
         setState(() => _isSavingAutoAttendance = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã lưu cấu hình chấm công tự động thành công!'), backgroundColor: Color(0xFF059669)),
+          SnackBar(content: Text('hrm_hub.auto_saved'.tr()), backgroundColor: Color(0xFF059669)),
         );
       }
     });
@@ -1131,8 +1132,8 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Danh mục Ca làm việc', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-          const Text('Quy định khung giờ check-in/out và thời lượng nghỉ giữa ca', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+          Text('hrm_screens.shifts.catalog_title'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          Text('hrm_hub.shifts.subtitle'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
           const SizedBox(height: 14),
 
           ListView.separated(
@@ -1167,7 +1168,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                         children: [
                           Text(s.name, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                           const SizedBox(height: 2),
-                          Text(' —  (Nghỉ trưa p)', style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
+                          Text('hrm_hub.shifts.line'.tr(args: {'start': s.startTime, 'end': s.endTime, 'minutes': s.breakMinutes}), style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
                         ],
                       ),
                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import 'package:provider/provider.dart';
 import '../../../models/platform_models.dart';
 import '../../../providers/auth_provider.dart';
@@ -53,15 +54,15 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Danh sách Nhân viên',
+            Text(
+              'home.users.title'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate900),
             ),
             if (canCreate)
               ElevatedButton.icon(
                 onPressed: _showAddUserDialog,
                 icon: const Icon(Icons.person_add_alt_1, size: 14),
-                label: const Text('Thêm mới', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                label: Text('common.create'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.slate900,
                   foregroundColor: Colors.white,
@@ -86,7 +87,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
               TextField(
                 onChanged: (val) => setState(() => _userQuery = val),
                 decoration: InputDecoration(
-                  hintText: 'Tìm kiếm theo tên hoặc email...',
+                  hintText: 'home.users.search_hint'.tr(),
                   hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.slate400),
                   prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.slate400),
                   filled: true,
@@ -134,7 +135,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                           ),
                           dropdownColor: Colors.white,
                           borderRadius: BorderRadius.circular(10),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: 'ALL',
                               child: Row(
@@ -142,7 +143,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                 children: [
                                   Icon(Icons.filter_list_rounded, size: 13, color: Color(0xFF64748B)),
                                   SizedBox(width: 5),
-                                  Expanded(child: Text('Tất cả trạng thái', style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text('home.users.filter.all_status'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                             ),
@@ -153,7 +154,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                 children: [
                                   Icon(Icons.check_circle_rounded, size: 13, color: Color(0xFF16A34A)),
                                   SizedBox(width: 5),
-                                  Expanded(child: Text('Hoạt động', style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text('home.users.status.active'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                             ),
@@ -164,7 +165,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                 children: [
                                   Icon(Icons.cancel_rounded, size: 13, color: Color(0xFFDC2626)),
                                   SizedBox(width: 5),
-                                  Expanded(child: Text('Vô hiệu hóa', style: TextStyle(fontSize: 11, color: Color(0xFFDC2626), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text('home.users.status.disabled'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFFDC2626), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                             ),
@@ -208,7 +209,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                           ),
                           dropdownColor: Colors.white,
                           borderRadius: BorderRadius.circular(10),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: 'ALL',
                               child: Row(
@@ -216,7 +217,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                 children: [
                                   Icon(Icons.shield_outlined, size: 13, color: Color(0xFF64748B)),
                                   SizedBox(width: 5),
-                                  Expanded(child: Text('Tất cả vai trò', style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text('home.users.filter.all_roles'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF334155)), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                             ),
@@ -227,7 +228,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                 children: [
                                   Icon(Icons.shield, size: 13, color: Color(0xFF7E22CE)),
                                   SizedBox(width: 5),
-                                  Expanded(child: Text('Quản trị viên (Admin)', style: TextStyle(fontSize: 11, color: Color(0xFF7E22CE), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text('home.users.role.admin_full'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF7E22CE), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                             ),
@@ -238,7 +239,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                 children: [
                                   Icon(Icons.person_outline, size: 13, color: Color(0xFF2563EB)),
                                   SizedBox(width: 5),
-                                  Expanded(child: Text('Thành viên (Member)', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text('home.users.role.member_full'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
                             ),
@@ -270,8 +271,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.slate200),
             ),
-            child: const Center(
-              child: Text('Không tìm thấy người dùng phù hợp.', style: TextStyle(color: AppColors.slate500)),
+            child: Center(
+              child: Text('home.users.not_found'.tr(), style: TextStyle(color: AppColors.slate500)),
             ),
           )
         else
@@ -364,7 +365,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                         } else {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
-                                              content: Text(res.error ?? 'Không thể cập nhật trạng thái.'),
+                                              content: Text(res.error ?? 'home.users.err_update_status'.tr()),
                                               backgroundColor: const Color(0xFFDC2626),
                                             ),
                                           );
@@ -374,14 +375,14 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                       final confirmed = await showDialog<bool>(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
-                                          title: const Text('Xóa người dùng'),
-                                          content: Text('Bạn có chắc chắn muốn xóa "${user.fullName}" không?'),
+                                          title: Text('home.users.delete_user'.tr()),
+                                          content: Text('home.users.delete_confirm'.tr(args: {'name': user.fullName})),
                                           actions: [
-                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
                                             ElevatedButton(
                                               onPressed: () => Navigator.pop(ctx, true),
                                               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                              child: const Text('Xóa'),
+                                              child: Text('common.delete'.tr()),
                                             ),
                                           ],
                                         ),
@@ -394,7 +395,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                           } else {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(
-                                                content: Text(res.error ?? 'Không thể xóa người dùng.'),
+                                                content: Text(res.error ?? 'home.users.err_delete'.tr()),
                                                 backgroundColor: const Color(0xFFDC2626),
                                               ),
                                             );
@@ -419,8 +420,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                             child: const Icon(Icons.account_tree_outlined, size: 14, color: Color(0xFF059669)),
                                           ),
                                           const SizedBox(width: 10),
-                                          const Text(
-                                            'Hồ sơ tổ chức',
+                                          Text(
+                                            'home.users.org_profile'.tr(),
                                             style: TextStyle(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w500,
@@ -446,8 +447,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                               child: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF2563EB)),
                                             ),
                                             const SizedBox(width: 10),
-                                            const Text(
-                                              'Sửa thông tin',
+                                            Text(
+                                              'home.users.edit_info'.tr(),
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w500,
@@ -472,8 +473,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                               child: const Icon(Icons.shield_outlined, size: 14, color: Color(0xFF7C3AED)),
                                             ),
                                             const SizedBox(width: 10),
-                                            const Text(
-                                              'Phân vai trò',
+                                            Text(
+                                              'home.users.assign_role'.tr(),
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w500,
@@ -503,7 +504,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                             ),
                                             const SizedBox(width: 10),
                                             Text(
-                                              isActive ? 'Vô hiệu hóa tài khoản' : 'Kích hoạt tài khoản',
+                                              isActive ? 'home.users.disable_account'.tr() : 'home.users.enable_account'.tr(),
                                               style: const TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w500,
@@ -531,8 +532,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                               child: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFDC2626)),
                                             ),
                                             const SizedBox(width: 10),
-                                            const Text(
-                                              'Xóa người dùng',
+                                            Text(
+                                              'home.users.delete_user'.tr(),
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w600,
@@ -550,7 +551,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            user.email.isNotEmpty ? user.email : 'Chưa có email',
+                            user.email.isNotEmpty ? user.email : 'home.users.no_email'.tr(),
                             style: const TextStyle(fontSize: 12, color: AppColors.slate500),
                           ),
                           const SizedBox(height: 8),
@@ -569,7 +570,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                   ),
                                 ),
                                 child: Text(
-                                  isAdmin ? 'Quản trị viên' : 'Thành viên',
+                                  isAdmin ? 'home.users.role.admin'.tr() : 'home.users.role.member'.tr(),
                                   style: TextStyle(
                                     fontSize: 10.5,
                                     fontWeight: FontWeight.w600,
@@ -599,7 +600,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      isActive ? 'Hoạt động' : 'Vô hiệu hóa',
+                                      isActive ? 'home.users.status.active'.tr() : 'home.users.status.disabled'.tr(),
                                       style: TextStyle(
                                         color: isActive ? AppColors.emerald700 : Colors.red.shade700,
                                         fontSize: 10.5,
@@ -692,8 +693,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Hồ sơ tổ chức nhân sự',
+                            Text(
+                              'home.users.hr_org_profile'.tr(),
                               style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                             ),
                             const SizedBox(height: 2),
@@ -738,7 +739,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  userNodeType?.name ?? 'Đơn vị / Phòng ban',
+                                  userNodeType?.name ?? 'home.users.unit_department'.tr(),
                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                                 ),
                               ),
@@ -749,8 +750,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                                   color: const Color(0xFFECFDF5),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
-                                  'Đã gán',
+                                child: Text(
+                                  'home.users.assigned'.tr(),
                                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                                 ),
                               ),
@@ -763,13 +764,13 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Mã vị trí: ${userNode.code}',
+                            'home.users.position_code'.tr(args: {'code': userNode.code}),
                             style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           ),
                           if (userAssignment?.startDate != null) ...[
                             const SizedBox(height: 8),
                             Text(
-                              'Ngày bổ nhiệm: ${userAssignment!.startDate}',
+                              'home.users.appointment_date'.tr(args: {'date': userAssignment!.startDate}),
                               style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                             ),
                           ],
@@ -786,16 +787,16 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                         border: Border.all(color: const Color(0xFFFEF3C7)),
                       ),
                       child: Column(
-                        children: const [
+                        children: [
                           Icon(Icons.info_outline, color: Color(0xFFD97706), size: 32),
                           SizedBox(height: 10),
                           Text(
-                            'Chưa gán vào sơ đồ tổ chức',
+                            'home.users.not_in_org'.tr(),
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Nhân sự này chưa được phân bổ vào phòng ban hoặc vị trí nào trên cây tổ chức doanh nghiệp.',
+                            'home.users.not_in_org_desc'.tr(),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: Color(0xFFB45309)),
                           ),
@@ -816,7 +817,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                             MaterialPageRoute(
                               builder: (_) => OrgChartWorkspaceScreen(
                                 snapshot: snapshot.data!,
-                                treeName: 'Sơ đồ tổ chức SAVINA',
+                                treeName: 'home.users.savina_tree'.tr(),
                                 treeCode: 'SAVINA-MAIN',
                                 onDataChanged: widget.onRefresh,
                               ),
@@ -825,8 +826,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                         }
                       },
                       icon: const Icon(Icons.account_tree_outlined, size: 18),
-                      label: const Text(
-                        'Mở Sơ đồ cây tổ chức',
+                      label: Text(
+                        'home.users.open_tree'.tr(),
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -905,7 +906,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        editingUser != null ? 'Chỉnh sửa người dùng' : 'Thêm người dùng',
+                        editingUser != null ? 'home.users.form.edit_title'.tr() : 'home.users.form.add_title'.tr(),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -925,15 +926,15 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                   const SizedBox(height: 6),
                   Text(
                     editingUser != null
-                        ? 'Cập nhật phân quyền và thông tin thành viên'
-                        : 'Tài khoản mới chưa có quyền. Quản trị viên gán vai trò sau khi tạo.',
+                        ? 'home.users.form.edit_subtitle'.tr()
+                        : 'home.users.form.add_subtitle'.tr(),
                     style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.35),
                   ),
                   const SizedBox(height: 20),
 
                   // Field 1: Họ và tên
-                  const Text(
-                    'Họ và tên',
+                  Text(
+                    'home.users.form.full_name'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 6),
@@ -993,8 +994,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                   const SizedBox(height: 16),
 
                   // Field 3: Mật khẩu
-                  const Text(
-                    'Mật khẩu',
+                  Text(
+                    'home.users.form.password'.tr(),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 6),
@@ -1023,8 +1024,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Từ 12 đến 128 ký tự.',
+                  Text(
+                    'home.users.form.password_hint'.tr(),
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 24),
@@ -1041,8 +1042,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text(
-                          'Hủy',
+                        child: Text(
+                          'common.cancel'.tr(),
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                         ),
                       ),
@@ -1051,13 +1052,13 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                         onPressed: () async {
                           if (nameCtrl.text.trim().isEmpty || emailCtrl.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Vui lòng điền đầy đủ họ tên và email.')),
+                              SnackBar(content: Text('home.users.form.err_required'.tr())),
                             );
                             return;
                           }
                           if (editingUser == null && passCtrl.text.trim().length < 6) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Mật khẩu tối thiểu từ 6 đến 128 ký tự.')),
+                              SnackBar(content: Text('home.users.form.err_password'.tr())),
                             );
                             return;
                           }
@@ -1079,8 +1080,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                             if (mounted) {
                               if (res.success) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Đã cập nhật thông tin người dùng!'),
+                                  SnackBar(
+                                    content: Text('home.users.form.updated'.tr()),
                                     backgroundColor: Color(0xFF059669),
                                   ),
                                 );
@@ -1088,7 +1089,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(res.error ?? 'Không thể cập nhật người dùng.'),
+                                    content: Text(res.error ?? 'home.users.form.err_update'.tr()),
                                     backgroundColor: const Color(0xFFDC2626),
                                   ),
                                 );
@@ -1103,8 +1104,8 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                             if (mounted) {
                               if (res.success) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Đã thêm người dùng thành công!'),
+                                  SnackBar(
+                                    content: Text('home.users.form.added'.tr()),
                                     backgroundColor: Color(0xFF059669),
                                   ),
                                 );
@@ -1112,7 +1113,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(res.error ?? 'Không thể tạo người dùng.'),
+                                    content: Text(res.error ?? 'home.users.form.err_create'.tr()),
                                     backgroundColor: const Color(0xFFDC2626),
                                   ),
                                 );
@@ -1128,7 +1129,7 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         child: Text(
-                          editingUser != null ? 'Lưu thay đổi' : 'Lưu người dùng',
+                          editingUser != null ? 'home.users.form.save_changes'.tr() : 'home.users.form.save_user'.tr(),
                           style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
                         ),
                       ),

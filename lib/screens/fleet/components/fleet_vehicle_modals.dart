@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_fleet_models.dart';
 import '../../../services/fleet_service.dart';
 
@@ -49,8 +50,8 @@ void showCreateVehicleModal({
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Thêm xe mới',
+                      Text(
+                        'fleet.action.add_new_vehicle'.tr(),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       IconButton(
@@ -62,19 +63,19 @@ void showCreateVehicleModal({
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Biển số không được trùng với xe khác trong danh mục.',
+                  Text(
+                    'fleet.vehicle.plate_unique_desc'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 18),
 
-                  buildFleetRequiredLabel('Biển số'),
+                  buildFleetRequiredLabel('fleet.vehicle.plate_no'.tr()),
                   const SizedBox(height: 6),
                   TextField(
                     controller: plateCtrl,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Ví dụ: 51A-123.45',
+                      hintText: 'fleet.vehicle.plate_hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: Colors.white,
@@ -86,13 +87,13 @@ void showCreateVehicleModal({
                   ),
                   const SizedBox(height: 14),
 
-                  buildFleetRequiredLabel('Tên xe'),
+                  buildFleetRequiredLabel('fleet.vehicle.name'.tr()),
                   const SizedBox(height: 6),
                   TextField(
                     controller: nameCtrl,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Ví dụ: Toyota Innova',
+                      hintText: 'fleet.vehicle.name_hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: Colors.white,
@@ -104,7 +105,7 @@ void showCreateVehicleModal({
                   ),
                   const SizedBox(height: 14),
 
-                  buildFleetRequiredLabel('Số chỗ ngồi'),
+                  buildFleetRequiredLabel('fleet.vehicle.seat_count'.tr()),
                   const SizedBox(height: 6),
                   TextField(
                     controller: seatsCtrl,
@@ -121,7 +122,7 @@ void showCreateVehicleModal({
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('Ghi chú', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  Text('common.note'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   TextField(
                     controller: noteCtrl,
@@ -150,7 +151,7 @@ void showCreateVehicleModal({
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Hủy', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                       const SizedBox(width: 10),
                       ElevatedButton(
@@ -164,7 +165,7 @@ void showCreateVehicleModal({
 
                                 if (plate.isEmpty || name.isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Vui lòng nhập Biển số và Tên xe!')),
+                                    SnackBar(content: Text('fleet.vehicle.required_warn'.tr())),
                                   );
                                   return;
                                 }
@@ -196,7 +197,7 @@ void showCreateVehicleModal({
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 messenger.showSnackBar(
                                   SnackBar(
-                                    content: Text('✅ Đã thêm xe $name ($plate) thành công!'),
+                                    content: Text('fleet.vehicle.added'.tr(args: {'name': name, 'plate': plate})),
                                     backgroundColor: const Color(0xFF059669),
                                   ),
                                 );
@@ -210,7 +211,7 @@ void showCreateVehicleModal({
                         ),
                         child: isSubmitting
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)))
-                            : const Text('Lưu', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            : Text('common.save'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -260,8 +261,8 @@ void showEditVehicleModal({
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Chỉnh sửa xe',
+                      Text(
+                        'fleet.vehicle.edit_title'.tr(),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       IconButton(
@@ -273,19 +274,19 @@ void showEditVehicleModal({
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Cập nhật thông tin phương tiện trong danh mục.',
+                  Text(
+                    'fleet.vehicle.edit_desc'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 18),
 
-                  buildFleetRequiredLabel('Biển số'),
+                  buildFleetRequiredLabel('fleet.vehicle.plate_no'.tr()),
                   const SizedBox(height: 6),
                   TextField(
                     controller: plateCtrl,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Ví dụ: 51A-123.45',
+                      hintText: 'fleet.vehicle.plate_hint'.tr(),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -296,13 +297,13 @@ void showEditVehicleModal({
                   ),
                   const SizedBox(height: 14),
 
-                  buildFleetRequiredLabel('Tên xe'),
+                  buildFleetRequiredLabel('fleet.vehicle.name'.tr()),
                   const SizedBox(height: 6),
                   TextField(
                     controller: nameCtrl,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Ví dụ: Toyota Innova',
+                      hintText: 'fleet.vehicle.name_hint'.tr(),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -313,7 +314,7 @@ void showEditVehicleModal({
                   ),
                   const SizedBox(height: 14),
 
-                  buildFleetRequiredLabel('Số chỗ ngồi'),
+                  buildFleetRequiredLabel('fleet.vehicle.seat_count'.tr()),
                   const SizedBox(height: 6),
                   TextField(
                     controller: seatsCtrl,
@@ -330,7 +331,7 @@ void showEditVehicleModal({
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('Ghi chú', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  Text('common.note'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   TextField(
                     controller: noteCtrl,
@@ -359,7 +360,7 @@ void showEditVehicleModal({
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Hủy', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                       const SizedBox(width: 10),
                       ElevatedButton(
@@ -373,7 +374,7 @@ void showEditVehicleModal({
 
                                 if (plate.isEmpty || name.isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Vui lòng nhập Biển số và Tên xe!')),
+                                    SnackBar(content: Text('fleet.vehicle.required_warn'.tr())),
                                   );
                                   return;
                                 }
@@ -405,7 +406,7 @@ void showEditVehicleModal({
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 messenger.showSnackBar(
                                   SnackBar(
-                                    content: Text('✅ Đã cập nhật xe $name ($plate) thành công!'),
+                                    content: Text('fleet.vehicle.updated'.tr(args: {'name': name, 'plate': plate})),
                                     backgroundColor: const Color(0xFF059669),
                                   ),
                                 );
@@ -419,7 +420,7 @@ void showEditVehicleModal({
                         ),
                         child: isSubmitting
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)))
-                            : const Text('Lưu thay đổi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            : Text('fleet.action.save_changes'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -441,7 +442,7 @@ void confirmToggleVehicleStatus({
   required VoidCallback onRefreshData,
 }) {
   final isAvailable = vehicle.status == 'ACTIVE';
-  final actionText = isAvailable ? 'Ngừng sử dụng' : 'Sử dụng lại';
+  final actionText = isAvailable ? 'fleet.status.out_of_use'.tr() : 'fleet.action.reactivate'.tr();
   final targetStatus = isAvailable ? 'INACTIVE' : 'ACTIVE';
 
   showDialog(
@@ -450,20 +451,20 @@ void confirmToggleVehicleStatus({
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Text(
-          isAvailable ? 'Ngừng sử dụng xe?' : 'Kích hoạt sử dụng lại xe?',
+          isAvailable ? 'fleet.vehicle.deactivate_title'.tr() : 'fleet.vehicle.reactivate_title'.tr(),
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
         ),
         content: Text(
           isAvailable
-              ? 'Bạn có chắc chắn muốn ngừng sử dụng xe "${vehicle.name}" (${vehicle.plateNo}) không? Xe này sẽ tạm thời không thể phân công cho các lịch trình mới.'
-              : 'Bạn có chắc chắn muốn kích hoạt sử dụng lại xe "${vehicle.name}" (${vehicle.plateNo}) không?',
+              ? 'fleet.vehicle.deactivate_confirm'.tr(args: {'name': vehicle.name, 'plate': vehicle.plateNo})
+              : 'fleet.vehicle.reactivate_confirm'.tr(args: {'name': vehicle.name, 'plate': vehicle.plateNo}),
           style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
         ),
         actionsPadding: const EdgeInsets.only(right: 16, bottom: 14),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dlgCtx),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+            child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -477,8 +478,8 @@ void confirmToggleVehicleStatus({
               messenger.showSnackBar(
                 SnackBar(
                   content: Text(isAvailable
-                      ? 'Đã chuyển xe "${vehicle.name}" sang ngừng sử dụng.'
-                      : '✅ Đã kích hoạt sử dụng lại xe "${vehicle.name}".'),
+                      ? 'fleet.vehicle.deactivated_done'.tr(args: {'name': vehicle.name})
+                      : 'fleet.vehicle.reactivated_done'.tr(args: {'name': vehicle.name})),
                   backgroundColor: isAvailable ? const Color(0xFF475569) : const Color(0xFF059669),
                 ),
               );

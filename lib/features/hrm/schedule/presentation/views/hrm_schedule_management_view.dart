@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../models/hrm_models.dart';
 import '../../../../../models/hrm_attendance_models.dart';
 import '../../../../../models/hrm_work_schedule_models.dart';
@@ -171,9 +172,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    'Phân ca',
+                    'hrm_schedule.phan_ca'.tr(),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -183,7 +184,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   ),
                   SizedBox(height: 3),
                   Text(
-                    'Phân công hoặc nhả ca làm việc cho nhân viên.',
+                    'hrm_schedule.phan_cong_hoac_nha_ca_lam_viec_cho'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
                   ),
                 ],
@@ -195,14 +196,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 OutlinedButton.icon(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Công cụ: Tự động xếp lịch, Xuất Excel, Nhập lịch mẫu'),
+                      SnackBar(
+                        content: Text('hrm_schedule.cong_cu_tu_dong_xep_lich_xuat_excel'.tr()),
                         duration: Duration(seconds: 2),
                       ),
                     );
                   },
                   icon: const Icon(Icons.tune_rounded, size: 13),
-                  label: const Text('Công cụ', style: TextStyle(fontSize: 11)),
+                  label: Text('hrm_schedule.cong_cu'.tr(), style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF334155),
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -216,7 +217,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 OutlinedButton.icon(
                   onPressed: _showScheduleHistoryBottomSheet,
                   icon: const Icon(Icons.history_rounded, size: 13),
-                  label: const Text('Lịch sử', style: TextStyle(fontSize: 11)),
+                  label: Text('hrm_schedule.lich_su'.tr(), style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF334155),
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -239,19 +240,19 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
             children: [
               _buildScheduleTabPill(
                 id: 'ASSIGN',
-                label: 'Phân ca',
+                label: 'hrm_schedule.phan_ca'.tr(),
                 icon: Icons.person_add_alt_1_outlined,
               ),
               const SizedBox(width: 8),
               _buildScheduleTabPill(
                 id: 'RELEASE',
-                label: 'Nhả ca',
+                label: 'hrm_schedule.nha_ca'.tr(),
                 icon: Icons.person_remove_alt_1_outlined,
               ),
               const SizedBox(width: 8),
               _buildScheduleTabPill(
                 id: 'CALENDAR',
-                label: 'Lịch làm việc',
+                label: 'hrm_schedule.lich_lam_viec'.tr(),
                 icon: Icons.calendar_month_outlined,
               ),
             ],
@@ -359,14 +360,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      'Thông tin phân ca',
+                      'hrm_schedule.thong_tin_phan_ca'.tr(),
                       style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Thiết lập phạm vi, ca làm việc và ngày hiệu lực áp dụng theo quy định.',
+                      'hrm_schedule.thiet_lap_pham_vi_ca_lam_viec_va_ngay'.tr(),
                       style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                     ),
                   ],
@@ -383,8 +384,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
           const SizedBox(height: 16),
 
           // 1. Phạm vi áp dụng *
-          const Text(
-            'Đối tượng áp dụng *',
+          Text(
+            'hrm_schedule.doi_tuong_ap_dung'.tr(),
             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
           ),
           const SizedBox(height: 8),
@@ -395,8 +396,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: _buildScheduleScopeTile(
                   keyId: 'ONE_EMPLOYEE',
-                  title: 'Một nhân viên',
-                  desc: 'Áp dụng cho đúng một nhân viên',
+                  title: 'hrm_schedule.mot_nhan_vien'.tr(),
+                  desc: 'hrm_schedule.ap_dung_cho_dung_mot_nhan_vien'.tr(),
                   icon: Icons.person_outline,
                 ),
               ),
@@ -404,8 +405,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: _buildScheduleScopeTile(
                   keyId: 'MULTI_EMPLOYEES',
-                  title: 'Nhiều nhân viên',
-                  desc: 'Chọn danh sách nhiều nhân viên',
+                  title: 'hrm_schedule.nhieu_nhan_vien'.tr(),
+                  desc: 'hrm_schedule.chon_danh_sach_nhieu_nhan_vien'.tr(),
                   icon: Icons.group_outlined,
                 ),
               ),
@@ -417,8 +418,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: _buildScheduleScopeTile(
                   keyId: 'BY_DEPARTMENT',
-                  title: 'Theo đơn vị',
-                  desc: 'Áp dụng theo phòng ban / đơn vị',
+                  title: 'hrm_schedule.theo_don_vi'.tr(),
+                  desc: 'hrm_schedule.ap_dung_theo_phong_ban_don_vi'.tr(),
                   icon: Icons.apartment_outlined,
                 ),
               ),
@@ -426,8 +427,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: _buildScheduleScopeTile(
                   keyId: 'ALL_EMPLOYEES',
-                  title: 'Toàn bộ nhân viên',
-                  desc: 'Áp dụng cho toàn công ty',
+                  title: 'hrm_schedule.toan_bo_nhan_vien'.tr(),
+                  desc: 'hrm_schedule.ap_dung_cho_toan_cong_ty'.tr(),
                   icon: Icons.badge_outlined,
                 ),
               ),
@@ -437,8 +438,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
 
           // Scope-specific Target Input
           if (_scheduleScope == 'ONE_EMPLOYEE') ...[
-            const Text(
-              'Nhân viên *',
+            Text(
+              'hrm_schedule.nhan_vien'.tr(),
               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
             ),
             const SizedBox(height: 6),
@@ -478,13 +479,13 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Danh sách nhân viên * (${_scheduleSelectedEmployeeIds.length} đã chọn)',
+                  'hrm_schedule.danh_sach_nhan_vien_da_chon'.tr(args: {'length': _scheduleSelectedEmployeeIds.length}),
                   style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                 ),
                 TextButton(
                   onPressed: _showSelectMultiEmployeesSheet,
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                  child: const Text('+ Chọn nhân viên', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Text('hrm_schedule.chon_nhan_vien'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -500,9 +501,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'Bấm để chọn danh sách nhân sự áp dụng...',
+                      'hrm_schedule.bam_de_chon_danh_sach_nhan_su_ap_dung'.tr(),
                       style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     ),
                   ),
@@ -529,8 +530,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               ),
             const SizedBox(height: 14),
           ] else if (_scheduleScope == 'BY_DEPARTMENT') ...[
-            const Text(
-              'Đơn vị áp dụng *',
+            Text(
+              'hrm_schedule.don_vi_ap_dung'.tr(),
               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
             ),
             const SizedBox(height: 6),
@@ -547,7 +548,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
                   value: _scheduleSelectedUnitId ?? (_scheduleShiftUnits.isNotEmpty ? _scheduleShiftUnits.first.id : null),
-                  hint: const Text('Chọn đơn vị / phòng ban', style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8))),
+                  hint: Text('hrm_schedule.chon_don_vi_phong_ban'.tr(), style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8))),
                   items: _scheduleShiftUnits.isNotEmpty
                       ? _scheduleShiftUnits
                           .map((u) => DropdownMenuItem(
@@ -578,7 +579,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     onChanged: (val) => setState(() => _scheduleIncludeChildUnits = val ?? true),
                   ),
-                  const Text('Bao gồm các đơn vị con', style: TextStyle(fontSize: 12, color: Color(0xFF334155))),
+                  Text('hrm_schedule.bao_gom_cac_don_vi_con'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF334155))),
                 ],
               ),
             ],
@@ -592,12 +593,12 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 border: Border.all(color: const Color(0xFFBBF7D0)),
               ),
               child: Row(
-                children: const [
+                children: [
                   Icon(Icons.check_circle_outline, size: 16, color: Color(0xFF16A34A)),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Sẽ áp dụng cho toàn bộ nhân sự đang làm việc trong công ty.',
+                      'hrm_schedule.se_ap_dung_cho_toan_bo_nhan_su_dang'.tr(),
                       style: TextStyle(fontSize: 12, color: Color(0xFF166534)),
                     ),
                   ),
@@ -608,8 +609,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
           ],
 
           // 2. Ngày hiệu lực * & Không có ngày kết thúc
-          const Text(
-            'Ngày hiệu lực *',
+          Text(
+            'hrm_schedule.ngay_hieu_luc'.tr(),
             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
           ),
           const SizedBox(height: 6),
@@ -684,8 +685,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Không có ngày kết thúc (lịch định kỳ)',
+                  Text(
+                    'hrm_schedule.khong_co_ngay_ket_thuc_lich_dinh_ky'.tr(),
                     style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
                   ),
                 ],
@@ -696,8 +697,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
           // Nếu có ngày kết thúc: hiện ô Đến ngày (tối đa 366 ngày)
           if (!_scheduleIsOpenEnded) ...[
             const SizedBox(height: 10),
-            const Text(
-              'Đến ngày * (tối đa 366 ngày)',
+            Text(
+              'hrm_schedule.den_ngay_toi_da_366_ngay'.tr(),
               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
             ),
             const SizedBox(height: 6),
@@ -727,7 +728,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     Text(
                       _scheduleEndDate != null
                           ? '${_scheduleEndDate!.day.toString().padLeft(2, '0')}/${_scheduleEndDate!.month.toString().padLeft(2, '0')}/${_scheduleEndDate!.year}'
-                          : 'Chọn đến ngày...',
+                          : 'hrm_schedule.chon_den_ngay'.tr(),
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -746,8 +747,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Ghi chú',
+              Text(
+                'common.note'.tr(),
                 style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
               ),
               Text(
@@ -764,7 +765,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               counterText: '',
-              hintText: 'Nhập ghi chú (không bắt buộc)',
+              hintText: 'hrm_schedule.nhap_ghi_chu_khong_bat_buoc'.tr(),
               hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -786,14 +787,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Ca làm việc *',
+                    Text(
+                      'hrm_schedule.ca_lam_viec'.tr(),
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     Row(
                       children: [
                         ChoiceChip(
-                          label: const Text('Lịch tuần', style: TextStyle(fontSize: 11)),
+                          label: Text('hrm_schedule.lich_tuan'.tr(), style: TextStyle(fontSize: 11)),
                           selected: !_scheduleUseTemplate,
                           selectedColor: const Color(0xFFEFF6FF),
                           side: BorderSide(color: !_scheduleUseTemplate ? const Color(0xFF3B82F6) : const Color(0xFFCBD5E1)),
@@ -801,7 +802,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         ),
                         const SizedBox(width: 6),
                         ChoiceChip(
-                          label: const Text('Mẫu lịch', style: TextStyle(fontSize: 11)),
+                          label: Text('hrm_schedule.mau_lich'.tr(), style: TextStyle(fontSize: 11)),
                           selected: _scheduleUseTemplate,
                           selectedColor: const Color(0xFFEFF6FF),
                           side: BorderSide(color: _scheduleUseTemplate ? const Color(0xFF3B82F6) : const Color(0xFFCBD5E1)),
@@ -815,7 +816,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
 
                 if (_scheduleUseTemplate) ...[
                   // Dùng mẫu lịch đã lưu
-                  const Text('Chọn mẫu lịch tuần *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  Text('hrm_schedule.chon_mau_lich_tuan'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -830,7 +831,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         menuMaxHeight: 280,
                         borderRadius: BorderRadius.circular(10),
                         value: _scheduleSelectedTemplateId,
-                        hint: const Text('Chọn mẫu lịch tuần đã lưu...', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                        hint: Text('hrm_schedule.chon_mau_lich_tuan_da_luu'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                         items: _scheduleTemplates.map((t) {
                           return DropdownMenuItem(
                             value: t.id,
@@ -850,7 +851,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     children: [
                       ActionChip(
                         avatar: const Icon(Icons.flash_on, size: 14, color: Color(0xFF2563EB)),
-                        label: const Text('T2–T6 cùng ca', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                        label: Text('hrm_schedule.t2_t6_cung_ca'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
                         backgroundColor: const Color(0xFFEFF6FF),
                         side: const BorderSide(color: Color(0xFFBFDBFE)),
                         onPressed: () {
@@ -866,7 +867,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         },
                       ),
                       ActionChip(
-                        label: const Text('T7 Nghỉ', style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
+                        label: Text('hrm_schedule.t7_nghi'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Color(0xFFCBD5E1)),
                         onPressed: () {
@@ -881,7 +882,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         },
                       ),
                       ActionChip(
-                        label: const Text('CN Nghỉ', style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
+                        label: Text('hrm_schedule.cn_nghi'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Color(0xFFCBD5E1)),
                         onPressed: () {
@@ -911,7 +912,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         (r) => r.weekday == weekday,
                         orElse: () => HrmWeekdayRule(weekday: weekday, dayType: weekday <= 5 ? 'SHIFT' : 'OFF'),
                       );
-                      final dayLabel = weekday == 7 ? 'Chủ nhật' : 'Thứ ${weekday + 1}';
+                      final dayLabel = _weekdayName(weekday);
 
                       return Row(
                         children: [
@@ -938,9 +939,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                _buildWeekdayTypeBtn(weekday, 'SHIFT', 'Ca', rule.dayType == 'SHIFT'),
-                                _buildWeekdayTypeBtn(weekday, 'OFF', 'Nghỉ', rule.dayType == 'OFF'),
-                                _buildWeekdayTypeBtn(weekday, 'SKIP', 'Bỏ qua', rule.dayType == 'SKIP'),
+                                _buildWeekdayTypeBtn(weekday, 'SHIFT', 'hrm_schedule.shift'.tr(), rule.dayType == 'SHIFT'),
+                                _buildWeekdayTypeBtn(weekday, 'OFF', 'hrm_schedule.nghi'.tr(), rule.dayType == 'OFF'),
+                                _buildWeekdayTypeBtn(weekday, 'SKIP', 'hrm_schedule.bo_qua'.tr(), rule.dayType == 'SKIP'),
                               ],
                             ),
                           ),
@@ -977,7 +978,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                           else
                             Expanded(
                               child: Text(
-                                rule.dayType == 'OFF' ? 'Ngày nghỉ' : 'Không thay đổi ngày này',
+                                rule.dayType == 'OFF' ? 'hrm_schedule.ngay_nghi'.tr() : 'hrm_schedule.khong_thay_doi_ngay_nay'.tr(),
                                 style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
                               ),
                             ),
@@ -1012,7 +1013,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                 ),
-                child: const Text('Hủy', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 10),
               ElevatedButton(
@@ -1031,8 +1032,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E293B)),
                       )
-                    : const Text(
-                        'Xác nhận phân ca',
+                    : Text(
+                        'hrm_schedule.xac_nhan_phan_ca'.tr(),
                         style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                       ),
               ),
@@ -1207,14 +1208,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Lịch sử phân ca gần đây',
+                        'hrm_schedule.lich_su_phan_ca_gan_day'.tr(),
                         style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Hiển thị các lần phân ca gần nhất.',
+                        'hrm_schedule.hien_thi_cac_lan_phan_ca_gan_nhat'.tr(),
                         style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -1223,10 +1224,10 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               ),
               InkWell(
                 onTap: _showScheduleHistoryBottomSheet,
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                   child: Text(
-                    'Xem tất cả >',
+                    'hrm_schedule.xem_tat_ca'.tr(),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                   ),
                 ),
@@ -1252,16 +1253,16 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Column(
-                  children: const [
+                  children: [
                     Icon(Icons.history_toggle_off_rounded, size: 32, color: Color(0xFFCBD5E1)),
                     SizedBox(height: 6),
                     Text(
-                      'Chưa có lịch sử phân ca nào',
+                      'hrm_schedule.chua_co_lich_su_phan_ca_nao'.tr(),
                       style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Các lượt phân ca thực tế từ hệ thống sẽ xuất hiện tại đây.',
+                      'hrm_schedule.cac_luot_phan_ca_thuc_te_tu_he_thong'.tr(),
                       style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                       textAlign: TextAlign.center,
                     ),
@@ -1286,38 +1287,38 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         ),
                       ),
                       child: Row(
-                        children: const [
+                        children: [
                           SizedBox(
                             width: 105,
                             child: Text(
-                              'Ngày hiệu lực',
+                              'hrm_schedule.ngay_hieu_luc_2'.tr(),
                               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                             ),
                           ),
                           SizedBox(
                             width: 110,
                             child: Text(
-                              'Phạm vi',
+                              'hrm_schedule.pham_vi'.tr(),
                               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                             ),
                           ),
                           Expanded(
                             child: Text(
-                              'Ca',
+                              'hrm_schedule.shift'.tr(),
                               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                             ),
                           ),
                           SizedBox(
                             width: 140,
                             child: Text(
-                              'Người thực hiện',
+                              'hrm_schedule.nguoi_thuc_hien'.tr(),
                               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                             ),
                           ),
                           SizedBox(
                             width: 115,
                             child: Text(
-                              'Thao tác',
+                              'common.actions'.tr(),
                               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                             ),
                           ),
@@ -1333,7 +1334,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                       separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
                       itemBuilder: (context, i) {
                         final h = _recentScheduleHistory[i];
-                        final actionLabel = (h['actionLabel'] ?? h['title'] ?? 'Thay lịch định kỳ').toString();
+                        final actionLabel = (h['actionLabel'] ?? h['title'] ?? 'hrm_schedule.thay_lich_dinh_ky'.tr()).toString();
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           child: Row(
@@ -1378,7 +1379,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      (h['actorName'] ?? h['actor'] ?? 'Quản trị viên').toString(),
+                                      (h['actorName'] ?? h['actor'] ?? 'hrm_schedule.quan_tri_vien'.tr()).toString(),
                                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -1466,14 +1467,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    'Nhả ca làm việc',
+                    'hrm_schedule.nha_ca_lam_viec'.tr(),
                     style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Thu hồi hoặc gỡ lịch ca đã phân công cho nhân viên trong khoảng thời gian.',
+                    'hrm_schedule.thu_hoi_hoac_go_lich_ca_da_phan_cong'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                 ],
@@ -1483,15 +1484,15 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
           const SizedBox(height: 16),
 
           // 1. Phạm vi nhả ca *
-          const Text('Đối tượng áp dụng *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+          Text('hrm_schedule.doi_tuong_ap_dung'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: _buildReleaseScopeTile(
                   keyId: 'ONE_EMPLOYEE',
-                  title: 'Một nhân viên',
-                  desc: 'Nhả ca cho một nhân viên',
+                  title: 'hrm_schedule.mot_nhan_vien'.tr(),
+                  desc: 'hrm_schedule.nha_ca_cho_mot_nhan_vien'.tr(),
                   icon: Icons.person_outline,
                 ),
               ),
@@ -1499,8 +1500,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: _buildReleaseScopeTile(
                   keyId: 'MULTI_EMPLOYEES',
-                  title: 'Nhiều nhân viên',
-                  desc: 'Chọn danh sách nhân viên',
+                  title: 'hrm_schedule.nhieu_nhan_vien'.tr(),
+                  desc: 'hrm_schedule.chon_danh_sach_nhan_vien'.tr(),
                   icon: Icons.group_outlined,
                 ),
               ),
@@ -1512,8 +1513,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: _buildReleaseScopeTile(
                   keyId: 'BY_DEPARTMENT',
-                  title: 'Theo đơn vị',
-                  desc: 'Nhả ca theo phòng ban',
+                  title: 'hrm_schedule.theo_don_vi'.tr(),
+                  desc: 'hrm_schedule.nha_ca_theo_phong_ban'.tr(),
                   icon: Icons.apartment_outlined,
                 ),
               ),
@@ -1521,8 +1522,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               Expanded(
                 child: _buildReleaseScopeTile(
                   keyId: 'ALL_EMPLOYEES',
-                  title: 'Toàn bộ nhân viên',
-                  desc: 'Nhả ca toàn công ty',
+                  title: 'hrm_schedule.toan_bo_nhan_vien'.tr(),
+                  desc: 'hrm_schedule.nha_ca_toan_cong_ty'.tr(),
                   icon: Icons.badge_outlined,
                 ),
               ),
@@ -1532,7 +1533,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
 
           // Target input
           if (_releaseScope == 'ONE_EMPLOYEE') ...[
-            const Text('Nhân viên *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+            Text('hrm_schedule.nhan_vien'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
             const SizedBox(height: 6),
             InkWell(
               onTap: () => _showSelectSingleEmployeeSheet(isForRelease: true),
@@ -1570,13 +1571,13 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Danh sách nhân viên * (${_releaseEmployeeIds.length} đã chọn)',
+                  'hrm_schedule.danh_sach_nhan_vien_da_chon'.tr(args: {'length': _releaseEmployeeIds.length}),
                   style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                 ),
                 TextButton(
                   onPressed: () => _showSelectMultiEmployeesSheet(isForRelease: true),
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                  child: const Text('+ Chọn nhân viên', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Text('hrm_schedule.chon_nhan_vien'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -1592,8 +1593,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  child: const Center(
-                    child: Text('Bấm để chọn danh sách nhân sự cần nhả ca...', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                  child: Center(
+                    child: Text('hrm_schedule.bam_de_chon_danh_sach_nhan_su_can_nha'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                   ),
                 ),
               )
@@ -1616,7 +1617,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               ),
             const SizedBox(height: 14),
           ] else if (_releaseScope == 'BY_DEPARTMENT') ...[
-            const Text('Đơn vị áp dụng *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+            Text('hrm_schedule.don_vi_ap_dung'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1631,7 +1632,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
                   value: _releaseUnitId ?? (_scheduleShiftUnits.isNotEmpty ? _scheduleShiftUnits.first.id : null),
-                  hint: const Text('Chọn đơn vị / phòng ban', style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8))),
+                  hint: Text('hrm_schedule.chon_don_vi_phong_ban'.tr(), style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8))),
                   items: _scheduleShiftUnits.isNotEmpty
                       ? _scheduleShiftUnits
                           .map((u) => DropdownMenuItem(
@@ -1662,12 +1663,12 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 border: Border.all(color: const Color(0xFFFECACA)),
               ),
               child: Row(
-                children: const [
+                children: [
                   Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFDC2626)),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Sẽ thu hồi lịch phân ca của toàn bộ nhân viên công ty trong khoảng thời gian đã chọn.',
+                      'hrm_schedule.se_thu_hoi_lich_phan_ca_cua_toan_bo'.tr(),
                       style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
                     ),
                   ),
@@ -1684,7 +1685,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Từ ngày *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                    Text('hrm_schedule.tu_ngay'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                     const SizedBox(height: 6),
                     InkWell(
                       onTap: () async {
@@ -1724,7 +1725,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Đến ngày *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                    Text('hrm_schedule.den_ngay'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                     const SizedBox(height: 6),
                     InkWell(
                       onTap: () async {
@@ -1780,9 +1781,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Hủy cả ngày ngoại lệ (mặc định giữ lại ngoại lệ)',
+                    'hrm_schedule.huy_ca_ngay_ngoai_le_mac_dinh_giu_lai'.tr(),
                     style: TextStyle(fontSize: 12, color: Color(0xFF334155)),
                   ),
                 ),
@@ -1792,7 +1793,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
           const SizedBox(height: 12),
 
           // 3. Lý do nhả ca
-          const Text('Lý do nhả ca', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+          Text('hrm_schedule.ly_do_nha_ca'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
           const SizedBox(height: 6),
           TextField(
             controller: _releaseReasonCtrl,
@@ -1800,7 +1801,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
             maxLength: 500,
             decoration: InputDecoration(
               counterText: '',
-              hintText: 'Nhập lý do thu hồi lịch ca (không bắt buộc)...',
+              hintText: 'hrm_schedule.nhap_ly_do_thu_hoi_lich_ca_khong_bat'.tr(),
               hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1821,7 +1822,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               ),
               child: _isSubmittingRelease
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Xác nhận nhả ca', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  : Text('hrm_schedule.xac_nhan_nha_ca'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -1905,14 +1906,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Lịch làm việc phân ca',
+                        'hrm_schedule.lich_lam_viec_phan_ca'.tr(),
                         style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Theo dõi ca làm việc thực tế tháng 10/2026',
+                        'hrm_schedule.theo_doi_ca_lam_viec_thuc_te_thang_10'.tr(),
                         style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -1922,7 +1923,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               ElevatedButton.icon(
                 onPressed: _showCreateExceptionModal,
                 icon: const Icon(Icons.flash_on_outlined, size: 14),
-                label: const Text('Thiết lập ngoại lệ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                label: Text('hrm_schedule.thiet_lap_ngoai_le'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
@@ -1944,7 +1945,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               separatorBuilder: (_, __) => const Divider(height: 12, color: Color(0xFFF1F5F9)),
               itemBuilder: (context, idx) {
                 final emp = _employees[idx];
-                final shiftLabel = idx % 2 == 0 ? 'T2-T6: Ca HC; T7: HC-T7; CN: OFF' : 'T2-T7: Ca Sáng (CA1); CN: OFF';
+                final shiftLabel = idx % 2 == 0 ? 'T2-T6: Ca HC; T7: HC-T7; CN: OFF' : 'hrm_schedule.t2_t7_ca_sang_ca1_cn_off'.tr();
                 return Row(
                   children: [
                     CircleAvatar(
@@ -1962,7 +1963,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         children: [
                           Text(emp.fullName, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                           const SizedBox(height: 2),
-                          Text('${emp.code} • ${emp.department.isNotEmpty ? emp.department : 'Nhân sự'}', style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                          Text('hrm_schedule.text'.tr(args: {'code': emp.code, 'arg2': emp.department.isNotEmpty ? emp.department : 'hrm_schedule.nhan_su'.tr()}), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                         ],
                       ),
                     ),
@@ -1983,10 +1984,10 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               },
             ),
           ] else ...[
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('Đang tải danh sách lịch làm việc...', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                child: Text('hrm_schedule.dang_tai_danh_sach_lich_lam_viec'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
               ),
             ),
           ],
@@ -1997,7 +1998,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
 
   String _getScheduleSelectedEmployeeDisplayName() {
     if (_scheduleSelectedEmployeeId == null) {
-      return 'Tìm theo mã hoặc tên nhân viên...';
+      return 'hrm_schedule.tim_theo_ma_hoac_ten_nhan_vien'.tr();
     }
     return _getEmployeeNameById(_scheduleSelectedEmployeeId!);
   }
@@ -2035,7 +2036,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        isForRelease ? 'Chọn nhân viên cần nhả ca' : 'Chọn nhân viên áp dụng',
+                        isForRelease ? 'hrm_schedule.chon_nhan_vien_can_nha_ca'.tr() : 'hrm_schedule.chon_nhan_vien_ap_dung'.tr(),
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       IconButton(
@@ -2048,7 +2049,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   TextField(
                     onChanged: (val) => setModalState(() => query = val),
                     decoration: InputDecoration(
-                      hintText: 'Tìm theo mã hoặc tên nhân viên...',
+                      hintText: 'hrm_schedule.tim_theo_ma_hoac_ten_nhan_vien'.tr(),
                       prefixIcon: const Icon(Icons.search, size: 18),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -2064,7 +2065,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         final empId = hasOptions ? _scheduleEmployeeOptions[idx].employeeId : _employees[idx].id;
                         final empName = hasOptions ? _scheduleEmployeeOptions[idx].fullName : _employees[idx].fullName;
                         final empCode = hasOptions ? _scheduleEmployeeOptions[idx].employeeCode : _employees[idx].code;
-                        final dept = hasOptions ? (_scheduleEmployeeOptions[idx].department ?? 'Nhân sự') : (_employees[idx].department.isNotEmpty ? _employees[idx].department : 'Nhân sự');
+                        final dept = hasOptions ? (_scheduleEmployeeOptions[idx].department ?? 'hrm_schedule.nhan_su'.tr()) : (_employees[idx].department.isNotEmpty ? _employees[idx].department : 'hrm_schedule.nhan_su'.tr());
 
                         final isSelected = isForRelease ? empId == _releaseEmployeeId : empId == _scheduleSelectedEmployeeId;
                         return ListTile(
@@ -2135,7 +2136,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Chọn nhiều nhân viên (${currentSelection.length} đã chọn)', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      Text('hrm_schedule.chon_nhieu_nhan_vien_da_chon'.tr(args: {'length': currentSelection.length}), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                       IconButton(
                         icon: const Icon(Icons.close, size: 20),
                         onPressed: () => Navigator.pop(ctx),
@@ -2146,7 +2147,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   TextField(
                     onChanged: (val) => setModalState(() => query = val),
                     decoration: InputDecoration(
-                      hintText: 'Tìm theo mã hoặc tên nhân viên...',
+                      hintText: 'hrm_schedule.tim_theo_ma_hoac_ten_nhan_vien'.tr(),
                       prefixIcon: const Icon(Icons.search, size: 18),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -2162,7 +2163,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         final empId = hasOptions ? _scheduleEmployeeOptions[idx].employeeId : _employees[idx].id;
                         final empName = hasOptions ? _scheduleEmployeeOptions[idx].fullName : _employees[idx].fullName;
                         final empCode = hasOptions ? _scheduleEmployeeOptions[idx].employeeCode : _employees[idx].code;
-                        final dept = hasOptions ? (_scheduleEmployeeOptions[idx].department ?? 'Nhân sự') : (_employees[idx].department.isNotEmpty ? _employees[idx].department : 'Nhân sự');
+                        final dept = hasOptions ? (_scheduleEmployeeOptions[idx].department ?? 'hrm_schedule.nhan_su'.tr()) : (_employees[idx].department.isNotEmpty ? _employees[idx].department : 'hrm_schedule.nhan_su'.tr());
 
                         final isSelected = currentSelection.contains(empId);
                         return CheckboxListTile(
@@ -2196,7 +2197,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: Text('Hoàn tất chọn (${currentSelection.length})', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('hrm_schedule.hoan_tat_chon'.tr(args: {'length': currentSelection.length}), style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -2237,14 +2238,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
-                                'Lịch sử thay đổi phân ca',
+                                'hrm_schedule.lich_su_thay_doi_phan_ca'.tr(),
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Các đợt phân ca, hủy và sao chép gần đây (tối đa 100 bản ghi).',
+                                'hrm_schedule.cac_dot_phan_ca_huy_va_sao_chep_gan'.tr(),
                                 style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                               ),
                             ],
@@ -2270,16 +2271,16 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                               ? Center(
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    children: const [
+                                    children: [
                                       Icon(Icons.history_toggle_off_rounded, size: 48, color: Color(0xFFCBD5E1)),
                                       SizedBox(height: 10),
                                       Text(
-                                        'Chưa có lịch sử thay đổi phân ca',
+                                        'hrm_schedule.chua_co_lich_su_thay_doi_phan_ca'.tr(),
                                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                                       ),
                                       SizedBox(height: 4),
                                       Text(
-                                        'Khi có đợt phân ca, hủy hoặc sao chép trên hệ thống, các bản ghi sẽ xuất hiện tại đây.',
+                                        'hrm_schedule.khi_co_dot_phan_ca_huy_hoac_sao_chep'.tr(),
                                         style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                                         textAlign: TextAlign.center,
                                       ),
@@ -2316,7 +2317,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                (item['title'] ?? 'Thay lịch định kỳ').toString(),
+                                                (item['title'] ?? 'hrm_schedule.thay_lich_dinh_ky'.tr()).toString(),
                                                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                               ),
                                               Text(
@@ -2332,7 +2333,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            'Người thực hiện: ${item['actor'] ?? 'Quản trị viên'}',
+                                            'hrm_schedule.nguoi_thuc_hien_2'.tr(args: {'arg1': item['actor'] ?? 'hrm_schedule.quan_tri_vien'.tr()}),
                                             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                           ),
                                           const SizedBox(height: 10),
@@ -2346,10 +2347,10 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    const Text('Trước', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                                                    Text('hrm_schedule.truoc'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
                                                     const SizedBox(height: 4),
                                                     if (beforeList.isEmpty)
-                                                      const Text('Không có', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)))
+                                                      Text('common.none'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)))
                                                     else
                                                       ...beforeList.map((b) => Padding(
                                                         padding: const EdgeInsets.only(bottom: 2),
@@ -2363,9 +2364,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    const Text('Sau', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                                                    Text('hrm_schedule.after'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
                                                     const SizedBox(height: 4),
-                                                    Text((item['after'] ?? 'Không có').toString(), style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                                                    Text((item['after'] ?? 'common.none'.tr()).toString(), style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                                                   ],
                                                 ),
                                               ),
@@ -2446,7 +2447,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Chọn ca cho ${weekday == 7 ? 'Chủ nhật' : 'Thứ ${weekday + 1}'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                      Text('hrm_schedule.chon_ca_cho'.tr(args: {'arg1': _weekdayName(weekday)}), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                       IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
@@ -2454,7 +2455,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   TextField(
                     onChanged: (val) => setModalState(() => searchShift = val),
                     decoration: InputDecoration(
-                      hintText: 'Tìm theo mã hoặc tên ca...',
+                      hintText: 'hrm_schedule.tim_theo_ma_hoac_ten_ca'.tr(),
                       prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF3B82F6))),
@@ -2508,13 +2509,15 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
     return id;
   }
 
+  String _weekdayName(int weekday) => 'hrm_schedule.weekday_$weekday'.tr();
+
   String _getReleaseEmployeeDisplayName() {
-    if (_releaseEmployeeId == null) return 'Tìm theo mã hoặc tên nhân viên...';
+    if (_releaseEmployeeId == null) return 'hrm_schedule.tim_theo_ma_hoac_ten_nhan_vien'.tr();
     return _getEmployeeNameById(_releaseEmployeeId!);
   }
 
   String _getShiftDisplayNameById(String? shiftId) {
-    if (shiftId == null || shiftId.isEmpty) return 'Chọn ca...';
+    if (shiftId == null || shiftId.isEmpty) return 'hrm_schedule.chon_ca'.tr();
     if (shiftId == 'HC_STANDARD') return 'HC - Ca Hành Chính (07:30-17:00)';
     if (shiftId == 'HC_T7') return 'HC-T7 - HC SÁNG T7 (07:30-11:30)';
     for (final s in _shifts) {
@@ -2539,7 +2542,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
 
     DateTime fromDate = DateTime.now();
     DateTime toDate = DateTime.now().add(const Duration(days: 29));
-    final reasonCtrl = TextEditingController(text: 'Nghỉ theo yêu cầu');
+    final reasonCtrl = TextEditingController(text: 'hrm_schedule.nghi_theo_yeu_cau'.tr());
     String conflictMode = 'OVERWRITE_KEEP_EXCEPTIONS'; // Mặc định Mục 5.2
     bool isPreviewing = false;
 
@@ -2578,10 +2581,10 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             const SizedBox(width: 10),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text('Thiết lập ngoại lệ ca', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                              children: [
+                                Text('hrm_schedule.thiet_lap_ngoai_le_ca'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                                 SizedBox(height: 2),
-                                Text('Gán ngày nghỉ hoặc đổi ca đột xuất theo khoảng ngày', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                Text('hrm_schedule.gan_ngay_nghi_hoac_doi_ca_dot_xuat'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                               ],
                             ),
                           ],
@@ -2603,13 +2606,13 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // BƯỚC 1: PHẠM VI ÁP DỤNG
-                            const Text('1. Đối tượng áp dụng *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                            Text('hrm_schedule.1_doi_tuong_ap_dung'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                             const SizedBox(height: 8),
                             Row(
                               children: [
                                 Expanded(
                                   child: _buildScopeOptionChip(
-                                    label: 'Một NV',
+                                    label: 'hrm_schedule.mot_nv'.tr(),
                                     isSelected: scopeType == 'EMPLOYEE',
                                     onTap: () => setModalState(() => scopeType = 'EMPLOYEE'),
                                   ),
@@ -2617,7 +2620,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: _buildScopeOptionChip(
-                                    label: 'Nhiều NV',
+                                    label: 'hrm_schedule.nhieu_nv'.tr(),
                                     isSelected: scopeType == 'EMPLOYEES',
                                     onTap: () => setModalState(() => scopeType = 'EMPLOYEES'),
                                   ),
@@ -2625,7 +2628,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: _buildScopeOptionChip(
-                                    label: 'Đơn vị',
+                                    label: 'hrm_schedule.don_vi'.tr(),
                                     isSelected: scopeType == 'UNIT',
                                     onTap: () => setModalState(() => scopeType = 'UNIT'),
                                   ),
@@ -2633,7 +2636,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: _buildScopeOptionChip(
-                                    label: 'Toàn cty',
+                                    label: 'hrm_schedule.toan_cty'.tr(),
                                     isSelected: scopeType == 'COMPANY',
                                     onTap: () => setModalState(() => scopeType = 'COMPANY'),
                                   ),
@@ -2665,7 +2668,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          employeeId != null ? _getEmployeeNameById(employeeId!) : 'Chọn nhân viên áp dụng...',
+                                          employeeId != null ? _getEmployeeNameById(employeeId!) : 'hrm_schedule.chon_nhan_vien_ap_dung_2'.tr(),
                                           style: TextStyle(
                                             fontSize: 12.5,
                                             color: employeeId != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
@@ -2702,8 +2705,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                       Expanded(
                                         child: Text(
                                           _scheduleSelectedEmployeeIds.isNotEmpty
-                                              ? 'Đã chọn ${_scheduleSelectedEmployeeIds.length} nhân viên'
-                                              : 'Bấm để chọn danh sách nhân viên...',
+                                              ? 'hrm_schedule.da_chon_nhan_vien'.tr(args: {'length': _scheduleSelectedEmployeeIds.length})
+                                              : 'hrm_schedule.bam_de_chon_danh_sach_nhan_vien'.tr(),
                                           style: TextStyle(
                                             fontSize: 12.5,
                                             color: _scheduleSelectedEmployeeIds.isNotEmpty ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
@@ -2753,7 +2756,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  const Text('Bao gồm các đơn vị trực thuộc', style: TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
+                                  Text('hrm_schedule.bao_gom_cac_don_vi_truc_thuoc'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
                                 ],
                               ),
                             ] else ...[
@@ -2768,7 +2771,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                   children: [
                                     const Icon(Icons.info_outline, size: 16, color: Color(0xFF2563EB)),
                                     const SizedBox(width: 8),
-                                    Text('Áp dụng ngoại lệ cho tất cả ${_employees.length} nhân viên.', style: const TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF))),
+                                    Text('hrm_schedule.ap_dung_ngoai_le_cho_tat_ca_nhan_vien'.tr(args: {'length': _employees.length}), style: const TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF))),
                                   ],
                                 ),
                               ),
@@ -2776,7 +2779,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             const SizedBox(height: 16),
 
                             // BƯỚC 2: CA NGOẠI LỆ (Nghỉ / Làm theo ca)
-                            const Text('2. Ca ngoại lệ *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                            Text('hrm_schedule.2_ca_ngoai_le'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                             const SizedBox(height: 8),
                             Row(
                               children: [
@@ -2801,11 +2804,11 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                             children: [
                                               Icon(Icons.beach_access_outlined, size: 16, color: exceptionType == 'OFF' ? const Color(0xFFDC2626) : const Color(0xFF64748B)),
                                               const SizedBox(width: 6),
-                                              Text('Nghỉ (OFF)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: exceptionType == 'OFF' ? const Color(0xFF991B1B) : const Color(0xFF0F172A))),
+                                              Text('hrm_schedule.nghi_off'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: exceptionType == 'OFF' ? const Color(0xFF991B1B) : const Color(0xFF0F172A))),
                                             ],
                                           ),
                                           const SizedBox(height: 3),
-                                          const Text('Các ngày trong khoảng thành ngày nghỉ', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                                          Text('hrm_schedule.cac_ngay_trong_khoang_thanh_ngay_nghi'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                                         ],
                                       ),
                                     ),
@@ -2833,11 +2836,11 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                             children: [
                                               Icon(Icons.schedule_outlined, size: 16, color: exceptionType == 'SHIFT' ? const Color(0xFF2563EB) : const Color(0xFF64748B)),
                                               const SizedBox(width: 6),
-                                              Text('Làm theo ca', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: exceptionType == 'SHIFT' ? const Color(0xFF1E40AF) : const Color(0xFF0F172A))),
+                                              Text('hrm_schedule.lam_theo_ca'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: exceptionType == 'SHIFT' ? const Color(0xFF1E40AF) : const Color(0xFF0F172A))),
                                             ],
                                           ),
                                           const SizedBox(height: 3),
-                                          const Text('Gán một ca làm việc cụ thể', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                                          Text('hrm_schedule.gan_mot_ca_lam_viec_cu_the'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                                         ],
                                       ),
                                     ),
@@ -2861,7 +2864,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                     isExpanded: true,
                                     menuMaxHeight: 280,
                                     borderRadius: BorderRadius.circular(10),
-                                    hint: const Text('Chọn ca cho ngoại lệ...', style: TextStyle(fontSize: 12)),
+                                    hint: Text('hrm_schedule.chon_ca_cho_ngoai_le'.tr(), style: TextStyle(fontSize: 12)),
                                     items: _shifts.map((s) {
                                       final code = s.code.isNotEmpty ? s.code : 'CA';
                                       return DropdownMenuItem(
@@ -2877,7 +2880,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             const SizedBox(height: 16),
 
                             // BƯỚC 3: THỜI GIAN VÀ XỬ LÝ XUNG ĐỘT
-                            const Text('3. Thời gian & Xung đột *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                            Text('hrm_schedule.3_thoi_gian_xung_dot'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                             const SizedBox(height: 8),
                             Row(
                               children: [
@@ -2903,7 +2906,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            'Từ: ${fromDate.day.toString().padLeft(2, '0')}/${fromDate.month.toString().padLeft(2, '0')}/${fromDate.year}',
+                                            'hrm_schedule.tu'.tr(args: {'arg1': fromDate.day.toString().padLeft(2, '0'), 'arg2': fromDate.month.toString().padLeft(2, '0'), 'year': fromDate.year}),
                                             style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
                                           ),
                                           const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF64748B)),
@@ -2935,7 +2938,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            'Đến: ${toDate.day.toString().padLeft(2, '0')}/${toDate.month.toString().padLeft(2, '0')}/${toDate.year}',
+                                            'hrm_schedule.den'.tr(args: {'arg1': toDate.day.toString().padLeft(2, '0'), 'arg2': toDate.month.toString().padLeft(2, '0'), 'year': toDate.year}),
                                             style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
                                           ),
                                           const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF64748B)),
@@ -2954,7 +2957,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                               maxLength: 500,
                               decoration: InputDecoration(
                                 counterText: '',
-                                hintText: 'Lý do thiết lập ngoại lệ (ví dụ: Nghỉ theo yêu cầu, đổi ca trực)...',
+                                hintText: 'hrm_schedule.ly_do_thiet_lap_ngoai_le_vi_du_nghi'.tr(),
                                 hintStyle: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -2977,9 +2980,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: const [
-                                        Text('Chế độ xử lý xung đột', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                                        Text('Ghi đè lịch thường, giữ lại ngoại lệ khác và ngày lễ', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                                      children: [
+                                        Text('hrm_schedule.che_do_xu_ly_xung_dot'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                                        Text('hrm_schedule.ghi_de_lich_thuong_giu_lai_ngoai_le'.tr(), style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
                                       ],
                                     ),
                                   ),
@@ -3000,15 +3003,15 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             ? null
                             : () async {
                                 if (exceptionType == 'SHIFT' && (shiftId == null || shiftId!.isEmpty)) {
-                                  _showErrorSnackBar('Chọn ca cho ngoại lệ.');
+                                  _showErrorSnackBar('hrm_schedule.chon_ca_cho_ngoai_le_2'.tr());
                                   return;
                                 }
                                 if (scopeType == 'EMPLOYEE' && employeeId == null) {
-                                  _showErrorSnackBar('Vui lòng chọn nhân viên áp dụng.');
+                                  _showErrorSnackBar('hrm_schedule.vui_long_chon_nhan_vien_ap_dung'.tr());
                                   return;
                                 }
                                 if (scopeType == 'EMPLOYEES' && employeeIds.isEmpty && _scheduleSelectedEmployeeIds.isEmpty) {
-                                  _showErrorSnackBar('Vui lòng chọn ít nhất 1 nhân viên.');
+                                  _showErrorSnackBar('hrm_schedule.vui_long_chon_it_nhat_1_nhan_vien'.tr());
                                   return;
                                 }
 
@@ -3070,7 +3073,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         ),
                         child: isPreviewing
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Text('Xem trước ngoại lệ & Lưu', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            : Text('hrm_schedule.xem_truoc_ngoai_le_luu'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -3164,7 +3167,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               } catch (e) {
                 if (ctx.mounted) {
                   setModalState(() => isRePreviewing = false);
-                  _showErrorSnackBar('Lỗi xem trước: $e');
+                  _showErrorSnackBar('hrm_schedule.loi_xem_truoc'.tr(args: {'e': e}));
                 }
               }
             }
@@ -3192,7 +3195,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(res.message.isNotEmpty ? res.message : 'Lưu phân ca thành công!'),
+                        content: Text(res.message.isNotEmpty ? res.message : 'hrm_schedule.luu_phan_ca_thanh_cong'.tr()),
                         backgroundColor: const Color(0xFF059669),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -3237,14 +3240,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
-                                'Xem trước kết quả',
+                                'hrm_schedule.xem_truoc_ket_qua'.tr(),
                                 style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                               ),
                               SizedBox(height: 1),
                               Text(
-                                'Kiểm tra phạm vi ảnh hưởng, xung đột và xác nhận trước khi lưu.',
+                                'hrm_schedule.kiem_tra_pham_vi_anh_huong_xung_dot'.tr(),
                                 style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -3264,7 +3267,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                           ),
                           child: isRePreviewing
                               ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Text('Xem trước lại', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                              : Text('hrm_schedule.xem_truoc_lai'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                         ),
                       ],
                     ),
@@ -3281,8 +3284,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                       ),
                       child: Text(
                         currentRequest.kind == 'EXCEPTION'
-                            ? 'Ngoại lệ: ${currentRequest.pattern != null && currentRequest.pattern!.isNotEmpty && currentRequest.pattern!.first.dayType == 'OFF' ? 'Nghỉ (OFF)' : 'Làm theo ca (${_getShiftDisplayNameById(currentRequest.pattern?.isNotEmpty == true ? currentRequest.pattern!.first.shiftId : null)})'} • Từ ${currentRequest.fromDate} đến ${currentRequest.toDate}'
-                            : 'Lịch tuần sẽ lưu: T2–T6 (${_getShiftDisplayNameById(_scheduleSelectedShiftId)}) • Áp dụng từ ${currentRequest.fromDate}${currentRequest.toDate != null ? ' đến ${currentRequest.toDate}' : ' (Lịch định kỳ)'}',
+                            ? 'hrm_schedule.ngoai_le_tu_den'.tr(args: {'arg1': currentRequest.pattern != null && currentRequest.pattern!.isNotEmpty && currentRequest.pattern!.first.dayType == 'OFF' ? 'hrm_schedule.nghi_off'.tr() : 'hrm_schedule.lam_theo_ca_2'.tr(args: {'arg1': _getShiftDisplayNameById(currentRequest.pattern?.isNotEmpty == true ? currentRequest.pattern!.first.shiftId : null)}), 'fromDate': currentRequest.fromDate, 'toDate': currentRequest.toDate})
+                            : 'hrm_schedule.lich_tuan_se_luu_t2_t6_ap_dung_tu'.tr(args: {'arg1': _getShiftDisplayNameById(_scheduleSelectedShiftId), 'fromDate': currentRequest.fromDate, 'arg3': currentRequest.toDate != null ? 'hrm_schedule.den_2'.tr(args: {'toDate': currentRequest.toDate}) : 'hrm_schedule.lich_dinh_ky'.tr()}),
                         style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                       ),
                     ),
@@ -3294,30 +3297,30 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                       child: Row(
                         children: isOpenEnded
                             ? [
-                                _buildPreviewMetricCard(currentPreview.ruleCount.toString(), 'Quy tắc áp dụng'),
+                                _buildPreviewMetricCard(currentPreview.ruleCount.toString(), 'hrm_schedule.quy_tac_ap_dung'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.changedRules.toString(), 'Quy tắc thay đổi'),
+                                _buildPreviewMetricCard(currentPreview.changedRules.toString(), 'hrm_schedule.quy_tac_thay_doi'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.employeeCount.toString(), 'Nhân viên'),
+                                _buildPreviewMetricCard(currentPreview.employeeCount.toString(), 'hrm_schedule.nhan_vien_2'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.conflictTotal.toString(), 'Xung đột'),
+                                _buildPreviewMetricCard(currentPreview.conflictTotal.toString(), 'hrm_schedule.xung_dot'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.skippedTargets.toString(), 'Bỏ qua'),
+                                _buildPreviewMetricCard(currentPreview.skippedTargets.toString(), 'hrm_schedule.bo_qua'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.dayCount.toString(), 'Tổng số ngày'),
+                                _buildPreviewMetricCard(currentPreview.dayCount.toString(), 'hrm_schedule.tong_so_ngay'.tr()),
                               ]
                             : [
-                                _buildPreviewMetricCard(currentPreview.insertCount.toString(), 'Ngày thêm mới'),
+                                _buildPreviewMetricCard(currentPreview.insertCount.toString(), 'hrm_schedule.ngay_them_moi'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.replaceCount.toString(), 'Ngày thay thế'),
+                                _buildPreviewMetricCard(currentPreview.replaceCount.toString(), 'hrm_schedule.ngay_thay_the'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.sameCount.toString(), 'Ngày trùng khớp'),
+                                _buildPreviewMetricCard(currentPreview.sameCount.toString(), 'hrm_schedule.ngay_trung_khop'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.conflicts.length.toString(), 'Xung đột'),
+                                _buildPreviewMetricCard(currentPreview.conflicts.length.toString(), 'hrm_schedule.xung_dot'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.employeeCount.toString(), 'Nhân viên'),
+                                _buildPreviewMetricCard(currentPreview.employeeCount.toString(), 'hrm_schedule.nhan_vien_2'.tr()),
                                 const SizedBox(width: 8),
-                                _buildPreviewMetricCard(currentPreview.dayCount.toString(), 'Tổng số ngày'),
+                                _buildPreviewMetricCard(currentPreview.dayCount.toString(), 'hrm_schedule.tong_so_ngay'.tr()),
                               ],
                       ),
                     ),
@@ -3329,15 +3332,15 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Cách xử lý khi trùng hoặc xung đột lịch *',
+                            Text(
+                              'hrm_schedule.cach_xu_ly_khi_trung_hoac_xung_dot'.tr(),
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                             ),
                             const SizedBox(height: 6),
 
                             // Option 1: REPORT
                             _buildPreviewConflictOption(
-                              title: 'Chỉ báo xung đột, không ghi',
+                              title: 'hrm_schedule.chi_bao_xung_dot_khong_ghi'.tr(),
                               value: 'REPORT',
                               groupValue: currentRequest.conflictMode,
                               onChanged: (val) => triggerRePreview(val),
@@ -3346,7 +3349,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
 
                             // Option 2: SKIP_EXISTING
                             _buildPreviewConflictOption(
-                              title: isOpenEnded ? 'Bỏ qua phạm vi đã có lịch định kỳ' : 'Chỉ gán ngày chưa có lịch',
+                              title: isOpenEnded ? 'hrm_schedule.bo_qua_pham_vi_da_co_lich_dinh_ky'.tr() : 'hrm_schedule.chi_gan_ngay_chua_co_lich'.tr(),
                               value: 'SKIP_EXISTING',
                               groupValue: currentRequest.conflictMode,
                               onChanged: (val) => triggerRePreview(val),
@@ -3356,8 +3359,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             // Option 3: OVERWRITE_KEEP_EXCEPTIONS
                             _buildPreviewConflictOption(
                               title: isOpenEnded
-                                  ? 'Ghi đè theo thời gian: lịch mới thay lịch định kỳ và lịch từng ngày cũ'
-                                  : 'Thay lịch thường bằng lịch mới, giữ ngoại lệ và ngày lễ',
+                                  ? 'hrm_schedule.ghi_de_theo_thoi_gian_lich_moi_thay'.tr()
+                                  : 'hrm_schedule.thay_lich_thuong_bang_lich_moi_giu'.tr(),
                               value: 'OVERWRITE_KEEP_EXCEPTIONS',
                               groupValue: currentRequest.conflictMode,
                               onChanged: (val) => triggerRePreview(val),
@@ -3367,7 +3370,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             if (!isOpenEnded) ...[
                               const SizedBox(height: 6),
                               _buildPreviewConflictOption(
-                                title: 'Ghi đè tất cả, kể cả ngoại lệ',
+                                title: 'hrm_schedule.ghi_de_tat_ca_ke_ca_ngoai_le'.tr(),
                                 value: 'OVERWRITE_ALL',
                                 groupValue: currentRequest.conflictMode,
                                 onChanged: (val) => triggerRePreview(val),
@@ -3393,7 +3396,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                         const Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
                                         const SizedBox(width: 6),
                                         Text(
-                                          'Phát hiện ${currentPreview.conflicts.length} xung đột lịch:',
+                                          'hrm_schedule.phat_hien_xung_dot_lich'.tr(args: {'length': currentPreview.conflicts.length}),
                                           style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
                                         ),
                                       ],
@@ -3402,13 +3405,13 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                     ...currentPreview.conflicts.take(5).map((c) => Padding(
                                           padding: const EdgeInsets.only(bottom: 2),
                                           child: Text(
-                                            '• ${(c['employeeName'] ?? c['employeeId'] ?? 'Nhân viên')}: ${(c['message'] ?? c['reason'] ?? 'Xung đột lịch')}',
+                                            'hrm_schedule.text_2'.tr(args: {'arg1': (c['employeeName'] ?? c['employeeId'] ?? 'hrm_schedule.nhan_vien_2'.tr()), 'arg2': (c['message'] ?? c['reason'] ?? 'hrm_schedule.xung_dot_lich'.tr())}),
                                             style: const TextStyle(fontSize: 10.5, color: Color(0xFFB91C1C)),
                                           ),
                                         )),
                                     if (currentPreview.conflicts.length > 5)
                                       Text(
-                                        '... và ${currentPreview.conflicts.length - 5} xung đột khác.',
+                                        'hrm_schedule.va_xung_dot_khac'.tr(args: {'arg1': currentPreview.conflicts.length - 5}),
                                         style: const TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Color(0xFFB91C1C)),
                                       ),
                                   ],
@@ -3434,9 +3437,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Expanded(
+                                  Expanded(
                                     child: Text(
-                                      'Tôi đã xem lại phạm vi và đồng ý áp dụng',
+                                      'hrm_schedule.toi_da_xem_lai_pham_vi_va_dong_y_ap'.tr(),
                                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
                                     ),
                                   ),
@@ -3461,7 +3464,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           ),
-                          child: const Text('Hủy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -3478,7 +3481,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                           child: isSaving
                               ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E293B)))
                               : Text(
-                                  !currentPreview.canSave ? 'Không thể lưu (có xung đột)' : 'Lưu phân ca',
+                                  !currentPreview.canSave ? 'hrm_schedule.khong_the_luu_co_xung_dot'.tr() : 'hrm_schedule.luu_phan_ca'.tr(),
                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                 ),
                         ),
@@ -3562,34 +3565,34 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
   Future<void> _handleConfirmScheduleAssignment() async {
     // 1. Validation (Mục 3.2)
     if (_scheduleScope == 'ONE_EMPLOYEE' && _scheduleSelectedEmployeeId == null) {
-      _showErrorSnackBar('Chọn một nhân viên.');
+      _showErrorSnackBar('hrm_schedule.chon_mot_nhan_vien'.tr());
       return;
     }
     if (_scheduleScope == 'MULTI_EMPLOYEES' && _scheduleSelectedEmployeeIds.isEmpty) {
-      _showErrorSnackBar('Chọn ít nhất một nhân viên.');
+      _showErrorSnackBar('hrm_schedule.chon_it_nhat_mot_nhan_vien'.tr());
       return;
     }
     if (_scheduleScope == 'BY_DEPARTMENT' && _scheduleSelectedUnitId == null) {
-      _showErrorSnackBar('Chọn ít nhất một đơn vị.');
+      _showErrorSnackBar('hrm_schedule.chon_it_nhat_mot_don_vi'.tr());
       return;
     }
     if (!_scheduleIsOpenEnded) {
       if (_scheduleEndDate == null) {
-        _showErrorSnackBar('Nhập đầy đủ từ ngày và đến ngày.');
+        _showErrorSnackBar('hrm_schedule.nhap_day_du_tu_ngay_va_den_ngay'.tr());
         return;
       }
       if (_scheduleEffectiveDate.isAfter(_scheduleEndDate!)) {
-        _showErrorSnackBar('Từ ngày phải trước hoặc bằng đến ngày.');
+        _showErrorSnackBar('hrm_schedule.tu_ngay_phai_truoc_hoac_bang_den_ngay'.tr());
         return;
       }
       if (_scheduleEndDate!.difference(_scheduleEffectiveDate).inDays > 366) {
-        _showErrorSnackBar('Khoảng ngày tối đa 366 ngày.');
+        _showErrorSnackBar('hrm_schedule.khoang_ngay_toi_da_366_ngay'.tr());
         return;
       }
     }
     if (_scheduleUseTemplate) {
       if (_scheduleSelectedTemplateId == null || _scheduleSelectedTemplateId!.isEmpty) {
-        _showErrorSnackBar('Chọn một mẫu lịch tuần.');
+        _showErrorSnackBar('hrm_schedule.chon_mot_mau_lich_tuan'.tr());
         return;
       }
     } else {
@@ -3603,13 +3606,13 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
 
       final allSkip = _scheduleWeeklyRules.every((r) => r.dayType == 'SKIP');
       if (allSkip) {
-        _showErrorSnackBar('Cần cấu hình ít nhất một ngày trong tuần (ca hoặc nghỉ).');
+        _showErrorSnackBar('hrm_schedule.can_cau_hinh_it_nhat_mot_ngay_trong'.tr());
         return;
       }
       for (final r in _scheduleWeeklyRules) {
         if (r.dayType == 'SHIFT' && (r.shiftId == null || r.shiftId!.isEmpty)) {
-          final wName = r.weekday == 7 ? 'Chủ nhật' : 'Thứ ${r.weekday + 1}';
-          _showErrorSnackBar('Chọn ca cho $wName.');
+          final wName = _weekdayName(r.weekday);
+          _showErrorSnackBar('hrm_schedule.chon_ca_cho_2'.tr(args: {'wName': wName}));
           return;
         }
       }
@@ -3690,7 +3693,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Tổng quan nhả ca', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                        Text('hrm_schedule.tong_quan_nha_ca'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                         IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
                       ],
                     ),
@@ -3709,13 +3712,13 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Sẽ hủy ${dryRun.dayCount} ngày lịch của ${dryRun.employeeCount} nhân viên trong khoảng ${req.fromDate} đến ${req.toDate}.',
+                            'hrm_schedule.se_huy_ngay_lich_cua_nhan_vien_trong'.tr(args: {'dayCount': dryRun.dayCount, 'employeeCount': dryRun.employeeCount, 'fromDate': req.fromDate, 'toDate': req.toDate}),
                             style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
                           ),
                           if (dryRun.keptProtected > 0) ...[
                             const SizedBox(height: 4),
                             Text(
-                              '${dryRun.keptProtected} ngày ngoại lệ hoặc ngày lễ được giữ lại.',
+                              'hrm_schedule.ngay_ngoai_le_hoac_ngay_le_duoc_giu'.tr(args: {'keptProtected': dryRun.keptProtected}),
                               style: const TextStyle(fontSize: 11.5, color: Color(0xFFB91C1C)),
                             ),
                           ],
@@ -3737,9 +3740,9 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Tôi đã xem lại phạm vi và đồng ý nhả ca',
+                            'hrm_schedule.toi_da_xem_lai_pham_vi_va_dong_y_nha'.tr(),
                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
                           ),
                         ),
@@ -3752,7 +3755,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                       children: [
                         OutlinedButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Hủy'),
+                          child: Text('common.cancel'.tr()),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -3775,7 +3778,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                       Navigator.pop(ctx);
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text('Đã hủy ${finalResult.dayCount} ngày lịch của ${finalResult.employeeCount} nhân viên.'),
+                                          content: Text('hrm_schedule.da_huy_ngay_lich_cua_nhan_vien'.tr(args: {'dayCount': finalResult.dayCount, 'employeeCount': finalResult.employeeCount})),
                                           backgroundColor: const Color(0xFF059669),
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -3796,7 +3799,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                           ),
                           child: isSubmitting
                               ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Text('Nhả ca', style: TextStyle(fontWeight: FontWeight.bold)),
+                              : Text('hrm_schedule.nha_ca'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -3814,23 +3817,23 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
   Future<void> _handleConfirmRelease() async {
     // 1. Validation
     if (_releaseScope == 'ONE_EMPLOYEE' && _releaseEmployeeId == null) {
-      _showErrorSnackBar('Chọn một nhân viên.');
+      _showErrorSnackBar('hrm_schedule.chon_mot_nhan_vien'.tr());
       return;
     }
     if (_releaseScope == 'MULTI_EMPLOYEES' && _releaseEmployeeIds.isEmpty) {
-      _showErrorSnackBar('Chọn ít nhất một nhân viên.');
+      _showErrorSnackBar('hrm_schedule.chon_it_nhat_mot_nhan_vien'.tr());
       return;
     }
     if (_releaseScope == 'BY_DEPARTMENT' && _releaseUnitId == null) {
-      _showErrorSnackBar('Chọn ít nhất một đơn vị.');
+      _showErrorSnackBar('hrm_schedule.chon_it_nhat_mot_don_vi'.tr());
       return;
     }
     if (_releaseFromDate.isAfter(_releaseToDate)) {
-      _showErrorSnackBar('Từ ngày phải trước hoặc bằng đến ngày.');
+      _showErrorSnackBar('hrm_schedule.tu_ngay_phai_truoc_hoac_bang_den_ngay'.tr());
       return;
     }
     if (_releaseToDate.difference(_releaseFromDate).inDays > 366) {
-      _showErrorSnackBar('Khoảng ngày tối đa 366 ngày.');
+      _showErrorSnackBar('hrm_schedule.khoang_ngay_toi_da_366_ngay'.tr());
       return;
     }
 

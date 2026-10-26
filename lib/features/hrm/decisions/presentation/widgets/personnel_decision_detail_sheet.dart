@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../models/hrm_personnel_decision_model.dart';
 import '../../../../../utils/user_resolver.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 class PersonnelDecisionDetailSheet extends StatefulWidget {
   final HrmPersonnelDecision decision;
@@ -166,7 +167,7 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Quyết định ${decision.typeLabel.toLowerCase()} nhân sự',
+                        'hrm_decisions.detail_title'.tr(args: {'type': decision.typeLabel.toLowerCase()}),
                         style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -192,56 +193,56 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. NHÂN VIÊN & HIỆU LỰC
-                  _buildSectionHeader('1. THÔNG TIN NHÂN SỰ'),
+                  _buildSectionHeader('hrm_decisions.sec_employee'.tr()),
                   _buildCard([
-                    _buildDataRow('Nhân viên:', decision.employeeName ?? '----'),
-                    _buildDataRow('Mã nhân viên:', decision.employeeCode ?? '----'),
-                    _buildDataRow('Loại quyết định:', decision.typeLabel, valueColor: const Color(0xFF2563EB)),
-                    _buildDataRow('Ngày hiệu lực:', _formatDate(decision.effectiveDate), isLast: true),
+                    _buildDataRow('hrm_decisions.row_employee'.tr(), decision.employeeName ?? '----'),
+                    _buildDataRow('hrm_decisions.row_employee_code'.tr(), decision.employeeCode ?? '----'),
+                    _buildDataRow('hrm_decisions.row_type'.tr(), decision.typeLabel, valueColor: const Color(0xFF2563EB)),
+                    _buildDataRow('hrm_decisions.row_effective_date'.tr(), _formatDate(decision.effectiveDate), isLast: true),
                   ]),
                   const SizedBox(height: 14),
 
                   // 2. THAY ĐỔI VỊ TRÍ & ĐƠN VỊ
-                  _buildSectionHeader('2. THAY ĐỔI VỊ TRÍ & ĐƠN VỊ'),
+                  _buildSectionHeader('hrm_decisions.sec_position'.tr()),
                   _buildCard([
                     _buildComparisonRow(
-                      label: 'Chức danh:',
+                      label: 'hrm_decisions.row_position'.tr(),
                       before: decision.fromPositionName ?? '----',
                       after: decision.toPositionName ?? '----',
                     ),
                     _buildComparisonRow(
-                      label: 'Phòng ban / Đơn vị:',
+                      label: 'hrm_decisions.row_unit'.tr(),
                       before: decision.fromUnitName ?? '----',
                       after: decision.toUnitName ?? '----',
                     ),
                     _buildComparisonRow(
-                      label: 'Quản lý trực tiếp:',
+                      label: 'hrm_decisions.row_manager'.tr(),
                       before: decision.fromManagerName ?? '----',
-                      after: decision.toManagerName ?? 'Không có',
+                      after: decision.toManagerName ?? 'hrm_decisions.none'.tr(),
                       isLast: true,
                     ),
                   ]),
                   const SizedBox(height: 14),
 
                   // 3. THAY ĐỔI LƯƠNG
-                  _buildSectionHeader('3. ĐIỀU CHỈNH TIỀN LƯƠNG'),
+                  _buildSectionHeader('hrm_decisions.sec_salary'.tr()),
                   _buildCard([
-                    _buildDataRow('Có thay đổi lương:', decision.salaryChanged ? 'Có điều chỉnh' : 'Giữ nguyên',
+                    _buildDataRow('hrm_decisions.row_salary_changed'.tr(), decision.salaryChanged ? 'hrm_decisions.salary_adjusted'.tr() : 'hrm_decisions.salary_unchanged'.tr(),
                         valueColor: decision.salaryChanged ? const Color(0xFF059669) : const Color(0xFF64748B)),
                     if (decision.salaryChanged) ...[
                       _buildComparisonRow(
-                        label: 'Lương cơ bản:',
+                        label: 'hrm_decisions.row_base_salary'.tr(),
                         before: _formatMoney(decision.fromBaseSalary),
                         after: _formatMoney(decision.toBaseSalary),
                       ),
                       if (decision.toSalaryType != null)
-                        _buildDataRow('Loại lương:', decision.toSalaryType == 'GROSS' ? 'Gross' : 'Net'),
+                        _buildDataRow('hrm_decisions.row_salary_type'.tr(), decision.toSalaryType == 'GROSS' ? 'Gross' : 'Net'),
                     ],
                   ]),
                   const SizedBox(height: 14),
 
                   // 4. LÝ DO & CĂN CỨ
-                  _buildSectionHeader('4. CĂN CỨ & LÝ DO'),
+                  _buildSectionHeader('hrm_decisions.sec_reason'.tr()),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -251,38 +252,38 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Text(
-                      decision.reason.trim().isNotEmpty ? decision.reason : 'Không có ghi chú lý do.',
+                      decision.reason.trim().isNotEmpty ? decision.reason : 'hrm_decisions.no_reason_note'.tr(),
                       style: const TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.4),
                     ),
                   ),
                   const SizedBox(height: 14),
 
                   // 5. TIẾN TRÌNH ÁP DỤNG
-                  _buildSectionHeader('5. TIẾN TRÌNH ÁP DỤNG HỒ SƠ'),
+                  _buildSectionHeader('hrm_decisions.sec_progress'.tr()),
                   _buildCard([
-                    _buildStepRow('Chức danh (Core):', decision.appliedSteps['core'] == true || decision.status == 'APPLIED'),
-                    _buildStepRow('Hồ sơ lương:', decision.appliedSteps['salary'] == true || decision.status == 'APPLIED', isLast: true),
+                    _buildStepRow('hrm_decisions.step_core'.tr(), decision.appliedSteps['core'] == true || decision.status == 'APPLIED'),
+                    _buildStepRow('hrm_decisions.step_salary'.tr(), decision.appliedSteps['salary'] == true || decision.status == 'APPLIED', isLast: true),
                   ]),
                   const SizedBox(height: 14),
 
                   // 6. NHẬT KÝ & DUYỆT
-                  _buildSectionHeader('6. THỜI GIAN & PHÊ DUYỆT'),
+                  _buildSectionHeader('hrm_decisions.sec_timeline'.tr()),
                   _buildCard([
                     if (decision.createdBy != null)
                       _buildDataRow(
-                        'Người tạo:',
+                        'hrm_decisions.row_created_by'.tr(),
                         _resolveUserName(decision.createdBy, decision.createdByName, decision.createdByEmail),
                       ),
-                    _buildDataRow('Ngày tạo:', _formatDate(decision.createdAt)),
+                    _buildDataRow('hrm_decisions.row_created_at'.tr(), _formatDate(decision.createdAt)),
                     if (decision.approvedBy != null)
                       _buildDataRow(
-                        'Người duyệt:',
+                        'hrm_decisions.row_approved_by'.tr(),
                         _resolveUserName(decision.approvedBy, decision.approvedByName, decision.approvedByEmail),
                       ),
-                    if (decision.approvedAt != null) _buildDataRow('Ngày duyệt:', _formatDate(decision.approvedAt)),
-                    if (decision.appliedAt != null) _buildDataRow('Thời gian áp dụng:', _formatDate(decision.appliedAt)),
+                    if (decision.approvedAt != null) _buildDataRow('hrm_decisions.row_approved_at'.tr(), _formatDate(decision.approvedAt)),
+                    if (decision.appliedAt != null) _buildDataRow('hrm_decisions.row_applied_at'.tr(), _formatDate(decision.appliedAt)),
                     if (decision.rejectedReason != null && decision.rejectedReason!.isNotEmpty)
-                      _buildDataRow('Lý do từ chối:', decision.rejectedReason!, valueColor: const Color(0xFFDC2626)),
+                      _buildDataRow('hrm_decisions.row_rejected_reason'.tr(), decision.rejectedReason!, valueColor: const Color(0xFFDC2626)),
                   ]),
                   const SizedBox(height: 20),
                 ],
@@ -311,7 +312,7 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                         side: const BorderSide(color: Color(0xFFCBD5E1)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Chỉnh sửa', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('common.edit'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -329,7 +330,7 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                         foregroundColor: const Color(0xFFDC2626),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Từ chối', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('common.reject'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -348,7 +349,7 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Duyệt & Áp dụng', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('hrm_decisions.approve_apply'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -366,7 +367,7 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                         foregroundColor: const Color(0xFFDC2626),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Hủy quyết định', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                      child: Text('hrm_decisions.cancel_decision'.tr(), style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
                     ),
                   ),
                 ],
@@ -383,7 +384,7 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Thử lại áp dụng', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('hrm_decisions.retry_apply'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -516,7 +517,7 @@ class _PersonnelDecisionDetailSheetState extends State<PersonnelDecisionDetailSh
           Text(label, style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155))),
           const Spacer(),
           Text(
-            isApplied ? 'Đã hoàn tất' : 'Chưa áp dụng',
+            isApplied ? 'hrm_decisions.step_done'.tr() : 'hrm_decisions.step_not_applied'.tr(),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,

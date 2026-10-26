@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class RequestSubTabButton extends StatelessWidget {
   final int index;
@@ -171,7 +172,7 @@ class RequestFilterBar extends StatelessWidget {
                     onChanged: onSearchChanged,
                     style: const TextStyle(fontSize: 12.5),
                     decoration: InputDecoration(
-                      hintText: 'Tìm theo lý do, loại đơn, mã đơn...',
+                      hintText: 'requests.filter.search_hint'.tr(),
                       hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                       prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                       suffixIcon: searchKeyword.isNotEmpty
@@ -213,7 +214,7 @@ class RequestFilterBar extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Bộ lọc',
+                        'common.filter'.tr(),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -232,9 +233,9 @@ class RequestFilterBar extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 80,
-                  child: Text('Loại đơn:', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                  child: Text('requests.filter.type_label'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                 ),
                 Expanded(
                   child: Container(
@@ -252,15 +253,15 @@ class RequestFilterBar extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         value: requestTypeFilter,
                         style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B)),
-                        items: const [
-                          DropdownMenuItem(value: 'ALL', child: Text('Tất cả 7 loại đơn')),
-                          DropdownMenuItem(value: 'nghỉ phép', child: Text('Đơn xin nghỉ phép')),
-                          DropdownMenuItem(value: 'làm thêm', child: Text('Đơn làm thêm giờ (OT)')),
-                          DropdownMenuItem(value: 'công tác', child: Text('Đơn đi công tác')),
-                          DropdownMenuItem(value: 'đổi ca', child: Text('Đơn đổi ca làm việc')),
-                          DropdownMenuItem(value: 'giải trình', child: Text('Đơn giải trình / Bổ sung')),
-                          DropdownMenuItem(value: 'tạm ứng', child: Text('Đơn tạm ứng lương')),
-                          DropdownMenuItem(value: 'thông tin', child: Text('Đơn điều chỉnh thông tin')),
+                        items: [
+                          DropdownMenuItem(value: 'ALL', child: Text('requests.filter.all_types'.tr())),
+                          DropdownMenuItem(value: 'nghỉ phép', child: Text('requests.type.leave'.tr())),
+                          DropdownMenuItem(value: 'làm thêm', child: Text('requests.type.ot'.tr())),
+                          DropdownMenuItem(value: 'công tác', child: Text('requests.type.trip'.tr())),
+                          DropdownMenuItem(value: 'đổi ca', child: Text('requests.type.shift_change'.tr())),
+                          DropdownMenuItem(value: 'giải trình', child: Text('requests.type.explanation'.tr())),
+                          DropdownMenuItem(value: 'tạm ứng', child: Text('requests.type.advance'.tr())),
+                          DropdownMenuItem(value: 'thông tin', child: Text('requests.type.info'.tr())),
                         ],
                         onChanged: (val) {
                           if (val != null) onRequestTypeFilterChanged(val);
@@ -275,9 +276,9 @@ class RequestFilterBar extends StatelessWidget {
             if (showStatusDropdown) ...[
               Row(
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 80,
-                    child: Text('Trạng thái:', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                    child: Text('requests.filter.status_label'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                   ),
                   Expanded(
                     child: Container(
@@ -295,11 +296,11 @@ class RequestFilterBar extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           value: requestStatusFilter,
                           style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B)),
-                          items: const [
-                            DropdownMenuItem(value: 'ALL', child: Text('Tất cả trạng thái')),
-                            DropdownMenuItem(value: 'APPROVED', child: Text('Đã phê duyệt (Approved)')),
-                            DropdownMenuItem(value: 'REJECTED', child: Text('Bị từ chối (Rejected)')),
-                            DropdownMenuItem(value: 'CANCELLED', child: Text('Đã hủy (Cancelled)')),
+                          items: [
+                            DropdownMenuItem(value: 'ALL', child: Text('requests.filter.all_status'.tr())),
+                            DropdownMenuItem(value: 'APPROVED', child: Text('requests.filter.approved_opt'.tr())),
+                            DropdownMenuItem(value: 'REJECTED', child: Text('requests.filter.rejected_opt'.tr())),
+                            DropdownMenuItem(value: 'CANCELLED', child: Text('requests.filter.cancelled_opt'.tr())),
                           ],
                           onChanged: (val) {
                             if (val != null) onRequestStatusFilterChanged(val);
@@ -314,9 +315,9 @@ class RequestFilterBar extends StatelessWidget {
             ],
             Row(
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 80,
-                  child: Text('Thời gian:', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                  child: Text('requests.filter.time_label'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                 ),
                 Expanded(
                   child: InkWell(
@@ -339,7 +340,7 @@ class RequestFilterBar extends StatelessWidget {
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: Text(
-                        requestFromDate != null ? '${requestFromDate!.day}/${requestFromDate!.month}/${requestFromDate!.year}' : 'Từ ngày',
+                        requestFromDate != null ? '${requestFromDate!.day}/${requestFromDate!.month}/${requestFromDate!.year}' : 'common.from_date'.tr(),
                         style: TextStyle(
                           fontSize: 11.5,
                           color: requestFromDate != null ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
@@ -373,7 +374,7 @@ class RequestFilterBar extends StatelessWidget {
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: Text(
-                        requestToDate != null ? '${requestToDate!.day}/${requestToDate!.month}/${requestToDate!.year}' : 'Đến ngày',
+                        requestToDate != null ? '${requestToDate!.day}/${requestToDate!.month}/${requestToDate!.year}' : 'common.to_date'.tr(),
                         style: TextStyle(
                           fontSize: 11.5,
                           color: requestToDate != null ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
@@ -385,7 +386,7 @@ class RequestFilterBar extends StatelessWidget {
                 if (requestFromDate != null || requestToDate != null)
                   IconButton(
                     icon: const Icon(Icons.clear, size: 16, color: Color(0xFFEF4444)),
-                    tooltip: 'Xóa khoảng ngày',
+                    tooltip: 'requests.filter.clear_dates'.tr(),
                     onPressed: () {
                       onFromDateChanged(null);
                       onToDateChanged(null);
@@ -399,7 +400,7 @@ class RequestFilterBar extends StatelessWidget {
               children: [
                 TextButton(
                   onPressed: onResetFilters,
-                  child: const Text('Đặt lại bộ lọc', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  child: Text('requests.filter.reset'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                 ),
               ],
             ),
@@ -409,7 +410,7 @@ class RequestFilterBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Hiển thị $filteredCount / $totalCount đơn',
+                'requests.filter.showing'.tr(args: {'filtered': filteredCount, 'total': totalCount}),
                 style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
               ),
               if (searchKeyword.isNotEmpty || requestTypeFilter != 'ALL' || requestStatusFilter != 'ALL' || requestFromDate != null)
@@ -419,7 +420,7 @@ class RequestFilterBar extends StatelessWidget {
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('Đang lọc', style: TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                  child: Text('requests.filter.active'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
                 ),
             ],
           ),

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../models/hrm_attendance_models.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 String _formatTime(String? isoString) {
   if (isoString == null || isoString.isEmpty) return '--:--';
@@ -94,22 +95,22 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                       child: const Icon(Icons.grid_view_rounded, size: 20, color: Color(0xFF4F46E5)),
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Bảng chấm công ma trận cá nhân theo tháng',
+                            'attendance.history.title'.tr(),
                             style: TextStyle(
                               fontSize: 14.5,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF0F172A),
                             ),
                           ),
-                          SizedBox(height: 3),
+                          const SizedBox(height: 3),
                           Text(
-                            'Dữ liệu công ghi nhận theo từng ngày trong tháng. Nhấp vào ô bất kỳ để xem chi tiết giờ vào/ra.',
-                            style: TextStyle(
+                            'attendance.history.subtitle'.tr(),
+                            style: const TextStyle(
                               fontSize: 11.5,
                               color: Color(0xFF64748B),
                               height: 1.3,
@@ -175,7 +176,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'Ma trận',
+                                        'attendance.history.mode_matrix'.tr(),
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: _historyViewMode == 0 ? FontWeight.bold : FontWeight.w500,
@@ -210,7 +211,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'Nhật ký',
+                                        'attendance.history.mode_logs'.tr(),
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: _historyViewMode == 1 ? FontWeight.bold : FontWeight.w500,
@@ -253,7 +254,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                                   children: [
                                     const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF64748B)),
                                     const SizedBox(width: 6),
-                                    Expanded(child: Text(m, overflow: TextOverflow.ellipsis)),
+                                    Expanded(child: Text('attendance.history.month_label'.tr(args: {'value': m}), overflow: TextOverflow.ellipsis)),
                                   ],
                                 ),
                               );
@@ -357,7 +358,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Bảng chấm công',
+                          'attendance.history.subtab_table'.tr(),
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: _matrixSubTab == 0 ? FontWeight.bold : FontWeight.w500,
@@ -390,7 +391,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Chi tiết bảng chấm công',
+                          'attendance.history.subtab_detail'.tr(),
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: _matrixSubTab == 1 ? FontWeight.bold : FontWeight.w500,
@@ -404,8 +405,8 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                 const SizedBox(width: 16),
                 Text(
                   widget.timesheetBoard?.month != null
-                      ? 'Kỳ: ${widget.timesheetBoard!.month.month}'
-                      : 'Hiển thị 1 / 1 bản ghi',
+                      ? 'attendance.history.period'.tr(args: {'month': widget.timesheetBoard!.month.month})
+                      : 'attendance.history.showing_one'.tr(),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                 ),
               ],
@@ -438,7 +439,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
     MonthlyTimesheetRow? myRow,
     Map<int, TimesheetCell> boardCellMap,
   ) {
-    final weekdaysShort = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    final weekdaysShort = ['attendance.weekday_short.mon'.tr(), 'attendance.weekday_short.tue'.tr(), 'attendance.weekday_short.wed'.tr(), 'attendance.weekday_short.thu'.tr(), 'attendance.weekday_short.fri'.tr(), 'attendance.weekday_short.sat'.tr(), 'attendance.weekday_short.sun'.tr()];
 
     return Container(
       decoration: BoxDecoration(
@@ -472,8 +473,8 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                     color: const Color(0xFF0F172A),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
-                    'STT 1',
+                  child: Text(
+                    'attendance.history.row_number'.tr(args: {'n': 1}),
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
@@ -495,15 +496,15 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        myRow?.employeeName.isNotEmpty == true ? myRow!.employeeName : 'Lịch sử chấm công của tôi',
+                        myRow?.employeeName.isNotEmpty == true ? myRow!.employeeName : 'attendance.history.my_history'.tr(),
                         style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         myRow != null && (myRow.departmentName.isNotEmpty || myRow.positionName.isNotEmpty)
-                            ? '${myRow.departmentName.isNotEmpty ? myRow.departmentName : "Ban Điều hành"} • ${myRow.positionName.isNotEmpty ? myRow.positionName : "Quản trị viên"}'
-                            : 'Ban Điều hành • Quản trị viên',
+                            ? '${myRow.departmentName.isNotEmpty ? myRow.departmentName : 'attendance.history.default_department'.tr()} • ${myRow.positionName.isNotEmpty ? myRow.positionName : 'attendance.history.default_position'.tr()}'
+                            : '${'attendance.history.default_department'.tr()} • ${'attendance.history.default_position'.tr()}',
                         style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -634,7 +635,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             border: Border.all(color: const Color(0xFFDDD6FE)),
           ),
           child: Text(
-            cell.shiftCode.isNotEmpty ? cell.shiftCode : 'P',
+            cell.shiftCode.isNotEmpty ? cell.shiftCode : 'attendance.matrix.code_leave'.tr(),
             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
           ),
         );
@@ -647,9 +648,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
-          child: const Text(
-            'Trễ',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
+          child: Text(
+            'attendance.matrix.code_late'.tr(),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
           ),
         );
       }
@@ -661,9 +662,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: const Color(0xFFFECACA)),
           ),
-          child: const Text(
-            'BT',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+          child: Text(
+            'attendance.matrix.code_abnormal'.tr(),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
           ),
         );
       }
@@ -676,7 +677,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             border: Border.all(color: const Color(0xFFA7F3D0)),
           ),
           child: Text(
-            cell.workUnits == 1.0 ? 'CC' : (cell.workUnits > 0 ? '${cell.workUnits}' : 'CC'),
+            cell.workUnits == 1.0 ? 'attendance.matrix.code_present'.tr() : (cell.workUnits > 0 ? '${cell.workUnits}' : 'attendance.matrix.code_present'.tr()),
             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
           ),
         );
@@ -688,9 +689,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: const Text(
-            'OFF',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+          child: Text(
+            'attendance.matrix.code_off'.tr(),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
           ),
         );
       }
@@ -701,9 +702,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: const Text(
-            '—',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+          child: Text(
+            'attendance.matrix.code_none'.tr(),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
           ),
         );
       }
@@ -721,9 +722,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           color: const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: const Text(
-          '—',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+        child: Text(
+          'attendance.matrix.code_none'.tr(),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
         ),
       );
     }
@@ -736,9 +737,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: const Color(0xFFA7F3D0)),
         ),
-        child: const Text(
-          'CC',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+        child: Text(
+          'attendance.matrix.code_present'.tr(),
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
         ),
       );
     } else if (record.status == 'LATE') {
@@ -749,9 +750,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: const Color(0xFFFDE68A)),
         ),
-        child: const Text(
-          'Trễ',
-          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
+        child: Text(
+          'attendance.matrix.code_late'.tr(),
+          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
         ),
       );
     } else if (record.status == 'ABNORMAL' || record.status == 'ABSENT') {
@@ -762,9 +763,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: const Color(0xFFFECACA)),
         ),
-        child: const Text(
-          'BT',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+        child: Text(
+          'attendance.matrix.code_abnormal'.tr(),
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
         ),
       );
     } else if (record.status == 'APPROVED_CORRECTION') {
@@ -775,9 +776,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: const Color(0xFFDDD6FE)),
         ),
-        child: const Text(
-          'CC',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
+        child: Text(
+          'attendance.matrix.code_present'.tr(),
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
         ),
       );
     } else if (record.status == 'LEAVE') {
@@ -787,9 +788,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           color: const Color(0xFFF3E8FF),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: const Text(
-          'P',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
+        child: Text(
+          'attendance.matrix.code_leave'.tr(),
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
         ),
       );
     }
@@ -800,9 +801,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: const Text(
-        '—',
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+      child: Text(
+        'attendance.matrix.code_none'.tr(),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
       ),
     );
   }
@@ -823,12 +824,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Ký hiệu chấm công:',
+              Text(
+                'attendance.history.legend_title'.tr(),
                 style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
               ),
               Text(
-                'Kỳ công: $widget.selectedMonth • Nhân sự: Tôi',
+                'attendance.history.legend_period'.tr(args: {'month': widget.selectedMonth}),
                 style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
               ),
             ],
@@ -838,12 +839,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildLegendChip('CC', 'Có chấm công', const Color(0xFFECFDF5), const Color(0xFF059669), const Color(0xFFA7F3D0)),
-              _buildLegendChip('Trễ', 'Đi trễ', const Color(0xFFFEF3C7), const Color(0xFFD97706), const Color(0xFFFDE68A)),
-              _buildLegendChip('BT', 'Bất thường / Thiếu quẹt', const Color(0xFFFEE2E2), const Color(0xFFDC2626), const Color(0xFFFECACA)),
-              _buildLegendChip('P', 'Nghỉ phép', const Color(0xFFF3E8FF), const Color(0xFF7C3AED), const Color(0xFFDDD6FE)),
-              _buildLegendChip('OFF', 'Ngày nghỉ tuần', const Color(0xFFF1F5F9), const Color(0xFF475569), const Color(0xFFCBD5E1)),
-              _buildLegendChip('—', 'Chưa có dữ liệu', const Color(0xFFF8FAFC), const Color(0xFF94A3B8), const Color(0xFFE2E8F0)),
+              _buildLegendChip('attendance.matrix.code_present'.tr(), 'attendance.matrix.legend_present'.tr(), const Color(0xFFECFDF5), const Color(0xFF059669), const Color(0xFFA7F3D0)),
+              _buildLegendChip('attendance.matrix.code_late'.tr(), 'attendance.matrix.legend_late'.tr(), const Color(0xFFFEF3C7), const Color(0xFFD97706), const Color(0xFFFDE68A)),
+              _buildLegendChip('attendance.matrix.code_abnormal'.tr(), 'attendance.matrix.legend_abnormal'.tr(), const Color(0xFFFEE2E2), const Color(0xFFDC2626), const Color(0xFFFECACA)),
+              _buildLegendChip('attendance.matrix.code_leave'.tr(), 'attendance.matrix.legend_leave'.tr(), const Color(0xFFF3E8FF), const Color(0xFF7C3AED), const Color(0xFFDDD6FE)),
+              _buildLegendChip('attendance.matrix.code_off'.tr(), 'attendance.matrix.legend_off'.tr(), const Color(0xFFF1F5F9), const Color(0xFF475569), const Color(0xFFCBD5E1)),
+              _buildLegendChip('attendance.matrix.code_none'.tr(), 'attendance.matrix.legend_none'.tr(), const Color(0xFFF8FAFC), const Color(0xFF94A3B8), const Color(0xFFE2E8F0)),
             ],
           ),
         ],
@@ -929,10 +930,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           children: [
             Expanded(
               child: _buildWebKpiCard(
-                label: 'Tổng công thực tế',
+                label: 'attendance.detail.total_actual'.tr(),
                 value: actualWorkDays.toStringAsFixed(1),
                 unit: '/ ${standardDays % 1 == 0 ? standardDays.toInt() : standardDays.toStringAsFixed(1)}',
-                hint: summary?.standardHint ?? 'Động theo ngày công của tháng',
+                hint: summary?.standardHint ?? 'attendance.detail.standard_hint'.tr(),
                 icon: Icons.calendar_today_rounded,
                 iconColor: const Color(0xFF059669),
                 iconBg: const Color(0xFFECFDF5),
@@ -942,10 +943,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             const SizedBox(width: 8),
             Expanded(
               child: _buildWebKpiCard(
-                label: 'Đi trễ',
+                label: 'attendance.detail.late'.tr(),
                 value: '$lateCount',
-                unit: 'lần',
-                hint: lateMins > 0 ? '$lateMins phút' : null,
+                unit: 'attendance.detail.unit_times'.tr(),
+                hint: lateMins > 0 ? 'attendance.detail.minutes'.tr(args: {'count': lateMins}) : null,
                 icon: Icons.access_time_rounded,
                 iconColor: const Color(0xFFEA580C),
                 iconBg: const Color(0xFFFFF7ED),
@@ -961,10 +962,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           children: [
             Expanded(
               child: _buildWebKpiCard(
-                label: 'Về sớm',
+                label: 'attendance.detail.early'.tr(),
                 value: '$earlyCount',
-                unit: 'lần',
-                hint: earlyMins > 0 ? '$earlyMins phút' : null,
+                unit: 'attendance.detail.unit_times'.tr(),
+                hint: earlyMins > 0 ? 'attendance.detail.minutes'.tr(args: {'count': earlyMins}) : null,
                 icon: Icons.history_rounded,
                 iconColor: const Color(0xFF7C3AED),
                 iconBg: const Color(0xFFF5F3FF),
@@ -974,9 +975,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             const SizedBox(width: 8),
             Expanded(
               child: _buildWebKpiCard(
-                label: 'Nghỉ phép (P)',
+                label: 'attendance.detail.leave'.tr(),
                 value: leaveDays % 1 == 0 ? '${leaveDays.toInt()}' : leaveDays.toStringAsFixed(1),
-                unit: 'ngày',
+                unit: 'attendance.detail.unit_days'.tr(),
                 icon: Icons.date_range_rounded,
                 iconColor: const Color(0xFF2563EB),
                 iconBg: const Color(0xFFEFF6FF),
@@ -991,9 +992,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           children: [
             Expanded(
               child: _buildWebKpiCard(
-                label: 'Nghỉ không phép (KP)',
+                label: 'attendance.detail.absent'.tr(),
                 value: '$absentCount',
-                unit: 'ngày',
+                unit: 'attendance.detail.unit_days'.tr(),
                 icon: Icons.alarm_off_rounded,
                 iconColor: const Color(0xFFDC2626),
                 iconBg: const Color(0xFFFEF2F2),
@@ -1003,10 +1004,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             const SizedBox(width: 8),
             Expanded(
               child: _buildWebKpiCard(
-                label: 'Tăng ca (TC)',
+                label: 'attendance.detail.overtime'.tr(),
                 value: otHours.toStringAsFixed(1),
-                unit: 'giờ',
-                hint: 'Đã duyệt',
+                unit: 'attendance.detail.unit_hours'.tr(),
+                hint: 'attendance.detail.approved'.tr(),
                 icon: Icons.timer_outlined,
                 iconColor: const Color(0xFF0284C7),
                 iconBg: const Color(0xFFF0F9FF),
@@ -1033,12 +1034,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Bất thường: ',
-                        style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C), fontWeight: FontWeight.w500),
+                      Text(
+                        'attendance.detail.abnormal_label'.tr(),
+                        style: const TextStyle(fontSize: 11, color: Color(0xFFB91C1C), fontWeight: FontWeight.w500),
                       ),
                       Text(
-                        '$abnormalCount ngày',
+                        'attendance.detail.days_count'.tr(args: {'count': abnormalCount}),
                         style: const TextStyle(fontSize: 11, color: Color(0xFFB91C1C), fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -1055,12 +1056,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Công tác (CT): ',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF4338CA), fontWeight: FontWeight.w500),
+                      Text(
+                        'attendance.detail.trip_label'.tr(),
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF4338CA), fontWeight: FontWeight.w500),
                       ),
                       Text(
-                        '$tripCount ngày',
+                        'attendance.detail.days_count'.tr(args: {'count': tripCount}),
                         style: const TextStyle(fontSize: 11, color: Color(0xFF4338CA), fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -1077,12 +1078,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Chưa có ca: ',
-                        style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
+                      Text(
+                        'attendance.detail.unscheduled_label'.tr(),
+                        style: const TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
                       ),
                       Text(
-                        '$unscheduledCount ngày',
+                        'attendance.detail.days_count'.tr(args: {'count': unscheduledCount}),
                         style: const TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -1107,22 +1108,22 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Chi tiết các ngày đã ghi nhận công:',
+                  Text(
+                    'attendance.detail.recorded_days_title'.tr(),
                     style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   Text(
-                    '${boardCellMap.isNotEmpty ? boardCellMap.length : dayRecordMap.length} ngày',
+                    'attendance.detail.days_count'.tr(args: {'count': boardCellMap.isNotEmpty ? boardCellMap.length : dayRecordMap.length}),
                     style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               if (boardCellMap.isEmpty && dayRecordMap.isEmpty)
-                const Center(
+                Center(
                   child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('Chưa có dữ liệu chấm công cho tháng này.', style: TextStyle(color: Color(0xFF94A3B8))),
+                    padding: const EdgeInsets.all(16),
+                    child: Text('attendance.detail.no_data_month'.tr(), style: const TextStyle(color: Color(0xFF94A3B8))),
                   ),
                 )
               else
@@ -1144,7 +1145,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
 
                   final dateStr = '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
                   final weekday = DateTime(year, month, day).weekday;
-                  final weekdayShort = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'][weekday - 1];
+                  final weekdayShort = ['attendance.weekday_short.mon'.tr(), 'attendance.weekday_short.tue'.tr(), 'attendance.weekday_short.wed'.tr(), 'attendance.weekday_short.thu'.tr(), 'attendance.weekday_short.fri'.tr(), 'attendance.weekday_short.sat'.tr(), 'attendance.weekday_short.sun'.tr()][weekday - 1];
 
                   final inTime = cell?.firstIn?.isNotEmpty == true ? cell!.firstIn! : _formatTime(r?.firstCheckInAt);
                   final outTime = cell?.lastOut?.isNotEmpty == true ? cell!.lastOut! : _formatTime(r?.lastCheckOutAt);
@@ -1182,12 +1183,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  'Vào: $inTime  |  Ra: $outTime',
+                                  'attendance.detail.in_out'.tr(args: {'in': inTime, 'out': outTime}),
                                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                                 ),
                                 if (cell != null && cell.workUnits > 0)
                                   Text(
-                                    '${cell.workUnits} công',
+                                    'attendance.detail.work_units'.tr(args: {'count': cell.workUnits}),
                                     style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                                   ),
                               ],
@@ -1219,11 +1220,11 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildHistoryFilterChip('Tất cả', 'ALL'),
-              _buildHistoryFilterChip('Hợp lệ', 'VALID'),
-              _buildHistoryFilterChip('Đi muộn', 'LATE'),
-              _buildHistoryFilterChip('Bất thường', 'ABNORMAL'),
-              _buildHistoryFilterChip('Đã duyệt sửa', 'APPROVED_CORRECTION'),
+              _buildHistoryFilterChip('common.all'.tr(), 'ALL'),
+              _buildHistoryFilterChip('attendance.log.valid'.tr(), 'VALID'),
+              _buildHistoryFilterChip('attendance.log.late'.tr(), 'LATE'),
+              _buildHistoryFilterChip('attendance.log.abnormal'.tr(), 'ABNORMAL'),
+              _buildHistoryFilterChip('attendance.log.approved_correction'.tr(), 'APPROVED_CORRECTION'),
             ],
           ),
         ),
@@ -1267,20 +1268,20 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildHistoryItemCard(AttendanceRecord item) {
     Color statusBg = const Color(0xFFECFDF5);
     Color statusColor = const Color(0xFF059669);
-    String statusText = 'Hợp lệ';
+    String statusText = 'attendance.log.valid'.tr();
 
     if (item.status == 'LATE') {
       statusBg = const Color(0xFFFEF3C7);
       statusColor = const Color(0xFFD97706);
-      statusText = 'Đi muộn ${item.lateMinutes}p';
+      statusText = 'attendance.log.late_minutes'.tr(args: {'minutes': item.lateMinutes});
     } else if (item.status == 'ABNORMAL') {
       statusBg = const Color(0xFFFEE2E2);
       statusColor = const Color(0xFFDC2626);
-      statusText = 'Bất thường (Thiếu quẹt)';
+      statusText = 'attendance.log.abnormal_missing'.tr();
     } else if (item.status == 'APPROVED_CORRECTION') {
       statusBg = const Color(0xFFF3E8FF);
       statusColor = const Color(0xFF7C3AED);
-      statusText = 'Đã duyệt sửa công';
+      statusText = 'attendance.log.approved_correction_full'.tr();
     }
 
     final canExplain = item.status == 'ABNORMAL' || item.status == 'LATE';
@@ -1328,7 +1329,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Giờ vào:', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                    Text('attendance.log.check_in'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                     const SizedBox(height: 2),
                     Text(
                       _formatTime(item.firstCheckInAt),
@@ -1341,7 +1342,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Giờ ra:', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                    Text('attendance.log.check_out'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                     const SizedBox(height: 2),
                     Text(
                       _formatTime(item.lastCheckOutAt),
@@ -1354,10 +1355,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tổng công:', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                    Text('attendance.log.total'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                     const SizedBox(height: 2),
                     Text(
-                      item.workedMinutes > 0 ? '${(item.workedMinutes / 60).toStringAsFixed(1)} giờ' : '--',
+                      item.workedMinutes > 0 ? 'attendance.log.hours'.tr(args: {'hours': (item.workedMinutes / 60).toStringAsFixed(1)}) : '--',
                       style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                     ),
                   ],
@@ -1368,7 +1369,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           if (item.note != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Ghi chú: ${item.note}',
+              'attendance.log.note'.tr(args: {'note': item.note}),
               style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
             ),
           ],
@@ -1381,7 +1382,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
               child: TextButton.icon(
                 onPressed: () => widget.onExplainItem(item),
                 icon: const Icon(Icons.edit_note_rounded, size: 16, color: Color(0xFF2563EB)),
-                label: const Text('Giải trình công', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                label: Text('attendance.log.explain'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
               ),
             ),
           ],

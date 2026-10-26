@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import 'package:intl/intl.dart';
 import '../../../models/hrm_fleet_models.dart';
 
@@ -45,9 +46,9 @@ void showFleetBookingDetailsSheet({
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Chi tiết chuyến xe · ${booking.id}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('fleet.booking.detail_title'.tr(args: {'id': booking.id}), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   const SizedBox(height: 2),
-                  Text(booking.sourceLabel ?? 'Đơn công tác', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                  Text(booking.sourceLabel ?? 'fleet.booking.default_source'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                 ],
               ),
               IconButton(
@@ -57,13 +58,13 @@ void showFleetBookingDetailsSheet({
             ],
           ),
           const Divider(height: 24),
-          buildFleetDetailRow('Phương tiện', '${booking.vehicleName} (${booking.vehiclePlateNo})'),
-          buildFleetDetailRow('Tài xế phụ trách', booking.driverName ?? 'Chưa phân công'),
-          buildFleetDetailRow('Khởi hành', dateFormat.format(booking.startAt)),
-          buildFleetDetailRow('Dự kiến về', dateFormat.format(booking.endAt)),
-          buildFleetDetailRow('Điểm đến', booking.destination ?? '—'),
-          buildFleetDetailRow('Mục đích công tác', booking.purpose ?? '—'),
-          buildFleetDetailRow('Trạng thái', booking.status == 'BOOKED' ? 'Đã xếp lịch xe' : booking.status),
+          buildFleetDetailRow('fleet.booking.vehicle'.tr(), '${booking.vehicleName} (${booking.vehiclePlateNo})'),
+          buildFleetDetailRow('fleet.booking.driver'.tr(), booking.driverName ?? 'fleet.booking.unassigned'.tr()),
+          buildFleetDetailRow('fleet.booking.departure'.tr(), dateFormat.format(booking.startAt)),
+          buildFleetDetailRow('fleet.booking.expected_return'.tr(), dateFormat.format(booking.endAt)),
+          buildFleetDetailRow('fleet.booking.destination'.tr(), booking.destination ?? '—'),
+          buildFleetDetailRow('fleet.booking.purpose'.tr(), booking.purpose ?? '—'),
+          buildFleetDetailRow('common.status'.tr(), booking.status == 'BOOKED' ? 'fleet.booking.scheduled'.tr() : booking.status),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -75,7 +76,7 @@ void showFleetBookingDetailsSheet({
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 elevation: 0,
               ),
-              child: const Text('Đóng', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: Text('common.close'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ],

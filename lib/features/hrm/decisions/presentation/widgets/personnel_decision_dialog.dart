@@ -8,6 +8,7 @@ import 'dialog_parts/decision_position_picker.dart';
 import 'dialog_parts/decision_basic_info_form.dart';
 import 'dialog_parts/decision_compare_card.dart';
 import 'dialog_parts/decision_salary_form.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 class PersonnelDecisionDialog extends StatefulWidget {
   final HrmPersonnelDecision? decision;
@@ -74,13 +75,13 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
   bool _employeeHasError = false;
   bool _positionHasError = false;
 
-  final Map<String, String> _typeLabels = {
-    'TRANSFER': 'Điều chuyển',
-    'APPOINT': 'Bổ nhiệm',
-    'PROMOTE': 'Thăng chức',
-    'CONCURRENT': 'Kiêm nhiệm',
-    'DISMISS': 'Miễn nhiệm',
-    'REVOKE': 'Bãi nhiệm',
+  Map<String, String> get _typeLabels => {
+    'TRANSFER': 'hrm_decisions.type_transfer'.tr(),
+    'APPOINT': 'hrm_decisions.type_appoint'.tr(),
+    'PROMOTE': 'hrm_decisions.type_promote'.tr(),
+    'CONCURRENT': 'hrm_decisions.type_concurrent'.tr(),
+    'DISMISS': 'hrm_decisions.type_dismiss'.tr(),
+    'REVOKE': 'hrm_decisions.type_revoke'.tr(),
   };
 
   @override
@@ -187,7 +188,7 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
     if (_selectedEmployeeId == null || _selectedEmployeeId!.isEmpty) {
       setState(() => _employeeHasError = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn nhân viên')),
+        SnackBar(content: Text('hrm_decisions.employee_required'.tr())),
       );
       return;
     }
@@ -196,7 +197,7 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
       if (_selectedPositionNodeId == null || _selectedPositionNodeId!.isEmpty) {
         setState(() => _positionHasError = true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng chọn chức danh mới')),
+          SnackBar(content: Text('hrm_decisions.position_required'.tr())),
         );
         return;
       }
@@ -237,8 +238,8 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
           SnackBar(
             backgroundColor: const Color(0xFF059669),
             content: Text(widget.decision != null
-                ? 'Đã cập nhật quyết định thành công'
-                : 'Đã tạo quyết định mới thành công'),
+                ? 'hrm_decisions.update_success'.tr()
+                : 'hrm_decisions.create_success'.tr()),
           ),
         );
       }
@@ -247,7 +248,7 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFFDC2626),
-            content: Text('Lỗi khi lưu quyết định: $e'),
+            content: Text('hrm_decisions.save_error'.tr(args: {'error': '$e'})),
           ),
         );
       }
@@ -265,9 +266,9 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
     // Tính toán Trước / Sau
     final beforePosition = emp?.position.isNotEmpty == true ? emp!.position : '----';
     final afterPosition = _decisionType == 'DISMISS'
-        ? 'Miễn nhiệm'
+        ? 'hrm_decisions.type_dismiss'.tr()
         : _decisionType == 'REVOKE'
-            ? 'Bãi nhiệm'
+            ? 'hrm_decisions.type_revoke'.tr()
             : (pos?.title ?? '----');
     final isPosChanged = afterPosition != '----' && afterPosition != beforePosition;
 
@@ -322,8 +323,8 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
                 Expanded(
                   child: Text(
                     widget.decision != null
-                        ? 'Sửa quyết định ${widget.decision?.decisionNo ?? ''}'
-                        : 'Tạo quyết định nhân sự',
+                        ? 'hrm_decisions.dialog_edit_title'.tr(args: {'no': widget.decision?.decisionNo ?? ''})
+                        : 'hrm_decisions.dialog_create_title'.tr(),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -510,7 +511,7 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('Đóng', style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+                  child: Text('common.close'.tr(), style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton(
@@ -529,7 +530,7 @@ class _PersonnelDecisionDialogState extends State<PersonnelDecisionDialog> {
                           child: CircularProgressIndicator(color: Color(0xFF451A03), strokeWidth: 2),
                         )
                       : Text(
-                          widget.decision != null ? 'Lưu thay đổi' : 'Tạo quyết định',
+                          widget.decision != null ? 'hrm_decisions.save_changes'.tr() : 'hrm_decisions.create_decision'.tr(),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                 ),

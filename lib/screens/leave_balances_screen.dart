@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/hrm_leave_balance_models.dart';
 import '../services/hrm_service.dart';
 import 'leave_balances/components/leave_balance_card.dart';
@@ -224,18 +225,18 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          tooltip: 'Quay lại',
+          tooltip: 'common.back'.tr(),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Quỹ phép năm & Thâm niên',
+            Text(
+              'leave.title'.tr(),
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             Text(
-              'SVN DTS / Quản trị Nhân sự · Năm $_selectedYear',
+              'leave.header.breadcrumb'.tr(args: {'year': _selectedYear}),
               style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
@@ -264,12 +265,12 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
             ),
             itemBuilder: (_) => [
               for (int y = DateTime.now().year + 1; y >= DateTime.now().year - 3; y--)
-                PopupMenuItem(value: y, child: Text('Năm $y')),
+                PopupMenuItem(value: y, child: Text('leave.year_label'.tr(args: {'year': y}))),
             ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadData,
           ),
         ],
@@ -291,7 +292,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                   Expanded(
                     child: _buildSubTab(
                       index: 0,
-                      label: 'Quỹ phép',
+                      label: 'leave.tab.balances'.tr(),
                       icon: Icons.calendar_view_month_rounded,
                       count: _balances.length,
                     ),
@@ -300,7 +301,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                   Expanded(
                     child: _buildSubTab(
                       index: 1,
-                      label: 'Lịch sử điều chỉnh',
+                      label: 'leave.tab.adjustments'.tr(),
                       icon: Icons.history_rounded,
                       count: _adjustments.isNotEmpty ? _adjustments.length : null,
                     ),
@@ -393,16 +394,16 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
     final totalFiltered = _filteredBalances.length;
     final displayed = _displayedBalances;
     final selectedDeptLabel = _selectedDept == 'ALL'
-        ? 'Tất cả phòng ban (${_allDepartments.length - 1})'
+        ? 'leave.filter.all_departments_count'.tr(args: {'count': _allDepartments.length - 1})
         : _selectedDept;
 
     final sortLabel = {
-      'NAME': 'Tên A-Z',
-      'REMAINING_DESC': 'Còn phép ↓',
-      'REMAINING_ASC': 'Còn phép ↑',
-      'USED_DESC': 'Đã dùng ↓',
-      'CODE': 'Mã NV',
-    }[_sortBy] ?? 'Sắp xếp';
+      'NAME': 'leave.sort.name_short'.tr(),
+      'REMAINING_DESC': 'leave.sort.remaining_desc_short'.tr(),
+      'REMAINING_ASC': 'leave.sort.remaining_asc_short'.tr(),
+      'USED_DESC': 'leave.sort.used_desc_short'.tr(),
+      'CODE': 'leave.sort.code_short'.tr(),
+    }[_sortBy] ?? 'leave.sort.label'.tr();
 
     return ListView(
       controller: _scrollController,
@@ -425,7 +426,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
             },
             style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
-              hintText: 'Tìm nhân viên, mã số hoặc phòng ban...',
+              hintText: 'leave.search_hint'.tr(),
               hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
               suffixIcon: _searchQuery.isNotEmpty
@@ -538,15 +539,15 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildFilterChip('ALL', 'Tất cả (${_balances.length})'),
+              _buildFilterChip('ALL', 'leave.chip.all'.tr(args: {'count': _balances.length})),
               const SizedBox(width: 6),
-              _buildFilterChip('OK', 'Còn phép (${_balances.where((r) => r.hasBalance && r.remaining > 0).length})'),
+              _buildFilterChip('OK', 'leave.chip.ok'.tr(args: {'count': _balances.where((r) => r.hasBalance && r.remaining > 0).length})),
               const SizedBox(width: 6),
-              _buildFilterChip('DEPLETED', 'Hết phép (${_balances.where((r) => r.hasBalance && r.remaining == 0).length})'),
+              _buildFilterChip('DEPLETED', 'leave.chip.depleted'.tr(args: {'count': _balances.where((r) => r.hasBalance && r.remaining == 0).length})),
               const SizedBox(width: 6),
-              _buildFilterChip('OVER', 'Vượt quỹ (${_balances.where((r) => r.hasBalance && r.remaining < 0).length})'),
+              _buildFilterChip('OVER', 'leave.chip.over'.tr(args: {'count': _balances.where((r) => r.hasBalance && r.remaining < 0).length})),
               const SizedBox(width: 6),
-              _buildFilterChip('NO_BALANCE', 'Chưa có quỹ (${_balances.where((r) => !r.hasBalance).length})'),
+              _buildFilterChip('NO_BALANCE', 'leave.chip.no_balance'.tr(args: {'count': _balances.where((r) => !r.hasBalance).length})),
             ],
           ),
         ),
@@ -559,11 +560,11 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Danh sách nhân sự ($totalFiltered)',
+                'leave.list_title'.tr(args: {'count': totalFiltered}),
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               Text(
-                'Hiển thị ${displayed.length} / $totalFiltered',
+                'leave.showing'.tr(args: {'shown': displayed.length, 'total': totalFiltered}),
                 style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
               ),
             ],
@@ -580,7 +581,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
               children: [
                 const Icon(Icons.person_search_outlined, size: 44, color: Color(0xFF94A3B8)),
                 const SizedBox(height: 10),
-                const Text('Không có nhân viên nào phù hợp bộ lọc', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                Text('leave.empty_filtered'.tr(), style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: () {
@@ -593,7 +594,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                     });
                   },
                   icon: const Icon(Icons.refresh, size: 14),
-                  label: const Text('Đặt lại bộ lọc', style: TextStyle(fontSize: 12)),
+                  label: Text('leave.filter.reset'.tr(), style: TextStyle(fontSize: 12)),
                 ),
               ],
             ),
@@ -614,7 +615,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                   },
                   icon: const Icon(Icons.expand_more_rounded, size: 18),
                   label: Text(
-                    'Tải thêm (còn ${totalFiltered - displayed.length} nhân sự)',
+                    'leave.load_more'.tr(args: {'count': totalFiltered - displayed.length}),
                     style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                   ),
                   style: TextButton.styleFrom(
@@ -641,7 +642,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
         builder: (context, setSheetState) {
           final depts = _allDepartments.where((d) {
             if (sheetSearch.isEmpty) return true;
-            if (d == 'ALL') return 'Tất cả phòng ban'.toLowerCase().contains(sheetSearch.toLowerCase());
+            if (d == 'ALL') return 'leave.filter.all_departments'.tr().toLowerCase().contains(sheetSearch.toLowerCase());
             return d.toLowerCase().contains(sheetSearch.toLowerCase());
           }).toList();
 
@@ -665,8 +666,8 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Chọn phòng ban',
+                      Text(
+                        'leave.dept.select'.tr(),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       IconButton(
@@ -687,8 +688,8 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                     child: TextField(
                       onChanged: (val) => setSheetState(() => sheetSearch = val),
                       style: const TextStyle(fontSize: 13),
-                      decoration: const InputDecoration(
-                        hintText: 'Tìm nhanh phòng ban...',
+                      decoration: InputDecoration(
+                        hintText: 'leave.dept.search_hint'.tr(),
                         prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -708,7 +709,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                       final count = dept == 'ALL'
                           ? _balances.length
                           : _balances.where((b) => (b.department ?? '').trim() == dept).length;
-                      final label = dept == 'ALL' ? 'Tất cả phòng ban' : dept;
+                      final label = dept == 'ALL' ? 'leave.filter.all_departments'.tr() : dept;
 
                       return ListTile(
                         dense: true,
@@ -735,7 +736,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                '$count NS',
+                                'leave.dept.staff_count'.tr(args: {'count': count}),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -770,11 +771,11 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
 
   void _showSortPickerSheet() {
     final options = [
-      {'key': 'NAME', 'label': 'Họ và tên (A → Z)', 'icon': Icons.sort_by_alpha_rounded},
-      {'key': 'REMAINING_DESC', 'label': 'Còn phép nhiều nhất', 'icon': Icons.arrow_downward_rounded},
-      {'key': 'REMAINING_ASC', 'label': 'Còn phép ít nhất / Đã hết', 'icon': Icons.arrow_upward_rounded},
-      {'key': 'USED_DESC', 'label': 'Đã dùng phép nhiều nhất', 'icon': Icons.event_busy_rounded},
-      {'key': 'CODE', 'label': 'Mã nhân viên (A → Z)', 'icon': Icons.tag_rounded},
+      {'key': 'NAME', 'label': 'leave.sort.name'.tr(), 'icon': Icons.sort_by_alpha_rounded},
+      {'key': 'REMAINING_DESC', 'label': 'leave.sort.remaining_desc'.tr(), 'icon': Icons.arrow_downward_rounded},
+      {'key': 'REMAINING_ASC', 'label': 'leave.sort.remaining_asc'.tr(), 'icon': Icons.arrow_upward_rounded},
+      {'key': 'USED_DESC', 'label': 'leave.sort.used_desc'.tr(), 'icon': Icons.event_busy_rounded},
+      {'key': 'CODE', 'label': 'leave.sort.code'.tr(), 'icon': Icons.tag_rounded},
     ];
 
     showModalBottomSheet(
@@ -790,9 +791,9 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Text('Sắp xếp danh sách', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              child: Text('leave.sort.sheet_title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
             ),
             const SizedBox(height: 8),
             for (final opt in options)

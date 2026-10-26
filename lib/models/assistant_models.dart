@@ -1,3 +1,4 @@
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 /// Vai trò người gửi trong khung chat
 enum MessageSender {
   user,
@@ -141,7 +142,7 @@ class MentionUser {
   factory MentionUser.fromJson(Map<String, dynamic> json) {
     return MentionUser(
       userId: json['userId']?.toString() ?? json['id']?.toString() ?? '',
-      displayName: json['displayName']?.toString() ?? json['fullName']?.toString() ?? json['name']?.toString() ?? 'Nhân viên',
+      displayName: json['displayName']?.toString() ?? json['fullName']?.toString() ?? json['name']?.toString() ?? 'assistant.model.default_employee'.tr(),
       email: json['email']?.toString(),
       roleName: json['role']?.toString() ?? json['roleName']?.toString(),
       departmentName: json['unitNames'] != null && json['unitNames'] is List && (json['unitNames'] as List).isNotEmpty

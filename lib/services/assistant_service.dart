@@ -1,3 +1,4 @@
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/assistant_models.dart';
@@ -95,18 +96,18 @@ class AssistantService {
     final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
 
     // 1. Ý định Tạo đơn nghỉ phép (HRM Leave Request)
-    if (lower.contains('nghỉ phép') || lower.contains('xin nghỉ') || lower.contains('nghỉ ốm') || lower.contains('nghỉ việc riêng')) {
+    if (lower.contains('leave') || lower.contains('nghỉ phép') || lower.contains('xin nghỉ') || lower.contains('nghỉ ốm') || lower.contains('nghỉ việc riêng')) {
       final isTomorrow = lower.contains('ngày mai') || lower.contains('mai');
       final fromDate = isTomorrow ? tomorrowStr : todayStr;
       final toDate = fromDate;
-      String reason = 'Nghỉ giải quyết việc cá nhân';
-      if (lower.contains('nghỉ ốm') || lower.contains('bệnh')) reason = 'Nghỉ ốm điều trị sức khỏe';
-      if (lower.contains('phép năm')) reason = 'Nghỉ phép năm';
+      String reason = 'assistant.svc.reason_personal'.tr();
+      if (lower.contains('nghỉ ốm') || lower.contains('bệnh')) reason = 'assistant.svc.reason_sick'.tr();
+      if (lower.contains('phép năm')) reason = 'assistant.svc.reason_annual'.tr();
 
       final draft = AssistantActionDraft(
         requestId: 'req_leave_${DateTime.now().millisecondsSinceEpoch}',
         key: 'hrm.leave-request.create',
-        title: 'Tạo đơn nghỉ phép',
+        title: 'assistant.svc.title_leave'.tr(),
         module: 'HRM',
         fields: {
           'leaveType': 'ANNUAL',
@@ -119,87 +120,87 @@ class AssistantService {
       return AssistantMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
         sender: MessageSender.assistant,
-        text: 'Tôi đã soạn sẵn đơn nghỉ phép cho bạn. Bạn vui lòng kiểm tra thông tin và nhấn "Xác nhận & Gửi ngay" bên dưới nhé:',
+        text: 'assistant.svc.text_leave'.tr(),
         timestamp: DateTime.now(),
         actionDraft: draft,
       );
     }
 
     // 2. Ý định Làm thêm giờ / Tăng ca (HRM Overtime Request)
-    if (lower.contains('tăng ca') || lower.contains('làm thêm') || lower.contains('ot') || lower.contains('ngoài giờ')) {
+    if (lower.contains('overtime') || lower.contains('tăng ca') || lower.contains('làm thêm') || lower.contains('ot') || lower.contains('ngoài giờ')) {
       final isTomorrow = lower.contains('ngày mai') || lower.contains('mai');
       final date = isTomorrow ? tomorrowStr : todayStr;
       
       final draft = AssistantActionDraft(
         requestId: 'req_ot_${DateTime.now().millisecondsSinceEpoch}',
         key: 'hrm.ot-request.create',
-        title: 'Tạo đơn làm thêm giờ (OT)',
+        title: 'assistant.svc.title_ot'.tr(),
         module: 'HRM',
         fields: {
           'workDate': date,
           'startTime': '18:00',
           'endTime': '21:00',
           'hours': 3.0,
-          'reason': 'Hoàn thành hồ sơ dự án & kiểm thử hệ thống',
+          'reason': 'assistant.svc.ot_reason'.tr(),
         },
       );
 
       return AssistantMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
         sender: MessageSender.assistant,
-        text: 'Dưới đây là bản nháp đăng ký làm thêm giờ (OT). Bạn có thể điều chỉnh giờ bắt đầu / kết thúc trực tiếp trong thẻ:',
+        text: 'assistant.svc.text_ot'.tr(),
         timestamp: DateTime.now(),
         actionDraft: draft,
       );
     }
 
     // 3. Ý định Đi công tác (HRM Business Trip Request)
-    if (lower.contains('công tác') || lower.contains('đi tỉnh') || lower.contains('khảo sát hiện trường')) {
-      String destination = 'Chi nhánh / Khách hàng đối tác';
+    if (lower.contains('business trip') || lower.contains('công tác') || lower.contains('đi tỉnh') || lower.contains('khảo sát hiện trường')) {
+      String destination = 'assistant.svc.dest_default'.tr();
       if (lower.contains('hà nội')) {
-        destination = 'Hà Nội';
+        destination = 'assistant.svc.city_hanoi'.tr();
       } else if (lower.contains('đà nẵng')) {
-        destination = 'Đà Nẵng';
+        destination = 'assistant.svc.city_danang'.tr();
       } else if (lower.contains('cần thơ')) {
-        destination = 'Cần Thơ';
+        destination = 'assistant.svc.city_cantho'.tr();
       } else if (lower.contains('bình dương')) {
-        destination = 'Bình Dương';
+        destination = 'assistant.svc.city_binhduong'.tr();
       } else if (lower.contains('đồng nai')) {
-        destination = 'Đồng Nai';
+        destination = 'assistant.svc.city_dongnai'.tr();
       }
 
       final draft = AssistantActionDraft(
         requestId: 'req_trip_${DateTime.now().millisecondsSinceEpoch}',
         key: 'hrm.business-trip-request.create',
-        title: 'Tạo đơn đi công tác',
+        title: 'assistant.svc.title_trip'.tr(),
         module: 'HRM',
         fields: {
           'destination': destination,
           'fromDate': tomorrowStr,
           'toDate': tomorrowStr,
           'businessTripType': 'DOMESTIC',
-          'purpose': 'Khảo sát hiện trường & làm việc trực tiếp với đối tác',
+          'purpose': 'assistant.svc.trip_purpose'.tr(),
         },
       );
 
       return AssistantMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
         sender: MessageSender.assistant,
-        text: 'Tôi đã tạo form công tác đến **$destination**. Bạn hãy rà soát ngày đi/về và bấm gửi duyệt ngay trong thẻ này:',
+        text: 'assistant.svc.text_trip'.tr(args: {'destination': destination}),
         timestamp: DateTime.now(),
         actionDraft: draft,
       );
     }
 
     // 4. Ý định Tạo cuộc họp / Đặt lịch (Workspace Event)
-    if (lower.contains('cuộc họp') || lower.contains('đặt lịch') || lower.contains('lịch họp') || lower.contains('mời họp')) {
-      String title = 'Họp giao ban định kỳ';
+    if (lower.contains('meeting') || lower.contains('cuộc họp') || lower.contains('đặt lịch') || lower.contains('lịch họp') || lower.contains('mời họp')) {
+      String title = 'assistant.svc.meeting_default'.tr();
       if (lower.contains('kỹ thuật')) {
-        title = 'Họp kỹ thuật dự án';
+        title = 'assistant.svc.meeting_tech'.tr();
       } else if (lower.contains('khách hàng')) {
-        title = 'Họp trao đổi với khách hàng';
+        title = 'assistant.svc.meeting_customer'.tr();
       } else if (lower.contains('tiến độ')) {
-        title = 'Họp kiểm điểm tiến độ công việc';
+        title = 'assistant.svc.meeting_progress'.tr();
       }
 
       final startHour = now.hour + 1;
@@ -209,31 +210,31 @@ class AssistantService {
       final draft = AssistantActionDraft(
         requestId: 'req_event_${DateTime.now().millisecondsSinceEpoch}',
         key: 'workspace.event.create',
-        title: 'Tạo cuộc họp / Sự kiện',
+        title: 'assistant.svc.title_event'.tr(),
         module: 'WORKSPACE',
         fields: {
           'title': title,
           'startAt': startAt.toIso8601String(),
           'endAt': endAt.toIso8601String(),
-          'location': 'Phòng họp trực tuyến Savina / Phòng họp chính',
-          'description': 'Trao đổi kế hoạch, giải quyết vướng mắc kỹ thuật và phân bổ nguồn lực.',
+          'location': 'assistant.svc.event_location'.tr(),
+          'description': 'assistant.svc.event_desc'.tr(),
         },
       );
 
       return AssistantMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
         sender: MessageSender.assistant,
-        text: 'Tôi đã chuẩn bị lịch họp "**$title**". Bạn có thể thay đổi thời gian hoặc địa điểm trước khi lưu:',
+        text: 'assistant.svc.text_event'.tr(args: {'title': title}),
         timestamp: DateTime.now(),
         actionDraft: draft,
       );
     }
 
     // 5. Ý định Giao việc ngoài dự án (Workspace Standalone Task)
-    if (lower.contains('giao việc') || lower.contains('việc ngoài dự án') || lower.contains('đầu việc') || lower.contains('nhắc việc')) {
+    if (lower.contains('assign task') || lower.contains('giao việc') || lower.contains('việc ngoài dự án') || lower.contains('đầu việc') || lower.contains('nhắc việc')) {
       String taskTitle = prompt.replaceAll(RegExp(r'(giao việc|tạo việc|việc ngoài dự án|tạo đầu việc|giúp tôi)\s*', caseSensitive: false), '').trim();
       if (taskTitle.isEmpty || taskTitle.length < 3) {
-        taskTitle = 'Nhiệm vụ công việc mới';
+        taskTitle = 'assistant.svc.task_default'.tr();
       }
 
       String priority = 'normal';
@@ -246,34 +247,34 @@ class AssistantService {
       final draft = AssistantActionDraft(
         requestId: 'req_task_${DateTime.now().millisecondsSinceEpoch}',
         key: 'workspace.standalone-task.create',
-        title: 'Giao việc ngoài dự án',
+        title: 'assistant.svc.title_task'.tr(),
         module: 'WORKSPACE',
         fields: {
           'title': taskTitle,
           'priority': priority,
           'dueDate': tomorrowStr,
-          'description': 'Thực hiện và báo cáo kết quả khi hoàn tất.',
+          'description': 'assistant.svc.task_desc'.tr(),
         },
       );
 
       return AssistantMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
         sender: MessageSender.assistant,
-        text: 'Tôi đã tạo thẻ công việc với tiêu đề "**$taskTitle**". Bạn có thể kiểm tra mức ưu tiên, hạn chót và nhấn "Lưu việc":',
+        text: 'assistant.svc.text_task'.tr(args: {'title': taskTitle}),
         timestamp: DateTime.now(),
         actionDraft: draft,
       );
     }
 
     // 6. Ý định Ghi nhận sự cố thiết bị (Maintenance Incident Record)
-    if (lower.contains('sự cố') || lower.contains('báo hỏng') || lower.contains('hỏng hóc') || lower.contains('bảo trì')) {
+    if (lower.contains('incident') || lower.contains('sự cố') || lower.contains('báo hỏng') || lower.contains('hỏng hóc') || lower.contains('bảo trì')) {
       final draft = AssistantActionDraft(
         requestId: 'req_inc_${DateTime.now().millisecondsSinceEpoch}',
         key: 'maintenance.incident.record',
-        title: 'Ghi nhận sự cố thiết bị',
+        title: 'assistant.svc.title_incident'.tr(),
         module: 'MAINTENANCE',
         fields: {
-          'equipmentName': 'Máy biến áp MBA 110kV T1',
+          'equipmentName': 'assistant.svc.incident_equipment'.tr(),
           'severity': 'HIGH',
           'description': prompt,
           'occurredAt': todayStr,
@@ -283,21 +284,17 @@ class AssistantService {
       return AssistantMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
         sender: MessageSender.assistant,
-        text: 'Đã sẵn sàng phiếu ghi nhận sự cố. Vui lòng kiểm tra mức độ nghiêm trọng và gửi ngay cho đội kỹ thuật:',
+        text: 'assistant.svc.text_incident'.tr(),
         timestamp: DateTime.now(),
         actionDraft: draft,
       );
     }
 
     // Phản hồi hội thoại chung
-    String reply = 'Tôi là Trợ lý AI Savina. Tôi có thể hỗ trợ bạn tạo nhanh các biểu mẫu ngay trong khung chat:\n\n'
-        '• **Nhân sự (HRM)**: Xin nghỉ phép, đăng ký làm thêm giờ (OT), tạo đơn công tác.\n'
-        '• **Công việc (Workspace)**: Đặt lịch họp, giao việc ngoài dự án, tạo mốc công việc.\n'
-        '• **Bảo trì**: Ghi nhận sự cố thiết bị và bảo dưỡng máy móc.\n\n'
-        'Bạn có thể gõ yêu cầu tự nhiên (ví dụ: *"Xin nghỉ phép thứ 2 tuần sau"* hoặc gõ *@* để tag đồng nghiệp).';
+    String reply = 'assistant.svc.reply_help'.tr();
 
     if (mentions.isNotEmpty) {
-      reply = 'Đã ghi nhận nhắc tên (${mentions.length} nhân sự). $reply';
+      reply = 'assistant.svc.mention_ack'.tr(args: {'count': mentions.length, 'reply': reply});
     }
 
     return AssistantMessage(
@@ -314,7 +311,7 @@ class AssistantService {
       if (draft.key == 'hrm.leave-request.create') {
         final fromDate = draft.fields['fromDate']?.toString() ?? '';
         final toDate = draft.fields['toDate']?.toString() ?? fromDate;
-        final reason = draft.fields['reason']?.toString() ?? 'Nghỉ giải quyết việc cá nhân';
+        final reason = draft.fields['reason']?.toString() ?? 'assistant.svc.reason_personal'.tr();
 
         final res = await _hrmAttendanceService.createCorrection(
           requestDate: fromDate,
@@ -328,14 +325,14 @@ class AssistantService {
         return {
           'success': true,
           'id': res.id.isNotEmpty ? res.id : 'LEAVE-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'Đơn nghỉ phép ($fromDate → $toDate)',
+          'label': 'assistant.svc.label_leave'.tr(args: {'from': fromDate, 'to': toDate}),
         };
       }
 
       if (draft.key == 'hrm.ot-request.create') {
         final workDate = draft.fields['workDate']?.toString() ?? '';
         final hours = (draft.fields['hours'] is num) ? (draft.fields['hours'] as num).toDouble() : 3.0;
-        final reason = draft.fields['reason']?.toString() ?? 'Làm thêm giờ dự án';
+        final reason = draft.fields['reason']?.toString() ?? 'assistant.svc.ot_reason_default'.tr();
 
         final res = await _hrmAttendanceService.createCorrection(
           requestDate: workDate,
@@ -344,21 +341,21 @@ class AssistantService {
           newCheckInAt: '${workDate}T18:00:00',
           newCheckOutAt: '${workDate}T21:00:00',
           duration: hours,
-          reason: '[Làm thêm giờ] $reason',
+          reason: 'assistant.svc.ot_prefix'.tr(args: {'reason': reason}),
         );
 
         return {
           'success': true,
           'id': res.id.isNotEmpty ? res.id : 'OT-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'Đơn làm thêm giờ ($workDate)',
+          'label': 'assistant.svc.label_ot'.tr(args: {'date': workDate}),
         };
       }
 
       if (draft.key == 'hrm.business-trip-request.create') {
-        final dest = draft.fields['destination']?.toString() ?? 'Địa điểm công tác';
+        final dest = draft.fields['destination']?.toString() ?? 'assistant.svc.dest_unknown'.tr();
         final fromDate = draft.fields['fromDate']?.toString() ?? '';
         final toDate = draft.fields['toDate']?.toString() ?? fromDate;
-        final purpose = draft.fields['purpose']?.toString() ?? 'Công tác';
+        final purpose = draft.fields['purpose']?.toString() ?? 'assistant.svc.purpose_default'.tr();
 
         final res = await _hrmAttendanceService.createCorrection(
           requestDate: fromDate,
@@ -366,18 +363,18 @@ class AssistantService {
           toDate: toDate,
           newCheckInAt: '${fromDate}T08:00:00',
           newCheckOutAt: '${toDate}T17:30:00',
-          reason: '[Công tác] $purpose (Nơi đến: $dest)',
+          reason: 'assistant.svc.trip_reason'.tr(args: {'purpose': purpose, 'dest': dest}),
         );
 
         return {
           'success': true,
           'id': res.id.isNotEmpty ? res.id : 'TRIP-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'Đơn công tác ($dest)',
+          'label': 'assistant.svc.label_trip'.tr(args: {'dest': dest}),
         };
       }
 
       if (draft.key == 'workspace.standalone-task.create') {
-        final title = draft.fields['title']?.toString() ?? 'Việc ngoài dự án';
+        final title = draft.fields['title']?.toString() ?? 'assistant.svc.task_title_default'.tr();
         final priority = draft.fields['priority']?.toString() ?? 'normal';
         final desc = draft.fields['description']?.toString() ?? '';
 
@@ -392,7 +389,7 @@ class AssistantService {
           return {
             'success': true,
             'id': 'TASK-${DateTime.now().millisecondsSinceEpoch % 10000}',
-            'label': 'Công việc: $title',
+            'label': 'assistant.svc.label_task'.tr(args: {'title': title}),
           };
         }
       }
@@ -405,7 +402,7 @@ class AssistantService {
             final res = await _dio.post(
               ep,
               data: {
-                'title': draft.fields['title'] ?? 'Cuộc họp',
+                'title': draft.fields['title'] ?? 'assistant.svc.meeting_title_default'.tr(),
                 'description': draft.fields['description'] ?? '',
                 'location': draft.fields['location'] ?? '',
                 'startAt': draft.fields['startAt'],
@@ -417,7 +414,7 @@ class AssistantService {
               return {
                 'success': true,
                 'id': 'EVT-${DateTime.now().millisecondsSinceEpoch % 10000}',
-                'label': 'Lịch họp: ${draft.fields['title']}',
+                'label': 'assistant.svc.label_event'.tr(args: {'title': draft.fields['title']}),
               };
             }
           } catch (_) {}
@@ -426,7 +423,7 @@ class AssistantService {
         return {
           'success': true,
           'id': 'EVT-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'Lịch họp: ${draft.fields['title']}',
+          'label': 'assistant.svc.label_event'.tr(args: {'title': draft.fields['title']}),
         };
       }
 
@@ -434,7 +431,7 @@ class AssistantService {
         return {
           'success': true,
           'id': 'INC-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'Sự cố: ${draft.fields['equipmentName'] ?? "Thiết bị"}',
+          'label': 'assistant.svc.label_incident'.tr(args: {'name': draft.fields['equipmentName'] ?? 'assistant.svc.equipment_default'.tr()}),
         };
       }
 

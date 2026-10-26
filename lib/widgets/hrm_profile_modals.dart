@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/hrm_models.dart';
 import '../services/hrm_attendance_service.dart';
 import '../services/pdf_export_service.dart';
+import '../core/i18n/app_i18n.dart';
 
 /// Reusable HRM Modals for Employee Profiles, Documents, Qualifications, Dependents, and Contracts
 class HrmProfileModals {
@@ -149,35 +150,35 @@ class HrmProfileModals {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Section 1: HỒ SƠ CÁ NHÂN
-                      _buildSectionHeader(Icons.description_outlined, '1. HỒ SƠ CÁ NHÂN'),
+                      _buildSectionHeader(Icons.description_outlined, 'hrm_modals.profile.1_ho_so_ca_nhan'.tr()),
                       _buildSectionCard([
-                        _buildDataRow('Số điện thoại:', emp.phone.isNotEmpty ? emp.phone : '----'),
+                        _buildDataRow('hrm_modals.profile.so_dien_thoai'.tr(), emp.phone.isNotEmpty ? emp.phone : '----'),
                         _buildDataRow('Email:', emp.email.isNotEmpty ? emp.email : '----'),
-                        _buildDataRow('Ngày sinh & Giới tính:', '${emp.dateOfBirth ?? '----'} (${emp.genderLabel})'),
-                        _buildDataRow('Số CCCD / Hộ chiếu:', emp.identityCardNumber ?? 'Chưa cập nhật'),
-                        _buildDataRow('Tình trạng hôn nhân:', emp.maritalStatusLabel),
-                        _buildDataRow('Quốc tịch & Dân tộc:', '${emp.nationality ?? 'Việt Nam'} / ${emp.ethnicity ?? 'Kinh'}'),
-                        _buildDataRow('Nơi sinh & Quê quán:', '${emp.placeOfBirth ?? '----'} (Quê quán: ${emp.hometown ?? '----'})'),
-                        _buildDataRow('Địa chỉ thường trú:', emp.permanentAddress ?? '----', isLast: true),
+                        _buildDataRow('hrm_modals.profile.dob_gender'.tr(), '${emp.dateOfBirth ?? '----'} (${emp.genderLabel})'),
+                        _buildDataRow('hrm_modals.profile.so_cccd_ho_chieu'.tr(), emp.identityCardNumber ?? 'hrm_modals.profile.chua_cap_nhat'.tr()),
+                        _buildDataRow('hrm_modals.profile.tinh_trang_hon_nhan'.tr(), emp.maritalStatusLabel),
+                        _buildDataRow('hrm_modals.profile.nationality_ethnicity'.tr(), '${emp.nationality ?? 'hrm_modals.profile.vietnam'.tr()} / ${emp.ethnicity ?? 'hrm_modals.profile.kinh'.tr()}'),
+                        _buildDataRow('hrm_modals.profile.birthplace_hometown'.tr(), '${emp.placeOfBirth ?? '----'} (${'hrm_modals.profile.hometown_label'.tr()}: ${emp.hometown ?? '----'})'),
+                        _buildDataRow('hrm_modals.profile.dia_chi_thuong_tru'.tr(), emp.permanentAddress ?? '----', isLast: true),
                       ]),
                       const SizedBox(height: 14),
 
                       // Section 2: LIÊN HỆ KHẨN CẤP
-                      _buildSectionHeader(Icons.favorite_border_rounded, '2. LIÊN HỆ KHẨN CẤP'),
+                      _buildSectionHeader(Icons.favorite_border_rounded, 'hrm_modals.profile.2_lien_he_khan_cap'.tr()),
                       _buildSectionCard([
-                        _buildDataRow('Người liên hệ:', emp.emergencyContactName ?? 'Chưa thiết lập'),
-                        _buildDataRow('Mối quan hệ:', emp.emergencyContactRelationship ?? '----'),
-                        _buildDataRow('Số điện thoại liên hệ:', emp.emergencyContactPhone ?? '----', isLast: true),
+                        _buildDataRow('hrm_modals.profile.nguoi_lien_he'.tr(), emp.emergencyContactName ?? 'hrm_modals.profile.chua_thiet_lap'.tr()),
+                        _buildDataRow('hrm_modals.profile.moi_quan_he'.tr(), emp.emergencyContactRelationship ?? '----'),
+                        _buildDataRow('hrm_modals.profile.so_dien_thoai_lien_he'.tr(), emp.emergencyContactPhone ?? '----', isLast: true),
                       ]),
                       const SizedBox(height: 14),
 
                       // Section 3: QUAN HỆ LAO ĐỘNG
-                      _buildSectionHeader(Icons.business_center_outlined, '3. QUAN HỆ LAO ĐỘNG'),
+                      _buildSectionHeader(Icons.business_center_outlined, 'hrm_modals.profile.3_quan_he_lao_dong'.tr()),
                       _buildSectionCard([
-                        _buildDataRow('Ngày gia nhập:', _formatDate(emp.joinDate)),
-                        _buildDataRow('Hợp đồng:', emp.contractType ?? 'Chính thức', valueColor: const Color(0xFF059669)),
+                        _buildDataRow('hrm_modals.profile.ngay_gia_nhap'.tr(), _formatDate(emp.joinDate)),
+                        _buildDataRow('hrm_modals.profile.hop_dong'.tr(), emp.contractType ?? 'hrm_modals.profile.chinh_thuc'.tr(), valueColor: const Color(0xFF059669)),
                         _buildDataRow(
-                          'Trạng thái hiện tại:',
+                          'hrm_modals.profile.trang_thai_hien_tai'.tr(),
                           '',
                           customValueWidget: _buildStatusBadge(emp.status),
                           isLast: true,
@@ -186,18 +187,18 @@ class HrmProfileModals {
                       const SizedBox(height: 14),
 
                       // Section 4: TÀI CHÍNH NHÂN SỰ & THUẾ
-                      _buildSectionHeader(Icons.account_balance_wallet_outlined, '4. TÀI CHÍNH NHÂN SỰ & THUẾ'),
+                      _buildSectionHeader(Icons.account_balance_wallet_outlined, 'hrm_modals.profile.4_tai_chinh_nhan_su_thue'.tr()),
                       _buildSectionCard([
-                        _buildDataRow('Mã số thuế TNCN:', emp.taxCode ?? 'Chưa cập nhật'),
-                        _buildDataRow('Số tài khoản nhận lương:', emp.bankAccountNumber ?? 'Chưa liên kết', valueColor: const Color(0xFF2563EB)),
-                        _buildDataRow('Ngân hàng thụ hưởng:', emp.bankName ?? '----'),
+                        _buildDataRow('hrm_modals.profile.ma_so_thue_tncn'.tr(), emp.taxCode ?? 'hrm_modals.profile.chua_cap_nhat'.tr()),
+                        _buildDataRow('hrm_modals.profile.so_tai_khoan_nhan_luong'.tr(), emp.bankAccountNumber ?? 'hrm_modals.profile.chua_lien_ket'.tr(), valueColor: const Color(0xFF2563EB)),
+                        _buildDataRow('hrm_modals.profile.ngan_hang_thu_huong'.tr(), emp.bankName ?? '----'),
                         _buildDataRow(
-                          'Quản lý trực tiếp:',
+                          'hrm_modals.profile.quan_ly_truc_tiep'.tr(),
                           '',
                           customValueWidget: Builder(
                             builder: (context) {
                               final mgr = reportingOverview?['manager'];
-                              final mgrName = mgr?['name']?.toString() ?? (emp.department.isNotEmpty ? 'Chưa chỉ định' : 'Chưa có');
+                              final mgrName = mgr?['name']?.toString() ?? (emp.department.isNotEmpty ? 'hrm_modals.profile.chua_chi_dinh'.tr() : 'hrm_modals.profile.chua_co'.tr());
                               final mgrTitle = mgr?['title']?.toString();
                               final mgrCode = mgr?['code']?.toString();
                               final isCore = mgr?['source'] == 'CORE_POSITION';
@@ -239,7 +240,7 @@ class HrmProfileModals {
                                         borderRadius: BorderRadius.circular(4),
                                         border: Border.all(color: const Color(0xFFBBF7D0)),
                                       ),
-                                      child: const Text('Sơ đồ Core', style: TextStyle(fontSize: 9, color: Color(0xFF15803D), fontWeight: FontWeight.bold)),
+                                      child: Text('hrm_modals.profile.so_do_core'.tr(), style: TextStyle(fontSize: 9, color: Color(0xFF15803D), fontWeight: FontWeight.bold)),
                                     ),
                                   ],
                                 ],
@@ -247,7 +248,7 @@ class HrmProfileModals {
                             },
                           ),
                         ),
-                        _buildDataRow('Người thân đã khai báo:', '${dependents.length} người (HR xác minh giảm trừ riêng)', isLast: true),
+                        _buildDataRow('hrm_modals.profile.declared_dependents'.tr(), 'hrm_modals.profile.dependents_count'.tr(args: {'count': dependents.length}), isLast: true),
                       ]),
                       const SizedBox(height: 16),
 
@@ -262,9 +263,9 @@ class HrmProfileModals {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Ảnh và giấy tờ', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                            Text('hrm_modals.profile.anh_va_giay_to'.tr(), style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                             const SizedBox(height: 2),
-                            const Text('CCCD là bắt buộc. Bằng cấp, chứng chỉ, hộ chiếu, giấy phép lao động là tùy chọn.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                            Text('hrm_modals.profile.cccd_la_bat_buoc_bang_cap'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                             const SizedBox(height: 10),
 
                             // Warning Banner
@@ -275,13 +276,13 @@ class HrmProfileModals {
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: const Color(0xFFFDE68A)),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
                                   Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFD97706)),
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Hồ sơ chưa đủ giấy tờ bắt buộc, còn thiếu: số CCCD, ảnh CCCD mặt trước, ảnh CCCD mặt sau.',
+                                      'hrm_modals.profile.ho_so_chua_du_giay_to'.tr(),
                                       style: TextStyle(fontSize: 10.5, color: Color(0xFF92400E), height: 1.3),
                                     ),
                                   ),
@@ -295,13 +296,13 @@ class HrmProfileModals {
                               children: [
                                 Expanded(
                                   child: _buildDocUploadBox(
-                                    title: 'Ảnh thẻ',
+                                    title: 'hrm_modals.profile.anh_the'.tr(),
                                     isRequired: false,
                                     uploadedFileName: uploadedDocs['avatar'],
                                     onTap: () {
                                       showUploadDocumentModal(
                                         context,
-                                        title: 'Ảnh thẻ hồ sơ',
+                                        title: 'hrm_modals.profile.anh_the_ho_so'.tr(),
                                         docType: 'AVATAR',
                                         employeeId: emp.id,
                                         onUploaded: (name) {
@@ -314,13 +315,13 @@ class HrmProfileModals {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: _buildDocUploadBox(
-                                    title: 'CCCD mặt trước',
+                                    title: 'hrm_modals.profile.cccd_mat_truoc'.tr(),
                                     isRequired: true,
                                     uploadedFileName: uploadedDocs['cccd_front'],
                                     onTap: () {
                                       showUploadDocumentModal(
                                         context,
-                                        title: 'CCCD mặt trước',
+                                        title: 'hrm_modals.profile.cccd_mat_truoc'.tr(),
                                         docType: 'CCCD_FRONT',
                                         employeeId: emp.id,
                                         onUploaded: (name) {
@@ -333,13 +334,13 @@ class HrmProfileModals {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: _buildDocUploadBox(
-                                    title: 'CCCD mặt sau',
+                                    title: 'hrm_modals.profile.cccd_mat_sau'.tr(),
                                     isRequired: true,
                                     uploadedFileName: uploadedDocs['cccd_back'],
                                     onTap: () {
                                       showUploadDocumentModal(
                                         context,
-                                        title: 'CCCD mặt sau',
+                                        title: 'hrm_modals.profile.cccd_mat_sau'.tr(),
                                         docType: 'CCCD_BACK',
                                         employeeId: emp.id,
                                         onUploaded: (name) {
@@ -352,7 +353,7 @@ class HrmProfileModals {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            const Text('Ngày hết hạn CCCD: Không ghi nhận', style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
+                            Text('hrm_modals.profile.ngay_het_han_cccd_khong_ghi'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF475569))),
                           ],
                         ),
                       ),
@@ -360,11 +361,11 @@ class HrmProfileModals {
 
                       // Section 6: BẰNG CẤP VÀ CHỨNG CHỈ (Dùng form modal chuẩn của Profile)
                       _buildInteractiveTableSection(
-                        title: 'BẰNG CẤP VÀ CHỨNG CHỈ',
-                        actionLabel: '+ Thêm',
-                        columns: const ['Loại', 'Tên bằng / Chứng chỉ', 'Thao tác'],
+                        title: 'hrm_modals.profile.bang_cap_va_chung_chi'.tr(),
+                        actionLabel: 'hrm_modals.profile.them'.tr(),
+                        columns: ['hrm_modals.profile.loai'.tr(), 'hrm_modals.profile.ten_bang_chung_chi'.tr(), 'common.actions'.tr()],
                         items: qualifications.map((q) => [q['typeName']?.toString() ?? q['type']?.toString() ?? '', q['name']?.toString() ?? '']).toList(),
-                        emptyMessage: 'Chưa có bằng cấp, chứng chỉ',
+                        emptyMessage: 'hrm_modals.profile.chua_co_bang_cap_chung_chi'.tr(),
                         onAction: () {
                           showAddQualificationModal(
                             context,
@@ -382,19 +383,19 @@ class HrmProfileModals {
 
                       // Section 7: NGƯỜI THÂN VÀ GIA ĐÌNH (Dùng form modal chuẩn của Profile)
                       _buildInteractiveTableSection(
-                        title: 'Người thân và gia đình',
-                        subtitle: 'Thông tin tự khai. Giảm trừ chỉ áp dụng sau khi HR xác minh đăng ký.',
-                        actionLabel: 'Thêm người thân',
-                        columns: const ['Họ tên', 'Quan hệ', 'Thao tác'],
+                        title: 'hrm_modals.profile.nguoi_than_va_gia_dinh'.tr(),
+                        subtitle: 'hrm_modals.profile.thong_tin_tu_khai_giam_tru'.tr(),
+                        actionLabel: 'hrm_modals.profile.them_nguoi_than'.tr(),
+                        columns: ['hrm_modals.profile.ho_ten'.tr(), 'hrm_modals.profile.quan_he'.tr(), 'common.actions'.tr()],
                         items: dependents.map((d) => [d['fullName']?.toString() ?? d['name']?.toString() ?? '', d['relationship']?.toString() ?? '']).toList(),
-                        emptyMessage: 'Chưa có thông tin người thân',
+                        emptyMessage: 'hrm_modals.profile.chua_co_thong_tin_nguoi_than'.tr(),
                         onAction: () {
                           showAddDependentModal(
                             context,
                             employeeId: emp.id,
                             onAdded: (item) async {
                               setSheetState(() {
-                                feedbackMessage = 'Đã thêm người thân thành công!';
+                                feedbackMessage = 'hrm_modals.profile.da_them_nguoi_than_thanh_cong'.tr();
                                 feedbackIsError = false;
                               });
                               final fresh = await _service.getEmployeeDependents(emp.id);
@@ -414,7 +415,7 @@ class HrmProfileModals {
                           if (id != null && id.isNotEmpty) {
                             final ok = await _service.deleteEmployeeDependent(emp.id, id);
                             setSheetState(() {
-                              feedbackMessage = ok ? 'Đã xóa người thân thành công!' : 'Xóa người thân thất bại!';
+                              feedbackMessage = ok ? 'hrm_modals.profile.da_xoa_nguoi_than_thanh_cong'.tr() : 'hrm_modals.profile.xoa_nguoi_than_that_bai'.tr();
                               feedbackIsError = !ok;
                             });
                             final fresh = await _service.getEmployeeDependents(emp.id);
@@ -444,13 +445,13 @@ class HrmProfileModals {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Hợp đồng và phụ lục', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                                      Text('hrm_modals.profile.hop_dong_va_phu_luc'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
                                       SizedBox(height: 2),
-                                      Text('Lưu hồ sơ ký kết và lịch sử hiệu lực. Cấu hình chi trả lương được quản lý riêng.', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                                      Text('hrm_modals.profile.luu_ho_so_ky_ket_va'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                                     ],
                                   ),
                                 ),
@@ -464,7 +465,7 @@ class HrmProfileModals {
                                       onCreated: (item) async {
                                         final code = item['contractCode']?.toString() ?? item['code']?.toString() ?? '';
                                         setSheetState(() {
-                                          feedbackMessage = 'Đã tạo hợp đồng nháp $code thành công và lưu vào cơ sở dữ liệu!';
+                                          feedbackMessage = 'hrm_modals.profile.da_tao_hop_dong_nhap_code'.tr(args: {'code': code});
                                           feedbackIsError = false;
                                         });
                                         final fresh = await _service.getEmployeeContracts(emp.id);
@@ -486,16 +487,16 @@ class HrmProfileModals {
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                                     elevation: 0,
                                   ),
-                                  child: const Text('Tạo hợp đồng nháp', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                  child: Text('hrm_modals.profile.tao_hop_dong_nhap'.tr(), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 10),
                             if (contracts.isEmpty)
-                              const Padding(
+                              Padding(
                                 padding: EdgeInsets.symmetric(vertical: 14),
                                 child: Center(
-                                  child: Text('Chưa có hợp đồng', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                                  child: Text('hrm_modals.profile.chua_co_hop_dong'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                                 ),
                               )
                             else
@@ -510,17 +511,17 @@ class HrmProfileModals {
                                   final status = c['status']?.toString() ?? 'DRAFT';
                                   final rawType = c['contractType']?.toString() ?? c['type']?.toString() ?? '';
                                   final typeLabel = rawType == 'DEFINITE'
-                                      ? 'Xác định thời hạn'
+                                      ? 'hrm_modals.profile.xac_dinh_thoi_han'.tr()
                                       : rawType == 'INDEFINITE'
-                                          ? 'Không thời hạn'
+                                          ? 'hrm_modals.profile.khong_thoi_han'.tr()
                                           : rawType == 'PROBATION'
-                                              ? 'Thử việc'
+                                              ? 'hrm_modals.profile.thu_viec'.tr()
                                               : rawType == 'AMENDMENT'
-                                                  ? 'Phụ lục'
-                                                  : (rawType.isNotEmpty ? rawType : 'Xác định thời hạn');
+                                                  ? 'hrm_modals.profile.phu_luc'.tr()
+                                                  : (rawType.isNotEmpty ? rawType : 'hrm_modals.profile.xac_dinh_thoi_han'.tr());
                                   final from = c['effectiveFrom']?.toString() ?? '';
                                   final to = c['effectiveTo']?.toString() ?? '';
-                                  final range = from.isNotEmpty ? (to.isNotEmpty ? '$from ~ $to' : 'Từ $from') : '';
+                                  final range = from.isNotEmpty ? (to.isNotEmpty ? '$from ~ $to' : 'hrm_modals.profile.tu_from'.tr(args: {'from': from})) : '';
                                   final id = c['id']?.toString() ?? '';
                                   final updatedAt = c['updatedAt']?.toString() ?? '';
 
@@ -569,9 +570,9 @@ class HrmProfileModals {
                                                     ),
                                                     child: Text(
                                                       isActive
-                                                          ? 'Đã ban hành'
+                                                          ? 'hrm_modals.profile.da_ban_hanh'.tr()
                                                           : isDraft
-                                                              ? 'Nháp'
+                                                              ? 'hrm_modals.profile.nhap'.tr()
                                                               : status,
                                                       style: TextStyle(
                                                         fontSize: 9.5,
@@ -594,14 +595,14 @@ class HrmProfileModals {
                                                   final confirm = await showDialog<bool>(
                                                     context: context,
                                                     builder: (dCtx) => AlertDialog(
-                                                      title: const Text('Ban hành hợp đồng?', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                                                      content: Text('Xác nhận ban hành hợp đồng $code theo chứng từ đã ký? Trạng thái nhân viên sẽ tự động cập nhật nếu là HĐ chính thức.'),
+                                                      title: Text('hrm_modals.profile.ban_hanh_hop_dong'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                                      content: Text('hrm_modals.profile.xac_nhan_ban_hanh_hop_dong'.tr(args: {'code': code})),
                                                       actions: [
-                                                        TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Hủy')),
+                                                        TextButton(onPressed: () => Navigator.pop(dCtx, false), child: Text('common.cancel'.tr())),
                                                         ElevatedButton(
                                                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
                                                           onPressed: () => Navigator.pop(dCtx, true),
-                                                          child: const Text('Ban hành', style: TextStyle(color: Colors.white)),
+                                                          child: Text('hrm_modals.profile.ban_hanh'.tr(), style: TextStyle(color: Colors.white)),
                                                         ),
                                                       ],
                                                     ),
@@ -611,8 +612,8 @@ class HrmProfileModals {
                                                     final ok = res['success'] == true;
                                                     setSheetState(() {
                                                       feedbackMessage = ok
-                                                          ? 'Đã ban hành hợp đồng $code thành công!'
-                                                          : (res['message']?.toString() ?? 'Ban hành thất bại!');
+                                                          ? 'hrm_modals.profile.da_ban_hanh_hop_dong_code'.tr(args: {'code': code})
+                                                          : (res['message']?.toString() ?? 'hrm_modals.profile.ban_hanh_that_bai'.tr());
                                                       feedbackIsError = !ok;
                                                     });
                                                     final fresh = await _service.getEmployeeContracts(emp.id);
@@ -633,12 +634,12 @@ class HrmProfileModals {
                                                     borderRadius: BorderRadius.circular(4),
                                                     border: Border.all(color: const Color(0xFF86EFAC)),
                                                   ),
-                                                  child: const Row(
+                                                  child: Row(
                                                     mainAxisSize: MainAxisSize.min,
                                                     children: [
                                                       Icon(Icons.check_circle_outline, size: 12, color: Color(0xFF15803D)),
                                                       SizedBox(width: 4),
-                                                      Text('Ban hành', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF15803D))),
+                                                      Text('hrm_modals.profile.ban_hanh'.tr(), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF15803D))),
                                                     ],
                                                   ),
                                                 ),
@@ -649,14 +650,14 @@ class HrmProfileModals {
                                                   final confirm = await showDialog<bool>(
                                                     context: context,
                                                     builder: (dCtx) => AlertDialog(
-                                                      title: const Text('Xóa hợp đồng nháp?', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                                                      content: Text('Xác nhận xóa hợp đồng nháp $code? Thao tác không thể hoàn tác.'),
+                                                      title: Text('hrm_modals.profile.xoa_hop_dong_nhap'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                                      content: Text('hrm_modals.profile.xac_nhan_xoa_hop_dong_nhap'.tr(args: {'code': code})),
                                                       actions: [
-                                                        TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Hủy')),
+                                                        TextButton(onPressed: () => Navigator.pop(dCtx, false), child: Text('common.cancel'.tr())),
                                                         ElevatedButton(
                                                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
                                                           onPressed: () => Navigator.pop(dCtx, true),
-                                                          child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+                                                          child: Text('common.delete'.tr(), style: TextStyle(color: Colors.white)),
                                                         ),
                                                       ],
                                                     ),
@@ -664,7 +665,7 @@ class HrmProfileModals {
                                                   if (confirm == true && id.isNotEmpty) {
                                                     final ok = await _service.deleteEmployeeContract(id, expectedUpdatedAt: updatedAt);
                                                     setSheetState(() {
-                                                      feedbackMessage = ok ? 'Đã xóa hợp đồng $code thành công!' : 'Xóa hợp đồng thất bại!';
+                                                      feedbackMessage = ok ? 'hrm_modals.profile.da_xoa_hop_dong_code_thanh'.tr(args: {'code': code}) : 'hrm_modals.profile.xoa_hop_dong_that_bai'.tr();
                                                       feedbackIsError = !ok;
                                                     });
                                                     final fresh = await _service.getEmployeeContracts(emp.id);
@@ -746,7 +747,7 @@ class HrmProfileModals {
                           );
                         },
                         icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-                        label: const Text('In / Xuất PDF Hồ sơ'),
+                        label: Text('hrm_modals.profile.in_xuat_pdf_ho_so'.tr()),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0F172A),
                           foregroundColor: Colors.white,
@@ -764,7 +765,7 @@ class HrmProfileModals {
                         side: const BorderSide(color: Color(0xFFCBD5E1)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Đóng hồ sơ', style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.bold)),
+                      child: Text('hrm_modals.profile.dong_ho_so'.tr(), style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -803,14 +804,14 @@ class HrmProfileModals {
     bool isSaving = false;
 
     final typeOptions = {
-      'DEGREE': 'Bằng cấp',
-      'CERTIFICATE': 'Chứng chỉ',
-      'LANGUAGE': 'Ngoại ngữ',
-      'PROFESSIONAL': 'Chứng chỉ nghề nghiệp',
-      'PASSPORT': 'Hộ chiếu',
-      'WORK_PERMIT': 'Giấy phép lao động',
-      'LICENSE': 'Giấy phép hành nghề',
-      'OTHER': 'Khác',
+      'DEGREE': 'hrm_modals.profile.bang_cap'.tr(),
+      'CERTIFICATE': 'hrm_modals.profile.chung_chi'.tr(),
+      'LANGUAGE': 'hrm_modals.profile.ngoai_ngu'.tr(),
+      'PROFESSIONAL': 'hrm_modals.profile.chung_chi_nghe_nghiep'.tr(),
+      'PASSPORT': 'hrm_modals.profile.ho_chieu'.tr(),
+      'WORK_PERMIT': 'hrm_modals.profile.giay_phep_lao_dong'.tr(),
+      'LICENSE': 'hrm_modals.profile.giay_phep_hanh_nghe'.tr(),
+      'OTHER': 'hrm_modals.profile.khac'.tr(),
     };
 
     Future<void> pickDate(TextEditingController ctrl) async {
@@ -858,7 +859,7 @@ class HrmProfileModals {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    editItem != null ? 'Cập nhật bằng cấp, chứng chỉ' : 'Thêm bằng cấp, chứng chỉ',
+                    editItem != null ? 'hrm_modals.profile.cap_nhat_bang_cap_chung_chi'.tr() : 'hrm_modals.profile.them_bang_cap_chung_chi'.tr(),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, size: 20)),
@@ -874,7 +875,7 @@ class HrmProfileModals {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Row 1: Loại & Tên
-                      const Text('Loại *', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      Text('hrm_modals.profile.loai_2'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                       const SizedBox(height: 4),
                       Container(
                         margin: const EdgeInsets.only(bottom: 10),
@@ -899,15 +900,15 @@ class HrmProfileModals {
                         ),
                       ),
 
-                      _buildFormInputField(label: 'Tên *', controller: nameCtrl, hintText: 'Nhập tên bằng cấp / chứng chỉ'),
+                      _buildFormInputField(label: 'hrm_modals.profile.ten'.tr(), controller: nameCtrl, hintText: 'hrm_modals.profile.nhap_ten_bang_cap_chung_chi'.tr()),
                       const SizedBox(height: 10),
 
                       // Row 2: Trình độ & Chuyên ngành
                       Row(
                         children: [
-                          Expanded(child: _buildFormInputField(label: 'Trình độ', controller: levelCtrl, hintText: 'Ví dụ: Đại học, Thạc sĩ...')),
+                          Expanded(child: _buildFormInputField(label: 'hrm_modals.profile.trinh_do'.tr(), controller: levelCtrl, hintText: 'hrm_modals.profile.vi_du_dai_hoc_thac_si'.tr())),
                           const SizedBox(width: 10),
-                          Expanded(child: _buildFormInputField(label: 'Chuyên ngành', controller: majorCtrl, hintText: 'Ví dụ: Quản trị, CNTT...')),
+                          Expanded(child: _buildFormInputField(label: 'hrm_modals.profile.chuyen_nganh'.tr(), controller: majorCtrl, hintText: 'hrm_modals.profile.vi_du_quan_tri_cntt'.tr())),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -915,9 +916,9 @@ class HrmProfileModals {
                       // Row 3: Nơi cấp & Số hiệu
                       Row(
                         children: [
-                          Expanded(child: _buildFormInputField(label: 'Nơi cấp', controller: issuerCtrl, hintText: 'Cơ sở đào tạo / Tổ chức')),
+                          Expanded(child: _buildFormInputField(label: 'hrm_modals.profile.noi_cap'.tr(), controller: issuerCtrl, hintText: 'hrm_modals.profile.co_so_dao_tao_to_chuc'.tr())),
                           const SizedBox(width: 10),
-                          Expanded(child: _buildFormInputField(label: 'Số hiệu', controller: numberCtrl, hintText: 'Mã số chứng chỉ')),
+                          Expanded(child: _buildFormInputField(label: 'hrm_modals.profile.so_hieu'.tr(), controller: numberCtrl, hintText: 'hrm_modals.profile.ma_so_chung_chi'.tr())),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -933,7 +934,7 @@ class HrmProfileModals {
                               },
                               child: IgnorePointer(
                                 child: _buildFormInputField(
-                                  label: 'Ngày cấp',
+                                  label: 'hrm_modals.profile.ngay_cap'.tr(),
                                   controller: issuedDateCtrl,
                                   hintText: 'dd/mm/yyyy',
                                 ),
@@ -949,7 +950,7 @@ class HrmProfileModals {
                               },
                               child: IgnorePointer(
                                 child: _buildFormInputField(
-                                  label: 'Hiệu lực từ',
+                                  label: 'hrm_modals.profile.hieu_luc_tu'.tr(),
                                   controller: effectiveFromCtrl,
                                   hintText: 'dd/mm/yyyy',
                                 ),
@@ -971,7 +972,7 @@ class HrmProfileModals {
                               },
                               child: IgnorePointer(
                                 child: _buildFormInputField(
-                                  label: 'Ngày hết hạn',
+                                  label: 'hrm_modals.profile.ngay_het_han'.tr(),
                                   controller: expiryDateCtrl,
                                   hintText: 'dd/mm/yyyy',
                                 ),
@@ -979,15 +980,15 @@ class HrmProfileModals {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          Expanded(child: _buildFormInputField(label: 'Xếp loại', controller: gradeCtrl, hintText: 'Ví dụ: Giỏi, Khá, A...')),
+                          Expanded(child: _buildFormInputField(label: 'hrm_modals.profile.xep_loai'.tr(), controller: gradeCtrl, hintText: 'hrm_modals.profile.vi_du_gioi_kha_a'.tr())),
                         ],
                       ),
                       const SizedBox(height: 10),
 
                       // Row 6: Tệp đính kèm
-                      const Text('Tệp đính kèm (không bắt buộc)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      Text('hrm_modals.profile.tep_dinh_kem_khong_bat_buoc'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                       const SizedBox(height: 2),
-                      const Text('PDF, PNG, JPEG, WEBP, tối đa 10 MB', style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+                      Text('hrm_modals.profile.pdf_png_jpeg_webp_toi_da'.tr(), style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
                       const SizedBox(height: 4),
                       InkWell(
                         onTap: () async {
@@ -1022,7 +1023,7 @@ class HrmProfileModals {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  attachedFileName != null ? attachedFileName! : 'Chọn tệp Không có tệp nào được chọn',
+                                  attachedFileName != null ? attachedFileName! : 'hrm_modals.profile.chon_tep_khong_co_tep_nao'.tr(),
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: attachedFileName != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
@@ -1040,7 +1041,7 @@ class HrmProfileModals {
                       const SizedBox(height: 10),
 
                       // Row 7: Lý do thay đổi
-                      _buildFormInputField(label: 'Lý do thay đổi', controller: reasonCtrl, hintText: 'VD: Bổ sung văn bằng mới / Thay đổi chứng chỉ'),
+                      _buildFormInputField(label: 'hrm_modals.profile.ly_do_thay_doi'.tr(), controller: reasonCtrl, hintText: 'hrm_modals.profile.vd_bo_sung_van_bang_moi'.tr()),
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -1058,7 +1059,7 @@ class HrmProfileModals {
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Hủy', style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.bold, fontSize: 13)),
+                    child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.bold, fontSize: 13)),
                   ),
                   const SizedBox(width: 10),
                   ElevatedButton(
@@ -1067,7 +1068,7 @@ class HrmProfileModals {
                         : () async {
                             if (nameCtrl.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Vui lòng nhập Tên bằng cấp / chứng chỉ.'), behavior: SnackBarBehavior.floating),
+                                SnackBar(content: Text('hrm_modals.profile.vui_long_nhap_ten_bang_cap'.tr()), behavior: SnackBarBehavior.floating),
                               );
                               return;
                             }
@@ -1109,7 +1110,7 @@ class HrmProfileModals {
                                     }
                                   ],
                                   employeeId: empId,
-                                  reason: reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : 'Cập nhật bằng cấp/chứng chỉ từ Mobile',
+                                  reason: reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : 'hrm_modals.profile.cap_nhat_bang_cap_chung_chi_2'.tr(),
                                 );
                               } else {
                                 await _service.submitProfileDocumentChanges(
@@ -1120,7 +1121,7 @@ class HrmProfileModals {
                                     }
                                   ],
                                   employeeId: empId,
-                                  reason: reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : 'Thêm bằng cấp/chứng chỉ từ Mobile',
+                                  reason: reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : 'hrm_modals.profile.them_bang_cap_chung_chi_tu'.tr(),
                                 );
                               }
                             }
@@ -1149,7 +1150,7 @@ class HrmProfileModals {
                             onAdded(item);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(editItem != null ? 'Đã cập nhật bằng cấp, chứng chỉ!' : 'Đã gửi đơn và đồng bộ bằng cấp lên hệ thống!'),
+                                content: Text(editItem != null ? 'hrm_modals.profile.da_cap_nhat_bang_cap_chung'.tr() : 'hrm_modals.profile.da_gui_don_va_dong_bo'.tr()),
                                 behavior: SnackBarBehavior.floating,
                                 backgroundColor: const Color(0xFF059669),
                               ),
@@ -1162,7 +1163,7 @@ class HrmProfileModals {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
                     ),
-                    child: Text(isSaving ? 'Đang gửi...' : 'Gửi đơn', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    child: Text(isSaving ? 'hrm_modals.profile.dang_gui'.tr() : 'hrm_modals.profile.gui_don'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   ),
                 ],
               ),
@@ -1211,8 +1212,8 @@ class HrmProfileModals {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Thêm người thân & Giảm trừ gia cảnh',
+                  Text(
+                    'hrm_modals.profile.them_nguoi_than_giam_tru_gia'.tr(),
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, size: 20)),
@@ -1220,15 +1221,15 @@ class HrmProfileModals {
               ),
               const Divider(color: Color(0xFFE2E8F0)),
               const SizedBox(height: 8),
-              _buildFormInputField(label: 'Họ và tên người thân *', controller: nameCtrl, hintText: 'Ví dụ: Nguyễn Văn A'),
+              _buildFormInputField(label: 'hrm_modals.profile.ho_va_ten_nguoi_than'.tr(), controller: nameCtrl, hintText: 'hrm_modals.profile.vi_du_nguyen_van_a'.tr()),
               const SizedBox(height: 10),
-              _buildFormInputField(label: 'Mối quan hệ *', controller: relationCtrl, hintText: 'Ví dụ: Vợ / Chồng, Con, Bố / Mẹ'),
+              _buildFormInputField(label: 'hrm_modals.profile.moi_quan_he_2'.tr(), controller: relationCtrl, hintText: 'hrm_modals.profile.vi_du_vo_chong_con_bo'.tr()),
               const SizedBox(height: 10),
-              _buildFormInputField(label: 'Ngày sinh (DD/MM/YYYY)', controller: dobCtrl, hintText: '01/01/2000'),
+              _buildFormInputField(label: 'hrm_modals.profile.ngay_sinh_dd_mm_yyyy'.tr(), controller: dobCtrl, hintText: '01/01/2000'),
               const SizedBox(height: 10),
-              _buildFormInputField(label: 'Số điện thoại', controller: phoneCtrl, hintText: '0901234567', keyboardType: TextInputType.phone),
+              _buildFormInputField(label: 'hrm_modals.profile.so_dien_thoai_2'.tr(), controller: phoneCtrl, hintText: '0901234567', keyboardType: TextInputType.phone),
               const SizedBox(height: 10),
-              _buildFormInputField(label: 'Mã số thuế (nếu có)', controller: taxCtrl, hintText: '8492019283'),
+              _buildFormInputField(label: 'hrm_modals.profile.ma_so_thue_neu_co'.tr(), controller: taxCtrl, hintText: '8492019283'),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -1238,7 +1239,7 @@ class HrmProfileModals {
                       : () async {
                           if (nameCtrl.text.trim().isEmpty || relationCtrl.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Vui lòng nhập đầy đủ Họ tên và Quan hệ.'), behavior: SnackBarBehavior.floating),
+                              SnackBar(content: Text('hrm_modals.profile.vui_long_nhap_day_du_ho'.tr()), behavior: SnackBarBehavior.floating),
                             );
                             return;
                           }
@@ -1257,8 +1258,8 @@ class HrmProfileModals {
                           Navigator.pop(ctx);
                           onAdded(newDep);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Đã thêm người thân thành công!'),
+                            SnackBar(
+                              content: Text('hrm_modals.profile.da_them_nguoi_than_thanh_cong'.tr()),
                               behavior: SnackBarBehavior.floating,
                               backgroundColor: Color(0xFF059669),
                             ),
@@ -1270,7 +1271,7 @@ class HrmProfileModals {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text(isSaving ? 'Đang lưu...' : 'Lưu người thân', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(isSaving ? 'hrm_modals.profile.dang_luu'.tr() : 'hrm_modals.profile.luu_nguoi_than'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -1302,10 +1303,10 @@ class HrmProfileModals {
     String? formError;
 
     final contractTypeOptions = {
-      'DEFINITE': 'Xác định thời hạn',
-      'INDEFINITE': 'Không xác định thời hạn',
-      'PROBATION': 'Thử việc',
-      'AMENDMENT': 'Phụ lục / gia hạn',
+      'DEFINITE': 'hrm_modals.profile.xac_dinh_thoi_han'.tr(),
+      'INDEFINITE': 'hrm_modals.profile.khong_xac_dinh_thoi_han'.tr(),
+      'PROBATION': 'hrm_modals.profile.thu_viec'.tr(),
+      'AMENDMENT': 'hrm_modals.profile.phu_luc_gia_han'.tr(),
     };
 
     Future<void> pickDate(TextEditingController ctrl) async {
@@ -1349,8 +1350,8 @@ class HrmProfileModals {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Tạo hợp đồng nháp',
+                    Text(
+                      'hrm_modals.profile.tao_hop_dong_nhap'.tr(),
                       style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     IconButton(
@@ -1360,7 +1361,7 @@ class HrmProfileModals {
                   ],
                 ),
                 if (defaultEmpName != null) ...[
-                  Text('Nhân sự: $defaultEmpName ($defaultEmpCode)', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  Text('hrm_modals.profile.nhan_su_default_emp_name_default'.tr(args: {'default_emp_name': defaultEmpName, 'default_emp_code': defaultEmpCode}), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                   const SizedBox(height: 10),
                 ] else
                   const SizedBox(height: 8),
@@ -1401,8 +1402,8 @@ class HrmProfileModals {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           RichText(
-                            text: const TextSpan(
-                              text: 'Số hợp đồng / phụ lục ',
+                            text: TextSpan(
+                              text: 'hrm_modals.profile.so_hop_dong_phu_luc'.tr(),
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                               children: [TextSpan(text: '*', style: TextStyle(color: Colors.red))],
                             ),
@@ -1412,7 +1413,7 @@ class HrmProfileModals {
                             controller: codeCtrl,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
-                              hintText: 'Nhập số hợp đồng...',
+                              hintText: 'hrm_modals.profile.nhap_so_hop_dong'.tr(),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1427,8 +1428,8 @@ class HrmProfileModals {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           RichText(
-                            text: const TextSpan(
-                              text: 'Loại ',
+                            text: TextSpan(
+                              text: 'hrm_modals.profile.loai_3'.tr(),
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                               children: [TextSpan(text: '*', style: TextStyle(color: Colors.red))],
                             ),
@@ -1470,8 +1471,8 @@ class HrmProfileModals {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           RichText(
-                            text: const TextSpan(
-                              text: 'Hiệu lực từ ',
+                            text: TextSpan(
+                              text: 'hrm_modals.profile.hieu_luc_tu_2'.tr(),
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                               children: [TextSpan(text: '*', style: TextStyle(color: Colors.red))],
                             ),
@@ -1504,7 +1505,7 @@ class HrmProfileModals {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Hiệu lực đến', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          Text('hrm_modals.profile.hieu_luc_den'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 5),
                           InkWell(
                             onTap: () async {
@@ -1540,7 +1541,7 @@ class HrmProfileModals {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Ngày ký', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          Text('hrm_modals.profile.ngay_ky'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 5),
                           InkWell(
                             onTap: () async {
@@ -1569,14 +1570,14 @@ class HrmProfileModals {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Mức lương thỏa thuận', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          Text('hrm_modals.profile.muc_luong_thoa_thuan'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 5),
                           TextField(
                             controller: salaryCtrl,
                             keyboardType: TextInputType.number,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
-                              hintText: 'Ví dụ: 15,000,000',
+                              hintText: 'hrm_modals.profile.vi_du_15_000_000'.tr(),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1597,13 +1598,13 @@ class HrmProfileModals {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Đường dẫn chứng từ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          Text('hrm_modals.profile.duong_dan_chung_tu'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 5),
                           TextField(
                             controller: fileUrlCtrl,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
-                              hintText: 'URL / Đường dẫn chứng từ...',
+                              hintText: 'hrm_modals.profile.url_duong_dan_chung_tu'.tr(),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1617,13 +1618,13 @@ class HrmProfileModals {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Ghi chú', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          Text('common.note'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 5),
                           TextField(
                             controller: noteCtrl,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
-                              hintText: 'Ghi chú...',
+                              hintText: 'hrm_modals.profile.ghi_chu'.tr(),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1647,7 +1648,7 @@ class HrmProfileModals {
                         side: const BorderSide(color: Color(0xFFCBD5E1)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Hủy', style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
@@ -1656,11 +1657,11 @@ class HrmProfileModals {
                           : () async {
                               final code = codeCtrl.text.trim();
                               if (code.isEmpty) {
-                                setModalState(() => formError = 'Vui lòng nhập Số hợp đồng / phụ lục.');
+                                setModalState(() => formError = 'hrm_modals.profile.vui_long_nhap_so_hop_dong'.tr());
                                 return;
                               }
                               if (effectiveFromCtrl.text.trim().isEmpty) {
-                                setModalState(() => formError = 'Vui lòng chọn ngày Hiệu lực từ.');
+                                setModalState(() => formError = 'hrm_modals.profile.vui_long_chon_ngay_hieu_luc'.tr());
                                 return;
                               }
 
@@ -1700,7 +1701,7 @@ class HrmProfileModals {
                               if (employeeId == null || employeeId.isEmpty) {
                                 setModalState(() {
                                   isSubmitting = false;
-                                  formError = 'Không xác định được mã nhân sự để tạo hợp đồng.';
+                                  formError = 'hrm_modals.profile.khong_xac_dinh_duoc_ma_nhan'.tr();
                                 });
                                 return;
                               }
@@ -1710,7 +1711,7 @@ class HrmProfileModals {
                               if (result['success'] != true) {
                                 setModalState(() {
                                   isSubmitting = false;
-                                  formError = result['message']?.toString() ?? 'Tạo hợp đồng thất bại.';
+                                  formError = result['message']?.toString() ?? 'hrm_modals.profile.tao_hop_dong_that_bai'.tr();
                                 });
                                 return;
                               }
@@ -1729,7 +1730,7 @@ class HrmProfileModals {
                         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: Text(isSubmitting ? 'Đang tạo...' : 'Xác nhận', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text(isSubmitting ? 'hrm_modals.profile.dang_tao'.tr() : 'common.confirm'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                   ],
                 ),
@@ -1771,7 +1772,7 @@ class HrmProfileModals {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Tải lên: $title', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('hrm_modals.profile.tai_len_title'.tr(args: {'title': title}), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
@@ -1809,12 +1810,12 @@ class HrmProfileModals {
                       Icon(pickedName != null ? Icons.check_circle_outline : Icons.cloud_upload_outlined, size: 36, color: pickedName != null ? const Color(0xFF059669) : const Color(0xFF2563EB)),
                       const SizedBox(height: 8),
                       Text(
-                        pickedName != null ? 'Đã chọn tệp: $pickedName' : 'Chạm để chọn ảnh / tệp PDF từ máy',
+                        pickedName != null ? 'hrm_modals.profile.da_chon_tep_picked_name'.tr(args: {'picked_name': pickedName}) : 'hrm_modals.profile.cham_de_chon_anh_tep_pdf'.tr(),
                         style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: pickedName != null ? const Color(0xFF059669) : const Color(0xFF334155)),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 4),
-                      const Text('Định dạng hỗ trợ: JPG, PNG, PDF (Tối đa 10MB)', style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+                      Text('hrm_modals.profile.dinh_dang_ho_tro_jpg_png'.tr(), style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
                     ],
                   ),
                 ),
@@ -1840,7 +1841,7 @@ class HrmProfileModals {
                         onUploaded(fileName);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Đã tải lên "$fileName" cho mục $title thành công!'),
+                            content: Text('hrm_modals.profile.da_tai_len_file_name_cho'.tr(args: {'file_name': fileName, 'title': title})),
                             backgroundColor: const Color(0xFF059669),
                           ),
                         );
@@ -1851,7 +1852,7 @@ class HrmProfileModals {
                   minimumSize: const Size(double.infinity, 44),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: Text(isUploading ? 'Đang tải lên...' : 'XÁC NHẬN TẢI LÊN', style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(isUploading ? 'hrm_modals.profile.dang_tai_len'.tr() : 'hrm_modals.profile.xac_nhan_tai_len'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -1978,12 +1979,12 @@ class HrmProfileModals {
           ),
           const SizedBox(height: 2),
           if (isRequired)
-            const Text('Bắt buộc', style: TextStyle(fontSize: 8.5, color: Color(0xFFDC2626), fontWeight: FontWeight.bold))
+            Text('hrm_modals.profile.bat_buoc'.tr(), style: TextStyle(fontSize: 8.5, color: Color(0xFFDC2626), fontWeight: FontWeight.bold))
           else
-            const Text('Tùy chọn', style: TextStyle(fontSize: 8.5, color: Color(0xFF94A3B8))),
+            Text('hrm_modals.profile.tuy_chon'.tr(), style: TextStyle(fontSize: 8.5, color: Color(0xFF94A3B8))),
           const SizedBox(height: 8),
           Text(
-            isUploaded ? 'Đã có file' : 'Chưa có',
+            isUploaded ? 'hrm_modals.profile.da_co_file'.tr() : 'hrm_modals.profile.chua_co'.tr(),
             style: TextStyle(fontSize: 11, fontWeight: isUploaded ? FontWeight.bold : FontWeight.normal, color: isUploaded ? const Color(0xFF059669) : const Color(0xFF94A3B8)),
           ),
           const SizedBox(height: 8),
@@ -1998,7 +1999,7 @@ class HrmProfileModals {
                 border: Border.all(color: isUploaded ? const Color(0xFF10B981) : const Color(0xFFCBD5E1)),
               ),
               child: Text(
-                isUploaded ? 'Đổi tệp' : 'Tải lên',
+                isUploaded ? 'hrm_modals.profile.doi_tep'.tr() : 'hrm_modals.profile.tai_len'.tr(),
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isUploaded ? const Color(0xFF059669) : const Color(0xFF334155)),
               ),
             ),
@@ -2140,24 +2141,24 @@ class HrmProfileModals {
 
   static Widget _buildStatusBadge(String status) {
     final s = status.toUpperCase();
-    String label = 'CHÍNH THỨC';
+    String label = 'hrm_modals.profile.chinh_thuc_2'.tr();
     Color bg = const Color(0xFFECFDF5);
     Color fg = const Color(0xFF059669);
 
     if (s == 'PROBATION' || s.contains('THỬ VIỆC')) {
-      label = 'THỬ VIỆC';
+      label = 'hrm_modals.profile.thu_viec_2'.tr();
       bg = const Color(0xFFFFFBEB);
       fg = const Color(0xFFD97706);
     } else if (s == 'SUSPENDED' || s == 'ON_LEAVE' || s == 'LEAVE' || s.contains('TẠM NGHỈ')) {
-      label = 'TẠM NGHỈ';
+      label = 'hrm_modals.profile.tam_nghi'.tr();
       bg = const Color(0xFFF5F3FF);
       fg = const Color(0xFF7C3AED);
     } else if (s == 'RESIGNED' || s == 'INACTIVE' || s.contains('ĐÃ NGHỈ')) {
-      label = 'ĐÃ NGHỈ VIỆC';
+      label = 'hrm_modals.profile.da_nghi_viec'.tr();
       bg = const Color(0xFFF1F5F9);
       fg = const Color(0xFF64748B);
     } else if (s == 'TERMINATED' || s.contains('CHẤM DỨT')) {
-      label = 'CHẤM DỨT HĐ';
+      label = 'hrm_modals.profile.cham_dut_hd'.tr();
       bg = const Color(0xFFFEF2F2);
       fg = const Color(0xFFDC2626);
     } else if (s.isNotEmpty && s != 'OFFICIAL' && s != 'ACTIVE') {

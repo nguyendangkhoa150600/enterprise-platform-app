@@ -14,6 +14,7 @@ import './attendance/components/attendance_correction_dialog.dart';
 import './attendance/components/attendance_history_views.dart';
 import '../services/hrm_attendance_service.dart';
 import '../utils/error_handler.dart';
+import '../core/i18n/app_i18n.dart';
 
 class AttendanceScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -46,8 +47,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   // Matrix View State
   int _historyViewMode = 0; // 0: Bảng công ma trận, 1: Nhật ký quẹt thẻ
-  String _selectedMonth = 'Tháng 10/2026';
-  final List<String> _availableMonths = ['Tháng 10/2026', 'Tháng 09/2026', 'Tháng 08/2026'];
+  String _selectedMonth = '10/2026';
+  final List<String> _availableMonths = ['10/2026', '09/2026', '08/2026'];
   int _matrixSubTab = 0; // 0: Bảng chấm công, 1: Chi tiết bảng chấm công
   int _requestsSubTab = 1; // 0: Bản nháp, 1: Tạo đơn mới (Catalog), 2: Chờ duyệt, 3: Lịch sử
   HrmTimesheetBoard? _timesheetBoard;
@@ -222,7 +223,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 const Icon(Icons.check_circle_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('Đã quẹt thẻ Vào ca lúc ${_formatTime(record.firstCheckInAt)} thành công.'),
+                Text('attendance.snack.checkin_success'.tr(args: {'time': _formatTime(record.firstCheckInAt)})),
               ],
             ),
             backgroundColor: const Color(0xFF059669),
@@ -233,7 +234,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     } catch (e) {
       if (mounted) {
         setState(() => _isPunching = false);
-        final userMsg = ApiErrorHandler.parse(e, defaultMessage: 'Không thể quẹt thẻ Vào ca. Vui lòng thử lại.');
+        final userMsg = ApiErrorHandler.parse(e, defaultMessage: 'attendance.snack.checkin_failed'.tr());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(userMsg),
@@ -268,7 +269,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 const Icon(Icons.check_circle_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('Đã quẹt thẻ Hết ca lúc ${_formatTime(record.lastCheckOutAt)} (${(record.workedMinutes / 60).toStringAsFixed(1)}h làm việc).'),
+                Text('attendance.snack.checkout_success'.tr(args: {'time': _formatTime(record.lastCheckOutAt), 'hours': (record.workedMinutes / 60).toStringAsFixed(1)})),
               ],
             ),
             backgroundColor: const Color(0xFF2563EB),
@@ -279,7 +280,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     } catch (e) {
       if (mounted) {
         setState(() => _isPunching = false);
-        final userMsg = ApiErrorHandler.parse(e, defaultMessage: 'Không thể quẹt thẻ Hết ca. Vui lòng thử lại.');
+        final userMsg = ApiErrorHandler.parse(e, defaultMessage: 'attendance.snack.checkout_failed'.tr());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(userMsg),
@@ -318,15 +319,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         backgroundColor: const Color(0xFF0F172A), // Slate 900
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Chấm công điện tử (HRM Attendance)',
+              'attendance.app_bar.title'.tr(),
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Xác thực vị trí GPS, Wi-Fi WAN & Sổ chấm công',
+              'attendance.app_bar.subtitle'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
@@ -339,7 +340,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                 children: [
                   IconButton(
                     icon: const Icon(Icons.notifications_outlined, size: 21),
-                    tooltip: 'Trung tâm thông báo',
+                    tooltip: 'attendance.app_bar.notifications'.tr(),
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
@@ -373,7 +374,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           ),
           IconButton(
             icon: const Icon(Icons.assignment_outlined, size: 20),
-            tooltip: 'Đơn từ của tôi',
+            tooltip: 'attendance.app_bar.my_requests'.tr(),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const MyRequestsScreen()),
@@ -381,7 +382,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadAllAttendanceData,
           ),
         ],
@@ -392,9 +393,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           labelColor: Colors.white,
           unselectedLabelColor: const Color(0xFF94A3B8),
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          tabs: const [
-            Tab(text: 'Điểm danh hôm nay'),
-            Tab(text: 'Sổ chấm công'),
+          tabs: [
+            Tab(text: 'attendance.tabs.today'.tr()),
+            Tab(text: 'attendance.tabs.history'.tr()),
           ],
         ),
       ),
@@ -422,7 +423,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     final minuteStr = _currentTime.minute.toString().padLeft(2, '0');
     final secondStr = _currentTime.second.toString().padLeft(2, '0');
 
-    final weekdays = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+    final weekdays = [
+      'attendance.weekday.mon'.tr(),
+      'attendance.weekday.tue'.tr(),
+      'attendance.weekday.wed'.tr(),
+      'attendance.weekday.thu'.tr(),
+      'attendance.weekday.fri'.tr(),
+      'attendance.weekday.sat'.tr(),
+      'attendance.weekday.sun'.tr(),
+    ];
     final weekdayStr = weekdays[_currentTime.weekday - 1];
     final dateStr = '$weekdayStr, ${_currentTime.day.toString().padLeft(2, '0')}/${_currentTime.month.toString().padLeft(2, '0')}/${_currentTime.year}';
 
@@ -466,12 +475,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFF0284C7)),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.phone_android, size: 12, color: Color(0xFF38BDF8)),
-                          SizedBox(width: 4),
+                          const Icon(Icons.phone_android, size: 12, color: Color(0xFF38BDF8)),
+                          const SizedBox(width: 4),
                           Text(
-                            'Mobile Direct Check-in',
+                            'attendance.today.mobile_direct'.tr(),
                             style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
                           ),
                         ],
@@ -527,7 +536,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                       const Icon(Icons.schedule, size: 15, color: Color(0xFFFDE047)),
                       const SizedBox(width: 6),
                       Text(
-                        '${shift?.name ?? "Ca Hành chính"}: ${shift?.startTime.substring(0, 5) ?? "08:00"} — ${shift?.endTime.substring(0, 5) ?? "17:30"} (Nghỉ trưa ${shift?.breakMinutes ?? 90}p)',
+                        'attendance.today.shift_line'.tr(args: {
+                          'name': shift?.name ?? 'attendance.today.default_shift'.tr(),
+                          'start': shift?.startTime.substring(0, 5) ?? '08:00',
+                          'end': shift?.endTime.substring(0, 5) ?? '17:30',
+                          'break': shift?.breakMinutes ?? 90,
+                        }),
                         style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
                       ),
                     ],
@@ -572,8 +586,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Trạng thái Định vị & Kết nối',
+                          Text(
+                            'attendance.today.location_status'.tr(),
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           ),
                           const SizedBox(height: 2),
@@ -588,8 +602,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              const Text(
-                                'Vị trí hợp lệ: Trụ sở chính SAVINA',
+                              Text(
+                                'attendance.today.location_valid'.tr(),
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
                               ),
                             ],
@@ -603,7 +617,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                         color: const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text('Cách 15m', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('attendance.today.distance'.tr(args: {'meters': 15}), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                   ],
                 ),
@@ -627,20 +641,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           const SizedBox(height: 20),
 
           // 4. Monthly KPI Summary Cards
-          const Text(
-            'TỔNG KẾT CÔNG THÁNG 09/2026',
+          Text(
+            'attendance.today.monthly_summary'.tr(args: {'month': '09/2026'}),
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _buildKpiCard(label: 'Tổng ngày công', value: '22', unit: 'ngày', color: const Color(0xFF2563EB))),
+              Expanded(child: _buildKpiCard(label: 'attendance.kpi.total_days'.tr(), value: '22', unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFF2563EB))),
               const SizedBox(width: 8),
-              Expanded(child: _buildKpiCard(label: 'Đúng giờ', value: '20', unit: 'ngày', color: const Color(0xFF059669))),
+              Expanded(child: _buildKpiCard(label: 'attendance.kpi.on_time'.tr(), value: '20', unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFF059669))),
               const SizedBox(width: 8),
-              Expanded(child: _buildKpiCard(label: 'Đi muộn', value: '1', unit: 'ngày', color: const Color(0xFFD97706))),
+              Expanded(child: _buildKpiCard(label: 'attendance.kpi.late'.tr(), value: '1', unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFFD97706))),
               const SizedBox(width: 8),
-              Expanded(child: _buildKpiCard(label: 'Giải trình', value: '1', unit: 'đơn', color: const Color(0xFF7C3AED))),
+              Expanded(child: _buildKpiCard(label: 'attendance.kpi.explanation'.tr(), value: '1', unit: 'attendance.kpi.unit_requests'.tr(), color: const Color(0xFF7C3AED))),
             ],
           ),
         ],
@@ -683,8 +697,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                       child: const Icon(Icons.work_outline_rounded, size: 16, color: Color(0xFF2563EB)),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'TRẠNG THÁI CA LÀM',
+                    Text(
+                      'attendance.punch.shift_status'.tr(),
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
                     ),
                   ],
@@ -695,13 +709,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                     color: const Color(0xFFECFDF5),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle, size: 12, color: Color(0xFF059669)),
-                      SizedBox(width: 4),
+                      const Icon(Icons.check_circle, size: 12, color: Color(0xFF059669)),
+                      const SizedBox(width: 4),
                       Text(
-                        'Đang trong ca làm việc',
+                        'attendance.punch.in_shift'.tr(),
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                       ),
                     ],
@@ -723,12 +737,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.schedule, size: 16, color: Color(0xFF64748B)),
-                      SizedBox(width: 6),
+                      const Icon(Icons.schedule, size: 16, color: Color(0xFF64748B)),
+                      const SizedBox(width: 6),
                       Text(
-                        'Thời gian quẹt vào:',
+                        'attendance.punch.checkin_time'.tr(),
                         style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -774,16 +788,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                           ),
                         )
-                      : const Row(
+                      : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.logout_rounded, color: Colors.white, size: 28),
-                            SizedBox(width: 10),
+                            const Icon(Icons.logout_rounded, color: Colors.white, size: 28),
+                            const SizedBox(width: 10),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'QUẸT RA CA (CHECK-OUT)',
+                                  'attendance.punch.checkout_button'.tr(),
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -792,7 +806,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                                   ),
                                 ),
                                 Text(
-                                  'Chạm để kết thúc ca & chốt giờ làm việc',
+                                  'attendance.punch.checkout_hint'.tr(),
                                   style: TextStyle(fontSize: 11, color: Colors.white70),
                                 ),
                               ],
@@ -843,8 +857,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                     child: const Icon(Icons.login_rounded, size: 16, color: Color(0xFF059669)),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'TRẠNG THÁI CA LÀM',
+                  Text(
+                    'attendance.punch.shift_status'.tr(),
                     style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
                   ),
                 ],
@@ -856,7 +870,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  hasPreviousPunches ? 'Sẵn sàng vào ca mới' : 'Chưa điểm danh vào',
+                  hasPreviousPunches ? 'attendance.punch.ready_new_shift'.tr() : 'attendance.punch.not_checked_in'.tr(),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -884,7 +898,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Lượt trước: Vào ${_formatTime(_todayRecord?.firstCheckInAt)} — Ra ${_formatTime(_todayRecord?.lastCheckOutAt)} (Đã tích lũy ${workedHours}h)',
+                      'attendance.punch.previous_round'.tr(args: {'in': _formatTime(_todayRecord?.firstCheckInAt), 'out': _formatTime(_todayRecord?.lastCheckOutAt), 'hours': workedHours}),
                       style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569), fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -935,7 +949,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                hasPreviousPunches ? 'QUẸT VÀO TIẾP THEO (CHECK-IN)' : 'QUẸT VÀO CA (CHECK-IN)',
+                                hasPreviousPunches ? 'attendance.punch.checkin_next_button'.tr() : 'attendance.punch.checkin_button'.tr(),
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
@@ -943,8 +957,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                                   letterSpacing: 0.3,
                                 ),
                               ),
-                              const Text(
-                                'Chạm để ghi nhận giờ bắt đầu làm việc',
+                              Text(
+                                'attendance.punch.checkin_hint'.tr(),
                                 style: TextStyle(fontSize: 11, color: Colors.white70),
                               ),
                             ],
@@ -963,7 +977,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               child: TextButton.icon(
                 onPressed: () => _showCorrectionDialog(_todayRecord),
                 icon: const Icon(Icons.edit_note_rounded, size: 16, color: Color(0xFF2563EB)),
-                label: const Text('Giải trình công lượt trước', style: TextStyle(fontSize: 11.5, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
+                label: Text('attendance.punch.explain_previous'.tr(), style: TextStyle(fontSize: 11.5, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
               ),
             ),
           ],

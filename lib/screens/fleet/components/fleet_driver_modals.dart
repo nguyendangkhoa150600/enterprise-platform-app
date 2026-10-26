@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_fleet_models.dart';
 import '../../../models/hrm_models.dart';
 import '../../../services/fleet_service.dart';
@@ -43,8 +44,8 @@ void showSelectEmployeeSheet({
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Chọn nhân viên',
+                    Text(
+                      'fleet.driver.select_employee'.tr(),
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     IconButton(
@@ -59,7 +60,7 @@ void showSelectEmployeeSheet({
                   onChanged: (v) => setPickerState(() => search = v.trim()),
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Tìm theo tên, mã nhân viên...',
+                    hintText: 'fleet.driver.emp_search_hint'.tr(),
                     prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
@@ -72,10 +73,10 @@ void showSelectEmployeeSheet({
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 280),
                   child: filtered.isEmpty
-                      ? const Padding(
+                      ? Padding(
                           padding: EdgeInsets.all(24),
                           child: Center(
-                            child: Text('Không tìm thấy nhân viên phù hợp', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                            child: Text('fleet.driver.no_emp_match'.tr(), style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
                           ),
                         )
                       : ListView.separated(
@@ -104,7 +105,7 @@ void showSelectEmployeeSheet({
                                 ),
                               ),
                               subtitle: Text(
-                                'Mã: ${item.code} · ${item.department.isNotEmpty ? item.department : item.position}',
+                                'fleet.driver.emp_subtitle'.tr(args: {'code': item.code, 'dept': item.department.isNotEmpty ? item.department : item.position}),
                                 style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               ),
                               trailing: isChosen ? const Icon(Icons.check, size: 18, color: Color(0xFF2563EB)) : null,
@@ -159,8 +160,8 @@ void showCreateDriverModal({
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Thêm tài xế mới',
+                      Text(
+                        'fleet.action.add_new_driver'.tr(),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       IconButton(
@@ -172,13 +173,13 @@ void showCreateDriverModal({
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Tài xế là nhân viên đang có hồ sơ trong HRM.',
+                  Text(
+                    'fleet.driver.add_desc'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 18),
 
-                  buildFleetRequiredLabel('Nhân viên'),
+                  buildFleetRequiredLabel('fleet.driver.employee'.tr()),
                   const SizedBox(height: 6),
                   InkWell(
                     onTap: () {
@@ -204,7 +205,7 @@ void showCreateDriverModal({
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              selectedEmp != null ? '${selectedEmp!.fullName} (${selectedEmp!.code})' : 'Chọn nhân viên',
+                              selectedEmp != null ? '${selectedEmp!.fullName} (${selectedEmp!.code})' : 'fleet.driver.select_employee'.tr(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -220,7 +221,7 @@ void showCreateDriverModal({
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('Số bằng lái', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  Text('fleet.driver.license_no'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   TextField(
                     controller: licenseCtrl,
@@ -248,7 +249,7 @@ void showCreateDriverModal({
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Hủy', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                       const SizedBox(width: 10),
                       ElevatedButton(
@@ -257,7 +258,7 @@ void showCreateDriverModal({
                             : () async {
                                 if (selectedEmp == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Vui lòng chọn nhân viên làm tài xế!')),
+                                    SnackBar(content: Text('fleet.driver.select_employee_warn'.tr())),
                                   );
                                   return;
                                 }
@@ -289,7 +290,7 @@ void showCreateDriverModal({
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 messenger.showSnackBar(
                                   SnackBar(
-                                    content: Text('✅ Đã thêm tài xế $driverName thành công!'),
+                                    content: Text('fleet.driver.added'.tr(args: {'name': driverName})),
                                     backgroundColor: const Color(0xFF059669),
                                   ),
                                 );
@@ -303,7 +304,7 @@ void showCreateDriverModal({
                         ),
                         child: isSubmitting
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)))
-                            : const Text('Lưu', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            : Text('common.save'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -350,8 +351,8 @@ void showEditDriverModal({
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Chỉnh sửa tài xế',
+                      Text(
+                        'fleet.driver.edit_title'.tr(),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       IconButton(
@@ -363,13 +364,13 @@ void showEditDriverModal({
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Cập nhật thông tin giấy phép lái xe của tài xế.',
+                  Text(
+                    'fleet.driver.edit_desc'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 18),
 
-                  const Text('Nhân viên', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  Text('fleet.driver.employee'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -394,12 +395,12 @@ void showEditDriverModal({
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                driver.employeeName ?? 'Tài xế',
+                                driver.employeeName ?? 'fleet.driver.default_name'.tr(),
                                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                               ),
                               if (driver.employeeCode != null)
                                 Text(
-                                  'Mã NV: ${driver.employeeCode}',
+                                  'fleet.driver.emp_code'.tr(args: {'code': driver.employeeCode}),
                                   style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                 ),
                             ],
@@ -410,13 +411,13 @@ void showEditDriverModal({
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('Số bằng lái', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  Text('fleet.driver.license_no'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   TextField(
                     controller: licenseCtrl,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Ví dụ: B2-123456',
+                      hintText: 'fleet.driver.license_hint'.tr(),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -439,7 +440,7 @@ void showEditDriverModal({
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Hủy', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                       const SizedBox(width: 10),
                       ElevatedButton(
@@ -471,7 +472,7 @@ void showEditDriverModal({
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 messenger.showSnackBar(
                                   SnackBar(
-                                    content: Text('✅ Đã cập nhật tài xế ${driver.employeeName} thành công!'),
+                                    content: Text('fleet.driver.updated'.tr(args: {'name': driver.employeeName})),
                                     backgroundColor: const Color(0xFF059669),
                                   ),
                                 );
@@ -485,7 +486,7 @@ void showEditDriverModal({
                         ),
                         child: isSubmitting
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)))
-                            : const Text('Lưu thay đổi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            : Text('fleet.action.save_changes'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -507,7 +508,7 @@ void confirmToggleDriverStatus({
   required VoidCallback onRefreshData,
 }) {
   final isAvailable = driver.status == 'ACTIVE';
-  final actionText = isAvailable ? 'Ngừng sử dụng' : 'Sử dụng lại';
+  final actionText = isAvailable ? 'fleet.status.out_of_use'.tr() : 'fleet.action.reactivate'.tr();
   final targetStatus = isAvailable ? 'INACTIVE' : 'ACTIVE';
 
   showDialog(
@@ -516,20 +517,20 @@ void confirmToggleDriverStatus({
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Text(
-          isAvailable ? 'Ngừng sử dụng tài xế?' : 'Kích hoạt lại tài xế?',
+          isAvailable ? 'fleet.driver.deactivate_title'.tr() : 'fleet.driver.reactivate_title'.tr(),
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
         ),
         content: Text(
           isAvailable
-              ? 'Bạn có chắc chắn muốn ngừng sử dụng tài xế "${driver.employeeName}" không? Tài xế này sẽ tạm thời không thể phân công cho các chuyến đi mới.'
-              : 'Bạn có chắc chắn muốn kích hoạt sử dụng lại tài xế "${driver.employeeName}" không?',
+              ? 'fleet.driver.deactivate_confirm'.tr(args: {'name': driver.employeeName})
+              : 'fleet.driver.reactivate_confirm'.tr(args: {'name': driver.employeeName}),
           style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
         ),
         actionsPadding: const EdgeInsets.only(right: 16, bottom: 14),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dlgCtx),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+            child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -543,8 +544,8 @@ void confirmToggleDriverStatus({
               messenger.showSnackBar(
                 SnackBar(
                   content: Text(isAvailable
-                      ? 'Đã chuyển tài xế "${driver.employeeName}" sang ngừng sử dụng.'
-                      : '✅ Đã kích hoạt sử dụng lại tài xế "${driver.employeeName}".'),
+                      ? 'fleet.driver.deactivated_done'.tr(args: {'name': driver.employeeName})
+                      : 'fleet.driver.reactivated_done'.tr(args: {'name': driver.employeeName})),
                   backgroundColor: isAvailable ? const Color(0xFF475569) : const Color(0xFF059669),
                 ),
               );

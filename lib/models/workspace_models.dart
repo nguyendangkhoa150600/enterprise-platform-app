@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 // Workspace Models: Customers, Contracts, Projects, Roles, and Standalone Tasks (1:1 Web Parity)
 
 class CustomerItem {
@@ -23,7 +24,7 @@ class CustomerItem {
     return CustomerItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Khách hàng chưa đặt tên',
+      name: json['name']?.toString() ?? 'models.workspace.customer_unnamed'.tr(),
       note: json['note']?.toString(),
       contractCount: _parseInt(json['contractCount']),
       projectCount: _parseInt(json['projectCount']),
@@ -75,7 +76,7 @@ class ContractItem {
       id: json['id']?.toString() ?? '',
       customerId: json['customerId']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Hợp đồng chưa đặt tên',
+      name: json['name']?.toString() ?? 'models.workspace.contract_unnamed'.tr(),
       status: json['status']?.toString() ?? 'draft',
       value: json['value'] != null ? double.tryParse(json['value'].toString()) : null,
       signedDate: json['signedDate'] != null ? DateTime.tryParse(json['signedDate'].toString()) : null,
@@ -91,14 +92,14 @@ class ContractItem {
   String get statusLabel {
     switch (status) {
       case 'active':
-        return 'Đang thực hiện';
+        return 'models.workspace.in_progress'.tr();
       case 'completed':
-        return 'Hoàn thành';
+        return 'models.workspace.completed'.tr();
       case 'cancelled':
-        return 'Đã huỷ';
+        return 'models.workspace.cancelled'.tr();
       case 'draft':
       default:
-        return 'Bản nháp';
+        return 'models.status.draft'.tr();
     }
   }
 }
@@ -143,7 +144,7 @@ class ProjectItem {
     return ProjectItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Dự án chưa đặt tên',
+      name: json['name']?.toString() ?? 'models.workspace.project_unnamed'.tr(),
       description: json['description']?.toString(),
       status: json['status']?.toString() ?? 'active',
       projectType: json['projectType']?.toString(),
@@ -162,18 +163,18 @@ class ProjectItem {
   String get statusLabel {
     switch (status) {
       case 'active':
-        return 'Đang triển khai';
+        return 'models.workspace.deploying'.tr();
       case 'completed':
-        return 'Hoàn thành';
+        return 'models.workspace.completed'.tr();
       case 'cancelled':
-        return 'Đã huỷ';
+        return 'models.workspace.cancelled'.tr();
       case 'draft':
       default:
-        return 'Khởi tạo';
+        return 'models.workspace.initiated'.tr();
     }
   }
 
-  String get typeLabel => projectType != null && projectType!.isNotEmpty ? projectType! : 'Chưa phân loại';
+  String get typeLabel => projectType != null && projectType!.isNotEmpty ? projectType! : 'models.workspace.uncategorized'.tr();
 }
 
 class ProjectMemberItem {
@@ -192,7 +193,7 @@ class ProjectMemberItem {
   factory ProjectMemberItem.fromJson(Map<String, dynamic> json) {
     return ProjectMemberItem(
       userId: json['userId']?.toString() ?? json['id']?.toString() ?? '',
-      fullName: json['fullName']?.toString() ?? json['name']?.toString() ?? 'Thành viên',
+      fullName: json['fullName']?.toString() ?? json['name']?.toString() ?? 'models.workspace.member'.tr(),
       email: json['email']?.toString(),
       role: json['role']?.toString() ?? 'technician',
     );
@@ -201,12 +202,12 @@ class ProjectMemberItem {
   String get roleLabel {
     switch (role) {
       case 'manager':
-        return 'Quản lý dự án';
+        return 'models.workspace.project_manager'.tr();
       case 'technician':
-        return 'Kỹ thuật viên';
+        return 'models.maintenance.technician'.tr();
       case 'viewer':
       default:
-        return 'Xem / Theo dõi';
+        return 'models.workspace.viewer'.tr();
     }
   }
 }
@@ -251,7 +252,7 @@ class StandaloneTaskItem {
     return StandaloneTaskItem(
       id: task['id']?.toString() ?? '',
       code: task['code']?.toString() ?? '',
-      title: task['title']?.toString() ?? 'Công việc không tên',
+      title: task['title']?.toString() ?? 'models.workspace.task_unnamed'.tr(),
       description: task['description']?.toString(),
       status: task['status']?.toString() ?? 'todo',
       priority: task['priority']?.toString() ?? 'normal',
@@ -267,33 +268,33 @@ class StandaloneTaskItem {
   }
 
   String get statusLabel {
-    if (isReversed) return 'Đã huỷ hiệu lực';
+    if (isReversed) return 'models.workspace.voided'.tr();
     switch (status) {
       case 'in_progress':
-        return 'Đang làm';
+        return 'models.workspace.doing'.tr();
       case 'review':
-        return 'Chờ duyệt';
+        return 'models.status.pending'.tr();
       case 'done':
-        return 'Hoàn thành';
+        return 'models.workspace.completed'.tr();
       case 'cancelled':
-        return 'Đã huỷ';
+        return 'models.workspace.cancelled'.tr();
       case 'todo':
       default:
-        return 'Cần làm';
+        return 'models.workspace.todo'.tr();
     }
   }
 
   String get priorityLabel {
     switch (priority) {
       case 'urgent':
-        return 'Khẩn cấp';
+        return 'models.workspace.urgent'.tr();
       case 'high':
         return 'Cao';
       case 'low':
-        return 'Thấp';
+        return 'models.workspace.low'.tr();
       case 'normal':
       default:
-        return 'Bình thường';
+        return 'models.workspace.normal'.tr();
     }
   }
 }

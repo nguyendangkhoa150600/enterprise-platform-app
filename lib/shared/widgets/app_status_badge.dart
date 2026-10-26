@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/i18n/app_i18n.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
@@ -20,38 +21,38 @@ class AppStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = status.toUpperCase().trim();
-    String label = customLabel ?? 'CHÍNH THỨC';
+    String label = customLabel ?? 'widgets.status_badge.official'.tr();
     Color bg = AppColors.successBg;
     Color fg = AppColors.successFg;
     Color? border;
 
     if (s == 'PROBATION' || s.contains('THỬ VIỆC')) {
-      label = customLabel ?? 'THỬ VIỆC';
+      label = customLabel ?? 'widgets.status_badge.probation'.tr();
       bg = AppColors.warningBg;
       fg = AppColors.warningFg;
       border = AppColors.warningBorder;
     } else if (s == 'PENDING' || s == 'WAITING' || s.contains('CHỜ DUYỆT') || s.contains('CHỜ XỬ LÝ')) {
-      label = customLabel ?? 'CHỜ DUYỆT';
+      label = customLabel ?? 'widgets.status_badge.pending'.tr();
       bg = AppColors.warningBg;
       fg = AppColors.warningFg;
       border = AppColors.warningBorder;
     } else if (s == 'APPROVED' || s == 'OFFICIAL' || s == 'ACTIVE' || s == 'PAID' || s.contains('ĐÃ DUYỆT') || s.contains('ĐÃ CHI TRẢ')) {
-      label = customLabel ?? (s == 'PAID' ? 'ĐÃ CHI TRẢ' : 'CHÍNH THỨC');
+      label = customLabel ?? (s == 'PAID' ? 'widgets.status_badge.paid'.tr() : 'widgets.status_badge.official'.tr());
       bg = AppColors.successBg;
       fg = AppColors.successFg;
       border = const Color(0xFFA7F3D0);
     } else if (s == 'REJECTED' || s == 'TERMINATED' || s == 'CANCELLED' || s.contains('TỪ CHỐI') || s.contains('CHẤM DỨT')) {
-      label = customLabel ?? 'TỪ CHỐI';
+      label = customLabel ?? 'widgets.status_badge.rejected'.tr();
       bg = AppColors.errorBg;
       fg = AppColors.errorFg;
       border = AppColors.errorBorder;
     } else if (s == 'SUSPENDED' || s == 'ON_LEAVE' || s == 'LEAVE' || s.contains('TẠM NGHỈ') || s.contains('NGHỈ PHÉP')) {
-      label = customLabel ?? 'TẠM NGHỈ';
+      label = customLabel ?? 'widgets.status_badge.suspended'.tr();
       bg = AppColors.purpleBg;
       fg = AppColors.purpleFg;
       border = AppColors.purpleBorder;
     } else if (s == 'INACTIVE' || s == 'RESIGNED' || s.contains('ĐÃ NGHỈ')) {
-      label = customLabel ?? 'ĐÃ NGHỈ VIỆC';
+      label = customLabel ?? 'widgets.status_badge.resigned'.tr();
       bg = AppColors.slate100;
       fg = AppColors.slate500;
       border = AppColors.slate300;

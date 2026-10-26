@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/hrm_attendance_monitor_models.dart';
 import '../services/hrm_service.dart';
+import '../core/i18n/app_i18n.dart';
 import 'hrm_hub_screen.dart';
 import 'attendance_monitor/components/monitor_kpi_section.dart';
 import 'attendance_monitor/components/monitor_attention_section.dart';
@@ -127,14 +128,14 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
   }
 
   String _formatLongDateVn(DateTime dt) {
-    const weekdays = [
-      'Chủ nhật',
-      'Thứ Hai',
-      'Thứ Ba',
-      'Thứ Tư',
-      'Thứ Năm',
-      'Thứ Sáu',
-      'Thứ Bảy',
+    final weekdays = [
+      'attendance.weekday.sun'.tr(),
+      'attendance.weekday.mon'.tr(),
+      'attendance.weekday.tue'.tr(),
+      'attendance.weekday.wed'.tr(),
+      'attendance.weekday.thu'.tr(),
+      'attendance.weekday.fri'.tr(),
+      'attendance.weekday.sat'.tr(),
     ];
     final w = weekdays[dt.weekday % 7];
     final d = dt.day.toString().padLeft(2, '0');
@@ -180,7 +181,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
           _isLoading = false;
           _isRefreshing = false;
           if (data == null) {
-            _errorMessage = 'Không có quyền truy cập hoặc không thể tải dữ liệu giám sát chấm công.';
+            _errorMessage = 'att_monitor.error.no_access'.tr();
           }
         });
       }
@@ -189,7 +190,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
         setState(() {
           _isLoading = false;
           _isRefreshing = false;
-          _errorMessage = 'Lỗi kết nối: $e';
+          _errorMessage = 'att_monitor.error.connection'.tr(args: {'error': '$e'});
         });
       }
     }
@@ -385,7 +386,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
     final Map<String, List<int>> map = {}; // name -> [checkedIn, total]
     for (final row in rows) {
       if (row.status == 'DAY_OFF' || row.status == 'NO_SCHEDULE') continue;
-      final name = row.departmentName ?? 'Chưa có phòng ban';
+      final name = row.departmentName ?? 'att_monitor.no_department'.tr();
       map.putIfAbsent(name, () => [0, 0]);
       map[name]![1] += 1;
       if (row.checkIn != null && row.checkIn!.isNotEmpty) {
@@ -421,18 +422,18 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          tooltip: 'Quay lại',
+          tooltip: 'common.back'.tr(),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _isToday ? 'Giám sát chấm công hôm nay' : 'Giám sát chấm công theo ngày',
+              _isToday ? 'att_monitor.title_today'.tr() : 'att_monitor.title_by_date'.tr(),
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
-            const Text(
-              'SVN DTS / Quản trị Nhân sự',
+            Text(
+              'att_monitor.subtitle'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
@@ -446,7 +447,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.refresh, size: 20),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: () => _loadData(),
           ),
         ],
@@ -475,7 +476,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
                       if (updatedTime.isNotEmpty) ...[
                         const Text(' · ', style: TextStyle(color: Color(0xFF94A3B8))),
                         Text(
-                          'Cập nhật: $updatedTime',
+                          'att_monitor.updated_at'.tr(args: {'time': updatedTime}),
                           style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                         ),
                         if (_isToday) ...[
@@ -567,7 +568,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
           Expanded(
             child: _buildMonitorTabItem(
               id: 'OVERVIEW',
-              label: 'Tổng quan',
+              label: 'att_monitor.tab.overview'.tr(),
               icon: Icons.dashboard_outlined,
               badge: null,
             ),
@@ -576,7 +577,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
           Expanded(
             child: _buildMonitorTabItem(
               id: 'ATTENTION',
-              label: 'Cần theo dõi',
+              label: 'att_monitor.tab.attention'.tr(),
               icon: Icons.warning_amber_rounded,
               badge: attentionCount > 0 ? '$attentionCount' : null,
             ),
@@ -722,8 +723,8 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
               ElevatedButton.icon(
                 onPressed: () => _loadData(),
                 icon: const Icon(Icons.refresh, size: 16, color: Color(0xFF1A1A1A)),
-                label: const Text(
-                  'Làm mới',
+                label: Text(
+                  'common.refresh'.tr(),
                   style: TextStyle(color: Color(0xFF1A1A1A), fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -756,7 +757,7 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
                 items: _availableShifts.map((shift) {
                   return DropdownMenuItem<String>(
                     value: shift,
-                    child: Text(shift == 'ALL' ? 'Tất cả ca làm việc' : shift),
+                    child: Text(shift == 'ALL' ? 'att_monitor.all_shifts'.tr() : shift),
                   );
                 }).toList(),
                 onChanged: (val) {

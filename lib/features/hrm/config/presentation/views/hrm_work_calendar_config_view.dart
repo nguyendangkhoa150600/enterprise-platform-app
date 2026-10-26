@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Cấu hình Lịch làm / OFF / Lễ (Work Calendar & Holidays) - Chuẩn Web 1:1 Pixel-Perfect
 class HrmWorkCalendarConfigView extends StatefulWidget {
@@ -34,29 +35,23 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
             {
               'id': '1',
               'date': '31/12/2026',
-              'name': 'Nghỉ tất niên',
+              'name': 'hrm_config.calendar.sample.year_end'.tr(),
               'type': 'OFF',
-              'typeLabel': 'Nghỉ (OFF)',
               'paid': false,
-              'paidLabel': 'Không',
             },
             {
               'id': '2',
               'date': '05/09/2026',
-              'name': 'Làm bù',
+              'name': 'hrm_config.calendar.sample.makeup'.tr(),
               'type': 'WORK',
-              'typeLabel': 'Làm việc',
               'paid': true,
-              'paidLabel': 'Có',
             },
             {
               'id': '3',
               'date': '02/09/2026',
-              'name': 'Quốc khánh',
+              'name': 'hrm_config.calendar.sample.national_day'.tr(),
               'type': 'HOLIDAY',
-              'typeLabel': 'Lễ / Tết',
               'paid': true,
-              'paidLabel': 'Có',
             },
           ];
 
@@ -81,14 +76,14 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Header (Matching Web 1:1)
-        const Text(
-          'Lịch làm / OFF / Lễ',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+        Text(
+          'hrm_config.calendar.title'.tr(),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
         ),
         const SizedBox(height: 3),
-        const Text(
-          'Quản lý lịch làm việc, ngày nghỉ, ngày lễ',
-          style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+        Text(
+          'hrm_config.calendar.subtitle'.tr(),
+          style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
         ),
         const SizedBox(height: 14),
 
@@ -114,7 +109,7 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                   text: TextSpan(
                     style: const TextStyle(fontSize: 11.5, color: Color(0xFF0369A1), height: 1.4),
                     children: [
-                      const TextSpan(text: 'Lịch lễ/Tết và ngày nghỉ được quản lý tại '),
+                      TextSpan(text: 'hrm_config.calendar.banner.prefix'.tr()),
                       WidgetSpan(
                         alignment: PlaceholderAlignment.middle,
                         child: InkWell(
@@ -123,9 +118,9 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                               widget.onNavigateToSubTab!('SHIFTS');
                             }
                           },
-                          child: const Text(
-                            'Phân ca',
-                            style: TextStyle(
+                          child: Text(
+                            'hrm_config.calendar.banner.link'.tr(),
+                            style: const TextStyle(
                               fontSize: 11.5,
                               color: Color(0xFF0284C7),
                               fontWeight: FontWeight.bold,
@@ -134,7 +129,7 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                           ),
                         ),
                       ),
-                      const TextSpan(text: '. Danh sách dưới đây chỉ để tham khảo.'),
+                      TextSpan(text: 'hrm_config.calendar.banner.suffix'.tr()),
                     ],
                   ),
                 ),
@@ -168,13 +163,13 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Lịch ngày làm / OFF / lễ',
+                    Text(
+                      'hrm_config.calendar.card_title'.tr(),
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${allItems.length} ngày đã khai báo',
+                      'hrm_config.calendar.declared_count'.tr(args: {'count': allItems.length}),
                       style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 12),
@@ -195,7 +190,7 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                               onChanged: (v) => setState(() => _searchQuery = v),
                               style: const TextStyle(fontSize: 11.5),
                               decoration: InputDecoration(
-                                hintText: 'Tìm theo ngày, tên hoặc loại ng...',
+                                hintText: 'hrm_config.calendar.search_hint'.tr(),
                                 hintStyle: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                                 prefixIcon: const Icon(Icons.search, size: 16, color: Color(0xFF94A3B8)),
                                 suffixIcon: _searchQuery.isNotEmpty
@@ -219,11 +214,11 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                         PopupMenuButton<String>(
                           onSelected: (val) => setState(() => _typeFilter = val),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          itemBuilder: (ctx) => const [
-                            PopupMenuItem(value: 'ALL', child: Text('Tất cả loại ngày', style: TextStyle(fontSize: 12))),
-                            PopupMenuItem(value: 'OFF', child: Text('Nghỉ (OFF)', style: TextStyle(fontSize: 12))),
-                            PopupMenuItem(value: 'WORK', child: Text('Làm việc', style: TextStyle(fontSize: 12))),
-                            PopupMenuItem(value: 'HOLIDAY', child: Text('Lễ / Tết', style: TextStyle(fontSize: 12))),
+                          itemBuilder: (ctx) => [
+                            PopupMenuItem(value: 'ALL', child: Text('hrm_config.calendar.type.all'.tr(), style: const TextStyle(fontSize: 12))),
+                            PopupMenuItem(value: 'OFF', child: Text('hrm_config.calendar.type.off'.tr(), style: const TextStyle(fontSize: 12))),
+                            PopupMenuItem(value: 'WORK', child: Text('hrm_config.calendar.type.work'.tr(), style: const TextStyle(fontSize: 12))),
+                            PopupMenuItem(value: 'HOLIDAY', child: Text('hrm_config.calendar.type.holiday'.tr(), style: const TextStyle(fontSize: 12))),
                           ],
                           child: Container(
                             height: 36,
@@ -237,12 +232,12 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                               children: [
                                 Text(
                                   _typeFilter == 'OFF'
-                                      ? 'Nghỉ (OFF)'
+                                      ? 'hrm_config.calendar.type.off'.tr()
                                       : _typeFilter == 'WORK'
-                                          ? 'Làm việc'
+                                          ? 'hrm_config.calendar.type.work'.tr()
                                           : _typeFilter == 'HOLIDAY'
-                                              ? 'Lễ / Tết'
-                                              : 'Tất cả loại ngày',
+                                              ? 'hrm_config.calendar.type.holiday'.tr()
+                                              : 'hrm_config.calendar.type.all'.tr(),
                                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
                                 ),
                                 const SizedBox(width: 4),
@@ -262,24 +257,24 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
               Container(
                 color: const Color(0xFFF8FAFC),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: const Row(
+                child: Row(
                   children: [
                     Expanded(
                       flex: 3,
-                      child: Text('Ngày', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('hrm_config.calendar.col.date'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                     Expanded(
                       flex: 4,
-                      child: Text('Tên', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('hrm_config.calendar.col.name'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                     Expanded(
                       flex: 3,
-                      child: Text('Loại', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                      child: Text('hrm_config.calendar.col.type'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     ),
                     Expanded(
                       flex: 2,
                       child: Text(
-                        'Hưởng lương',
+                        'hrm_config.calendar.col.paid'.tr(),
                         textAlign: TextAlign.end,
                         style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                       ),
@@ -291,12 +286,12 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
 
               // Table Body Rows
               if (filtered.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
+                Padding(
+                  padding: const EdgeInsets.all(24),
                   child: Center(
                     child: Text(
-                      'Không tìm thấy ngày làm / OFF / lễ phù hợp.',
-                      style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                      'hrm_config.calendar.empty'.tr(),
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                     ),
                   ),
                 )
@@ -311,8 +306,13 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                     final date = item['date']?.toString() ?? '';
                     final name = item['name']?.toString() ?? '';
                     final type = item['type']?.toString().toUpperCase() ?? '';
-                    final typeLabel = item['typeLabel']?.toString() ?? 'Nghỉ (OFF)';
-                    final paidLabel = item['paidLabel']?.toString() ?? 'Không';
+                    final isWorkType = type.contains('WORK') || type.contains('LÀM');
+                    final isHolidayType = type.contains('HOLIDAY') || type.contains('LỄ');
+                    final typeLabel = isWorkType
+                        ? 'hrm_config.calendar.type.work'.tr()
+                        : (isHolidayType ? 'hrm_config.calendar.type.holiday'.tr() : 'hrm_config.calendar.type.off'.tr());
+                    final isPaid = item['paid'] == true || item['paidLabel']?.toString() == 'Có';
+                    final paidLabel = isPaid ? 'hrm_config.calendar.paid.yes'.tr() : 'hrm_config.calendar.paid.no'.tr();
 
                     Color pillBg = const Color(0xFFFFFBEB);
                     Color pillBorder = const Color(0xFFFDE68A);
@@ -371,8 +371,8 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
                               textAlign: TextAlign.end,
                               style: TextStyle(
                                 fontSize: 11.5,
-                                fontWeight: paidLabel == 'Có' ? FontWeight.w600 : FontWeight.normal,
-                                color: paidLabel == 'Có' ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                fontWeight: isPaid ? FontWeight.w600 : FontWeight.normal,
+                                color: isPaid ? const Color(0xFF0F172A) : const Color(0xFF64748B),
                               ),
                             ),
                           ),
@@ -387,7 +387,7 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Text(
-                  'Tổng ${filtered.length} dòng',
+                  'hrm_config.calendar.total_rows'.tr(args: {'count': filtered.length}),
                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                 ),
               ),

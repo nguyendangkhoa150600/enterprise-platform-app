@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'profile_common_widgets.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class ProfileWorkHistoryTabContent extends StatelessWidget {
   final Map<String, dynamic>? profile;
@@ -25,15 +26,15 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final employmentStatus = profile?['employmentStatus']?.toString() ?? 'OFFICIAL';
     final statusLabel = employmentStatus == 'OFFICIAL'
-        ? 'CHÍNH THỨC (Official)'
-        : (employmentStatus == 'PROBATION' ? 'THỬ VIỆC (Probation)' : 'HOẠT ĐỘNG');
+        ? 'profile.screen.status_official'.tr()
+        : (employmentStatus == 'PROBATION' ? 'profile.screen.status_probation'.tr() : 'profile.screen.status_active'.tr());
 
     final resolvedManager = reportingOverview?['manager'] as Map<String, dynamic>?;
     final managerName = resolvedManager?['name']?.toString() ?? profile?['directManagerName']?.toString();
-    final managerTitle = resolvedManager?['title']?.toString() ?? profile?['directManagerTitle']?.toString() ?? 'Tổng Giám đốc';
+    final managerTitle = resolvedManager?['title']?.toString() ?? profile?['directManagerTitle']?.toString() ?? 'profile.work.default_manager_title'.tr();
     final directManagerStr = (managerName != null && managerName.trim().isNotEmpty)
         ? '$managerName ($managerTitle)'
-        : 'Hà Nguyên Hoàng (Tổng Giám đốc)';
+        : 'profile.work.default_manager'.tr();
 
     final List<Map<String, dynamic>> eventsList = [];
     if (careerEvents.isNotEmpty) {
@@ -42,12 +43,12 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
       for (final c in contracts) {
         final rawType = c['contractType']?.toString() ?? c['type']?.toString() ?? '';
         final title = rawType == 'INDEFINITE'
-            ? 'Hợp đồng không xác định thời hạn'
+            ? 'profile.work.contract_indefinite'.tr()
             : (rawType == 'DEFINITE'
-                ? 'Hợp đồng xác định thời hạn'
+                ? 'profile.work.contract_definite'.tr()
                 : (rawType == 'PROBATION'
-                    ? 'Hợp đồng thử việc'
-                    : (c['title']?.toString() ?? 'Hợp đồng lao động')));
+                    ? 'profile.work.contract_probation'.tr()
+                    : (c['title']?.toString() ?? 'profile.work.contract_labor'.tr())));
         eventsList.add({
           'id': c['id']?.toString() ?? c['contractCode']?.toString(),
           'source': 'CONTRACT',
@@ -63,20 +64,20 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
         {
           'id': 'hd-1',
           'source': 'CONTRACT',
-          'title': 'Hợp đồng không xác định thời hạn',
+          'title': 'profile.work.contract_indefinite'.tr(),
           'reference': '001/2019/HĐLĐ-SAVINA',
           'effectiveDate': '2019-01-01',
           'endDate': null,
-          'note': 'Đồng bộ từ 1Office (hồ sơ #17, HĐ 001/2018/HĐLĐ-SAVINA)',
+          'note': 'profile.work.note_sync_1'.tr(),
         },
         {
           'id': 'hd-2',
           'source': 'CONTRACT',
-          'title': 'Hợp đồng xác định thời hạn',
+          'title': 'profile.work.contract_definite'.tr(),
           'reference': '01012018/HĐLĐ-SAVINA',
           'effectiveDate': '2018-01-01',
           'endDate': '2018-12-31',
-          'note': 'Đồng bộ từ 1Office (hồ sơ #17, HĐ 01012018/HĐLĐ-SAVINA)',
+          'note': 'profile.work.note_sync_2'.tr(),
         },
       ]);
     }
@@ -100,10 +101,10 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                 child: Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF2563EB)),
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Thông báo quản trị: Thông tin quá trình công tác được đồng bộ trực tiếp từ hệ thống Core HRM và quản lý bởi Ban Nhân sự. Mọi thay đổi về vị trí hoặc quyết định bổ nhiệm vui lòng liên hệ phòng Tổ chức - Cán bộ.',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF1E40AF), height: 1.35),
+                  'profile.work.admin_notice'.tr(),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF1E40AF), height: 1.35),
                 ),
               ),
               const SizedBox(width: 6),
@@ -114,12 +115,12 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: const Color(0xFF93C5FD)),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.verified_rounded, size: 11, color: Color(0xFF2563EB)),
                     SizedBox(width: 3),
-                    Text('Đã xác thực', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
+                    Text('profile.work.verified'.tr(), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
                   ],
                 ),
               ),
@@ -159,10 +160,10 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Flexible(
+                            Flexible(
                               child: Text(
-                                'Cơ cấu tổ chức và vị trí công tác',
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                'profile.work.org_structure_title'.tr(),
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -190,18 +191,18 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
               const Divider(color: Color(0xFFF1F5F9), height: 1),
               const SizedBox(height: 6),
 
-              buildWebDataRow(context, 'Công ty', profile?['companyName']?.toString() ?? 'SƠ ĐỒ TỔ CHỨC'),
-              buildWebDataRow(context, 'Khối đơn vị', profile?['division']?.toString() ?? 'Khối Văn phòng'),
-              buildWebDataRow(context, 'Phòng ban', department.isNotEmpty ? department : (profile?['department']?.toString() ?? 'Phòng Hành chính - Tổng hợp')),
-              buildWebDataRow(context, 'Bộ phận / Đội nhóm', profile?['team']?.toString() ?? '----'),
-              buildWebDataRow(context, 'Địa điểm làm việc', profile?['workLocation']?.toString() ?? '----'),
-              buildWebDataRow(context, 'Chức danh', position.isNotEmpty ? position : (profile?['positionTitle']?.toString() ?? 'Trưởng phòng Hành chính - Tổng hợp')),
-              buildWebDataRow(context, 'Hiệu lực bổ nhiệm', formatDate(profile?['officialDate'] ?? profile?['joinDate'] ?? profile?['appointmentDate'] ?? '2019-01-01')),
-              buildWebDataRow(context, 'Quản lý trực tiếp', directManagerStr),
+              buildWebDataRow(context, 'profile.work.company'.tr(), profile?['companyName']?.toString() ?? 'profile.work.default_company'.tr()),
+              buildWebDataRow(context, 'profile.work.division'.tr(), profile?['division']?.toString() ?? 'profile.work.default_division'.tr()),
+              buildWebDataRow(context, 'profile.work.department'.tr(), department.isNotEmpty ? department : (profile?['department']?.toString() ?? 'profile.work.default_department'.tr())),
+              buildWebDataRow(context, 'profile.work.team'.tr(), profile?['team']?.toString() ?? '----'),
+              buildWebDataRow(context, 'profile.work.work_location'.tr(), profile?['workLocation']?.toString() ?? '----'),
+              buildWebDataRow(context, 'profile.work.job_title'.tr(), position.isNotEmpty ? position : (profile?['positionTitle']?.toString() ?? 'profile.work.default_job_title'.tr())),
+              buildWebDataRow(context, 'profile.work.appointment_effective'.tr(), formatDate(profile?['officialDate'] ?? profile?['joinDate'] ?? profile?['appointmentDate'] ?? '2019-01-01')),
+              buildWebDataRow(context, 'profile.work.direct_manager'.tr(), directManagerStr),
               if (profile?['note'] != null && profile!['note'].toString().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Phạm vi trách nhiệm: ${profile!['note']}',
+                  'profile.work.responsibility_scope'.tr(args: {'note': profile!['note']}),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
               ],
@@ -232,10 +233,10 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'LỊCH SỬ BỔ NHIỆM VÀ CÔNG TÁC',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
+                      'profile.work.history_title'.tr(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                     ),
                   ),
                   Container(
@@ -246,7 +247,7 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Text(
-                      '${eventsList.length} sự kiện',
+                      'profile.work.events_count'.tr(args: {'count': eventsList.length}),
                       style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -260,8 +261,8 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: const Center(
-                    child: Text('Chưa có sự kiện bổ nhiệm nào', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                  child: Center(
+                    child: Text('profile.work.history_empty'.tr(), style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                   ),
                 )
               else
@@ -273,15 +274,15 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                   itemBuilder: (context, idx) {
                     final ev = eventsList[idx];
                     final isFirst = idx == 0;
-                    final title = ev['title']?.toString() ?? 'Hợp đồng lao động';
+                    final title = ev['title']?.toString() ?? 'profile.work.contract_labor'.tr();
                     final ref = ev['reference']?.toString() ?? ev['contractCode']?.toString() ?? '';
-                    final tag = ev['source'] == 'DECISION' ? 'Quyết định' : 'Hợp đồng';
+                    final tag = ev['source'] == 'DECISION' ? 'profile.work.tag_decision'.tr() : 'profile.work.tag_contract'.tr();
                     final effDate = formatDate(ev['effectiveDate'] ?? ev['effectiveFrom']);
                     final toDate = ev['endDate'] != null && ev['endDate'].toString().isNotEmpty
                         ? formatDate(ev['endDate'])
                         : (ev['effectiveTo'] != null && ev['effectiveTo'].toString().isNotEmpty
                             ? formatDate(ev['effectiveTo'])
-                            : 'Hiện tại');
+                            : 'profile.work.present'.tr());
                     final dateRange = '$effDate - $toDate';
                     final note = ev['note']?.toString();
 
@@ -411,19 +412,19 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Hợp đồng và phụ lục', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('profile.work.contracts_title'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('${contracts.length} hợp đồng', style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.bold)),
+                    child: Text('profile.work.contracts_count'.tr(args: {'count': contracts.length}), style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
               const SizedBox(height: 2),
-              const Text('Lưu hồ sơ ký kết và lịch sử hiệu lực. Cấu hình chi trả lương được quản lý riêng.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              Text('profile.work.contracts_subtitle'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
               const SizedBox(height: 12),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
               const SizedBox(height: 12),
@@ -433,10 +434,10 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Column(
-                      children: const [
+                      children: [
                         Icon(Icons.description_outlined, size: 28, color: Color(0xFFCBD5E1)),
                         SizedBox(height: 6),
-                        Text('Chưa có hợp đồng nào được lưu trong hồ sơ', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                        Text('profile.work.contracts_empty'.tr(), style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                       ],
                     ),
                   ),
@@ -453,17 +454,17 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                     final status = c['status']?.toString() ?? 'DRAFT';
                     final rawType = c['contractType']?.toString() ?? c['type']?.toString() ?? '';
                     final typeLabel = rawType == 'DEFINITE'
-                        ? 'Xác định thời hạn'
+                        ? 'profile.work.type_definite'.tr()
                         : rawType == 'INDEFINITE'
-                            ? 'Không thời hạn'
+                            ? 'profile.work.type_indefinite'.tr()
                             : rawType == 'PROBATION'
-                                ? 'Thử việc'
+                                ? 'profile.work.type_probation'.tr()
                                 : rawType == 'AMENDMENT'
-                                    ? 'Phụ lục'
-                                    : (rawType.isNotEmpty ? rawType : 'Hợp đồng lao động');
+                                    ? 'profile.work.type_amendment'.tr()
+                                    : (rawType.isNotEmpty ? rawType : 'profile.work.contract_labor'.tr());
                     final from = c['effectiveFrom']?.toString() ?? '';
                     final to = c['effectiveTo']?.toString() ?? '';
-                    final range = from.isNotEmpty ? (to.isNotEmpty ? '$from ~ $to' : 'Từ $from') : 'Chưa có ngày hiệu lực';
+                    final range = from.isNotEmpty ? (to.isNotEmpty ? '$from ~ $to' : 'profile.work.range_from'.tr(args: {'from': from})) : 'profile.work.no_effective_date'.tr();
                     final isDraft = status == 'DRAFT';
                     final isActive = status == 'ACTIVE';
 
@@ -509,9 +510,9 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                                       ),
                                       child: Text(
                                         isActive
-                                            ? 'Đã ban hành'
+                                            ? 'profile.work.status_issued'.tr()
                                             : isDraft
-                                                ? 'Nháp'
+                                                ? 'profile.work.status_draft'.tr()
                                                 : status,
                                         style: TextStyle(
                                           fontSize: 9.5,
@@ -544,7 +545,7 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                           if (c['note'] != null && c['note'].toString().isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
-                              'Ghi chú: ${c['note']}',
+                              'profile.work.note_prefix'.tr(args: {'note': c['note']}),
                               style: const TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: Color(0xFF94A3B8)),
                             ),
                           ],

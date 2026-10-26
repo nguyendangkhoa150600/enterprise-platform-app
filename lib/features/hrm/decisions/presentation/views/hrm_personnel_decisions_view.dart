@@ -6,6 +6,7 @@ import '../widgets/personnel_decision_card.dart';
 import '../widgets/personnel_decision_detail_sheet.dart';
 import '../widgets/personnel_decision_dialog.dart';
 import '../../../../../utils/user_resolver.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 class HrmPersonnelDecisionsView extends StatefulWidget {
   final List<HrmEmployeeItem> employees;
@@ -32,24 +33,24 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
   String _typeFilter = 'ALL';
   String _statusFilter = 'ALL';
 
-  final Map<String, String> _typeFilterLabels = {
-    'ALL': 'Tất cả loại',
-    'APPOINT': 'Bổ nhiệm',
-    'PROMOTE': 'Thăng chức',
-    'TRANSFER': 'Điều chuyển',
-    'CONCURRENT': 'Kiêm nhiệm',
-    'DISMISS': 'Miễn nhiệm',
-    'REVOKE': 'Bãi nhiệm',
+  Map<String, String> get _typeFilterLabels => {
+    'ALL': 'hrm_decisions.type_all'.tr(),
+    'APPOINT': 'hrm_decisions.type_appoint'.tr(),
+    'PROMOTE': 'hrm_decisions.type_promote'.tr(),
+    'TRANSFER': 'hrm_decisions.type_transfer'.tr(),
+    'CONCURRENT': 'hrm_decisions.type_concurrent'.tr(),
+    'DISMISS': 'hrm_decisions.type_dismiss'.tr(),
+    'REVOKE': 'hrm_decisions.type_revoke'.tr(),
   };
 
-  final Map<String, String> _statusFilterLabels = {
-    'ALL': 'Tất cả trạng thái',
-    'DRAFT': 'Nháp',
-    'APPROVED': 'Đã duyệt',
-    'APPLY_PENDING': 'Chờ áp dụng',
-    'APPLIED': 'Đã áp dụng',
-    'REJECTED': 'Từ chối',
-    'CANCELLED': 'Đã hủy',
+  Map<String, String> get _statusFilterLabels => {
+    'ALL': 'hrm_decisions.status_all'.tr(),
+    'DRAFT': 'hrm_decisions.status_draft'.tr(),
+    'APPROVED': 'hrm_decisions.status_approved'.tr(),
+    'APPLY_PENDING': 'hrm_decisions.status_apply_pending'.tr(),
+    'APPLIED': 'hrm_decisions.status_applied'.tr(),
+    'REJECTED': 'common.reject'.tr(),
+    'CANCELLED': 'hrm_decisions.status_cancelled'.tr(),
   };
 
   @override
@@ -144,14 +145,14 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Duyệt quyết định?'),
-        content: Text('Quyết định "${d.decisionNo}" sẽ được phê duyệt và tự động áp dụng vào hồ sơ nhân sự.'),
+        title: Text('hrm_decisions.approve_title'.tr()),
+        content: Text('hrm_decisions.approve_msg'.tr(args: {'no': d.decisionNo})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Đóng')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.close'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xác nhận duyệt'),
+            child: Text('hrm_decisions.approve_confirm'.tr()),
           ),
         ],
       ),
@@ -162,14 +163,14 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
       await _service.approvePersonnelDecision(d.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(backgroundColor: Color(0xFF059669), content: Text('Đã phê duyệt quyết định thành công!')),
+          SnackBar(backgroundColor: Color(0xFF059669), content: Text('hrm_decisions.approve_success'.tr())),
         );
         _loadDecisions(forceRefresh: true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('Lỗi khi duyệt: $e')),
+          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('hrm_decisions.approve_error'.tr(args: {'error': '$e'}))),
         );
       }
     }
@@ -180,29 +181,29 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
     final reason = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Từ chối quyết định'),
+        title: Text('hrm_decisions.reject_title'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nhập lý do từ chối quyết định "${d.decisionNo}":'),
+            Text('hrm_decisions.reject_msg'.tr(args: {'no': d.decisionNo})),
             const SizedBox(height: 10),
             TextField(
               controller: reasonCtrl,
               maxLines: 2,
-              decoration: const InputDecoration(
-                hintText: 'Lý do từ chối...',
+              decoration: InputDecoration(
+                hintText: 'hrm_decisions.reject_reason_hint'.tr(),
                 border: OutlineInputBorder(),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.close'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, reasonCtrl.text.trim()),
-            child: const Text('Từ chối'),
+            child: Text('common.reject'.tr()),
           ),
         ],
       ),
@@ -213,14 +214,14 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
       await _service.rejectPersonnelDecision(d.id, reason);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(backgroundColor: Color(0xFFDC2626), content: Text('Đã từ chối quyết định.')),
+          SnackBar(backgroundColor: Color(0xFFDC2626), content: Text('hrm_decisions.reject_success'.tr())),
         );
         _loadDecisions(forceRefresh: true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('Lỗi khi từ chối: $e')),
+          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('hrm_decisions.reject_error'.tr(args: {'error': '$e'}))),
         );
       }
     }
@@ -230,14 +231,14 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hủy quyết định?'),
-        content: Text('Quyết định "${d.decisionNo}" sẽ bị hủy bỏ và không thể khôi phục.'),
+        title: Text('hrm_decisions.cancel_title'.tr()),
+        content: Text('hrm_decisions.cancel_msg'.tr(args: {'no': d.decisionNo})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Quay lại')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.back'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hủy quyết định'),
+            child: Text('hrm_decisions.cancel_decision'.tr()),
           ),
         ],
       ),
@@ -248,14 +249,14 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
       await _service.cancelPersonnelDecision(d.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã hủy quyết định.')),
+          SnackBar(content: Text('hrm_decisions.cancel_success'.tr())),
         );
         _loadDecisions(forceRefresh: true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('Lỗi khi hủy: $e')),
+          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('hrm_decisions.cancel_error'.tr(args: {'error': '$e'}))),
         );
       }
     }
@@ -266,14 +267,14 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
       await _service.retryApplyPersonnelDecision(d.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(backgroundColor: Color(0xFFD97706), content: Text('Đã gửi yêu cầu thử lại áp dụng.')),
+          SnackBar(backgroundColor: Color(0xFFD97706), content: Text('hrm_decisions.retry_sent'.tr())),
         );
         _loadDecisions(forceRefresh: true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('Lỗi khi thử lại: $e')),
+          SnackBar(backgroundColor: const Color(0xFFDC2626), content: Text('hrm_decisions.retry_error'.tr(args: {'error': '$e'}))),
         );
       }
     }
@@ -297,12 +298,12 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Quyết định nhân sự',
+                    'hrm_decisions.header_title'.tr(),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -312,7 +313,7 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Các quyết định bổ nhiệm, điều chuyển, miễn nhiệm, đổi quản lý trực tiếp kèm điều chỉnh lương của nhân sự công ty.',
+                    'hrm_decisions.header_desc'.tr(),
                     style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.35),
                   ),
                 ],
@@ -329,7 +330,7 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               icon: const Icon(Icons.add_rounded, size: 16),
-              label: const Text('Tạo quyết định', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+              label: Text('hrm_decisions.create_decision'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -340,9 +341,9 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
           children: [
             Expanded(
               child: _buildKpiCard(
-                title: 'Tổng quyết định',
+                title: 'hrm_decisions.stat_total'.tr(),
                 count: '$_totalCount',
-                subtitle: '$_unitCount phòng ban',
+                subtitle: 'hrm_decisions.unit_count'.tr(args: {'count': _unitCount}),
                 icon: Icons.file_copy_outlined,
                 color: const Color(0xFF2563EB),
                 bgColor: const Color(0xFFEFF6FF),
@@ -351,9 +352,9 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
             const SizedBox(width: 8),
             Expanded(
               child: _buildKpiCard(
-                title: 'Đang xử lý',
+                title: 'hrm_decisions.stat_processing'.tr(),
                 count: '$_openCount',
-                subtitle: 'Nháp, đã duyệt',
+                subtitle: 'hrm_decisions.stat_processing_sub'.tr(),
                 icon: Icons.pending_actions_outlined,
                 color: const Color(0xFFD97706),
                 bgColor: const Color(0xFFFFFBEB),
@@ -366,9 +367,9 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
           children: [
             Expanded(
               child: _buildKpiCard(
-                title: 'Đã áp dụng',
+                title: 'hrm_decisions.status_applied'.tr(),
                 count: '$_appliedCount',
-                subtitle: 'Đã cập nhật hồ sơ',
+                subtitle: 'hrm_decisions.stat_applied_sub'.tr(),
                 icon: Icons.check_circle_outline,
                 color: const Color(0xFF059669),
                 bgColor: const Color(0xFFECFDF5),
@@ -377,9 +378,9 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
             const SizedBox(width: 8),
             Expanded(
               child: _buildKpiCard(
-                title: 'Từ chối / Hủy',
+                title: 'hrm_decisions.stat_rejected'.tr(),
                 count: '$_closedCount',
-                subtitle: 'Không có hiệu lực',
+                subtitle: 'hrm_decisions.stat_rejected_sub'.tr(),
                 icon: Icons.cancel_outlined,
                 color: const Color(0xFFDC2626),
                 bgColor: const Color(0xFFFEF2F2),
@@ -403,7 +404,7 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
               TextField(
                 onChanged: (val) => setState(() => _searchQuery = val),
                 decoration: InputDecoration(
-                  hintText: 'Tìm số quyết định, nhân viên, lý do...',
+                  hintText: 'hrm_decisions.search_hint'.tr(),
                   hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                   prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
                   isDense: true,
@@ -435,7 +436,7 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
                       items: _allUnits.map((u) {
                         return DropdownMenuItem(
                           value: u,
-                          child: Text(u == 'ALL' ? 'Tất cả phòng ban' : u, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+                          child: Text(u == 'ALL' ? 'hrm_decisions.all_units'.tr() : u, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -503,11 +504,11 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: const Column(
+            child: Column(
               children: [
                 Icon(Icons.assignment_late_outlined, size: 40, color: Color(0xFF94A3B8)),
                 SizedBox(height: 10),
-                Text('Không tìm thấy quyết định nhân sự nào phù hợp.', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+                Text('hrm_decisions.empty'.tr(), style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
               ],
             ),
           )

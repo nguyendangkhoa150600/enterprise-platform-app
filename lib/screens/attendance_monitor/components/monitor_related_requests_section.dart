@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class MonitorRelatedRequestsSection extends StatelessWidget {
   final List<Map<String, dynamic>> requests;
@@ -29,19 +30,19 @@ class MonitorRelatedRequestsSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Đơn từ liên quan hôm nay (${requests.length})',
+                'att_monitor.requests.title'.tr(args: {'count': requests.length}),
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               InkWell(
                 onTap: onOpenApprovals,
                 borderRadius: BorderRadius.circular(6),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Mở danh sách đơn',
+                        'att_monitor.requests.open_list'.tr(),
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                       ),
                       SizedBox(width: 2),
@@ -55,10 +56,10 @@ class MonitorRelatedRequestsSection extends StatelessWidget {
           const SizedBox(height: 10),
 
           if (requests.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Text(
-                'Không có đơn từ nào liên quan tới ngày này.',
+                'att_monitor.requests.empty'.tr(),
                 style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               ),
             )

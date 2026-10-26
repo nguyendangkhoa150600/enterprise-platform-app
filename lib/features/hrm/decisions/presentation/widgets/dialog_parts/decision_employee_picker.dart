@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../../models/hrm_models.dart';
 import 'decision_dialog_helpers.dart';
+import '../../../../../../core/i18n/app_i18n.dart';
 
 class DecisionEmployeePicker extends StatefulWidget {
   final List<HrmEmployeeItem> employees;
@@ -99,7 +100,7 @@ class _DecisionEmployeePickerState extends State<DecisionEmployeePicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildDecisionFieldLabel('Nhân viên'),
+        buildDecisionFieldLabel('hrm_decisions.field_employee'.tr()),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -147,8 +148,8 @@ class _DecisionEmployeePickerState extends State<DecisionEmployeePicker> {
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF0F172A),
                   ),
-                  decoration: const InputDecoration(
-                    hintText: 'Chọn nhân viên',
+                  decoration: InputDecoration(
+                    hintText: 'hrm_decisions.employee_hint'.tr(),
                     hintStyle: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.normal,
@@ -214,11 +215,11 @@ class _DecisionEmployeePickerState extends State<DecisionEmployeePicker> {
               ],
             ),
             child: _filteredEmployees.isEmpty
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                     child: Center(
                       child: Text(
-                        'Không tìm thấy nhân viên phù hợp',
+                        'hrm_decisions.employee_not_found'.tr(),
                         style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ),
@@ -301,10 +302,10 @@ class _DecisionEmployeePickerState extends State<DecisionEmployeePicker> {
         ],
         if (widget.hasError) ...[
           const SizedBox(height: 4),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(left: 4),
             child: Text(
-              'Vui lòng chọn nhân viên',
+              'hrm_decisions.employee_required'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFFEF4444)),
             ),
           ),

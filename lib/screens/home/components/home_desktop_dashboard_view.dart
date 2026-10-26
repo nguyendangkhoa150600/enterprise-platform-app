@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 import '../../../services/platform_service.dart';
 import '../../../theme/colors.dart';
@@ -28,7 +29,7 @@ class HomeDesktopDashboardView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Xin chào, $userName',
+          'home.greeting'.tr(args: {'name': userName}),
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.slate900),
         ),
         const SizedBox(height: 24),
@@ -45,10 +46,10 @@ class HomeDesktopDashboardView extends StatelessWidget {
               spacing: 16,
               runSpacing: 16,
               children: [
-                _buildStatusCard('NGƯỜI DÙNG HOẠT ĐỘNG', '$_activeUsersCount', null, cardWidth),
-                _buildStatusCard('MODULE ĐÃ BẬT', '$_activeModulesCount', null, cardWidth),
-                _buildStatusCard('GÓI HIỆN TẠI', 'Enterprise', null, cardWidth),
-                _buildStatusCard('ĐĂNG KÝ', 'Đang hoạt động', 'active', cardWidth),
+                _buildStatusCard('home.stat.active_users'.tr(), '$_activeUsersCount', null, cardWidth),
+                _buildStatusCard('home.stat.enabled_modules'.tr(), '$_activeModulesCount', null, cardWidth),
+                _buildStatusCard('home.stat.current_plan'.tr(), 'Enterprise', null, cardWidth),
+                _buildStatusCard('home.stat.subscription'.tr(), 'home.stat.active_state'.tr(), 'active', cardWidth),
               ],
             );
           },
@@ -111,8 +112,8 @@ class HomeDesktopDashboardView extends StatelessWidget {
                             decoration: const BoxDecoration(color: AppColors.emerald, shape: BoxShape.circle),
                           ),
                           const SizedBox(width: 6),
-                          const Text(
-                            'Đang hoạt động',
+                          Text(
+                            'home.stat.active_state'.tr(),
                             style: TextStyle(color: AppColors.emerald700, fontSize: 11.5, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -145,15 +146,15 @@ class HomeDesktopDashboardView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Ứng dụng của tôi',
+              Text(
+                'home.my_apps'.tr(),
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.slate800),
               ),
               TextButton(
                 onPressed: () => onSelectTab('Ứng dụng'),
-                child: const Row(
+                child: Row(
                   children: [
-                    Text('Xem tất cả', style: TextStyle(fontSize: 13, color: AppColors.slate500)),
+                    Text('home.view_all'.tr(), style: TextStyle(fontSize: 13, color: AppColors.slate500)),
                     SizedBox(width: 4),
                     Icon(Icons.arrow_forward, size: 14, color: AppColors.slate500),
                   ],
@@ -225,16 +226,16 @@ class HomeDesktopDashboardView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Thao tác nhanh (Admin)',
+          Text(
+            'home.quick_actions_admin'.tr(),
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.slate800),
           ),
           const SizedBox(height: 16),
-          _buildQuickActionItem('Thêm người dùng mới', () => onSelectTab('Người dùng')),
+          _buildQuickActionItem('home.quick.add_user'.tr(), () => onSelectTab('Người dùng')),
           const Divider(height: 1, color: AppColors.slate100),
-          _buildQuickActionItem('Xem sơ đồ tổ chức', () => onSelectTab('Sơ đồ tổ chức')),
+          _buildQuickActionItem('home.quick.view_org_chart'.tr(), () => onSelectTab('Sơ đồ tổ chức')),
           const Divider(height: 1, color: AppColors.slate100),
-          _buildQuickActionItem('Quản lý phân quyền ứng dụng', () => onSelectTab('Ứng dụng')),
+          _buildQuickActionItem('home.quick.manage_app_permissions'.tr(), () => onSelectTab('Ứng dụng')),
         ],
       ),
     );
@@ -261,14 +262,14 @@ class HomeDesktopDashboardView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Hoạt động gần đây',
+          Text(
+            'home.recent_activity'.tr(),
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.slate800),
           ),
           const SizedBox(height: 16),
-          _buildActivityItem('Đã mời người dùng mới vào hệ thống', '2 giờ trước'),
-          _buildActivityItem('Cập nhật chỉ số định mức kho vật tư', 'Hôm qua, 14:30'),
-          _buildActivityItem('Hoàn thành bảo trì MBA 110kV T1', '2 ngày trước'),
+          _buildActivityItem('home.activity.invited_user'.tr(), 'home.activity.invited_user_time'.tr()),
+          _buildActivityItem('home.activity.updated_inventory'.tr(), 'home.activity.updated_inventory_time'.tr()),
+          _buildActivityItem('home.activity.completed_maintenance'.tr(), 'home.activity.completed_maintenance_time'.tr()),
         ],
       ),
     );
@@ -322,13 +323,13 @@ class HomeDesktopApplicationsView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Danh mục Ứng dụng Doanh nghiệp',
+        Text(
+          'home.catalog.title'.tr(),
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.slate900),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Các phân hệ công việc đang hoạt động và được cấp quyền trên tài khoản của bạn.',
+        Text(
+          'home.catalog.subtitle'.tr(),
           style: TextStyle(fontSize: 13, color: AppColors.slate500),
         ),
         const SizedBox(height: 24),
@@ -392,7 +393,7 @@ class HomeDesktopApplicationsView extends StatelessWidget {
                   borderRadius: const BorderRadius.all(Radius.circular(8)),
                 ),
                 child: Text(
-                  isActive ? 'Active' : m.entitlementStatus == 'provisioning' ? 'Đang kích hoạt' : 'Chưa kích hoạt',
+                  isActive ? 'home.module.status_active'.tr() : m.entitlementStatus == 'provisioning' ? 'home.module.status_provisioning'.tr() : 'home.module.status_inactive'.tr(),
                   style: TextStyle(
                     color: isActive ? AppColors.emerald700 : AppColors.slate600,
                     fontSize: 10.5,
@@ -425,14 +426,14 @@ class HomeDesktopApplicationsView extends StatelessWidget {
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Truy cập phân hệ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                    child: Text('home.module.open'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                   )
                 : OutlinedButton(
                     onPressed: () async {
                       final success = await platformService.requestModuleActivation(m.key);
                       if (success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Đã gửi yêu cầu kích hoạt cho phân hệ ${m.name}')),
+                          SnackBar(content: Text('home.module.activation_sent'.tr(args: {'name': m.name}))),
                         );
                         onRefresh();
                       }
@@ -442,7 +443,7 @@ class HomeDesktopApplicationsView extends StatelessWidget {
                       side: const BorderSide(color: AppColors.slate300),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Yêu cầu kích hoạt', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                    child: Text('home.module.request_activation'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                   ),
           ),
         ],

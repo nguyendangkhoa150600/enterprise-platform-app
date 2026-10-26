@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../models/hrm_attendance_models.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 String _formatTime(String? isoString) {
   if (isoString == null || isoString.isEmpty) return '--:--';
@@ -39,7 +40,7 @@ void showAttendanceDayDetailModal(
         final isFuture = dateStr.compareTo(todayStr) > 0 || (rawDay?.status == 'FUTURE');
 
         // Status pill matching Web dayStatusPill
-        String statusLabel = 'Chưa có công';
+        String statusLabel = 'attendance.day.status.none'.tr();
         Color statusBg = const Color(0xFFF1F5F9);
         Color statusColor = const Color(0xFF475569);
         Color statusBorder = const Color(0xFFE2E8F0);
@@ -50,53 +51,53 @@ void showAttendanceDayDetailModal(
         final earlyMinutes = rawDay?.earlyLeaveMinutes ?? boardCell?.earlyMinutes ?? 0;
 
         if (isFuture) {
-          statusLabel = 'Chưa tới ngày';
+          statusLabel = 'attendance.day.status.future'.tr();
           statusBg = const Color(0xFFF1F5F9);
           statusColor = const Color(0xFF475569);
           statusBorder = const Color(0xFFE2E8F0);
         } else if (rawStatus == 'ABSENT') {
-          statusLabel = 'Nghỉ không phép';
+          statusLabel = 'attendance.day.status.absent'.tr();
           statusBg = const Color(0xFFFEF2F2);
           statusColor = const Color(0xFFDC2626);
           statusBorder = const Color(0xFFFECACA);
         } else if (rawStatus == 'ABNORMAL') {
-          statusLabel = 'Bất thường';
+          statusLabel = 'attendance.day.status.abnormal'.tr();
           statusBg = const Color(0xFFFDF4FF);
           statusColor = const Color(0xFFC026D3);
           statusBorder = const Color(0xFFF5D0FE);
         } else if (lateMinutes > 0 || earlyMinutes > 0 || rawStatus == 'LATE' || rawStatus == 'LATE_EARLY' || rawStatus == 'EARLY_LEAVE') {
           statusLabel = earlyMinutes > 0 && lateMinutes > 0
-              ? 'Đi trễ, về sớm'
-              : (earlyMinutes > 0 ? 'Về sớm' : 'Đi trễ');
+              ? 'attendance.day.status.late_early'.tr()
+              : (earlyMinutes > 0 ? 'attendance.day.status.early'.tr() : 'attendance.day.status.late'.tr());
           statusBg = const Color(0xFFFFF7ED);
           statusColor = const Color(0xFFEA580C);
           statusBorder = const Color(0xFFFED7AA);
         } else if (rawStatus.contains('LEAVE') || (boardCell?.isLeave ?? false)) {
-          statusLabel = 'Nghỉ phép';
+          statusLabel = 'attendance.day.status.leave'.tr();
           statusBg = const Color(0xFFEFF6FF);
           statusColor = const Color(0xFF2563EB);
           statusBorder = const Color(0xFFBFDBFE);
         } else if (rawStatus == 'OFF') {
-          statusLabel = 'Ngày nghỉ';
+          statusLabel = 'attendance.day.status.off'.tr();
           statusBg = const Color(0xFFF1F5F9);
           statusColor = const Color(0xFF64748B);
           statusBorder = const Color(0xFFCBD5E1);
         } else if (rawStatus == 'HOLIDAY') {
-          statusLabel = 'Ngày lễ';
+          statusLabel = 'attendance.day.status.holiday'.tr();
           statusBg = const Color(0xFFF1F5F9);
           statusColor = const Color(0xFF64748B);
           statusBorder = const Color(0xFFCBD5E1);
         } else if (workdayUnits > 0 || (rawDay?.checkIn != null && rawDay!.checkIn!.isNotEmpty) || record?.status == 'VALID') {
-          statusLabel = workdayUnits >= 1.0 ? 'Đủ công' : 'Chưa đủ công';
+          statusLabel = workdayUnits >= 1.0 ? 'attendance.day.status.full'.tr() : 'attendance.day.status.partial'.tr();
           statusBg = workdayUnits >= 1.0 ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7);
           statusColor = workdayUnits >= 1.0 ? const Color(0xFF059669) : const Color(0xFFD97706);
           statusBorder = workdayUnits >= 1.0 ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A);
         }
 
         // Subtitle text: "Hôm nay", "Chưa tới ngày", "Đã qua"
-        String subtitleText = isToday ? 'Hôm nay' : (isFuture ? 'Chưa tới ngày' : 'Đã qua');
+        String subtitleText = isToday ? 'attendance.day.subtitle.today'.tr() : (isFuture ? 'attendance.day.status.future'.tr() : 'attendance.day.subtitle.past'.tr());
         if (rawDay?.holidayName != null && rawDay!.holidayName!.isNotEmpty) {
-          subtitleText += ' • Lễ: ${rawDay.holidayName}';
+          subtitleText += 'attendance.day.subtitle.holiday'.tr(args: {'name': rawDay.holidayName});
         }
 
         // 4 KPI tiles values (matching Web):
@@ -116,7 +117,7 @@ void showAttendanceDayDetailModal(
                 : (record?.lastCheckOutAt != null ? _formatTime(record!.lastCheckOutAt) : '--:--'));
 
         // Real Shift info from API
-        final shiftName = rawDay?.shiftName ?? boardCell?.shiftName ?? 'Ca Hành Chính';
+        final shiftName = rawDay?.shiftName ?? boardCell?.shiftName ?? 'attendance.day.default_shift'.tr();
         final shiftStart = rawDay?.shiftStart ?? '07:30';
         final shiftEnd = rawDay?.shiftEnd ?? '17:00';
         final shiftBreakStart = rawDay?.shiftBreakStart ?? '11:30';
@@ -187,7 +188,7 @@ void showAttendanceDayDetailModal(
                                 ),
                               ),
                               child: Text(
-                                'Chi tiết ngày',
+                                'attendance.day.tab.detail'.tr(),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
@@ -212,7 +213,7 @@ void showAttendanceDayDetailModal(
                                 ),
                               ),
                               child: Text(
-                                'Đơn từ trong ngày (${dayRequests.length})',
+                                'attendance.day.tab.requests'.tr(args: {'count': dayRequests.length}),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
@@ -314,25 +315,25 @@ void showAttendanceDayDetailModal(
 
     // Leave info for DayBands banner (P)
     final hasLeave = rawDay?.leave != null || effectiveRequests.any((r) => r.kind == 'LEAVE') || (rawDay?.status != null && rawDay!.status.contains('LEAVE')) || (boardCell?.isLeave ?? false);
-    String leaveDesc = 'Nghỉ phép năm (Có lương, trừ phép năm)';
+    String leaveDesc = 'attendance.day.leave.default_desc'.tr();
     if (rawDay?.leave != null) {
       final lv = rawDay!.leave!;
-      final name = lv.reasonName ?? 'Nghỉ phép';
-      final pay = lv.paid ? 'Có lương' : 'Không lương';
-      final annual = lv.annual ? ', trừ phép năm' : '';
+      final name = lv.reasonName ?? 'attendance.day.leave.name_default'.tr();
+      final pay = lv.paid ? 'attendance.day.leave.paid'.tr() : 'attendance.day.leave.unpaid'.tr();
+      final annual = lv.annual ? 'attendance.day.leave.deduct_annual'.tr() : '';
       leaveDesc = '$name ($pay$annual)';
     } else {
       final req = effectiveRequests.where((r) => r.kind == 'LEAVE').firstOrNull;
       if (req != null) {
-        final name = req.label ?? req.reasonName ?? 'Nghỉ phép năm';
+        final name = req.label ?? req.reasonName ?? 'attendance.day.leave.annual_name'.tr();
         final isAnnual = name.toLowerCase().contains('năm');
-        leaveDesc = '$name (Có lương${isAnnual ? ", trừ phép năm" : ""})';
+        leaveDesc = '$name (${'attendance.day.leave.paid'.tr()}${isAnnual ? 'attendance.day.leave.deduct_annual'.tr() : ""})';
       }
     }
     final leaveDaysNum = rawDay?.leave?.days ?? (rawDay?.workdayUnits ?? 1.0);
     final leaveDaysStr = leaveDaysNum == leaveDaysNum.roundToDouble()
-        ? '${leaveDaysNum.toInt()} ngày'
-        : '$leaveDaysNum ngày';
+        ? 'attendance.day.days'.tr(args: {'count': leaveDaysNum.toInt()})
+        : 'attendance.day.days'.tr(args: {'count': leaveDaysNum});
 
     final hasOt = (rawDay?.otMinutes ?? 0) > 0;
     final hasTrip = rawDay?.tripId != null && rawDay!.tripId!.isNotEmpty;
@@ -388,9 +389,9 @@ void showAttendanceDayDetailModal(
         // 2. 4 Metric Tiles (Grid 2x2: Tổng giờ làm, Giờ công, Giờ vào, Giờ ra)
         Row(
           children: [
-            Expanded(child: _buildDayMetricTile(label: 'Tổng giờ làm', value: totalWorkedHours)),
+            Expanded(child: _buildDayMetricTile(label: 'attendance.day.metric.total_hours'.tr(), value: totalWorkedHours)),
             const SizedBox(width: 8),
-            Expanded(child: _buildDayMetricTile(label: 'Giờ công', value: paidHours)),
+            Expanded(child: _buildDayMetricTile(label: 'attendance.day.metric.paid_hours'.tr(), value: paidHours)),
           ],
         ),
         const SizedBox(height: 8),
@@ -398,7 +399,7 @@ void showAttendanceDayDetailModal(
           children: [
             Expanded(
               child: _buildDayMetricTile(
-                label: 'Giờ vào',
+                label: 'attendance.day.metric.check_in'.tr(),
                 value: checkInTime,
                 icon: Icons.login_rounded,
                 iconBg: checkInTime != '--:--'
@@ -412,7 +413,7 @@ void showAttendanceDayDetailModal(
             const SizedBox(width: 8),
             Expanded(
               child: _buildDayMetricTile(
-                label: 'Giờ ra',
+                label: 'attendance.day.metric.check_out'.tr(),
                 value: checkOutTime,
                 icon: Icons.logout_rounded,
                 iconBg: checkOutTime != '--:--'
@@ -439,35 +440,35 @@ void showAttendanceDayDetailModal(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTimelineStep(label: 'Bắt đầu ca', time: shiftStart, isLast: false),
-              _buildTimelineStep(label: 'Bắt đầu nghỉ giữa ca', time: shiftBreakStart, isLast: false),
+              _buildTimelineStep(label: 'attendance.day.timeline.shift_start'.tr(), time: shiftStart, isLast: false),
+              _buildTimelineStep(label: 'attendance.day.timeline.break_start'.tr(), time: shiftBreakStart, isLast: false),
               if (checkInTime != '--:--')
                 _buildTimelineStep(
-                  label: 'Chấm công vào',
+                  label: 'attendance.day.timeline.punch_in'.tr(),
                   time: checkInTime,
-                  note: lateMinutes > 0 ? 'Trễ $lateMinutes phút' : null,
+                  note: lateMinutes > 0 ? 'attendance.day.timeline.late_note'.tr(args: {'minutes': lateMinutes}) : null,
                   isAlert: lateMinutes > 0,
                   isSuccess: lateMinutes == 0,
                   isLast: false,
                 ),
-              _buildTimelineStep(label: 'Kết thúc nghỉ giữa ca', time: shiftBreakEnd, isLast: false),
+              _buildTimelineStep(label: 'attendance.day.timeline.break_end'.tr(), time: shiftBreakEnd, isLast: false),
               if (checkOutTime != '--:--')
                 _buildTimelineStep(
-                  label: 'Chấm công ra',
+                  label: 'attendance.day.timeline.punch_out'.tr(),
                   time: checkOutTime,
-                  note: earlyMinutes > 0 ? 'Sớm $earlyMinutes phút' : null,
+                  note: earlyMinutes > 0 ? 'attendance.day.timeline.early_note'.tr(args: {'minutes': earlyMinutes}) : null,
                   isAlert: earlyMinutes > 0,
                   isSuccess: earlyMinutes == 0,
                   isLast: false,
                 ),
-              _buildTimelineStep(label: 'Kết thúc ca', time: shiftEnd, isLast: true),
+              _buildTimelineStep(label: 'attendance.day.timeline.shift_end'.tr(), time: shiftEnd, isLast: true),
 
               // Note when punch in / punch out are missing (Matching Web text-fuchsia-700)
               if (checkInTime == '--:--' && checkOutTime == '--:--') ...[
                 const SizedBox(height: 8),
-                const Text(
-                  'Chưa có giờ vào và giờ ra',
-                  style: TextStyle(
+                Text(
+                  'attendance.day.timeline.missing_both'.tr(),
+                  style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFFA21CAF), // Fuchsia / Purple matching web
@@ -475,9 +476,9 @@ void showAttendanceDayDetailModal(
                 ),
               ] else if (checkInTime == '--:--') ...[
                 const SizedBox(height: 8),
-                const Text(
-                  'Chưa có giờ vào',
-                  style: TextStyle(
+                Text(
+                  'attendance.day.timeline.missing_in'.tr(),
+                  style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFFA21CAF),
@@ -485,9 +486,9 @@ void showAttendanceDayDetailModal(
                 ),
               ] else if (checkOutTime == '--:--') ...[
                 const SizedBox(height: 8),
-                const Text(
-                  'Chưa có giờ ra',
-                  style: TextStyle(
+                Text(
+                  'attendance.day.timeline.missing_out'.tr(),
+                  style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFFA21CAF),
@@ -516,7 +517,7 @@ void showAttendanceDayDetailModal(
                     color: const Color(0xFF1E293B),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('P', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text('attendance.day.letter.leave'.tr(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -549,17 +550,17 @@ void showAttendanceDayDetailModal(
                     color: const Color(0xFF6D28D9),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('TC', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text('attendance.day.letter.ot'.tr(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Tăng ca đã duyệt',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF5B21B6)),
+                    'attendance.day.banner.ot_approved'.tr(),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF5B21B6)),
                   ),
                 ),
                 Text(
-                  ' giá»',
+                  'attendance.day.hours_value'.tr(args: {'hours': _formatMinutesToHours(rawDay?.otMinutes)}),
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF5B21B6), fontFamily: 'monospace'),
                 ),
               ],
@@ -582,13 +583,13 @@ void showAttendanceDayDetailModal(
                     color: const Color(0xFF4338CA),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('CT', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text('attendance.day.letter.trip'.tr(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Có đơn công tác được duyệt: tính công theo đơn, không cần chấm công.',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF3730A3)),
+                    'attendance.day.banner.trip_approved'.tr(),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF3730A3)),
                   ),
                 ),
               ],
@@ -609,16 +610,16 @@ void showAttendanceDayDetailModal(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Đơn từ áp dụng cho ngày này',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                Text(
+                  'attendance.day.applied_requests'.tr(),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                 ),
                 const SizedBox(height: 10),
                 ...effectiveRequests.map((req) => _buildAppliedRequestCard(context, req)),
                 const SizedBox(height: 4),
-                const Text(
-                  'Chỉ đơn đã duyệt được tính vào công; đơn chờ duyệt hoặc bị từ chối chỉ để tham khảo.',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                Text(
+                  'attendance.day.applied_note'.tr(),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -643,9 +644,9 @@ void showAttendanceDayDetailModal(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Thông tin ca làm',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    Text(
+                      'attendance.day.shift_info.title'.tr(),
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     Icon(
                       isShiftInfoOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
@@ -659,20 +660,20 @@ void showAttendanceDayDetailModal(
                 const SizedBox(height: 12),
                 _buildModalInfoRow(
                   icon: Icons.calendar_month_outlined,
-                  label: 'Ca làm việc',
+                  label: 'attendance.day.shift_info.shift'.tr(),
                   value: '$shiftName ($shiftStart - $shiftEnd)',
                 ),
                 const SizedBox(height: 10),
                 _buildModalInfoRow(
                   icon: Icons.access_time_rounded,
-                  label: 'Thời gian làm việc',
-                  value: '$scheduledHours giờ',
+                  label: 'attendance.day.shift_info.work_time'.tr(),
+                  value: 'attendance.day.shift_info.hours'.tr(args: {'count': scheduledHours}),
                 ),
                 const SizedBox(height: 10),
                 _buildModalInfoRow(
                   icon: Icons.timelapse_outlined,
-                  label: 'Nghỉ giữa ca',
-                  value: '$shiftBreakStart - $shiftBreakEnd (${(shiftBreakMinutes ~/ 60) > 0 ? "${shiftBreakMinutes ~/ 60} giờ " : ""}${shiftBreakMinutes % 60 > 0 ? "${shiftBreakMinutes % 60} phút" : ""})',
+                  label: 'attendance.day.shift_info.break'.tr(),
+                  value: '$shiftBreakStart - $shiftBreakEnd (${(shiftBreakMinutes ~/ 60) > 0 ? "${'attendance.day.shift_info.hours_part'.tr(args: {'count': shiftBreakMinutes ~/ 60})} " : ""}${shiftBreakMinutes % 60 > 0 ? 'attendance.day.shift_info.minutes_part'.tr(args: {'count': shiftBreakMinutes % 60}) : ""})',
                 ),
               ],
             ],
@@ -694,19 +695,19 @@ void showAttendanceDayDetailModal(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               backgroundColor: Colors.white,
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Xem chi tiết chấm công',
-                  style: TextStyle(
+                  'attendance.day.view_punch_detail'.tr(),
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFFB45309),
                   ),
                 ),
-                SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFFB45309)),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFFB45309)),
               ],
             ),
           ),
@@ -720,7 +721,7 @@ void showAttendanceDayDetailModal(
             child: ElevatedButton.icon(
               onPressed: onExplain,
               icon: const Icon(Icons.edit_note_rounded, size: 18),
-              label: const Text('Làm đơn giải trình công cho ngày này'),
+              label: Text('attendance.day.explain_for_day'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0F172A),
                 foregroundColor: Colors.white,
@@ -740,7 +741,7 @@ void showAttendanceDayDetailModal(
               side: const BorderSide(color: Color(0xFFCBD5E1)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Đóng', style: TextStyle(color: Color(0xFF475569))),
+            child: Text('common.close'.tr(), style: const TextStyle(color: Color(0xFF475569))),
           ),
         ),
       ],
@@ -752,9 +753,9 @@ void showAttendanceDayDetailModal(
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.only(top: 8, left: 4),
-        child: const Text(
-          'Không có đơn từ nào trong ngày này.',
-          style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+        child: Text(
+          'attendance.day.no_requests'.tr(),
+          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
         ),
       );
     }
@@ -763,16 +764,16 @@ void showAttendanceDayDetailModal(
       children: requests.map((req) {
         Color badgeBg = const Color(0xFFFEF3C7);
         Color badgeColor = const Color(0xFFD97706);
-        String badgeText = 'Chờ duyệt';
+        String badgeText = 'attendance.day.req_status.pending'.tr();
 
         if (req.status == 'APPROVED') {
           badgeBg = const Color(0xFFECFDF5);
           badgeColor = const Color(0xFF059669);
-          badgeText = 'Đã duyệt';
+          badgeText = 'attendance.day.req_status.approved'.tr();
         } else if (req.status == 'REJECTED') {
           badgeBg = const Color(0xFFFEF2F2);
           badgeColor = const Color(0xFFDC2626);
-          badgeText = 'Từ chối';
+          badgeText = 'attendance.day.req_status.rejected'.tr();
         }
 
         return Container(
@@ -850,55 +851,55 @@ void showAttendanceDayDetailModal(
   String _getRequestLetter(String kind) {
     switch (kind.toUpperCase()) {
       case 'LEAVE':
-        return 'P';
+        return 'attendance.day.letter.leave'.tr();
       case 'OT':
-        return 'TC';
+        return 'attendance.day.letter.ot'.tr();
       case 'TRIP':
-        return 'CT';
+        return 'attendance.day.letter.trip'.tr();
       case 'CORRECTION':
-        return 'GT';
+        return 'attendance.day.letter.correction'.tr();
       case 'SHIFT_CHANGE':
-        return 'DC';
+        return 'attendance.day.letter.shift_change'.tr();
       case 'CUSTOM':
-        return 'KH';
+        return 'attendance.day.letter.custom'.tr();
       default:
-        return 'P';
+        return 'attendance.day.letter.leave'.tr();
     }
   }
 
   String _getRequestKindLabel(String kind) {
     switch (kind.toUpperCase()) {
       case 'LEAVE':
-        return 'Đơn nghỉ';
+        return 'attendance.day.kind.leave'.tr();
       case 'OT':
-        return 'Tăng ca';
+        return 'attendance.day.kind.ot'.tr();
       case 'TRIP':
-        return 'Công tác';
+        return 'attendance.day.kind.trip'.tr();
       case 'CORRECTION':
-        return 'Giải trình công';
+        return 'attendance.day.kind.correction'.tr();
       case 'SHIFT_CHANGE':
-        return 'Đổi ca';
+        return 'attendance.day.kind.shift_change'.tr();
       case 'CUSTOM':
-        return 'Đơn khác';
+        return 'attendance.day.kind.custom'.tr();
       default:
-        return 'Đơn từ';
+        return 'attendance.day.kind.default'.tr();
     }
   }
 
   String _getRequestSummary(HrmDayRequest req) {
     final kindLabel = _getRequestKindLabel(req.kind);
-    final label = req.label ?? (req.kind == 'LEAVE' ? 'Nghỉ phép năm' : '');
+    final label = req.label ?? (req.kind == 'LEAVE' ? 'attendance.day.leave.annual_name'.tr() : '');
     final minutes = req.minutes;
     String hoursPart = '';
     if (minutes != null && minutes > 0) {
       final hours = minutes / 60.0;
       final hoursStr = hours == hours.roundToDouble() ? hours.toInt().toString() : hours.toStringAsFixed(1);
       if (req.kind == 'OT') {
-        hoursPart = '$hoursStr giờ đã duyệt';
+        hoursPart = 'attendance.day.summary.hours_approved'.tr(args: {'hours': hoursStr});
       } else if (req.kind == 'LEAVE') {
-        hoursPart = '$hoursStr giờ hưởng lương';
+        hoursPart = 'attendance.day.summary.hours_paid'.tr(args: {'hours': hoursStr});
       } else {
-        hoursPart = '$hoursStr giờ';
+        hoursPart = 'attendance.day.summary.hours'.tr(args: {'hours': hoursStr});
       }
     }
 
@@ -919,18 +920,18 @@ void showAttendanceDayDetailModal(
     Color badgeBg = const Color(0xFFFEF3C7);
     Color badgeColor = const Color(0xFFD97706);
     Color badgeBorder = const Color(0xFFFDE68A);
-    String badgeText = 'Chờ duyệt';
+    String badgeText = 'attendance.day.req_status.pending'.tr();
 
     if (req.status == 'APPROVED') {
       badgeBg = const Color(0xFFECFDF5);
       badgeColor = const Color(0xFF059669);
       badgeBorder = const Color(0xFFA7F3D0);
-      badgeText = 'Đã duyệt';
+      badgeText = 'attendance.day.req_status.approved'.tr();
     } else if (req.status == 'REJECTED') {
       badgeBg = const Color(0xFFFEF2F2);
       badgeColor = const Color(0xFFDC2626);
       badgeBorder = const Color(0xFFFECACA);
-      badgeText = 'Từ chối';
+      badgeText = 'attendance.day.req_status.rejected'.tr();
     }
 
     final timeRange = _formatRequestTimeRange(req);
@@ -938,17 +939,17 @@ void showAttendanceDayDetailModal(
     final hoursStr = _formatMinutesToHours(req.minutes);
 
     final details = <MapEntry<String, String>>[];
-    if (timeRange.isNotEmpty) details.add(MapEntry('Thời gian', timeRange));
-    if (req.label != null && req.label!.isNotEmpty) details.add(MapEntry(req.kind == 'LEAVE' ? 'Loại nghỉ' : 'Nội dung', req.label!));
+    if (timeRange.isNotEmpty) details.add(MapEntry('attendance.day.detail.time'.tr(), timeRange));
+    if (req.label != null && req.label!.isNotEmpty) details.add(MapEntry(req.kind == 'LEAVE' ? 'attendance.day.detail.leave_type'.tr() : 'attendance.day.detail.content'.tr(), req.label!));
     if (req.description != null && req.description!.isNotEmpty && req.description != req.label) {
-      details.add(MapEntry('Ghi chú', req.description!));
+      details.add(MapEntry('common.note'.tr(), req.description!));
     }
     if (req.kind == 'LEAVE' && req.minutes != null && req.minutes! > 0) {
-      details.add(MapEntry('Giờ hưởng lương trong ngày', hoursStr));
+      details.add(MapEntry('attendance.day.detail.paid_hours'.tr(), hoursStr));
     } else if (req.kind == 'OT' && req.minutes != null && req.minutes! > 0) {
-      details.add(MapEntry('Số giờ tăng ca', hoursStr));
+      details.add(MapEntry('attendance.day.detail.ot_hours'.tr(), hoursStr));
     }
-    if (createdStr.isNotEmpty) details.add(MapEntry('Ngày tạo đơn', createdStr));
+    if (createdStr.isNotEmpty) details.add(MapEntry('attendance.day.detail.created_at'.tr(), createdStr));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1004,15 +1005,15 @@ void showAttendanceDayDetailModal(
               ),
               InkWell(
                 onTap: () => _showRequestDetailModal(context, req),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Mở đơn',
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                      'attendance.day.open_request'.tr(),
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                     ),
-                    SizedBox(width: 2),
-                    Icon(Icons.open_in_new_rounded, size: 12, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.open_in_new_rounded, size: 12, color: Color(0xFF2563EB)),
                   ],
                 ),
               ),
@@ -1082,24 +1083,24 @@ void showAttendanceDayDetailModal(
               if (req.fromAt != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('Thời gian: ${_formatRequestTimeRange(req)}', style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
+                  child: Text('attendance.day.detail_modal.time'.tr(args: {'value': _formatRequestTimeRange(req)}), style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
                 ),
               if (req.label != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('Loại đơn: ${req.label}', style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
+                  child: Text('attendance.day.detail_modal.type'.tr(args: {'value': req.label}), style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
                 ),
               if (req.description != null && req.description!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('Lý do / Ghi chú: ${req.description}', style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
+                  child: Text('attendance.day.detail_modal.reason'.tr(args: {'value': req.description}), style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
                 ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Đóng'),
+                  child: Text('common.close'.tr()),
                 ),
               ),
             ],
@@ -1147,7 +1148,7 @@ void showAttendanceDayDetailModal(
         punches.add(AttendancePunch(
           punchType: 'IN',
           occurredAt: '${dateStr}T${rawDay.checkIn}:00',
-          verificationMethod: 'MÁY CHẤM CÔNG',
+          verificationMethod: 'attendance.day.punch.device'.tr(),
           siteName: rawDay.shiftName,
         ));
       }
@@ -1155,7 +1156,7 @@ void showAttendanceDayDetailModal(
         punches.add(AttendancePunch(
           punchType: 'OUT',
           occurredAt: '${dateStr}T${rawDay.checkOut}:00',
-          verificationMethod: 'MÁY CHẤM CÔNG',
+          verificationMethod: 'attendance.day.punch.device'.tr(),
           siteName: rawDay.shiftName,
         ));
       }
@@ -1194,7 +1195,7 @@ void showAttendanceDayDetailModal(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Chi tiết chấm công (${_formatDate(dateStr)})',
+                    'attendance.day.punch.title'.tr(args: {'date': _formatDate(dateStr)}),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(
@@ -1208,10 +1209,10 @@ void showAttendanceDayDetailModal(
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'Không có dữ liệu quẹt thẻ cho ngày này.',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                      'attendance.day.punch.empty'.tr(),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                     ),
                   ),
                 )
@@ -1258,12 +1259,12 @@ void showAttendanceDayDetailModal(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    isCheckIn ? 'Quẹt vào' : 'Quẹt ra',
+                                    isCheckIn ? 'attendance.day.punch.in'.tr() : 'attendance.day.punch.out'.tr(),
                                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                   ),
                                   if (deviceOrMethod != null)
                                     Text(
-                                      'Phương thức: $deviceOrMethod',
+                                      'attendance.day.punch.method'.tr(args: {'value': deviceOrMethod}),
                                       style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                     ),
                                 ],

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:power_quality_analysis/models/hrm_models.dart';
 import 'package:power_quality_analysis/services/hrm_service.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 class HrmRequestDetailBottomSheet extends StatefulWidget {
   final HrmRequestItem request;
@@ -92,7 +93,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
       if (mounted) {
         setState(() {
           _isLoadingComments = false;
-          _commentError = 'Không thể tải trao đổi.';
+          _commentError = 'hrm_requests.err_load_comments'.tr();
         });
       }
     }
@@ -190,7 +191,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
       _scrollToBottom();
     } else {
       setState(() {
-        _commentError = 'Không thể gửi trao đổi. Vui lòng thử lại.';
+        _commentError = 'hrm_requests.err_send_comment'.tr();
       });
     }
 
@@ -212,24 +213,24 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
 
   Widget _buildDecisionBadge(String decision) {
     final d = decision.toUpperCase();
-    String label = 'Đã xử lý';
+    String label = 'hrm_requests.tab_processed'.tr();
     Color bg = const Color(0xFFF1F5F9);
     Color fg = const Color(0xFF475569);
 
     if (d.contains('APPROV')) {
-      label = 'Đã phê duyệt';
+      label = 'hrm_requests.status_approved'.tr();
       bg = const Color(0xFFECFDF5);
       fg = const Color(0xFF047857);
     } else if (d.contains('REJECT')) {
-      label = 'Đã từ chối';
+      label = 'hrm_requests.st_rejected_done'.tr();
       bg = const Color(0xFFFFF1F2);
       fg = const Color(0xFFBE123C);
     } else if (d.contains('RETURN')) {
-      label = 'Đã trả lại';
+      label = 'hrm_requests.st_returned'.tr();
       bg = const Color(0xFFFFFBEB);
       fg = const Color(0xFFB45309);
     } else if (d.contains('COMPLETE')) {
-      label = 'Đã hoàn thành bước';
+      label = 'hrm_requests.st_step_done'.tr();
       bg = const Color(0xFFF0F9FF);
       fg = const Color(0xFF0369A1);
     }
@@ -339,34 +340,34 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
     if (start != null && end != null) {
       timeDisplay = '${widget.formatDate(start)} ${widget.formatTime(start)} -> ${widget.formatDate(end)} ${widget.formatTime(end)}'.trim();
     } else if (start != null) {
-      timeDisplay = 'Từ ${widget.formatDate(start)} ${widget.formatTime(start)}'.trim();
+      timeDisplay = 'hrm_requests.from_date'.tr(args: {'date': '${widget.formatDate(start)} ${widget.formatTime(start)}'}).trim();
     }
 
-    String quantityLabel = 'Số lượng nghỉ';
+    String quantityLabel = 'hrm_requests.qty_leave'.tr();
     String quantityValue = '1';
     if (_request.type == HrmRequestType.leave) {
-      quantityLabel = 'Số lượng nghỉ';
+      quantityLabel = 'hrm_requests.qty_leave'.tr();
       if (_request.durationDays != null) {
         final d = _request.durationDays!;
         quantityValue = d == d.toInt() ? '${d.toInt()}' : '$d';
       }
     } else if (_request.type == HrmRequestType.overtime) {
-      quantityLabel = 'Số giờ làm thêm';
+      quantityLabel = 'hrm_requests.qty_ot_hours'.tr();
       if (_request.durationHours != null) {
         final h = _request.durationHours!;
-        quantityValue = '${h == h.toInt() ? h.toInt() : h} giờ';
+        quantityValue = 'hrm_requests.hours_value'.tr(args: {'hours': h == h.toInt() ? h.toInt() : h});
       } else {
         quantityValue = '—';
       }
     } else if (_request.type == HrmRequestType.businessTrip) {
-      quantityLabel = 'Số ngày công tác';
+      quantityLabel = 'hrm_requests.qty_trip_days'.tr();
       quantityValue = _request.durationDays != null ? '${_request.durationDays}' : '—';
     } else if (_request.type == HrmRequestType.advance) {
-      quantityLabel = 'Số tiền';
+      quantityLabel = 'hrm_requests.qty_amount'.tr();
       quantityValue = widget.formatCurrency(_request.amount);
     } else if (_request.type == HrmRequestType.attendanceCorrection) {
-      quantityLabel = 'Loại giải trình';
-      quantityValue = _request.reason.isNotEmpty ? _request.reason : 'Quên chấm công';
+      quantityLabel = 'hrm_requests.qty_explain_type'.tr();
+      quantityValue = _request.reason.isNotEmpty ? _request.reason : 'hrm_requests.forgot_checkin'.tr();
     }
 
     final shortId = _request.id.length > 8 ? _request.id.substring(_request.id.length - 8).toUpperCase() : _request.id.toUpperCase();
@@ -386,8 +387,8 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Chi tiết đơn',
+                  Text(
+                    'hrm_requests.detail_title'.tr(),
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   IconButton(
@@ -429,7 +430,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Mã đơn: #$shortId',
+                            'hrm_requests.request_id'.tr(args: {'id': shortId}),
                             style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           ),
                         ],
@@ -450,10 +451,10 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                       ),
                       child: Text(
                         isPending
-                            ? 'Chờ duyệt'
+                            ? 'hrm_requests.status_pending'.tr()
                             : (isApproved
-                                ? 'Đã duyệt'
-                                : (_request.status == HrmRequestStatus.rejected ? 'Từ chối' : 'Đã rút / hủy')),
+                                ? 'hrm_requests.flow_approved'.tr()
+                                : (_request.status == HrmRequestStatus.rejected ? 'common.reject'.tr() : 'hrm_requests.status_cancelled'.tr())),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -469,8 +470,8 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
               const SizedBox(height: 16),
 
               // Section: Thông tin nhân viên
-              const Text(
-                'Thông tin nhân viên',
+              Text(
+                'hrm_requests.sec_employee'.tr(),
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 10),
@@ -507,21 +508,21 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
 
               // Details Key-Value Table matching Web
               const Divider(color: Color(0xFFF1F5F9), height: 1),
-              _buildDetailRow('Loại đơn', _request.typeLabel),
+              _buildDetailRow('hrm_requests.filter_type'.tr(), _request.typeLabel),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
-              _buildDetailRow('Thời gian', timeDisplay),
+              _buildDetailRow('hrm_requests.row_time'.tr(), timeDisplay),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
-              _buildDetailRow('Lý do', _request.reason.isNotEmpty ? _request.reason : '—'),
+              _buildDetailRow('hrm_requests.row_reason'.tr(), _request.reason.isNotEmpty ? _request.reason : '—'),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
-              _buildDetailRow('Mô tả', (_request.note != null && _request.note!.isNotEmpty) ? _request.note! : '—'),
+              _buildDetailRow('common.description'.tr(), (_request.note != null && _request.note!.isNotEmpty) ? _request.note! : '—'),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
               _buildDetailRow(quantityLabel, quantityValue),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
               const SizedBox(height: 16),
 
               // Section: Quy trình phê duyệt matching Web
-              const Text(
-                'Quy trình phê duyệt',
+              Text(
+                'hrm_requests.sec_flow'.tr(),
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 14),
@@ -537,8 +538,8 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                         child: Icon(Icons.check, size: 16, color: Colors.white),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Người gửi',
+                      Text(
+                        'hrm_requests.flow_sender'.tr(),
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       const SizedBox(height: 2),
@@ -571,17 +572,17 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                             : const Text('2', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Người duyệt',
+                      Text(
+                        'hrm_requests.flow_approver'.tr(),
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         isPending
-                            ? 'Đang chờ duyệt'
+                            ? 'hrm_requests.flow_waiting'.tr()
                             : (isApproved
-                                ? 'Đã duyệt'
-                                : (_request.status == HrmRequestStatus.rejected ? 'Đã từ chối' : 'Đã rút / hủy')),
+                                ? 'hrm_requests.flow_approved'.tr()
+                                : (_request.status == HrmRequestStatus.rejected ? 'hrm_requests.st_rejected_done'.tr() : 'hrm_requests.status_cancelled'.tr())),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -595,8 +596,8 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                 ],
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Duyệt trực tiếp, không qua Procedure Engine.',
+              Text(
+                'hrm_requests.flow_direct_note'.tr(),
                 style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 18),
@@ -607,7 +608,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                   const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF2563EB)),
                   const SizedBox(width: 6),
                   Text(
-                    'Trao đổi và ý kiến (${_comments.length})',
+                    'hrm_requests.comments_title'.tr(args: {'count': _comments.length}),
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   if (_isLoadingComments) ...[
@@ -627,9 +628,9 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'Đang tải trao đổi...',
+                      'hrm_requests.comments_loading'.tr(),
                       style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
                   ),
@@ -642,8 +643,8 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    'Chưa có trao đổi nào. Gõ @ để nhắc tên người cần xem đơn này.',
+                  child: Text(
+                    'hrm_requests.comments_empty'.tr(),
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                 )
@@ -785,8 +786,8 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                       child: TextField(
                         controller: _commentCtrl,
                         onChanged: _onCommentChanged,
-                        decoration: const InputDecoration(
-                          hintText: 'Viết trao đổi... gõ @ để nhắc tên',
+                        decoration: InputDecoration(
+                          hintText: 'hrm_requests.comment_hint'.tr(),
                           hintStyle: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                           border: InputBorder.none,
                           isDense: true,
@@ -825,7 +826,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                   controller: _opinionCtrl,
                   maxLines: 2,
                   decoration: InputDecoration(
-                    hintText: 'Ý kiến xử lý (bắt buộc khi từ chối, tuỳ chọn khi phê duyệt)',
+                    hintText: 'hrm_requests.opinion_hint'.tr(),
                     hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     errorText: _opinionError,
                     errorStyle: const TextStyle(fontSize: 11, color: Color(0xFFDC2626), fontWeight: FontWeight.w600),
@@ -855,7 +856,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                                 final opinion = _opinionCtrl.text.trim();
                                 if (opinion.isEmpty) {
                                   setState(() {
-                                    _opinionError = 'Vui lòng nhập ý kiến xử lý trước khi từ chối!';
+                                    _opinionError = 'hrm_requests.opinion_required'.tr();
                                   });
                                   _scrollToBottom();
                                   return;
@@ -883,7 +884,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                                   messenger.showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        ok ? 'Đã từ chối đơn yêu cầu thành công!' : 'Từ chối đơn thất bại!',
+                                        ok ? 'hrm_requests.reject_success'.tr() : 'hrm_requests.reject_failed'.tr(),
                                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                                       ),
                                       backgroundColor: ok ? const Color(0xFFDC2626) : const Color(0xFF1E293B),
@@ -896,7 +897,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                                 }
                               },
                         icon: const Icon(Icons.close, size: 16, color: Color(0xFFF43F5E)),
-                        label: const Text('Từ chối', style: TextStyle(color: Color(0xFFF43F5E), fontWeight: FontWeight.bold, fontSize: 13)),
+                        label: Text('common.reject'.tr(), style: TextStyle(color: Color(0xFFF43F5E), fontWeight: FontWeight.bold, fontSize: 13)),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFFECDD3)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -934,7 +935,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                                   messenger.showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        ok ? 'Đã phê duyệt đơn thành công!' : 'Phê duyệt đơn thất bại!',
+                                        ok ? 'hrm_requests.approve_success'.tr() : 'hrm_requests.approve_failed'.tr(),
                                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                                       ),
                                       backgroundColor: ok ? const Color(0xFF00A86B) : const Color(0xFF1E293B),
@@ -947,7 +948,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                                 }
                               },
                         icon: const Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
-                        label: const Text('Phê duyệt', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        label: Text('common.approve'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF00A86B),
                           foregroundColor: Colors.white,
@@ -970,7 +971,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Đóng'),
+                    child: Text('common.close'.tr()),
                   ),
                 ),
               ],

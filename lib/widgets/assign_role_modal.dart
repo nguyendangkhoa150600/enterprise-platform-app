@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/platform_models.dart';
 import '../services/platform_service.dart';
 
@@ -153,8 +154,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
       Navigator.pop(context);
       widget.onSaved();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã cập nhật vai trò & phân quyền thành công'),
+        SnackBar(
+          content: Text('widgets.assign_role.saved'.tr()),
           backgroundColor: Color(0xFF16A34A),
           duration: Duration(seconds: 2),
         ),
@@ -162,171 +163,12 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
     }
   }
 
-  static const Map<String, String> _actionLabels = {
-    // Core
-    'core.organization.create': 'Tạo dữ liệu tổ chức',
-    'core.organization.delete': 'Xóa dữ liệu tổ chức',
-    'core.organization.read': 'Xem tổ chức',
-    'core.organization.update': 'Sửa dữ liệu tổ chức',
-    'core.users.create': 'Tạo người dùng',
-    'core.users.delete': 'Xóa người dùng',
-    'core.users.read': 'Xem người dùng',
-    'core.users.update': 'Sửa người dùng',
-    'core.roles.create': 'Tạo vai trò',
-    'core.roles.delete': 'Xóa vai trò',
-    'core.roles.read': 'Xem vai trò',
-    'core.roles.update': 'Sửa vai trò',
-    'core.permissions.read': 'Xem quyền hạn',
-    'core.audit.read': 'Xem nhật ký hệ thống',
-    'core.settings.manage': 'Quản lý thiết lập hệ thống',
-    'core.settings.read': 'Xem thiết lập hệ thống',
-
-    // HRM - Advance
-    'hrm.advance.approve': 'Duyệt tạm ứng',
-    'hrm.advance.disburse': 'Giải ngân và lập lịch thu hồi ứng',
-    'hrm.advance.read': 'Xem tạm ứng toàn tenant',
-    'hrm.advance.create': 'Tạo yêu cầu tạm ứng',
-    'hrm.advance.update': 'Cập nhật tạm ứng',
-    'hrm.advance.delete': 'Hủy yêu cầu tạm ứng',
-
-    // HRM - Attendance
-    'hrm.attendance.approve': 'Duyệt và xử lý giải trình công',
-    'hrm.attendance.import': 'Nhập sự kiện từ máy chấm công',
-    'hrm.attendance.read': 'Xem công toàn tenant',
-    'hrm.attendance.create': 'Chấm công / Điểm danh',
-    'hrm.attendance.update': 'Chỉnh sửa dữ liệu công',
-    'hrm.attendance.delete': 'Xóa dữ liệu công',
-    'hrm.attendance.manage': 'Quản lý dữ liệu chấm công',
-
-    // HRM - Audit & Automation & Dashboard
-    'hrm.audit.read': 'Xem nhật ký nghiệp vụ',
-    'hrm.automation.manage': 'Cấu hình lịch chạy tính pháp',
-    'hrm.automation.read': 'Xem lịch chạy tính pháp',
-    'hrm.dashboard.read': 'Xem tổng quan nhân sự toàn tenant',
-
-    // HRM - Dependent & Device & Employee
-    'hrm.dependent.manage': 'Quản lý người phụ thuộc',
-    'hrm.dependent.read': 'Xem người phụ thuộc',
-    'hrm.device.manage': 'Quản lý thiết bị chấm công',
-    'hrm.device.read': 'Xem thiết bị chấm công',
-    'hrm.employee.link-account': 'Liên kết tài khoản người dùng',
-    'hrm.employee.manage': 'Quản lý nhân viên',
-    'hrm.employee.read': 'Xem hồ sơ nhân viên',
-    'hrm.employee.create': 'Thêm hồ sơ nhân viên',
-    'hrm.employee.update': 'Cập nhật hồ sơ nhân viên',
-    'hrm.employee.delete': 'Xóa hồ sơ nhân viên',
-
-    // HRM - Leave & Overtime
-    'hrm.leave.approve': 'Duyệt đơn nghỉ phép',
-    'hrm.leave.read': 'Xem đơn nghỉ phép toàn tenant',
-    'hrm.leave.create': 'Tạo đơn xin nghỉ',
-    'hrm.leave.manage': 'Quản lý quỹ phép',
-    'hrm.overtime.approve': 'Duyệt đơn làm thêm giờ',
-    'hrm.overtime.read': 'Xem đơn làm thêm giờ toàn tenant',
-    'hrm.overtime.create': 'Tạo đơn làm thêm giờ',
-    'hrm.overtime.manage': 'Quản lý tăng ca',
-
-    // HRM - Payroll & Schedule & Settings & Shift & Tax
-    'hrm.payroll.approve': 'Duyệt bảng lương',
-    'hrm.payroll.calculate': 'Tính bảng lương',
-    'hrm.payroll.disburse': 'Giải ngân lương',
-    'hrm.payroll.export': 'Xuất bảng lương',
-    'hrm.payroll.read': 'Xem bảng lương',
-    'hrm.payroll.recalculate': 'Tính lại bảng lương',
-    'hrm.schedule.manage': 'Quản lý lịch làm việc & phân ca',
-    'hrm.schedule.read': 'Xem lịch làm việc & phân ca',
-    'hrm.settings.manage': 'Quản lý thiết lập HRM',
-    'hrm.settings.read': 'Xem thiết lập HRM',
-    'hrm.shift.manage': 'Quản lý ca làm việc',
-    'hrm.shift.read': 'Xem ca làm việc',
-    'hrm.tax.manage': 'Quản lý thuế & bảo hiểm',
-    'hrm.tax.read': 'Xem thuế & bảo hiểm',
-
-    // Inventory
-    'inventory.assets.create': 'Tạo tài sản',
-    'inventory.assets.delete': 'Xóa tài sản',
-    'inventory.assets.read': 'Xem tài sản',
-    'inventory.assets.update': 'Sửa tài sản',
-    'inventory.dashboard.read': 'Xem tổng quan kho & tài sản',
-    'inventory.items.create': 'Tạo vật tư hàng hóa',
-    'inventory.items.delete': 'Xóa vật tư hàng hóa',
-    'inventory.items.read': 'Xem vật tư hàng hóa',
-    'inventory.items.update': 'Sửa vật tư hàng hóa',
-    'inventory.locations.create': 'Tạo vị trí kho',
-    'inventory.locations.delete': 'Xóa vị trí kho',
-    'inventory.locations.read': 'Xem vị trí kho',
-    'inventory.locations.update': 'Sửa vị trí kho',
-    'inventory.reports.read': 'Xem báo cáo kho',
-    'inventory.stocktakes.create': 'Tạo phiếu kiểm kê',
-    'inventory.stocktakes.delete': 'Xóa phiếu kiểm kê',
-    'inventory.stocktakes.read': 'Xem phiếu kiểm kê',
-    'inventory.stocktakes.update': 'Sửa phiếu kiểm kê',
-    'inventory.transactions.create': 'Tạo phiếu xuất nhập kho',
-    'inventory.transactions.delete': 'Xóa phiếu xuất nhập kho',
-    'inventory.transactions.read': 'Xem phiếu xuất nhập kho',
-    'inventory.transactions.update': 'Sửa phiếu xuất nhập kho',
-    'inventory.warehouses.create': 'Tạo kho hàng',
-    'inventory.warehouses.delete': 'Xóa kho hàng',
-    'inventory.warehouses.read': 'Xem kho hàng',
-    'inventory.warehouses.update': 'Sửa kho hàng',
-
-    // Maintenance
-    'maintenance.calendar.read': 'Xem lịch bảo trì',
-    'maintenance.dashboard.read': 'Xem tổng quan bảo trì',
-    'maintenance.equipment.create': 'Tạo thiết bị bảo trì',
-    'maintenance.equipment.delete': 'Xóa thiết bị bảo trì',
-    'maintenance.equipment.read': 'Xem thiết bị bảo trì',
-    'maintenance.equipment.update': 'Sửa thiết bị bảo trì',
-    'maintenance.orders.create': 'Tạo lệnh bảo trì',
-    'maintenance.orders.delete': 'Xóa lệnh bảo trì',
-    'maintenance.orders.read': 'Xem lệnh bảo trì',
-    'maintenance.orders.update': 'Sửa lệnh bảo trì',
-    'maintenance.plans.create': 'Tạo kế hoạch bảo trì',
-    'maintenance.plans.delete': 'Xóa kế hoạch bảo trì',
-    'maintenance.plans.read': 'Xem kế hoạch bảo trì',
-    'maintenance.plans.update': 'Sửa kế hoạch bảo trì',
-    'maintenance.reports.read': 'Xem báo cáo bảo trì',
-    'maintenance.requests.create': 'Tạo yêu cầu bảo trì',
-    'maintenance.requests.delete': 'Xóa yêu cầu bảo trì',
-    'maintenance.requests.read': 'Xem yêu cầu bảo trì',
-    'maintenance.requests.update': 'Sửa yêu cầu bảo trì',
-
-    // Procedure Engine
-    'procedure.analytics.read': 'Xem phân tích quy trình',
-    'procedure.approvals.manage': 'Xử lý duyệt quy trình',
-    'procedure.approvals.read': 'Xem danh sách duyệt quy trình',
-    'procedure.dashboards.read': 'Xem tổng quan quy trình',
-    'procedure.definitions.create': 'Tạo định nghĩa quy trình',
-    'procedure.definitions.delete': 'Xóa định nghĩa quy trình',
-    'procedure.definitions.read': 'Xem định nghĩa quy trình',
-    'procedure.definitions.update': 'Sửa định nghĩa quy trình',
-    'procedure.instances.create': 'Khởi tạo đơn/phiếu quy trình',
-    'procedure.instances.delete': 'Hủy/xóa đơn/phiếu quy trình',
-    'procedure.instances.read': 'Xem đơn/phiếu quy trình',
-    'procedure.instances.update': 'Cập nhật đơn/phiếu quy trình',
-    'procedure.reports.read': 'Xem báo cáo quy trình',
-    'procedure.templates.manage': 'Quản lý mẫu biểu quy trình',
-
-    // Workspace
-    'workspace.activities.read': 'Xem hoạt động không gian làm việc',
-    'workspace.dashboards.read': 'Xem tổng quan không gian làm việc',
-    'workspace.documents.create': 'Tạo tài liệu',
-    'workspace.documents.delete': 'Xóa tài liệu',
-    'workspace.documents.read': 'Xem tài liệu',
-    'workspace.documents.update': 'Sửa tài liệu',
-    'workspace.projects.create': 'Tạo dự án',
-    'workspace.projects.delete': 'Xóa dự án',
-    'workspace.projects.read': 'Xem dự án',
-    'workspace.projects.update': 'Sửa dự án',
-    'workspace.tasks.create': 'Tạo công việc',
-    'workspace.tasks.delete': 'Xóa công việc',
-    'workspace.tasks.read': 'Xem công việc',
-    'workspace.tasks.update': 'Sửa công việc',
-  };
 
   String _formatActionLabel(String action) {
-    if (_actionLabels.containsKey(action)) {
-      return _actionLabels[action]!;
+    final permKey = 'widgets.perm.$action';
+    final permLabel = permKey.tr();
+    if (permLabel != permKey) {
+      return permLabel;
     }
     final parts = action.split('.');
     if (parts.length >= 3) {
@@ -334,21 +176,21 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
       final resource = parts.sublist(1, parts.length - 1).join(' ');
       switch (verb) {
         case 'create':
-          return 'Tạo $resource';
+          return 'widgets.assign_role.verb_create'.tr(args: {'resource': resource});
         case 'read':
-          return 'Xem $resource';
+          return 'widgets.assign_role.verb_read'.tr(args: {'resource': resource});
         case 'update':
-          return 'Sửa $resource';
+          return 'widgets.assign_role.verb_update'.tr(args: {'resource': resource});
         case 'delete':
-          return 'Xóa $resource';
+          return 'widgets.assign_role.verb_delete'.tr(args: {'resource': resource});
         case 'approve':
-          return 'Duyệt $resource';
+          return 'widgets.assign_role.verb_approve'.tr(args: {'resource': resource});
         case 'manage':
-          return 'Quản lý $resource';
+          return 'widgets.assign_role.verb_manage'.tr(args: {'resource': resource});
         case 'export':
-          return 'Xuất $resource';
+          return 'widgets.assign_role.verb_export'.tr(args: {'resource': resource});
         case 'import':
-          return 'Nhập $resource';
+          return 'widgets.assign_role.verb_import'.tr(args: {'resource': resource});
       }
     }
     return action;
@@ -357,7 +199,7 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
   String _formatModuleName(String key) {
     switch (key) {
       case '*':
-        return 'Toàn quyền phân hệ (*)';
+        return 'widgets.assign_role.all_modules'.tr();
       case 'hrm':
         return 'hrm';
       case 'inventory':
@@ -427,8 +269,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Gán vai trò & phân quyền',
+                              Text(
+                                'widgets.assign_role.title'.tr(),
                                 style: TextStyle(
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.bold,
@@ -437,7 +279,7 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Nhân sự: ${widget.user.fullName}',
+                                'widgets.assign_role.employee'.tr(args: {'name': widget.user.fullName}),
                                 style: const TextStyle(
                                   fontSize: 12.5,
                                   color: Color(0xFF64748B),
@@ -480,8 +322,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                               children: [
                                 Row(
                                   children: [
-                                    const Text(
-                                      'Chọn vai trò áp dụng',
+                                    Text(
+                                      'widgets.assign_role.select_roles'.tr(),
                                       style: TextStyle(
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.bold,
@@ -521,7 +363,7 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả (${_allRoles.length})',
+                                          allSelected ? 'widgets.assign_role.deselect_all'.tr() : 'widgets.assign_role.select_all'.tr(args: {'count': _allRoles.length}),
                                           style: const TextStyle(
                                             fontSize: 11.5,
                                             fontWeight: FontWeight.w600,
@@ -547,7 +389,7 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                               child: TextField(
                                 onChanged: (v) => setState(() => _searchQuery = v),
                                 decoration: InputDecoration(
-                                  hintText: 'Tìm kiếm trong ${_allRoles.length} vai trò áp dụng...',
+                                  hintText: 'widgets.assign_role.search_hint'.tr(args: {'count': _allRoles.length}),
                                   hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                                   prefixIcon: const Icon(Icons.search_rounded, size: 16, color: Color(0xFF94A3B8)),
                                   border: InputBorder.none,
@@ -568,9 +410,9 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(color: const Color(0xFFE2E8F0)),
                                 ),
-                                child: const Center(
+                                child: Center(
                                   child: Text(
-                                    'Không tìm thấy vai trò phù hợp',
+                                    'widgets.assign_role.no_roles'.tr(),
                                     style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                                   ),
                                 ),
@@ -653,7 +495,7 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                             borderRadius: BorderRadius.circular(6),
                                           ),
                                           child: Text(
-                                            role.isSystem ? 'Hệ thống' : 'Tùy chỉnh',
+                                            role.isSystem ? 'widgets.assign_role.system'.tr() : 'widgets.assign_role.custom'.tr(),
                                             style: const TextStyle(
                                               fontSize: 10.5,
                                               fontWeight: FontWeight.w500,
@@ -684,8 +526,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                     children: [
                                       const Icon(Icons.verified_user_outlined, size: 16, color: Color(0xFF2563EB)),
                                       const SizedBox(width: 6),
-                                      const Text(
-                                        'Quyền hạn tổng hợp dự kiến',
+                                      Text(
+                                        'widgets.assign_role.expected_permissions'.tr(),
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.bold,
@@ -702,8 +544,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                     children: [
                                       const Icon(Icons.layers_outlined, size: 14, color: Color(0xFF64748B)),
                                       const SizedBox(width: 6),
-                                      const Text(
-                                        'Phân hệ Module truy cập:',
+                                      Text(
+                                        'widgets.assign_role.modules_access'.tr(),
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -716,8 +558,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                   Padding(
                                     padding: const EdgeInsets.only(left: 20),
                                     child: computedModules.isEmpty
-                                        ? const Text(
-                                            'Chưa cấp quyền module nào',
+                                        ? Text(
+                                            'widgets.assign_role.no_modules'.tr(),
                                             style: TextStyle(
                                               fontSize: 11.5,
                                               fontStyle: FontStyle.italic,
@@ -756,7 +598,7 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                       const Icon(Icons.vpn_key_outlined, size: 14, color: Color(0xFF64748B)),
                                       const SizedBox(width: 6),
                                       Text(
-                                        'Hành động Core và module khả dụng (${computedActions.length}):',
+                                        'widgets.assign_role.actions_available'.tr(args: {'count': computedActions.length}),
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -769,8 +611,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                   Padding(
                                     padding: const EdgeInsets.only(left: 20),
                                     child: computedActions.isEmpty
-                                        ? const Text(
-                                            'Không cấp quyền thao tác Core hoặc module',
+                                        ? Text(
+                                            'widgets.assign_role.no_actions'.tr(),
                                             style: TextStyle(
                                               fontSize: 11.5,
                                               fontStyle: FontStyle.italic,
@@ -822,7 +664,7 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Hủy', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: Text('common.cancel'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -840,8 +682,8 @@ class _AssignRoleModalState extends State<AssignRoleModal> {
                                   height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text(
-                                  'Lưu thay đổi',
+                              : Text(
+                                  'widgets.assign_role.save_changes'.tr(),
                                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
                         ),

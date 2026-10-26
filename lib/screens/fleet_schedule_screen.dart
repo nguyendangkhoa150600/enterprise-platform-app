@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import 'package:intl/intl.dart';
 import '../core/theme/app_colors.dart';
 import '../models/hrm_fleet_models.dart';
@@ -70,20 +71,20 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
   String _getVietnameseWeekday(DateTime dt) {
     switch (dt.weekday) {
       case DateTime.monday:
-        return 'Thứ 2';
+        return 'fleet.weekday.mon'.tr();
       case DateTime.tuesday:
-        return 'Thứ 3';
+        return 'fleet.weekday.tue'.tr();
       case DateTime.wednesday:
-        return 'Thứ 4';
+        return 'fleet.weekday.wed'.tr();
       case DateTime.thursday:
-        return 'Thứ 5';
+        return 'fleet.weekday.thu'.tr();
       case DateTime.friday:
-        return 'Thứ 6';
+        return 'fleet.weekday.fri'.tr();
       case DateTime.saturday:
-        return 'Thứ 7';
+        return 'fleet.weekday.sat'.tr();
       case DateTime.sunday:
       default:
-        return 'CN';
+        return 'fleet.weekday.sun'.tr();
     }
   }
 
@@ -141,8 +142,8 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        title: const Text(
-          'Lịch xe',
+        title: Text(
+          'fleet.title.schedule'.tr(),
           style: TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.bold,
@@ -156,7 +157,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
               child: ElevatedButton.icon(
                 onPressed: _showCreateVehicleModal,
                 icon: const Icon(Icons.add, size: 15, color: Color(0xFF0F172A)),
-                label: const Text('Thêm xe', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                label: Text('fleet.action.add_vehicle'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFEAB308),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -171,7 +172,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
               child: ElevatedButton.icon(
                 onPressed: _showCreateDriverModal,
                 icon: const Icon(Icons.add, size: 15, color: Color(0xFF0F172A)),
-                label: const Text('Thêm tài xế', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                label: Text('fleet.action.add_driver'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFEAB308),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -182,7 +183,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
             ),
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.slate700, size: 21),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadFleetData,
           ),
         ],
@@ -201,14 +202,14 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
               indicatorWeight: 2.5,
               labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              tabs: const [
+              tabs: [
                 Tab(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.calendar_month_outlined, size: 16),
                       SizedBox(width: 6),
-                      Text('Lịch xe'),
+                      Text('fleet.title.schedule'.tr()),
                     ],
                   ),
                 ),
@@ -218,7 +219,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                     children: [
                       Icon(Icons.directions_car_outlined, size: 16),
                       SizedBox(width: 6),
-                      Text('Danh mục xe'),
+                      Text('fleet.tab.vehicles'.tr()),
                     ],
                   ),
                 ),
@@ -228,7 +229,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                     children: [
                       Icon(Icons.person_pin_outlined, size: 16),
                       SizedBox(width: 6),
-                      Text('Tài xế'),
+                      Text('fleet.tab.drivers'.tr()),
                     ],
                   ),
                 ),
@@ -274,18 +275,18 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
         children: [
           // Breadcrumbs
           Row(
-            children: const [
-              Text('SVN DTS / Quản trị Nhân sự / Quản lý', style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+            children: [
+              Text('fleet.header.breadcrumb'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Lịch xe công ty',
+          Text(
+            'fleet.header.title'.tr(),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
           ),
           const SizedBox(height: 2),
-          const Text(
-            'Theo dõi lịch đặt, lộ trình công tác và điều phối phương tiện nội bộ doanh nghiệp.',
+          Text(
+            'fleet.header.subtitle'.tr(),
             style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 12),
@@ -321,7 +322,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          '$days ngày',
+                          'fleet.timeline.days'.tr(args: {'days': days}),
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
@@ -358,10 +359,10 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         child: Row(
-                          children: const [
+                          children: [
                             Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF2563EB)),
                             SizedBox(width: 4),
-                            Text('Hôm nay', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                            Text('fleet.timeline.today'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
                           ],
                         ),
                       ),
@@ -421,8 +422,8 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                           ),
                         ),
                         const SizedBox(width: 5),
-                        const Text(
-                          'Chờ đơn gốc duyệt (đang giữ chỗ)',
+                        Text(
+                          'fleet.legend.pending'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -439,8 +440,8 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                           ),
                         ),
                         const SizedBox(width: 5),
-                        const Text(
-                          'Đã xác nhận',
+                        Text(
+                          'fleet.legend.confirmed'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -463,8 +464,8 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
             child: TextField(
               onChanged: (v) => setState(() => _searchQuery = v),
               style: const TextStyle(fontSize: 12),
-              decoration: const InputDecoration(
-                hintText: 'Tìm xe, tài xế, điểm đến...',
+              decoration: InputDecoration(
+                hintText: 'fleet.schedule.search_hint'.tr(),
                 hintStyle: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                 prefixIcon: Icon(Icons.search, size: 16, color: Color(0xFF94A3B8)),
                 border: InputBorder.none,
@@ -489,13 +490,13 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 children: [
                   const Icon(Icons.directions_car_filled_outlined, size: 44, color: Color(0xFF94A3B8)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Chưa có xe nào trong danh mục.',
+                  Text(
+                    'fleet.vehicle.empty_title'.tr(),
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Xe công ty đang được đặt cho đơn công tác, công việc, lịch họp và sự cố. Chọn xe và tài xế ngay trên đơn hoặc công việc.',
+                  Text(
+                    'fleet.schedule.empty_desc'.tr(),
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.35),
                   ),
@@ -503,7 +504,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                   ElevatedButton.icon(
                     onPressed: _showCreateVehicleModal,
                     icon: const Icon(Icons.add, size: 15, color: Color(0xFF0F172A)),
-                    label: const Text('Thêm xe mới', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    label: Text('fleet.action.add_new_vehicle'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFEAB308),
                       elevation: 0,
@@ -534,7 +535,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         alignment: Alignment.center,
-        child: const Text('Không tìm thấy xe phù hợp với bộ lọc.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        child: Text('fleet.schedule.no_match_filter'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
       );
     }
 
@@ -578,8 +579,8 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                     width: vehicleColWidth,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                     alignment: Alignment.centerLeft,
-                    child: const Text(
-                      'Xe',
+                    child: Text(
+                      'fleet.timeline.vehicle_col'.tr(),
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                   ),
@@ -649,7 +650,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${v.plateNo} • ${v.seats} chỗ',
+                            'fleet.vehicle.plate_seats'.tr(args: {'plate': v.plateNo, 'seats': v.seats}),
                             style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -706,7 +707,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                               child: Text(
                                 b.purpose?.trim().isNotEmpty == true
                                     ? b.purpose!
-                                    : (b.destination?.trim().isNotEmpty == true ? b.destination! : (isConfirmed ? 'Đã duyệt' : 'Giữ chỗ')),
+                                    : (b.destination?.trim().isNotEmpty == true ? b.destination! : (isConfirmed ? 'fleet.booking.approved'.tr() : 'fleet.booking.reserved'.tr())),
                                 style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.bold,
@@ -752,10 +753,10 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Tổng xe vận hành', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
+                Text('fleet.summary.total_vehicles'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text('$activeVehicles / $totalVehicles', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E3A8A))),
-                const Text('Xe sẵn sàng phục vụ', style: TextStyle(fontSize: 10, color: Color(0xFF60A5FA))),
+                Text('fleet.summary.ready_vehicles'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF60A5FA))),
               ],
             ),
           ),
@@ -772,10 +773,10 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Lịch trình sắp tới', style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600)),
+                Text('fleet.summary.upcoming'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text('$inUseCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF14532D))),
-                const Text('Chuyến công tác & điều động', style: TextStyle(fontSize: 10, color: Color(0xFF4ADE80))),
+                Text('fleet.summary.trips_dispatches'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF4ADE80))),
               ],
             ),
           ),
@@ -808,10 +809,10 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Danh mục xe', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    Text('fleet.tab.vehicles'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Xe công ty có thể được chọn khi làm đơn công tác, công việc, lịch họp và phiếu sự cố.',
+                    Text(
+                      'fleet.vehicle.list_desc'.tr(),
                       style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                     ),
                   ],
@@ -821,7 +822,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
               ElevatedButton.icon(
                 onPressed: _showCreateVehicleModal,
                 icon: const Icon(Icons.add, size: 15, color: Color(0xFF0F172A)),
-                label: const Text('Thêm xe', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                label: Text('fleet.action.add_vehicle'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFEAB308),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -842,8 +843,8 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
             child: TextField(
               onChanged: (v) => setState(() => _vehicleSearchQuery = v.trim().toLowerCase()),
               style: const TextStyle(fontSize: 13),
-              decoration: const InputDecoration(
-                hintText: 'Tìm biển số, tên xe...',
+              decoration: InputDecoration(
+                hintText: 'fleet.vehicle.search_hint'.tr(),
                 hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                 prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
                 border: InputBorder.none,
@@ -866,20 +867,20 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 children: [
                   const Icon(Icons.directions_car_outlined, size: 48, color: Color(0xFF94A3B8)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Chưa có xe nào trong danh mục.',
+                  Text(
+                    'fleet.vehicle.empty_title'.tr(),
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Thêm xe mới để bắt đầu quản lý và phân công lịch trình.',
+                  Text(
+                    'fleet.vehicle.empty_desc'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: _showCreateVehicleModal,
                     icon: const Icon(Icons.add, size: 15, color: Color(0xFF0F172A)),
-                    label: const Text('Thêm xe mới', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    label: Text('fleet.action.add_new_vehicle'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFEAB308),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -899,7 +900,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               alignment: Alignment.center,
-              child: const Text('Không tìm thấy xe phù hợp', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+              child: Text('fleet.vehicle.no_match'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
             )
           else
             ...filteredVehicles.map((v) => _buildVehicleCard(v)),
@@ -939,10 +940,10 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tài xế', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    Text('fleet.tab.drivers'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Tài xế được chọn từ hồ sơ nhân sự HRM để sẵn sàng phân công chuyến đi.',
+                    Text(
+                      'fleet.driver.list_desc'.tr(),
                       style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                     ),
                   ],
@@ -952,7 +953,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
               ElevatedButton.icon(
                 onPressed: _showCreateDriverModal,
                 icon: const Icon(Icons.add, size: 15, color: Color(0xFF0F172A)),
-                label: const Text('Thêm tài xế', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                label: Text('fleet.action.add_driver'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFEAB308),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -973,8 +974,8 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
             child: TextField(
               onChanged: (v) => setState(() => _driverSearchQuery = v.trim().toLowerCase()),
               style: const TextStyle(fontSize: 13),
-              decoration: const InputDecoration(
-                hintText: 'Tìm theo tên, mã nhân viên, số bằng lái...',
+              decoration: InputDecoration(
+                hintText: 'fleet.driver.search_hint'.tr(),
                 hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                 prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
                 border: InputBorder.none,
@@ -997,20 +998,20 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 children: [
                   const Icon(Icons.person_outline_rounded, size: 48, color: Color(0xFF94A3B8)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Chưa có tài xế nào trong danh mục.',
+                  Text(
+                    'fleet.driver.empty_title'.tr(),
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Thêm tài xế từ hồ sơ nhân sự HRM để sẵn sàng phân công chuyến đi.',
+                  Text(
+                    'fleet.driver.empty_desc'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: _showCreateDriverModal,
                     icon: const Icon(Icons.add, size: 15, color: Color(0xFF0F172A)),
-                    label: const Text('Thêm tài xế mới', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    label: Text('fleet.action.add_new_driver'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFEAB308),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1030,7 +1031,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               alignment: Alignment.center,
-              child: const Text('Không tìm thấy tài xế phù hợp', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+              child: Text('fleet.driver.no_match'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
             )
           else
             ...filteredDrivers.map((d) => _buildDriverCard(d)),
@@ -1071,7 +1072,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                     children: [
                       Flexible(
                         child: Text(
-                          d.employeeName ?? 'Tài xế',
+                          d.employeeName ?? 'fleet.driver.default_name'.tr(),
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1084,7 +1085,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          isAvailable ? 'Đang sử dụng' : 'Ngừng sử dụng',
+                          isAvailable ? 'fleet.status.in_use'.tr() : 'fleet.status.out_of_use'.tr(),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -1099,7 +1100,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
             ),
             const SizedBox(height: 6),
             Text(
-              'Mã NV: ${d.employeeCode ?? "—"} · Giấy phép lái xe: ${d.licenseNo ?? "—"}',
+              'fleet.driver.code_license'.tr(args: {'code': d.employeeCode ?? "—", 'license': d.licenseNo ?? "—"}),
               style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 12),
@@ -1109,7 +1110,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                 OutlinedButton.icon(
                   onPressed: () => _showEditDriverModal(d),
                   icon: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF334155)),
-                  label: const Text('Sửa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  label: Text('fleet.action.edit'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -1129,7 +1130,7 @@ class _FleetScheduleScreenState extends State<FleetScheduleScreen> with SingleTi
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    isAvailable ? 'Ngừng sử dụng' : 'Sử dụng lại',
+                    isAvailable ? 'fleet.status.out_of_use'.tr() : 'fleet.action.reactivate'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

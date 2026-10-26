@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../models/hrm_attendance_models.dart';
 
 /// 1. Cấu hình Chấm công tự động
@@ -74,9 +75,9 @@ class _HrmAutoAttendanceConfigViewState extends State<HrmAutoAttendanceConfigVie
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Chấm công tự động',
-          style: TextStyle(
+        Text(
+          'hrm_config.shifts.auto.title'.tr(),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: Color(0xFF0F172A),
@@ -84,9 +85,9 @@ class _HrmAutoAttendanceConfigViewState extends State<HrmAutoAttendanceConfigVie
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Bật hoặc tắt chấm công tự động cho cả đơn vị mà không cần phân ca lại.',
-          style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.3),
+        Text(
+          'hrm_config.shifts.auto.subtitle'.tr(),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.3),
         ),
         const SizedBox(height: 14),
 
@@ -100,13 +101,13 @@ class _HrmAutoAttendanceConfigViewState extends State<HrmAutoAttendanceConfigVie
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Icon(Icons.info_outline, size: 16, color: Color(0xFF64748B)),
-              SizedBox(width: 10),
+            children: [
+              const Icon(Icons.info_outline, size: 16, color: Color(0xFF64748B)),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Với những ngày làm việc có ca nằm trong các thứ được chọn, hệ thống ghi ngay giờ vào và giờ ra đúng giờ bắt đầu, kết thúc ca cho nhân viên, không chờ ca kết thúc. Đơn nghỉ hoặc công tác được duyệt sau đó sẽ chèn lên phần chấm công tự động khi tính công. Không áp dụng cho ngày không có lịch phân ca và kỳ công đã khóa. Cấu hình chỉ có hiệu lực từ ngày bật trở đi, không đổi dữ liệu đã qua.',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF475569), height: 1.45),
+                  'hrm_config.shifts.auto.info'.tr(),
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569), height: 1.45),
                 ),
               ),
             ],
@@ -151,9 +152,9 @@ class _HrmAutoAttendanceConfigViewState extends State<HrmAutoAttendanceConfigVie
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'Bật chấm công tự động',
-                        style: TextStyle(
+                      Text(
+                        'hrm_config.shifts.auto.enable'.tr(),
+                        style: const TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0F172A),
@@ -165,9 +166,9 @@ class _HrmAutoAttendanceConfigViewState extends State<HrmAutoAttendanceConfigVie
               ),
               const SizedBox(height: 14),
 
-              const Text(
-                'Áp dụng cho các thứ',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+              Text(
+                'hrm_config.shifts.auto.apply_days'.tr(),
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
               ),
               const SizedBox(height: 8),
 
@@ -175,21 +176,21 @@ class _HrmAutoAttendanceConfigViewState extends State<HrmAutoAttendanceConfigVie
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                  _buildDayItem(1, 'T2'),
-                  _buildDayItem(2, 'T3'),
-                  _buildDayItem(3, 'T4'),
-                  _buildDayItem(4, 'T5'),
-                  _buildDayItem(5, 'T6'),
-                  _buildDayItem(6, 'T7'),
-                  _buildDayItem(0, 'CN'),
+                  _buildDayItem(1, 'hrm_config.shifts.day.mon'.tr()),
+                  _buildDayItem(2, 'hrm_config.shifts.day.tue'.tr()),
+                  _buildDayItem(3, 'hrm_config.shifts.day.wed'.tr()),
+                  _buildDayItem(4, 'hrm_config.shifts.day.thu'.tr()),
+                  _buildDayItem(5, 'hrm_config.shifts.day.fri'.tr()),
+                  _buildDayItem(6, 'hrm_config.shifts.day.sat'.tr()),
+                  _buildDayItem(0, 'hrm_config.shifts.day.sun'.tr()),
                 ],
               ),
               const SizedBox(height: 14),
 
               Text(
                 widget.enabled
-                    ? 'Đang bật, áp dụng cho các ngày từ ${widget.effectiveFrom}.'
-                    : 'Đang tắt',
+                    ? 'hrm_config.shifts.auto.status_on'.tr(args: {'date': widget.effectiveFrom})
+                    : 'hrm_config.shifts.auto.status_off'.tr(),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -217,9 +218,9 @@ class _HrmAutoAttendanceConfigViewState extends State<HrmAutoAttendanceConfigVie
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E293B)),
                       )
-                    : const Text(
-                        'Lưu cấu hình',
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                    : Text(
+                        'hrm_config.shifts.auto.save'.tr(),
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                       ),
               ),
             ],
@@ -287,20 +288,20 @@ class HrmShiftsCatalogConfigView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
-              children: const [
-                Icon(Icons.format_list_bulleted_rounded, size: 20, color: Color(0xFF7C3AED)),
-                SizedBox(width: 8),
-                Text('Danh mục Ca làm việc', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              children: [
+                const Icon(Icons.format_list_bulleted_rounded, size: 20, color: Color(0xFF7C3AED)),
+                const SizedBox(width: 8),
+                Text('hrm_config.shifts.catalog.title'.tr(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
               ],
             ),
             TextButton.icon(
               icon: const Icon(Icons.open_in_new_rounded, size: 14),
-              label: const Text('Mở Modal', style: TextStyle(fontSize: 11.5)),
+              label: Text('hrm_config.shifts.open_modal'.tr(), style: const TextStyle(fontSize: 11.5)),
               onPressed: onOpenModal,
             ),
           ],
         ),
-        const Text('Quy định khung giờ check-in/out, thời gian nghỉ và cách tính công theo ca', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+        Text('hrm_config.shifts.catalog.subtitle'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
         const SizedBox(height: 14),
 
         if (shifts.isNotEmpty) ...[
@@ -319,22 +320,22 @@ class HrmShiftsCatalogConfigView extends StatelessWidget {
                 child: _buildShiftCard(
                   '${s.name} (${s.code})',
                   '$start — $end',
-                  'Nghỉ giữa ca ${s.breakMinutes}p',
-                  'Tiêu chuẩn',
-                  '1.0 công',
+                  'hrm_config.shifts.catalog.break_minutes'.tr(args: {'minutes': s.breakMinutes}),
+                  'hrm_config.shifts.catalog.standard'.tr(),
+                  'hrm_config.shifts.catalog.credit_1'.tr(),
                   color,
                 ),
               );
             }),
           ],
         ] else ...[
-          _buildShiftCard('Ca Hành chính (HC)', '08:00 — 17:30', 'Nghỉ trưa 90p (12:00 - 13:30)', '8.0 giờ', '1.0 công', const Color(0xFF2563EB)),
+          _buildShiftCard('hrm_config.shifts.fb.hc.title'.tr(), '08:00 — 17:30', 'hrm_config.shifts.fb.hc.break'.tr(), 'hrm_config.shifts.fb.hc.hours'.tr(), 'hrm_config.shifts.catalog.credit_1'.tr(), const Color(0xFF2563EB)),
           const SizedBox(height: 10),
-          _buildShiftCard('Ca Sáng (CA1)', '06:00 — 14:00', 'Nghỉ giữa ca 30p (10:00 - 10:30)', '8.0 giờ', '1.0 công', const Color(0xFF059669)),
+          _buildShiftCard('hrm_config.shifts.fb.ca1.title'.tr(), '06:00 — 14:00', 'hrm_config.shifts.fb.ca1.break'.tr(), 'hrm_config.shifts.fb.ca1.hours'.tr(), 'hrm_config.shifts.catalog.credit_1'.tr(), const Color(0xFF059669)),
           const SizedBox(height: 10),
-          _buildShiftCard('Ca Chiều (CA2)', '14:00 — 22:00', 'Nghỉ giữa ca 30p (18:00 - 18:30)', '8.0 giờ', '1.0 công', const Color(0xFFD97706)),
+          _buildShiftCard('hrm_config.shifts.fb.ca2.title'.tr(), '14:00 — 22:00', 'hrm_config.shifts.fb.ca2.break'.tr(), 'hrm_config.shifts.fb.ca2.hours'.tr(), 'hrm_config.shifts.catalog.credit_1'.tr(), const Color(0xFFD97706)),
           const SizedBox(height: 10),
-          _buildShiftCard('Ca Đêm (CA3)', '22:00 — 06:00', 'Nghỉ giữa ca 30p (02:00 - 02:30)', '8.0 giờ', '1.0 công (+30% lương)', const Color(0xFF7C3AED)),
+          _buildShiftCard('hrm_config.shifts.fb.ca3.title'.tr(), '22:00 — 06:00', 'hrm_config.shifts.fb.ca3.break'.tr(), 'hrm_config.shifts.fb.ca3.hours'.tr(), 'hrm_config.shifts.catalog.credit_night'.tr(), const Color(0xFF7C3AED)),
         ],
         const SizedBox(height: 14),
 
@@ -342,7 +343,7 @@ class HrmShiftsCatalogConfigView extends StatelessWidget {
           width: double.infinity,
           child: ElevatedButton.icon(
             icon: const Icon(Icons.add, size: 16),
-            label: const Text('Tạo ca làm việc mới', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            label: Text('hrm_config.shifts.catalog.create'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF7C3AED),
               foregroundColor: Colors.white,
@@ -369,18 +370,18 @@ class HrmStandardWorkdaysConfigView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final standardMonths = [
-      {'month': 'Tháng 01/2026', 'workdays': '25 ngày', 'note': 'Trừ 4 Chủ nhật & 1 Tết DL'},
-      {'month': 'Tháng 02/2026', 'workdays': '20 ngày', 'note': 'Nghỉ Tết Bính Ngọ (5 ngày)'},
-      {'month': 'Tháng 03/2026', 'workdays': '26 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 04/2026', 'workdays': '25 ngày', 'note': 'Trừ Giỗ Tổ & 30/4'},
-      {'month': 'Tháng 05/2026', 'workdays': '25 ngày', 'note': 'Trừ 01/5'},
-      {'month': 'Tháng 06/2026', 'workdays': '26 ngày', 'note': 'Trừ 4 Chủ nhật'},
-      {'month': 'Tháng 07/2026', 'workdays': '26 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 08/2026', 'workdays': '26 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 09/2026', 'workdays': '25 ngày', 'note': 'Trừ 2 ngày Quốc khánh'},
-      {'month': 'Tháng 10/2026', 'workdays': '26 ngày', 'note': 'Tháng hiện tại (Đang áp dụng)'},
-      {'month': 'Tháng 11/2026', 'workdays': '25 ngày', 'note': 'Trừ 5 Chủ nhật'},
-      {'month': 'Tháng 12/2026', 'workdays': '26 ngày', 'note': 'Trừ 4 Chủ nhật'},
+      {'month': '01/2026', 'workdays': '25', 'note': 'hrm_config.shifts.std.note.m01'},
+      {'month': '02/2026', 'workdays': '20', 'note': 'hrm_config.shifts.std.note.m02'},
+      {'month': '03/2026', 'workdays': '26', 'note': 'hrm_config.shifts.std.note.sun5'},
+      {'month': '04/2026', 'workdays': '25', 'note': 'hrm_config.shifts.std.note.m04'},
+      {'month': '05/2026', 'workdays': '25', 'note': 'hrm_config.shifts.std.note.m05'},
+      {'month': '06/2026', 'workdays': '26', 'note': 'hrm_config.shifts.std.note.sun4'},
+      {'month': '07/2026', 'workdays': '26', 'note': 'hrm_config.shifts.std.note.sun5'},
+      {'month': '08/2026', 'workdays': '26', 'note': 'hrm_config.shifts.std.note.sun5'},
+      {'month': '09/2026', 'workdays': '25', 'note': 'hrm_config.shifts.std.note.m09'},
+      {'month': '10/2026', 'workdays': '26', 'note': 'hrm_config.shifts.std.note.m10'},
+      {'month': '11/2026', 'workdays': '25', 'note': 'hrm_config.shifts.std.note.sun5'},
+      {'month': '12/2026', 'workdays': '26', 'note': 'hrm_config.shifts.std.note.sun4'},
     ];
 
     return Column(
@@ -390,20 +391,20 @@ class HrmStandardWorkdaysConfigView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
-              children: const [
-                Icon(Icons.event_available_outlined, size: 20, color: Color(0xFF059669)),
-                SizedBox(width: 8),
-                Text('Công chuẩn bảng công 2026', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              children: [
+                const Icon(Icons.event_available_outlined, size: 20, color: Color(0xFF059669)),
+                const SizedBox(width: 8),
+                Text('hrm_config.shifts.std.title'.tr(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
               ],
             ),
             TextButton.icon(
               icon: const Icon(Icons.open_in_new_rounded, size: 14),
-              label: const Text('Mở Modal', style: TextStyle(fontSize: 11.5)),
+              label: Text('hrm_config.shifts.open_modal'.tr(), style: const TextStyle(fontSize: 11.5)),
               onPressed: onOpenModal,
             ),
           ],
         ),
-        const Text('Số công chuẩn theo từng tháng; tính động theo lịch ca và lịch ngày làm trừ Chủ nhật & ngày Lễ', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+        Text('hrm_config.shifts.std.subtitle'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
         const SizedBox(height: 14),
 
         ListView.separated(
@@ -427,9 +428,9 @@ class HrmStandardWorkdaysConfigView extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(sm['month']!, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: isCurrentMonth ? const Color(0xFF1D4ED8) : const Color(0xFF0F172A))),
+                      Text('hrm_config.shifts.std.month_label'.tr(args: {'value': sm['month']!}), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: isCurrentMonth ? const Color(0xFF1D4ED8) : const Color(0xFF0F172A))),
                       const SizedBox(height: 2),
-                      Text(sm['note']!, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                      Text(sm['note']!.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                     ],
                   ),
                   Container(
@@ -439,7 +440,7 @@ class HrmStandardWorkdaysConfigView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      sm['workdays']!,
+                      'hrm_config.shifts.std.workdays'.tr(args: {'count': sm['workdays']!}),
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.bold,

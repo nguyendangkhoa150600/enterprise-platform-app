@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/hrm_attendance_service.dart';
 import '../services/pdf_export_service.dart';
+import '../core/i18n/app_i18n.dart';
 
 /// Reusable Modals for Payslip Breakdown and Employee Profile Corrections
 class HrmPayslipModals {
@@ -61,9 +62,9 @@ class HrmPayslipModals {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Chi tiết Phiếu lương $payslipNo', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                      Text('hrm_modals.payslip.chi_tiet_phieu_luong_payslip_no'.tr(args: {'payslip_no': payslipNo}), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                       const SizedBox(height: 2),
-                      Text('Kỳ $periodCode ($fromDate - $toDate)', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                      Text('hrm_modals.payslip.ky_period_code_from_date_to'.tr(args: {'period_code': periodCode, 'from_date': fromDate, 'to_date': toDate}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                     ],
                   ),
                   IconButton(
@@ -95,10 +96,10 @@ class HrmPayslipModals {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('THỰC LĨNH (NET)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                              Text('hrm_modals.payslip.thuc_linh_net'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                               const SizedBox(height: 4),
                               Text(
-                                '${_formatCurrency(netSalary)} đ',
+                                'hrm_modals.payslip.net_salary_d'.tr(args: {'net_salary': _formatCurrency(netSalary)}),
                                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
                               ),
                             ],
@@ -106,10 +107,10 @@ class HrmPayslipModals {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Text('TỔNG THU NHẬP (GROSS)', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                              Text('hrm_modals.payslip.tong_thu_nhap_gross'.tr(), style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
                               const SizedBox(height: 4),
                               Text(
-                                '${_formatCurrency(grossSalary)} đ',
+                                'hrm_modals.payslip.gross_salary_d'.tr(args: {'gross_salary': _formatCurrency(grossSalary)}),
                                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                               ),
                             ],
@@ -120,7 +121,7 @@ class HrmPayslipModals {
                     const SizedBox(height: 16),
 
                     // Section: Bảng kê chi tiết
-                    const Text('BẢNG KÊ THU NHẬP & KHẤU TRỪ CHI TIẾT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                    Text('hrm_modals.payslip.bang_ke_thu_nhap_khau_tru'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                     const SizedBox(height: 8),
 
                     if (itemsList.isEmpty)
@@ -131,8 +132,8 @@ class HrmPayslipModals {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
-                        child: const Center(
-                          child: Text('Chưa có bảng kê chi tiết từng mục cho phiếu lương này.', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                        child: Center(
+                          child: Text('hrm_modals.payslip.chua_co_bang_ke_chi_tiet'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                         ),
                       )
                     else
@@ -144,7 +145,7 @@ class HrmPayslipModals {
                         ),
                         child: Column(
                           children: itemsList.map<Widget>((subItem) {
-                            final name = subItem['item_name'] ?? subItem['name'] ?? 'Mục lương';
+                            final name = subItem['item_name'] ?? subItem['name'] ?? 'hrm_modals.payslip.muc_luong'.tr();
                             final category = subItem['category'] ?? 'EARNING';
                             final amount = subItem['amount'] ?? 0;
                             final isDeduction = category.toString().toUpperCase().contains('DEDUCT') || name.toString().contains('BHXH') || name.toString().contains('Thuế') || name.toString().contains('Khấu trừ');
@@ -169,7 +170,7 @@ class HrmPayslipModals {
                                     ],
                                   ),
                                   Text(
-                                    '${isDeduction ? "-" : "+"}${_formatCurrency(amount)} đ',
+                                    'hrm_modals.payslip.is_deduction_amount_d'.tr(args: {'is_deduction': isDeduction ? "-" : "+", 'amount': _formatCurrency(amount)}),
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -209,7 +210,7 @@ class HrmPayslipModals {
                         );
                       },
                       icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-                      label: const Text('In / Xuất PDF Phiếu lương'),
+                      label: Text('hrm_modals.payslip.in_xuat_pdf_phieu_luong'.tr()),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0F172A),
                         foregroundColor: Colors.white,
@@ -226,7 +227,7 @@ class HrmPayslipModals {
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Đóng', style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.bold)),
+                    child: Text('common.close'.tr(), style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -261,6 +262,16 @@ class HrmPayslipModals {
       'Quốc tịch / Dân tộc',
       'Tình trạng hôn nhân',
     ];
+    final fieldKeys = <String, String>{
+      'Họ và tên': 'hrm_modals.payslip.field_full_name',
+      'Ngày sinh': 'hrm_modals.payslip.field_dob',
+      'Giới tính': 'hrm_modals.payslip.field_gender',
+      'Số CCCD / CMND': 'hrm_modals.payslip.field_id_number',
+      'Ngày cấp CCCD': 'hrm_modals.payslip.field_id_issue_date',
+      'Nơi cấp CCCD': 'hrm_modals.payslip.field_id_issue_place',
+      'Quốc tịch / Dân tộc': 'hrm_modals.payslip.field_nationality_ethnicity',
+      'Tình trạng hôn nhân': 'hrm_modals.payslip.field_marital_status',
+    };
 
     showModalBottomSheet(
       context: context,
@@ -297,8 +308,8 @@ class HrmPayslipModals {
                           child: const Icon(Icons.edit_note_rounded, size: 20, color: Color(0xFF2563EB)),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
-                          'Đề nghị chỉnh sửa thông tin',
+                        Text(
+                          'hrm_modals.payslip.de_nghi_chinh_sua_thong_tin'.tr(),
                           style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                       ],
@@ -310,7 +321,7 @@ class HrmPayslipModals {
                 const SizedBox(height: 8),
 
                 // Field Selector
-                const Text('Trường thông tin cần điều chỉnh *', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                Text('hrm_modals.payslip.truong_thong_tin_can_dieu_chinh'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -324,7 +335,7 @@ class HrmPayslipModals {
                       value: selectedField,
                       isExpanded: true,
                       style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                      items: fields.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
+                      items: fields.map((f) => DropdownMenuItem(value: f, child: Text(fieldKeys[f] != null ? fieldKeys[f]!.tr() : f))).toList(),
                       onChanged: (val) {
                         if (val != null) {
                           setModalState(() {
@@ -352,7 +363,7 @@ class HrmPayslipModals {
 
                 // Giá trị hiện tại
                 _buildModalTextField(
-                  label: 'Giá trị hiện tại',
+                  label: 'hrm_modals.payslip.gia_tri_hien_tai'.tr(),
                   controller: currentValCtrl,
                   readOnly: true,
                 ),
@@ -360,17 +371,17 @@ class HrmPayslipModals {
 
                 // Giá trị mới đề xuất
                 _buildModalTextField(
-                  label: 'Giá trị mới đề xuất *',
+                  label: 'hrm_modals.payslip.gia_tri_moi_de_xuat'.tr(),
                   controller: newValCtrl,
-                  hintText: 'Nhập thông tin chính xác cần sửa',
+                  hintText: 'hrm_modals.payslip.nhap_thong_tin_chinh_xac_can'.tr(),
                 ),
                 const SizedBox(height: 10),
 
                 // Lý do điều chỉnh
                 _buildModalTextField(
-                  label: 'Lý do điều chỉnh *',
+                  label: 'hrm_modals.payslip.ly_do_dieu_chinh'.tr(),
                   controller: reasonCtrl,
-                  hintText: 'Ví dụ: Cập nhật theo CCCD mới làm lại...',
+                  hintText: 'hrm_modals.payslip.vi_du_cap_nhat_theo_cccd'.tr(),
                 ),
                 const SizedBox(height: 18),
 
@@ -382,7 +393,7 @@ class HrmPayslipModals {
                         : () async {
                             if (newValCtrl.text.trim().isEmpty || reasonCtrl.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Vui lòng nhập giá trị mới và lý do.'), behavior: SnackBarBehavior.floating),
+                                SnackBar(content: Text('hrm_modals.payslip.vui_long_nhap_gia_tri_moi'.tr()), behavior: SnackBarBehavior.floating),
                               );
                               return;
                             }
@@ -402,8 +413,8 @@ class HrmPayslipModals {
                               'reason': reasonCtrl.text.trim(),
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Đã gửi đề nghị chỉnh sửa thông tin đến Nhân sự!'),
+                              SnackBar(
+                                content: Text('hrm_modals.payslip.da_gui_de_nghi_chinh_sua'.tr()),
                                 behavior: SnackBarBehavior.floating,
                                 backgroundColor: Color(0xFF059669),
                               ),
@@ -415,7 +426,7 @@ class HrmPayslipModals {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    child: Text(isSubmitting ? 'Đang gửi...' : 'Gửi đề xuất chỉnh sửa', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(isSubmitting ? 'hrm_modals.payslip.dang_gui'.tr() : 'hrm_modals.payslip.gui_de_xuat_chinh_sua'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

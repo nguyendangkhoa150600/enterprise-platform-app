@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
@@ -26,39 +27,39 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
   String _searchQuery = '';
   String _roleFilter = 'all'; // 'all' | 'system' | 'custom'
 
-  final List<Map<String, dynamic>> _moduleDefs = [
+  List<Map<String, dynamic>> get _moduleDefs => [
     {
       'key': 'hrm',
-      'name': 'HRM & Chấm công',
-      'desc': 'Quản lý nhân sự, hồ sơ, chấm công và chi trả lương',
+      'name': 'roles.module_hrm_name'.tr(),
+      'desc': 'roles.module_hrm_desc'.tr(),
       'icon': Icons.layers_outlined,
       'color': Color(0xFF2563EB),
     },
     {
       'key': 'inventory',
       'name': 'Inventory',
-      'desc': 'Tài sản, vật tư, kho và giao dịch tồn kho',
+      'desc': 'roles.module_inventory_desc'.tr(),
       'icon': Icons.inventory_2_outlined,
       'color': Color(0xFF4F46E5),
     },
     {
       'key': 'maintenance',
       'name': 'Maintenance',
-      'desc': 'Thiết bị, kế hoạch và bảo trì phòng ngừa',
+      'desc': 'roles.module_maintenance_desc'.tr(),
       'icon': Icons.build_outlined,
       'color': Color(0xFF2563EB),
     },
     {
       'key': 'procedure-engine',
       'name': 'Procedure Engine',
-      'desc': 'Thiết kế và vận hành quy trình RCSI',
+      'desc': 'roles.module_procedure_desc'.tr(),
       'icon': Icons.account_tree_outlined,
       'color': Color(0xFF4F46E5),
     },
     {
       'key': 'workspace',
       'name': 'Workspace',
-      'desc': 'Dự án, công việc, tài liệu và lịch biểu',
+      'desc': 'roles.module_workspace_desc'.tr(),
       'icon': Icons.dashboard_outlined,
       'color': Color(0xFF2563EB),
     },
@@ -155,14 +156,14 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
             Row(
               children: [
                 Text(
-                  'Tenant Portal / Quản trị',
+                  'roles.breadcrumb'.tr(),
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
             const SizedBox(height: 2),
-            const Text(
-              'Vai trò & Phân quyền',
+            Text(
+              'roles.title'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
             ),
           ],
@@ -170,7 +171,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Color(0xFF475569)),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadData,
           ),
           if (canManage)
@@ -179,7 +180,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
               child: ElevatedButton.icon(
                 onPressed: () => _showCreateRoleSheet(context),
                 icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                label: const Text('Tạo vai trò', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                label: Text('roles.create_role'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   elevation: 0,
@@ -221,9 +222,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                             child: const Icon(Icons.verified_user_outlined, color: Color(0xFF2563EB), size: 20),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Cấu hình quyền thao tác Core, quyền thao tác module và quyền truy cập module cho người dùng tenant.',
+                              'roles.intro'.tr(),
                               style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.35),
                             ),
                           ),
@@ -251,8 +252,8 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                         indicatorWeight: 3,
                         labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
                         tabs: [
-                          Tab(text: 'Vai trò (${_roles.length})'),
-                          Tab(text: 'Permission (${_permissions.length})'),
+                          Tab(text: 'roles.tab_roles'.tr(args: {'count': _roles.length})),
+                          Tab(text: 'roles.tab_permissions'.tr(args: {'count': _permissions.length})),
                         ],
                       ),
                     ),
@@ -288,9 +289,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     icon: Icons.shield_outlined,
                     iconColor: const Color(0xFF2563EB),
                     iconBg: const Color(0xFFEFF6FF),
-                    title: 'TỔNG VAI TRÒ',
+                    title: 'roles.stat_total_roles'.tr(),
                     value: '${_roles.length}',
-                    subtext: '$systemCount hệ thống / $customCount tự tạo',
+                    subtext: 'roles.stat_total_roles_sub'.tr(args: {'system': systemCount, 'custom': customCount}),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -299,9 +300,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     icon: Icons.vpn_key_outlined,
                     iconColor: const Color(0xFF9333EA),
                     iconBg: const Color(0xFFFAF5FF),
-                    title: 'PERMISSION',
+                    title: 'roles.stat_permission'.tr(),
                     value: '${_permissions.length}',
-                    subtext: 'quyền tiêu chuẩn',
+                    subtext: 'roles.stat_permission_sub'.tr(),
                   ),
                 ),
               ],
@@ -314,9 +315,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     icon: Icons.layers_outlined,
                     iconColor: const Color(0xFF059669),
                     iconBg: const Color(0xFFECFDF5),
-                    title: 'MODULE GÓI CẤP',
+                    title: 'roles.stat_modules'.tr(),
                     value: '5 / 5',
-                    subtext: 'kích hoạt',
+                    subtext: 'roles.stat_modules_sub'.tr(),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -325,9 +326,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     icon: Icons.people_outline,
                     iconColor: const Color(0xFF7C3AED),
                     iconBg: const Color(0xFFF5F3FF),
-                    title: 'NHÂN SỰ PHÂN QUYỀN',
+                    title: 'roles.stat_users'.tr(),
                     value: '$_totalAssignedUsers',
-                    subtext: 'người dùng',
+                    subtext: 'roles.stat_users_sub'.tr(),
                   ),
                 ),
               ],
@@ -424,7 +425,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
             children: [
               TextField(
                 decoration: InputDecoration(
-                  hintText: 'Tìm theo tên, mã hoặc mô tả...',
+                  hintText: 'roles.search_hint'.tr(),
                   hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
                   prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade400),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -461,12 +462,12 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                         child: DropdownButton<String>(
                           value: _roleFilter,
                           isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
-                          items: const [
-                            DropdownMenuItem(value: 'all', child: Text('Tất cả vai trò')),
-                            DropdownMenuItem(value: 'system', child: Text('Hệ thống')),
-                            DropdownMenuItem(value: 'custom', child: Text('Tùy chỉnh')),
+                          icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
+                          style: TextStyle(fontSize: 13, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                          items: [
+                            DropdownMenuItem(value: 'all', child: Text('roles.filter_all'.tr())),
+                            DropdownMenuItem(value: 'system', child: Text('roles.system'.tr())),
+                            DropdownMenuItem(value: 'custom', child: Text('roles.custom'.tr())),
                           ],
                           onChanged: (val) {
                             if (val != null) setState(() => _roleFilter = val);
@@ -477,7 +478,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '${filtered.length} kết quả',
+                    'roles.results_count'.tr(args: {'count': filtered.length}),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -501,7 +502,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
               children: [
                 Icon(Icons.shield_outlined, size: 40, color: Colors.grey.shade300),
                 const SizedBox(height: 8),
-                Text('Không tìm thấy vai trò nào', style: TextStyle(color: Colors.grey.shade600, fontSize: 13.5)),
+                Text('roles.not_found'.tr(), style: TextStyle(color: Colors.grey.shade600, fontSize: 13.5)),
               ],
             ),
           )
@@ -561,7 +562,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        role.description?.isNotEmpty == true ? role.description! : 'Không có mô tả chi tiết.',
+                        role.description?.isNotEmpty == true ? role.description! : 'roles.no_description'.tr(),
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -571,12 +572,12 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                         children: [
                           _buildTagChip(
                             icon: Icons.person_outline,
-                            text: '${role.userIds.length} người dùng',
+                            text: 'roles.users_count'.tr(args: {'count': role.userIds.length}),
                           ),
                           const SizedBox(width: 8),
                           _buildTagChip(
                             icon: Icons.widgets_outlined,
-                            text: role.moduleKeys.contains('*') ? 'Tất cả module' : '${role.moduleKeys.length} module',
+                            text: role.moduleKeys.contains('*') ? 'roles.all_modules'.tr() : 'roles.modules_count'.tr(args: {'count': role.moduleKeys.length}),
                           ),
                         ],
                       ),
@@ -648,7 +649,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: role.key));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã sao chép mã vai trò'), duration: Duration(seconds: 1)),
+                          SnackBar(content: Text('roles.key_copied'.tr()), duration: Duration(seconds: 1)),
                         );
                       },
                       child: Row(
@@ -672,7 +673,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
 
           const SizedBox(height: 10),
           Text(
-            role.description?.isNotEmpty == true ? role.description! : 'Chưa thiết lập mô tả cho mục này.',
+            role.description?.isNotEmpty == true ? role.description! : 'roles.no_description_set'.tr(),
             style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.4),
           ),
           const SizedBox(height: 16),
@@ -684,9 +685,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
             children: [
               const Icon(Icons.layers_outlined, size: 18, color: Color(0xFF2563EB)),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Phạm vi Module tính năng được cấp phép',
+                  'roles.module_scope_title'.tr(),
                   style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                 ),
               ),
@@ -697,7 +698,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  isWildcard ? 'Toàn quyền Module' : '${role.moduleKeys.length} Module',
+                  isWildcard ? 'roles.full_module_access'.tr() : 'roles.module_count_badge'.tr(args: {'count': role.moduleKeys.length}),
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                 ),
               ),
@@ -721,7 +722,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Vai trò này được cấu hình quyền tất cả module (*). Người dùng sẽ truy cập được bất kỳ module nào mà doanh nghiệp đang kích hoạt.',
+                      'roles.wildcard_notice'.tr(),
                       style: TextStyle(fontSize: 11.5, color: Colors.green.shade900, height: 1.35),
                     ),
                   ),
@@ -770,7 +771,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                                 color: const Color(0xFFDCFCE7),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text('Trong gói', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF15803D))),
+                              child: Text('roles.in_package'.tr(), style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF15803D))),
                             ),
                           ],
                         ),
@@ -788,7 +789,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                             ),
                             const Spacer(),
                             Text(
-                              isGranted ? 'Được cấp quyền' : 'Không có quyền',
+                              isGranted ? 'roles.granted'.tr() : 'roles.not_granted'.tr(),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -815,7 +816,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
               const Icon(Icons.flash_on_outlined, size: 18, color: Color(0xFF2563EB)),
               const SizedBox(width: 8),
               Text(
-                'Hành động & Quyền thao tác (${role.actionKeys.length})',
+                'roles.actions_title'.tr(args: {'count': role.actionKeys.length}),
                 style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
               ),
             ],
@@ -824,7 +825,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
           if (role.actionKeys.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text('Chưa gán hành động cụ thể nào cho vai trò này.', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              child: Text('roles.no_actions'.tr(), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
             )
           else
             Wrap(
@@ -856,7 +857,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                   child: OutlinedButton.icon(
                     onPressed: () => _showEditRoleSheet(context, role),
                     icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('Chỉnh sửa'),
+                    label: Text('common.edit'.tr()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF2563EB),
                       side: const BorderSide(color: Color(0xFF2563EB)),
@@ -870,7 +871,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                   IconButton(
                     onPressed: () => _confirmDeleteRole(role),
                     icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
-                    tooltip: 'Xóa vai trò',
+                    tooltip: 'roles.delete_role'.tr(),
                     style: IconButton.styleFrom(
                       backgroundColor: const Color(0xFFFEE2E2),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -933,7 +934,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                 Text(perm.description!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
               ],
               const SizedBox(height: 12),
-              Text('Hành động được cấp:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+              Text('roles.granted_actions'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
@@ -965,7 +966,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
         border: Border.all(color: isSystem ? const Color(0xFFE2E8F0) : const Color(0xFFBFDBFE)),
       ),
       child: Text(
-        isSystem ? 'Hệ thống' : 'Tùy chỉnh',
+        isSystem ? 'roles.system'.tr() : 'roles.custom'.tr(),
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
@@ -1031,8 +1032,8 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Tạo vai trò mới',
+                        Text(
+                          'roles.create_title'.tr(),
                           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                         ),
                         IconButton(
@@ -1044,9 +1045,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     const SizedBox(height: 12),
                     TextField(
                       controller: nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Tên vai trò *',
-                        hintText: 'VD: Trưởng phòng kinh doanh',
+                      decoration: InputDecoration(
+                        labelText: 'roles.field_name'.tr(),
+                        hintText: 'roles.field_name_hint'.tr(),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -1060,8 +1061,8 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     const SizedBox(height: 12),
                     TextField(
                       controller: keyCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Mã định danh (Key) *',
+                      decoration: InputDecoration(
+                        labelText: 'roles.field_key'.tr(),
                         hintText: 'VD: sales-manager',
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -1071,21 +1072,21 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     TextField(
                       controller: descCtrl,
                       maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Mô tả vai trò',
-                        hintText: 'Mô tả quyền hạn và trách nhiệm...',
+                      decoration: InputDecoration(
+                        labelText: 'roles.field_description'.tr(),
+                        hintText: 'roles.field_description_hint'.tr(),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Phạm vi module được cấp phép:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    Text('roles.module_scope_label'.tr(), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                     const SizedBox(height: 6),
                     CheckboxListTile(
                       value: allModules,
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Toàn quyền module (*)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      title: Text('roles.all_modules_wildcard'.tr(), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       onChanged: (val) {
                         setSheetState(() {
                           allModules = val ?? true;
@@ -1122,7 +1123,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                         onPressed: () async {
                           if (nameCtrl.text.trim().isEmpty || keyCtrl.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Vui lòng điền đầy đủ tên và mã vai trò')),
+                              SnackBar(content: Text('roles.err_name_key'.tr())),
                             );
                             return;
                           }
@@ -1136,7 +1137,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                           if (success) {
                             _loadData();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Tạo vai trò thành công!')),
+                              SnackBar(content: Text('roles.created'.tr())),
                             );
                           }
                         },
@@ -1145,7 +1146,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Xác nhận tạo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                        child: Text('roles.confirm_create'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ],
@@ -1192,8 +1193,8 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Chỉnh sửa vai trò',
+                        Text(
+                          'roles.edit_title'.tr(),
                           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                         ),
                         IconButton(
@@ -1205,8 +1206,8 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     const SizedBox(height: 12),
                     TextField(
                       controller: nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Tên vai trò *',
+                      decoration: InputDecoration(
+                        labelText: 'roles.field_name'.tr(),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -1216,30 +1217,30 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                       controller: keyCtrl,
                       enabled: !role.isSystem,
                       decoration: InputDecoration(
-                        labelText: 'Mã định danh (Key) *',
+                        labelText: 'roles.field_key'.tr(),
                         border: const OutlineInputBorder(),
                         isDense: true,
-                        helperText: role.isSystem ? 'Vai trò hệ thống không được đổi key' : null,
+                        helperText: role.isSystem ? 'roles.system_key_locked'.tr() : null,
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: descCtrl,
                       maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Mô tả vai trò',
+                      decoration: InputDecoration(
+                        labelText: 'roles.field_description'.tr(),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Phạm vi module được cấp phép:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    Text('roles.module_scope_label'.tr(), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                     const SizedBox(height: 6),
                     CheckboxListTile(
                       value: allModules,
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Toàn quyền module (*)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      title: Text('roles.all_modules_wildcard'.tr(), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       onChanged: (val) {
                         setSheetState(() {
                           allModules = val ?? true;
@@ -1273,7 +1274,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                         onPressed: () async {
                           if (nameCtrl.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Vui lòng nhập tên vai trò')),
+                              SnackBar(content: Text('roles.err_name'.tr())),
                             );
                             return;
                           }
@@ -1288,7 +1289,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                           if (success) {
                             _loadData();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cập nhật vai trò thành công!')),
+                              SnackBar(content: Text('roles.updated'.tr())),
                             );
                           }
                         },
@@ -1297,7 +1298,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Lưu thay đổi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                        child: Text('roles.save_changes'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ],
@@ -1314,10 +1315,10 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận xóa vai trò'),
-        content: Text('Bạn có chắc chắn muốn xóa vai trò "${role.name}" không? Thao tác này không thể hoàn tác.'),
+        title: Text('roles.delete_title'.tr()),
+        content: Text('roles.delete_confirm'.tr(args: {'name': role.name})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -1325,12 +1326,12 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
               if (success) {
                 _loadData();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã xóa vai trò')),
+                  SnackBar(content: Text('roles.deleted'.tr())),
                 );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
-            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+            child: Text('common.delete'.tr(), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

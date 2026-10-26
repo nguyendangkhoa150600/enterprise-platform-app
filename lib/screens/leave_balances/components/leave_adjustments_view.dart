@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_leave_balance_models.dart';
 
 class LeaveAdjustmentCard extends StatelessWidget {
@@ -17,7 +18,7 @@ class LeaveAdjustmentCard extends StatelessWidget {
     final isNegative = tx.safeDaysChanged < 0;
     final isPositive = tx.safeDaysChanged > 0;
     final reasonText = (tx.reason ?? tx.note ?? '').trim();
-    final actorName = tx.actorLabel ?? tx.createdByName ?? 'Hệ thống';
+    final actorName = tx.actorLabel ?? tx.createdByName ?? 'leave.actor.system'.tr();
     final actorEmail = tx.actorEmail?.trim();
 
     return Container(
@@ -93,7 +94,7 @@ class LeaveAdjustmentCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        isReversal ? 'Đảo điều chỉnh' : 'Điều chỉnh',
+                        isReversal ? 'leave.adj.reversal'.tr() : 'leave.adj.adjustment'.tr(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -103,7 +104,7 @@ class LeaveAdjustmentCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${tx.formattedDaysChanged} ngày',
+                      'leave.days_changed'.tr(args: {'days': tx.formattedDaysChanged}),
                       style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w900,
@@ -141,7 +142,7 @@ class LeaveAdjustmentCard extends StatelessWidget {
                   if (tx.balanceYear != null) ...[
                     const Text(' · ', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
                     Text(
-                      'Năm ${tx.balanceYear}',
+                      'leave.year_label'.tr(args: {'year': tx.balanceYear}),
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -150,12 +151,12 @@ class LeaveAdjustmentCard extends StatelessWidget {
                     ),
                   ],
                   const Spacer(),
-                  const Text(
-                    'Còn lại sau: ',
+                  Text(
+                    'leave.adj.balance_after'.tr(),
                     style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                   ),
                   Text(
-                    '${tx.formattedBalanceAfter} ngày',
+                    'leave.days_changed'.tr(args: {'days': tx.formattedBalanceAfter}),
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
@@ -175,8 +176,8 @@ class LeaveAdjustmentCard extends StatelessWidget {
                   text: TextSpan(
                     style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155), height: 1.3),
                     children: [
-                      const TextSpan(
-                        text: 'Lý do: ',
+                      TextSpan(
+                        text: 'leave.adj.reason'.tr(),
                         style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF475569)),
                       ),
                       TextSpan(text: reasonText),
@@ -195,8 +196,8 @@ class LeaveAdjustmentCard extends StatelessWidget {
               children: [
                 const Icon(Icons.account_circle_outlined, size: 14, color: Color(0xFF64748B)),
                 const SizedBox(width: 5),
-                const Text(
-                  'Người thực hiện: ',
+                Text(
+                  'leave.adj.performed_by'.tr(),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -270,12 +271,12 @@ class LeaveAdjustmentsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
                   Icon(Icons.history_rounded, size: 20, color: Color(0xFF0F172A)),
                   SizedBox(width: 8),
                   Text(
-                    'Lịch sử điều chỉnh phép năm',
+                    'leave.adj.title'.tr(),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -285,8 +286,8 @@ class LeaveAdjustmentsView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Mọi lần điều chỉnh và đảo điều chỉnh quỹ phép năm, kèm tài khoản đã thực hiện.',
+              Text(
+                'leave.adj.subtitle'.tr(),
                 style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.3),
               ),
               const SizedBox(height: 12),
@@ -303,7 +304,7 @@ class LeaveAdjustmentsView extends StatelessWidget {
                   onChanged: onSearchChanged,
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Tìm theo nhân viên, tài khoản thực hiện, lý do...',
+                    hintText: 'leave.adj.search_hint'.tr(),
                     hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                     suffixIcon: searchQuery.isNotEmpty
@@ -341,14 +342,14 @@ class LeaveAdjustmentsView extends StatelessWidget {
                           icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
                           style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
                           items: [
-                            const DropdownMenuItem<int>(
+                            DropdownMenuItem<int>(
                               value: 0,
-                              child: Text('Tất cả các năm', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              child: Text('leave.adj.all_years'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis),
                             ),
                             for (int y = DateTime.now().year + 1; y >= DateTime.now().year - 3; y--)
                               DropdownMenuItem<int>(
                                 value: y,
-                                child: Text('Năm $y', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                child: Text('leave.year_label'.tr(args: {'year': y}), maxLines: 1, overflow: TextOverflow.ellipsis),
                               ),
                           ],
                           onChanged: (val) {
@@ -377,10 +378,10 @@ class LeaveAdjustmentsView extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                           icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
                           style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                          items: const [
-                            DropdownMenuItem(value: 'ALL', child: Text('Tất cả điều chỉnh', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                            DropdownMenuItem(value: 'ADJUSTMENT', child: Text('Điều chỉnh', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                            DropdownMenuItem(value: 'REVERSAL', child: Text('Đảo điều chỉnh', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          items: [
+                            DropdownMenuItem(value: 'ALL', child: Text('leave.adj.all_types'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            DropdownMenuItem(value: 'ADJUSTMENT', child: Text('leave.adj.adjustment'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            DropdownMenuItem(value: 'REVERSAL', child: Text('leave.adj.reversal'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis)),
                           ],
                           onChanged: (val) {
                             if (val != null) onTypeChanged(val);
@@ -403,7 +404,7 @@ class LeaveAdjustmentsView extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                '${adjustments.length} lần điều chỉnh',
+                'leave.adj.count'.tr(args: {'count': adjustments.length}),
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.bold,
@@ -414,8 +415,8 @@ class LeaveAdjustmentsView extends StatelessWidget {
               if (searchQuery.isNotEmpty || selectedType != 'ALL' || selectedYear != 0)
                 InkWell(
                   onTap: onResetFilter,
-                  child: const Text(
-                    'Đặt lại bộ lọc',
+                  child: Text(
+                    'leave.filter.reset'.tr(),
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
@@ -437,14 +438,14 @@ class LeaveAdjustmentsView extends StatelessWidget {
               children: [
                 const Icon(Icons.history_toggle_off_rounded, size: 48, color: Color(0xFF94A3B8)),
                 const SizedBox(height: 10),
-                const Text(
-                  'Không tìm thấy lịch sử điều chỉnh phù hợp',
+                Text(
+                  'leave.adj.empty_title'.tr(),
                   style: TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 if (searchQuery.isNotEmpty || selectedType != 'ALL') ...[
                   const SizedBox(height: 6),
-                  const Text(
-                    'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc',
+                  Text(
+                    'leave.adj.empty_desc'.tr(),
                     style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                   ),
                 ],

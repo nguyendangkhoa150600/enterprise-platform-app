@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../widgets/config_category_section.dart';
 
 /// HRM Configuration Overview Screen (Trung tâm cấu hình HRM).
@@ -36,8 +37,8 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
     final allLeaveItems = [
       {
         'key': 'LEAVE',
-        'title': 'Chính sách phép năm',
-        'desc': 'Thiết lập nguyên tắc tính phép, thâm niên, ứng phép',
+        'title': 'hrm_ops.overview.leave.title'.tr(),
+        'desc': 'hrm_ops.overview.leave.desc'.tr(),
         'icon': Icons.calendar_month_outlined,
         'action': () => widget.onSelectConfigItem('LEAVE'),
       },
@@ -47,36 +48,36 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
     final allAttendanceItems = [
       {
         'key': 'POLICY',
-        'title': 'Quy định chấm công',
-        'desc': 'Thiết lập quy tắc chấm công, điều kiện hợp lệ',
+        'title': 'hrm_ops.overview.policy.title'.tr(),
+        'desc': 'hrm_ops.overview.policy.desc'.tr(),
         'icon': Icons.tune_rounded,
         'action': () => widget.onSelectConfigItem('POLICY'),
       },
       {
         'key': 'HOLIDAYS',
-        'title': 'Lịch làm / OFF / Lễ',
-        'desc': 'Quản lý lịch làm việc, ngày nghỉ, ngày lễ',
+        'title': 'hrm_ops.overview.holidays.title'.tr(),
+        'desc': 'hrm_ops.overview.holidays.desc'.tr(),
         'icon': Icons.calendar_month_outlined,
         'action': () => widget.onSelectConfigItem('HOLIDAYS'),
       },
       {
         'key': 'GPS',
-        'title': 'Địa điểm GPS',
-        'desc': 'Quản lý địa điểm làm việc theo GPS',
+        'title': 'hrm_ops.overview.gps.title'.tr(),
+        'desc': 'hrm_ops.overview.gps.desc'.tr(),
         'icon': Icons.location_on_outlined,
         'action': () => widget.onSelectConfigItem('GPS'),
       },
       {
         'key': 'DEVICES',
-        'title': 'Thiết bị',
-        'desc': 'Quản lý thiết bị chấm công, máy chấm, app',
+        'title': 'hrm_ops.overview.devices.title'.tr(),
+        'desc': 'hrm_ops.overview.devices.desc'.tr(),
         'icon': Icons.devices_other_outlined,
         'action': () => widget.onSelectConfigItem('DEVICES'),
       },
       {
         'key': 'AUTO',
-        'title': 'Chấm công tự động',
-        'desc': 'Bật hoặc tắt tự sinh giờ vào/ra theo ca cho từng thứ trong tuần, không cần phân ca lại',
+        'title': 'hrm_ops.overview.auto.title'.tr(),
+        'desc': 'hrm_ops.overview.auto.desc'.tr(),
         'icon': Icons.auto_mode_outlined,
         'action': () => widget.onSelectConfigItem('AUTO'),
       },
@@ -86,22 +87,22 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
     final allScheduleItems = [
       {
         'key': 'SHIFTS_ASSIGN',
-        'title': 'Phân ca',
-        'desc': 'Thiết lập và quản lý các ca làm việc theo nhân viên',
+        'title': 'hrm_ops.overview.shifts_assign.title'.tr(),
+        'desc': 'hrm_ops.overview.shifts_assign.desc'.tr(),
         'icon': Icons.groups_outlined,
         'action': () => widget.onSelectConfigItem('SHIFTS_ASSIGN'),
       },
       {
         'key': 'SHIFTS',
-        'title': 'Danh mục ca',
-        'desc': 'Quản lý danh mục ca, mẫu ca và quy tắc tính',
+        'title': 'hrm_ops.overview.shifts.title'.tr(),
+        'desc': 'hrm_ops.overview.shifts.desc'.tr(),
         'icon': Icons.format_list_bulleted_rounded,
         'action': () => widget.onSelectConfigItem('SHIFTS'),
       },
       {
         'key': 'STANDARD',
-        'title': 'Công chuẩn',
-        'desc': 'Công chuẩn của bảng công theo từng tháng; động theo lịch ca hoặc cố định',
+        'title': 'hrm_ops.overview.standard.title'.tr(),
+        'desc': 'hrm_ops.overview.standard.desc'.tr(),
         'icon': Icons.event_available_outlined,
         'action': () => widget.onSelectConfigItem('STANDARD'),
       },
@@ -111,15 +112,15 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
     final allRequestItems = [
       {
         'key': 'REQUEST_TYPES',
-        'title': 'Loại đơn & lý do',
-        'desc': 'Quản lý loại đơn và danh mục lý do (gồm lý do nghỉ) của từng loại',
+        'title': 'hrm_ops.overview.request_types.title'.tr(),
+        'desc': 'hrm_ops.overview.request_types.desc'.tr(),
         'icon': Icons.description_outlined,
         'action': () => widget.onSelectConfigItem('REQUEST_TYPES'),
       },
       {
         'key': 'APPROVAL_FLOWS',
-        'title': 'Quy trình duyệt',
-        'desc': 'Thiết lập quy trình phê duyệt đơn từ theo phân cấp',
+        'title': 'hrm_ops.overview.approval_flows.title'.tr(),
+        'desc': 'hrm_ops.overview.approval_flows.desc'.tr(),
         'icon': Icons.alt_route_outlined,
         'action': () => widget.onSelectConfigItem('APPROVAL_FLOWS'),
       },
@@ -129,8 +130,8 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
     final allPayrollItems = [
       {
         'key': 'PAYROLL_CFG',
-        'title': 'Lương & OT',
-        'desc': 'Cấu hình lương, phụ cấp, OT và các khoản chi trả',
+        'title': 'hrm_ops.overview.payroll.title'.tr(),
+        'desc': 'hrm_ops.overview.payroll.desc'.tr(),
         'icon': Icons.payments_outlined,
         'action': () => widget.onSelectConfigItem('PAYROLL_CFG'),
       },
@@ -140,15 +141,15 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
     final allSystemItems = [
       {
         'key': 'OPERATIONS',
-        'title': 'Vận hành & tích hợp',
-        'desc': 'Tích hợp dữ liệu, thiết bị và vận hành hệ thống',
+        'title': 'hrm_ops.overview.operations.title'.tr(),
+        'desc': 'hrm_ops.overview.operations.desc'.tr(),
         'icon': Icons.settings_ethernet_rounded,
         'action': () => widget.onSelectConfigItem('OPERATIONS'),
       },
       {
         'key': 'PERMISSIONS',
-        'title': 'Quyền và vai trò',
-        'desc': 'Phân quyền truy cập và vai trò trong hệ thống',
+        'title': 'hrm_ops.overview.permissions.title'.tr(),
+        'desc': 'hrm_ops.overview.permissions.desc'.tr(),
         'icon': Icons.admin_panel_settings_outlined,
         'action': () => widget.onSelectConfigItem('PERMISSIONS'),
       },
@@ -185,23 +186,23 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
           children: [
             // Breadcrumbs matching web
             Row(
-              children: const [
-                Text('Nhân sự', style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-                SizedBox(width: 4),
-                Icon(Icons.chevron_right, size: 14, color: Color(0xFF94A3B8)),
-                SizedBox(width: 4),
-                Text('Cấu hình', style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-                SizedBox(width: 4),
-                Icon(Icons.chevron_right, size: 14, color: Color(0xFF94A3B8)),
-                SizedBox(width: 4),
-                Text('Tổng quan cấu hình', style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.bold)),
+              children: [
+                Text('hrm_ops.overview.crumb.hr'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right, size: 14, color: Color(0xFF94A3B8)),
+                const SizedBox(width: 4),
+                Text('hrm_ops.overview.crumb.config'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right, size: 14, color: Color(0xFF94A3B8)),
+                const SizedBox(width: 4),
+                Text('hrm_ops.overview.crumb.overview'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 8),
 
             // Header Title matching Web
-            const Text(
-              'Trung tâm cấu hình HRM',
+            Text(
+              'hrm_ops.overview.header.title'.tr(),
               style: TextStyle(
                 fontSize: 19,
                 fontWeight: FontWeight.w800,
@@ -210,8 +211,8 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Quản lý chính sách và danh mục dùng chung cho toàn bộ phân hệ nhân sự.',
+            Text(
+              'hrm_ops.overview.header.subtitle'.tr(),
               style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
             ),
             const SizedBox(height: 14),
@@ -239,7 +240,7 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
                       onChanged: (val) => setState(() => _searchQuery = val),
                       style: const TextStyle(fontSize: 12.5),
                       decoration: InputDecoration(
-                        hintText: 'Tìm nhanh chức năng hoặc chính sách...',
+                        hintText: 'hrm_ops.overview.search.hint'.tr(),
                         hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                         prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                         suffixIcon: _searchQuery.isNotEmpty
@@ -271,7 +272,7 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
                       const Icon(Icons.tune_rounded, size: 14, color: Color(0xFFD97706)),
                       const SizedBox(width: 4),
                       Text(
-                        '$totalCount mục cấu hình',
+                        'hrm_ops.overview.count'.tr(args: {'count': totalCount}),
                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
                       ),
                     ],
@@ -285,37 +286,37 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
             // 6 CATEGORY GROUPS (Section Header + Sub-item Card)
             // ==========================================
             ConfigCategorySection(
-              title: 'Nghỉ phép',
+              title: 'hrm_ops.overview.cat.leave'.tr(),
               icon: Icons.beach_access_rounded,
               color: const Color(0xFF2563EB),
               items: filteredLeave,
             ),
             ConfigCategorySection(
-              title: 'Chấm công & Thiết bị',
+              title: 'hrm_ops.overview.cat.attendance'.tr(),
               icon: Icons.timer_outlined,
               color: const Color(0xFF059669),
               items: filteredAttendance,
             ),
             ConfigCategorySection(
-              title: 'Lịch làm việc',
+              title: 'hrm_ops.overview.cat.schedule'.tr(),
               icon: Icons.people_alt_outlined,
               color: const Color(0xFF7C3AED),
               items: filteredSchedule,
             ),
             ConfigCategorySection(
-              title: 'Đơn từ & Phê duyệt',
+              title: 'hrm_ops.overview.cat.requests'.tr(),
               icon: Icons.assignment_outlined,
               color: const Color(0xFF0284C7),
               items: filteredRequest,
             ),
             ConfigCategorySection(
-              title: 'Lương & OT',
+              title: 'hrm_ops.overview.cat.payroll'.tr(),
               icon: Icons.payments_outlined,
               color: const Color(0xFFD97706),
               items: filteredPayroll,
             ),
             ConfigCategorySection(
-              title: 'Hệ thống',
+              title: 'hrm_ops.overview.cat.system'.tr(),
               icon: Icons.settings_suggest_outlined,
               color: const Color(0xFF475569),
               items: filteredSystem,
@@ -330,7 +331,7 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
                       Icon(Icons.search_off_rounded, size: 40, color: Colors.grey.shade400),
                       const SizedBox(height: 10),
                       Text(
-                        'Không tìm thấy mục cấu hình nào khớp với "$_searchQuery"',
+                        'hrm_ops.overview.not_found'.tr(args: {'query': _searchQuery}),
                         style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
                       ),
                     ],

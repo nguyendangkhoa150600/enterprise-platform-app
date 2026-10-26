@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
@@ -49,7 +50,7 @@ class PayrollMetricHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TỔNG THU NHẬP NĂM $selectedYear',
+                    'payroll_widgets.header.annual_income'.tr(args: {'year': selectedYear}),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.slate400,
                       fontWeight: FontWeight.bold,
@@ -96,9 +97,9 @@ class PayrollMetricHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSubMetric('Tổng Gross', Formatters.formatCurrency(totalGross)),
-              _buildSubMetric('Khấu trừ BHXH', Formatters.formatCurrency(totalDeductions)),
-              _buildSubMetric('Thuế TNCN', Formatters.formatCurrency(totalTax)),
+              _buildSubMetric('payroll_widgets.header.total_gross'.tr(), Formatters.formatCurrency(totalGross)),
+              _buildSubMetric('payroll_widgets.header.social_insurance'.tr(), Formatters.formatCurrency(totalDeductions)),
+              _buildSubMetric('payroll_widgets.header.income_tax'.tr(), Formatters.formatCurrency(totalTax)),
             ],
           ),
         ],

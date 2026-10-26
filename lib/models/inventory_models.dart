@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 class MaterialItem {
   final String code;
   final String name;
@@ -27,11 +28,11 @@ class MaterialItem {
     return MaterialItem(
       code: json['code']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
-      unit: json['unit']?.toString() ?? 'Cái',
-      category: json['category']?.toString() ?? 'Phụ tùng',
+      unit: json['unit']?.toString() ?? 'models.inventory.default_unit'.tr(),
+      category: json['category']?.toString() ?? 'models.inventory.default_category'.tr(),
       onHand: onHandVal,
       minStock: minVal,
-      warehouseName: json['warehouseName']?.toString() ?? 'Kho Tổng',
+      warehouseName: json['warehouseName']?.toString() ?? 'models.inventory.default_warehouse'.tr(),
       status: onHandVal <= 0 ? 'OUT_OF_STOCK' : onHandVal <= minVal ? 'LOW_STOCK' : 'NORMAL',
     );
   }
@@ -69,7 +70,7 @@ class StockTransaction {
       materialName: json['materialName']?.toString() ?? '',
       quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
       date: json['date']?.toString() ?? json['createdAt']?.toString() ?? '',
-      createdBy: json['createdBy']?.toString() ?? 'Thủ kho',
+      createdBy: json['createdBy']?.toString() ?? 'models.inventory.default_keeper'.tr(),
       note: json['note']?.toString(),
     );
   }

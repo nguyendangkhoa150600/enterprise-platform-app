@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../models/hrm_models.dart';
 
 /// 1. Cấu hình Quyền và vai trò
@@ -9,35 +10,35 @@ class HrmPermissionsConfigView extends StatelessWidget {
   Widget build(BuildContext context) {
     final roles = [
       {
-        'title': 'Quản trị viên hệ thống (Admin)',
+        'title': 'hrm_config.static.role.admin.title',
         'code': 'SYSTEM_ADMIN',
-        'desc': 'Toàn quyền cấu hình, phê duyệt và quản lý toàn bộ phân hệ nhân sự HRM.',
+        'desc': 'hrm_config.static.role.admin.desc',
         'users': 2,
-        'badge': 'TOÀN QUYỀN',
+        'badge': 'hrm_config.static.role.admin.badge',
         'badgeColor': const Color(0xFFEF4444),
       },
       {
-        'title': 'Quản lý nhân sự (HR Manager)',
+        'title': 'hrm_config.static.role.hr.title',
         'code': 'HR_MANAGER',
-        'desc': 'Quản lý hồ sơ nhân viên, duyệt đơn từ, tính công, tính lương và cấu hình ca.',
+        'desc': 'hrm_config.static.role.hr.desc',
         'users': 4,
-        'badge': 'QUẢN LÝ',
+        'badge': 'hrm_config.static.role.hr.badge',
         'badgeColor': const Color(0xFF2563EB),
       },
       {
-        'title': 'Trưởng phòng / Quản lý trực tiếp',
+        'title': 'hrm_config.static.role.lead.title',
         'code': 'LINE_MANAGER',
-        'desc': 'Theo dõi chấm công, phân ca và phê duyệt cấp 1 cho nhân viên thuộc bộ phận.',
+        'desc': 'hrm_config.static.role.lead.desc',
         'users': 8,
-        'badge': 'DUYỆT ĐƠN',
+        'badge': 'hrm_config.static.role.lead.badge',
         'badgeColor': const Color(0xFFD97706),
       },
       {
-        'title': 'Nhân viên (Employee)',
+        'title': 'hrm_config.static.role.emp.title',
         'code': 'STAFF',
-        'desc': 'Chấm công GPS/thiết bị, tạo đơn từ, xem bảng công cá nhân và phiếu lương.',
+        'desc': 'hrm_config.static.role.emp.desc',
         'users': 45,
-        'badge': 'CÁ NHÂN',
+        'badge': 'hrm_config.static.role.emp.badge',
         'badgeColor': const Color(0xFF059669),
       },
     ];
@@ -63,7 +64,7 @@ class HrmPermissionsConfigView extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        r['title'] as String,
+                        (r['title'] as String).tr(),
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                     ),
@@ -74,7 +75,7 @@ class HrmPermissionsConfigView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        r['badge'] as String,
+                        (r['badge'] as String).tr(),
                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: r['badgeColor'] as Color),
                       ),
                     ),
@@ -82,7 +83,7 @@ class HrmPermissionsConfigView extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  r['desc'] as String,
+                  (r['desc'] as String).tr(),
                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
                 ),
                 const SizedBox(height: 10),
@@ -91,7 +92,7 @@ class HrmPermissionsConfigView extends StatelessWidget {
                     const Icon(Icons.people_outline, size: 14, color: Color(0xFF64748B)),
                     const SizedBox(width: 4),
                     Text(
-                      '${r['users']} nhân sự đang gán vai trò này',
+                      'hrm_config.static.role.users_assigned'.tr(args: {'count': r['users']}),
                       style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                     ),
                   ],
@@ -113,39 +114,39 @@ class HrmRequestTypesReasonsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final types = [
       {
-        'title': 'Đơn xin nghỉ phép (Leave)',
+        'title': 'hrm_config.static.type.leave.title',
         'code': 'LEAVE',
         'icon': Icons.beach_access_rounded,
         'color': const Color(0xFF2563EB),
-        'reasons': ['Nghỉ phép năm', 'Nghỉ ốm đau có xác nhận', 'Nghỉ việc riêng hưởng lương (kết hôn/tang chế)', 'Nghỉ không hưởng lương', 'Nghỉ chế độ thai sản'],
+        'reasons': ['hrm_config.static.type.leave.r1', 'hrm_config.static.type.leave.r2', 'hrm_config.static.type.leave.r3', 'hrm_config.static.type.leave.r4', 'hrm_config.static.type.leave.r5'],
       },
       {
-        'title': 'Đơn làm thêm giờ (Overtime)',
+        'title': 'hrm_config.static.type.ot.title',
         'code': 'OVERTIME',
         'icon': Icons.more_time_rounded,
         'color': const Color(0xFFD97706),
-        'reasons': ['Làm thêm ngày làm việc bình thường (150%)', 'Làm thêm ngày nghỉ cuối tuần (200%)', 'Làm thêm ngày lễ tết (300%)', 'Trực ca sự cố khẩn cấp'],
+        'reasons': ['hrm_config.static.type.ot.r1', 'hrm_config.static.type.ot.r2', 'hrm_config.static.type.ot.r3', 'hrm_config.static.type.ot.r4'],
       },
       {
-        'title': 'Đơn tạm ứng lương (Advance)',
+        'title': 'hrm_config.static.type.adv.title',
         'code': 'ADVANCE',
         'icon': Icons.payments_outlined,
         'color': const Color(0xFF059669),
-        'reasons': ['Tạm ứng chi phí công tác ngoại tỉnh', 'Việc gia đình đột xuất', 'Tạm ứng giữa tháng theo quy chế'],
+        'reasons': ['hrm_config.static.type.adv.r1', 'hrm_config.static.type.adv.r2', 'hrm_config.static.type.adv.r3'],
       },
       {
-        'title': 'Đơn điều chỉnh chấm công (Correction)',
+        'title': 'hrm_config.static.type.cor.title',
         'code': 'CORRECTION',
         'icon': Icons.edit_calendar_rounded,
         'color': const Color(0xFF7C3AED),
-        'reasons': ['Quên quẹt thẻ vào/ra', 'Lỗi thiết bị / lỗi kết nối mạng', 'Gặp gỡ khách hàng ngoài văn phòng trước giờ làm', 'Đi công tác khẩn cấp'],
+        'reasons': ['hrm_config.static.type.cor.r1', 'hrm_config.static.type.cor.r2', 'hrm_config.static.type.cor.r3', 'hrm_config.static.type.cor.r4'],
       },
       {
-        'title': 'Đơn công tác & điều động (Business Trip)',
+        'title': 'hrm_config.static.type.trip.title',
         'code': 'BUSINESS_TRIP',
         'icon': Icons.directions_car_outlined,
         'color': const Color(0xFF0284C7),
-        'reasons': ['Khảo sát hiện trường trạm & TBA', 'Thí nghiệm kiểm định kỹ thuật', 'Họp đối tác EVN liên tỉnh'],
+        'reasons': ['hrm_config.static.type.trip.r1', 'hrm_config.static.type.trip.r2', 'hrm_config.static.type.trip.r3'],
       },
     ];
 
@@ -178,7 +179,7 @@ class HrmRequestTypesReasonsView extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        t['title'] as String,
+                        (t['title'] as String).tr(),
                         style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                     ),
@@ -193,7 +194,7 @@ class HrmRequestTypesReasonsView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text('Danh mục lý do hợp lệ:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                Text('hrm_config.static.types.valid_reasons'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 6,
@@ -205,7 +206,7 @@ class HrmRequestTypesReasonsView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: Text(r, style: const TextStyle(fontSize: 11, color: Color(0xFF334155))),
+                    child: Text(r.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF334155))),
                   )).toList(),
                 ),
               ],
@@ -225,25 +226,25 @@ class HrmApprovalFlowsConfigView extends StatelessWidget {
   Widget build(BuildContext context) {
     final flows = [
       {
-        'name': 'Quy trình duyệt Đơn xin nghỉ phép',
+        'name': 'hrm_config.static.flow.leave.name',
         'steps': [
-          {'step': 'Cấp 1', 'role': 'Quản lý trực tiếp / Trưởng phòng', 'sla': '24 giờ'},
-          {'step': 'Cấp 2', 'role': 'Chuyên viên Nhân sự (HR Ops)', 'sla': '12 giờ'},
+          {'step': 'hrm_config.static.flow.level1', 'role': 'hrm_config.static.flow.role.direct_head', 'sla': 'hrm_config.static.flow.sla.24'},
+          {'step': 'hrm_config.static.flow.level2', 'role': 'hrm_config.static.flow.role.hr_ops', 'sla': 'hrm_config.static.flow.sla.12'},
         ],
       },
       {
-        'name': 'Quy trình duyệt Làm thêm giờ (OT)',
+        'name': 'hrm_config.static.flow.ot.name',
         'steps': [
-          {'step': 'Cấp 1', 'role': 'Chỉ huy trưởng / Trưởng phòng', 'sla': '12 giờ'},
-          {'step': 'Cấp 2', 'role': 'Ban Giám đốc phê duyệt', 'sla': '24 giờ'},
+          {'step': 'hrm_config.static.flow.level1', 'role': 'hrm_config.static.flow.role.chief_head', 'sla': 'hrm_config.static.flow.sla.12'},
+          {'step': 'hrm_config.static.flow.level2', 'role': 'hrm_config.static.flow.role.board', 'sla': 'hrm_config.static.flow.sla.24'},
         ],
       },
       {
-        'name': 'Quy trình duyệt Tạm ứng lương',
+        'name': 'hrm_config.static.flow.adv.name',
         'steps': [
-          {'step': 'Cấp 1', 'role': 'Trưởng bộ phận xác nhận nhu cầu', 'sla': '24 giờ'},
-          {'step': 'Cấp 2', 'role': 'Kế toán trưởng đối soát hạn mức', 'sla': '24 giờ'},
-          {'step': 'Cấp 3', 'role': 'Tổng Giám đốc ký chi', 'sla': '48 giờ'},
+          {'step': 'hrm_config.static.flow.level1', 'role': 'hrm_config.static.flow.role.dept_confirm', 'sla': 'hrm_config.static.flow.sla.24'},
+          {'step': 'hrm_config.static.flow.level2', 'role': 'hrm_config.static.flow.role.chief_acc', 'sla': 'hrm_config.static.flow.sla.24'},
+          {'step': 'hrm_config.static.flow.level3', 'role': 'hrm_config.static.flow.role.ceo', 'sla': 'hrm_config.static.flow.sla.48'},
         ],
       },
     ];
@@ -270,7 +271,7 @@ class HrmApprovalFlowsConfigView extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        f['name'] as String,
+                        (f['name'] as String).tr(),
                         style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                     ),
@@ -287,13 +288,13 @@ class HrmApprovalFlowsConfigView extends StatelessWidget {
                           color: const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(s['step']!, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                        child: Text(s['step']!.tr(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(s['role']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                        child: Text(s['role']!.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
                       ),
-                      Text('SLA: ${s["sla"]}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                      Text('hrm_config.static.flow.sla_label'.tr(args: {'value': s['sla']!.tr()}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                     ],
                   ),
                 )),
@@ -362,28 +363,28 @@ class HrmPayrollSettingsConfigView extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Cấu hình bảng lương & Tỷ lệ OT', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                        Text('Căn cứ Bộ luật Lao động & Quy chế doanh nghiệp SVN', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                      children: [
+                        Text('hrm_config.static.payroll.title'.tr(), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                        Text('hrm_config.static.payroll.subtitle'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                       ],
                     ),
                   ),
                 ],
               ),
               const Divider(height: 24),
-              _buildConfigAttributeRow('Làm thêm ngày thường', '150% đơn giá lương giờ'),
-              _buildConfigAttributeRow('Làm thêm cuối tuần', '200% đơn giá lương giờ'),
-              _buildConfigAttributeRow('Làm thêm Lễ, Tết', '300% đơn giá lương giờ (chưa kể lương ngày lễ)'),
-              _buildConfigAttributeRow('Phụ cấp ca đêm (22h - 6h)', '+30% đơn giá tiền lương ban ngày'),
-              _buildConfigAttributeRow('Mức giảm trừ gia cảnh', 'Bản thân: 11.000.000đ · Phụ thuộc: 4.400.000đ/người'),
-              _buildConfigAttributeRow('Tỷ lệ đóng BHXH, BHYT, BHTN', 'Doanh nghiệp: 21.5% · Người lao động: 10.5%'),
+              _buildConfigAttributeRow('hrm_config.static.payroll.ot_weekday.label'.tr(), 'hrm_config.static.payroll.ot_weekday.value'.tr()),
+              _buildConfigAttributeRow('hrm_config.static.payroll.ot_weekend.label'.tr(), 'hrm_config.static.payroll.ot_weekend.value'.tr()),
+              _buildConfigAttributeRow('hrm_config.static.payroll.ot_holiday.label'.tr(), 'hrm_config.static.payroll.ot_holiday.value'.tr()),
+              _buildConfigAttributeRow('hrm_config.static.payroll.night.label'.tr(), 'hrm_config.static.payroll.night.value'.tr()),
+              _buildConfigAttributeRow('hrm_config.static.payroll.deduct.label'.tr(), 'hrm_config.static.payroll.deduct.value'.tr()),
+              _buildConfigAttributeRow('hrm_config.static.payroll.insurance.label'.tr(), 'hrm_config.static.payroll.insurance.value'.tr()),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: onOpenPayroll,
                   icon: const Icon(Icons.receipt_long_rounded, size: 16),
-                  label: const Text('Xem Bảng lương & Chi trả', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  label: Text('hrm_config.static.payroll.view_payroll'.tr(), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFD97706),
                     foregroundColor: Colors.white,
@@ -422,16 +423,16 @@ class HrmSystemIntegrationsConfigView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Hệ thống & Tích hợp phần cứng', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                  Text('Quản lý máy chấm công vân tay / FaceID & Webhook', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  Text('hrm_config.static.integ.title'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('hrm_config.static.integ.subtitle'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                 ],
               ),
               IconButton(
                 icon: const Icon(Icons.sync, color: Color(0xFF2563EB)),
-                tooltip: 'Đồng bộ thiết bị',
+                tooltip: 'hrm_config.static.integ.sync'.tr(),
                 onPressed: onSyncDevices,
               ),
             ],
@@ -474,7 +475,7 @@ class HrmSystemIntegrationsConfigView extends StatelessWidget {
                         children: [
                           Text(dev.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                           const SizedBox(height: 2),
-                          Text('${dev.location} • IP: ${dev.ipAddress}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                          Text('hrm_config.static.integ.device_loc'.tr(args: {'location': dev.location, 'ip': dev.ipAddress}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                         ],
                       ),
                     ),

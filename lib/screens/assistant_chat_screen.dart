@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 import 'package:flutter/material.dart';
 import '../models/assistant_models.dart';
 import '../services/assistant_service.dart';
@@ -29,13 +30,13 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   bool _showMentionPopup = false;
   int _mentionStartIndex = -1;
 
-  final List<String> _quickPrompts = [
-    '🌴 Xin nghỉ phép ngày mai',
-    '⏱️ Đăng ký làm thêm giờ tối nay',
-    '✈️ Đi công tác Hà Nội tuần sau',
-    '📅 Đặt lịch họp giao ban tuần',
-    '📋 Giao việc ngoài dự án kiểm tra MBA',
-    '⚠️ Ghi nhận sự cố máy cắt trạm 110kV',
+  List<String> get _quickPrompts => [
+    'assistant.chat.qp_leave'.tr(),
+    'assistant.chat.qp_ot'.tr(),
+    'assistant.chat.qp_trip'.tr(),
+    'assistant.chat.qp_meeting'.tr(),
+    'assistant.chat.qp_task'.tr(),
+    'assistant.chat.qp_incident'.tr(),
   ];
 
   @override
@@ -47,7 +48,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     _messages.add(AssistantMessage(
       id: 'welcome',
       sender: MessageSender.assistant,
-      text: 'Xin chào! Tôi là **Trợ lý Savina AI**.\nTôi có thể hỗ trợ tạo biểu mẫu ERP, làm đơn từ và giao việc ngay tại khung chat này mà không cần chuyển trang. Bạn cần tôi hỗ trợ việc gì hôm nay?',
+      text: 'assistant.chat.welcome'.tr(),
       timestamp: DateTime.now(),
     ));
 
@@ -217,13 +218,13 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Text(
-                      'Trợ lý Savina AI',
+                      'assistant.chat.title'.tr(),
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     SizedBox(width: 5),
@@ -232,7 +233,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 ),
                 SizedBox(height: 1),
                 Text(
-                  'Form nhúng trực tiếp · Không chuyển trang',
+                  'assistant.chat.subtitle'.tr(),
                   style: TextStyle(fontSize: 10.5, color: Color(0xFF059669), fontWeight: FontWeight.w500),
                 ),
               ],
@@ -242,14 +243,14 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF64748B), size: 20),
-            tooltip: 'Làm mới cuộc trò chuyện',
+            tooltip: 'assistant.chat.reset_tooltip'.tr(),
             onPressed: () {
               setState(() {
                 _messages.clear();
                 _messages.add(AssistantMessage(
                   id: 'welcome',
                   sender: MessageSender.assistant,
-                  text: 'Xin chào! Cuộc trò chuyện đã được làm mới. Bạn cần hỗ trợ thao tác gì nào?',
+                  text: 'assistant.chat.reset_welcome'.tr(),
                   timestamp: DateTime.now(),
                 ));
               });
@@ -455,7 +456,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Savina đang xử lý biểu mẫu...',
+                  'assistant.chat.processing'.tr(),
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
                 ),
               ],
@@ -503,7 +504,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             // Mention @ trigger button
             IconButton(
               icon: const Icon(Icons.alternate_email_rounded, size: 20, color: Color(0xFF64748B)),
-              tooltip: 'Nhắc tên đồng nghiệp (@)',
+              tooltip: 'assistant.chat.mention_tooltip'.tr(),
               onPressed: () {
                 final text = _inputController.text;
                 _inputController.text = '$text@';
@@ -525,8 +526,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   onChanged: _onInputChanged,
                   onSubmitted: _handleSendMessage,
                   style: const TextStyle(fontSize: 13.5),
-                  decoration: const InputDecoration(
-                    hintText: 'Nhắn cho Trợ lý (hoặc gõ @)...',
+                  decoration: InputDecoration(
+                    hintText: 'assistant.chat.input_hint'.tr(),
                     hintStyle: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                     border: InputBorder.none,
                     isDense: true,
@@ -584,12 +585,12 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 color: const Color(0xFFF8FAFC),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.alternate_email, size: 14, color: Color(0xFF2563EB)),
                     SizedBox(width: 6),
                     Text(
-                      'Nhắc tên đồng nghiệp trong công ty',
+                      'assistant.chat.mention_header'.tr(),
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                     ),
                   ],

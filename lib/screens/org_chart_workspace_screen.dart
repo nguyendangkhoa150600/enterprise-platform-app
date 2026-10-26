@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/platform_models.dart';
 import '../services/platform_service.dart';
 import 'org_chart/components/org_chart_modals.dart';
@@ -6,7 +7,7 @@ import 'org_chart/components/org_tree_list_view.dart';
 
 class OrgChartWorkspaceScreen extends StatefulWidget {
   final OrganizationSnapshot snapshot;
-  final String treeName;
+  final String? treeName;
   final String treeCode;
   final bool isPrimary;
   final VoidCallback? onDataChanged;
@@ -14,7 +15,7 @@ class OrgChartWorkspaceScreen extends StatefulWidget {
   const OrgChartWorkspaceScreen({
     super.key,
     required this.snapshot,
-    this.treeName = 'Sơ đồ tổ chức SAVINA',
+    this.treeName,
     this.treeCode = 'SAVINA-MAIN',
     this.isPrimary = true,
     this.onDataChanged,
@@ -141,7 +142,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
             children: [
               Flexible(
                 child: Text(
-                  widget.treeName,
+                  widget.treeName ?? 'org_chart.savina_chart'.tr(),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 14.5,
@@ -159,8 +160,8 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: const Color(0xFF93C5FD)),
                   ),
-                  child: const Text(
-                    'CHÍNH',
+                  child: Text(
+                    'org_chart.badge_main'.tr(),
                     style: TextStyle(
                       fontSize: 8.5,
                       fontWeight: FontWeight.bold,
@@ -187,8 +188,8 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
             ],
           ),
           const SizedBox(height: 2),
-          const Text(
-            'Cây tổ chức chính, gồm SAVINA và các pháp nhân liên quan.',
+          Text(
+            'org_chart.main_tree_desc'.tr(),
             style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
           ),
         ],
@@ -196,7 +197,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.add_circle_outline, color: Color(0xFF2563EB), size: 22),
-          tooltip: 'Thêm node mới',
+          tooltip: 'org_chart.add_new_node'.tr(),
           onPressed: () => _showAddOrEditNodeDialog(),
         ),
         const SizedBox(width: 4),
@@ -229,8 +230,8 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
               ),
               child: Row(
                 children: [
-                  Expanded(child: _buildTabSegment(0, 'Sơ đồ đồ họa', Icons.account_tree_outlined)),
-                  Expanded(child: _buildTabSegment(1, 'Sơ đồ phân cấp', Icons.format_list_bulleted_rounded)),
+                  Expanded(child: _buildTabSegment(0, 'org_chart.graphic_view'.tr(), Icons.account_tree_outlined)),
+                  Expanded(child: _buildTabSegment(1, 'org_chart.tree_view'.tr(), Icons.format_list_bulleted_rounded)),
                 ],
               ),
             ),
@@ -243,8 +244,8 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
               onTap: () {
                 _resetZoom();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Đã căn giữa và sắp xếp lại bố cục sơ đồ.'),
+                  SnackBar(
+                    content: Text('org_chart.layout_reset'.tr()),
                     duration: Duration(seconds: 2),
                   ),
                 );
@@ -284,13 +285,13 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
                   ),
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.add_rounded, size: 16, color: Colors.white),
                   SizedBox(width: 3),
                   Text(
-                    'Thêm',
+                    'common.add'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -408,11 +409,11 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildCanvasIconButton(Icons.add, 'Phóng to', _zoomIn),
+                _buildCanvasIconButton(Icons.add, 'org_chart.zoom_in'.tr(), _zoomIn),
                 const SizedBox(width: 2),
-                _buildCanvasIconButton(Icons.remove, 'Thu nhỏ', _zoomOut),
+                _buildCanvasIconButton(Icons.remove, 'org_chart.zoom_out'.tr(), _zoomOut),
                 const SizedBox(width: 2),
-                _buildCanvasIconButton(Icons.crop_free, 'Khôi phục', _resetZoom),
+                _buildCanvasIconButton(Icons.crop_free, 'org_chart.restore'.tr(), _resetZoom),
               ],
             ),
           ),
@@ -430,11 +431,11 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(Icons.touch_app_outlined, size: 13, color: Colors.white70),
                 SizedBox(width: 5),
                 Text(
-                  'Bấm node để xem thuộc tính chi tiết',
+                  'org_chart.tap_node_props'.tr(),
                   style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -550,9 +551,9 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
 
     String? bottomBadge;
     if (childUnits > 0) {
-      bottomBadge = '$childUnits đơn vị';
+      bottomBadge = 'org_chart.child_units'.tr(args: {'count': childUnits});
     } else if (childPositions > 0) {
-      bottomBadge = '$childPositions chức vụ';
+      bottomBadge = 'org_chart.child_positions'.tr(args: {'count': childPositions});
     }
 
     return GestureDetector(
@@ -608,7 +609,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            isUnit ? 'ĐƠN VỊ' : 'CHỨC DANH',
+                            isUnit ? 'org_chart.type_unit_caps'.tr() : 'org_chart.type_position_caps'.tr(),
                             style: const TextStyle(
                               fontSize: 8,
                               fontWeight: FontWeight.w800,
@@ -743,9 +744,9 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
       if (assignments.isNotEmpty) {
         final asg = assignments.first;
         final u = _snapshot.users.where((usr) => usr.id == asg.userId).firstOrNull;
-        return u?.fullName ?? 'Đã phân công';
+        return u?.fullName ?? 'org_chart.assigned'.tr();
       }
-      return 'Chưa có nhân sự';
+      return 'org_chart.no_personnel'.tr();
     } else {
       final leadPos = _snapshot.nodes.where((n) => n.parentId == node.id && n.nodeTypeId == 'nt-pos-lead').firstOrNull;
       if (leadPos != null) {
@@ -756,7 +757,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
         }
         return leadPos.name;
       }
-      return 'Không có / chưa chọn quản lý';
+      return 'org_chart.no_manager'.tr();
     }
   }
 

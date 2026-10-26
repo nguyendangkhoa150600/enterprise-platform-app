@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_attendance_models.dart';
 
 String formatRequestDate(String isoString) {
@@ -194,27 +195,27 @@ class RequestCorrectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     Color statusBg = const Color(0xFFFEF3C7);
     Color statusText = const Color(0xFFD97706);
-    String statusLabel = 'Chờ duyệt';
+    String statusLabel = 'requests.status.pending'.tr();
     IconData statusIcon = Icons.hourglass_top_rounded;
 
     if (c.status == 'APPROVED') {
       statusBg = const Color(0xFFECFDF5);
       statusText = const Color(0xFF059669);
-      statusLabel = 'Đã phê duyệt';
+      statusLabel = 'requests.status.approved'.tr();
       statusIcon = Icons.check_circle_rounded;
     } else if (c.status == 'REJECTED') {
       statusBg = const Color(0xFFFEF2F2);
       statusText = const Color(0xFFDC2626);
-      statusLabel = 'Bị từ chối';
+      statusLabel = 'requests.status.rejected'.tr();
       statusIcon = Icons.cancel_rounded;
     } else if (c.status == 'CANCELLED') {
       statusBg = const Color(0xFFF1F5F9);
       statusText = const Color(0xFF64748B);
-      statusLabel = 'Đã hủy';
+      statusLabel = 'requests.status.cancelled'.tr();
       statusIcon = Icons.remove_circle_outline;
     }
 
-    String title = 'Đơn xin nghỉ phép';
+    String title = 'requests.type.leave'.tr();
     String cleanReason = c.reason;
     if (c.leaveTypeName != null && c.leaveTypeName!.isNotEmpty) {
       title = c.leaveTypeName!;
@@ -307,7 +308,7 @@ class RequestCorrectionCard extends StatelessWidget {
                   if (c.duration != null) ...[
                     const SizedBox(width: 8),
                     Text(
-                      '(${c.duration!.toStringAsFixed(c.duration! % 1 == 0 ? 0 : 1)} ngày)',
+                      'requests.card.days_paren'.tr(args: {'count': c.duration!.toStringAsFixed(c.duration! % 1 == 0 ? 0 : 1)}),
                       style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -323,22 +324,22 @@ class RequestCorrectionCard extends StatelessWidget {
                   border: Border.all(color: const Color(0xFFF1F5F9)),
                 ),
                 child: Text(
-                  'Lý do: $cleanReason',
+                  'requests.card.reason'.tr(args: {'reason': cleanReason}),
                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(height: 8),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    'Xem chi tiết',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                    'common.view_detail'.tr(),
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                   ),
-                  SizedBox(width: 2),
-                  Icon(Icons.chevron_right, size: 16, color: Color(0xFF2563EB)),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right, size: 16, color: Color(0xFF2563EB)),
                 ],
               ),
             ],
@@ -366,7 +367,7 @@ class RequestDraftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String draftType = 'Nghỉ phép';
+    String draftType = 'requests.card.draft_type_default'.tr();
     String draftReason = draft.reason;
     final match = RegExp(r'^\[(.*?)\]').firstMatch(draft.reason);
     if (match != null) {
@@ -375,7 +376,7 @@ class RequestDraftCard extends StatelessWidget {
     } else if (draft.leaveTypeName != null && draft.leaveTypeName!.isNotEmpty) {
       draftType = draft.leaveTypeName!;
     }
-    if (draftReason.isEmpty) draftReason = 'Chưa nhập lý do';
+    if (draftReason.isEmpty) draftReason = 'requests.card.no_reason'.tr();
 
     final draftCode = draft.id.length >= 8 ? draft.id.substring(draft.id.length - 8).toUpperCase() : draft.id.toUpperCase();
 
@@ -427,12 +428,12 @@ class RequestDraftCard extends StatelessWidget {
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text('Bản nháp', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                child: Text('requests.card.draft_badge'.tr(), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('Lý do: $draftReason', style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
+          Text('requests.card.reason'.tr(args: {'reason': draftReason}), style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -440,13 +441,13 @@ class RequestDraftCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
-                label: const Text('Xóa', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                label: Text('common.delete'.tr(), style: TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 14),
-                label: const Text('Tiếp tục sửa & Gửi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                label: Text('requests.card.continue_edit_submit'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0F172A),
                   foregroundColor: Colors.white,

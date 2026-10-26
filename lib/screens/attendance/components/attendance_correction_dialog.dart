@@ -3,6 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../models/hrm_attendance_models.dart';
 import '../../../services/hrm_attendance_service.dart';
+import '../../../core/i18n/app_i18n.dart';
+
+// Display label for built-in leave/request types. The Vietnamese string stays the
+// stored identifier (used for kind inference and the "[type] reason" wire format).
+const Map<String, String> _kLeaveTypeLabelKeys = {
+  'Phép năm (Hưởng nguyên lương)': 'attendance.correction.type.annual',
+  'Nghỉ phép': 'attendance.correction.type.leave',
+  'Đi công tác / Giải trình công': 'attendance.correction.type.trip_explain',
+  'Làm thêm giờ (Overtime)': 'attendance.correction.type.overtime',
+  'Đơn đổi ca làm việc': 'attendance.correction.type.shift_change',
+  'Đơn giải trình / Bổ sung công': 'attendance.correction.type.explanation',
+  'Đơn xin tạm ứng lương': 'attendance.correction.type.advance',
+  'Đơn điều chỉnh thông tin nhân sự': 'attendance.correction.type.profile',
+  'Nghỉ ốm (Hưởng BHXH)': 'attendance.correction.type.sick',
+  'Nghỉ việc riêng (Có lương)': 'attendance.correction.type.personal_paid',
+  'Nghỉ không hưởng lương': 'attendance.correction.type.unpaid',
+};
+
+String _leaveTypeLabel(String value) {
+  final key = _kLeaveTypeLabelKeys[value];
+  return key == null ? value : key.tr();
+}
+
 void showAttendanceCorrectionDialog(
   BuildContext context, {
   AttendanceRecord? item,
@@ -147,10 +170,10 @@ void showAttendanceCorrectionDialog(
                               child: const Icon(Icons.description_outlined, size: 18, color: Color(0xFF4F46E5)),
                             ),
                             const SizedBox(width: 8),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'Khởi tạo: Đơn xin nghỉ phép',
-                                style: TextStyle(
+                                'attendance.correction.title'.tr(),
+                                style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF0F172A),
@@ -168,10 +191,10 @@ void showAttendanceCorrectionDialog(
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'Nhập đầy đủ thông tin để gửi đơn chờ phê duyệt',
-                                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                'attendance.correction.subtitle'.tr(),
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               ),
                             ),
                             Container(
@@ -181,9 +204,9 @@ void showAttendanceCorrectionDialog(
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: const Color(0xFFBFDBFE)),
                               ),
-                              child: const Text(
-                                'Chờ người có thẩm quyền duyệt',
-                                style: TextStyle(
+                              child: Text(
+                                'attendance.correction.pending_badge'.tr(),
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF2563EB),
@@ -219,13 +242,13 @@ void showAttendanceCorrectionDialog(
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Quỹ khả dụng của loại nghỉ đã chọn:',
-                                      style: TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                                    Text(
+                                      'attendance.correction.balance_available'.tr(),
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${currentAvailableBalance.toStringAsFixed(1)} ngày',
+                                      'attendance.correction.days_value'.tr(args: {'value': currentAvailableBalance.toStringAsFixed(1)}),
                                       style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
@@ -238,12 +261,12 @@ void showAttendanceCorrectionDialog(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      'Sau khi xin (${durationDays.toStringAsFixed(1)} ngày):',
+                                      'attendance.correction.balance_after'.tr(args: {'value': durationDays.toStringAsFixed(1)}),
                                       style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${remainingBalance.toStringAsFixed(1)} ngày',
+                                      'attendance.correction.days_value'.tr(args: {'value': remainingBalance.toStringAsFixed(1)}),
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
@@ -258,9 +281,9 @@ void showAttendanceCorrectionDialog(
                           const SizedBox(height: 14),
 
                           // 2. Loại hình nghỉ phép (*)
-                          const Text(
-                            'Loại hình nghỉ phép *',
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                          Text(
+                            'attendance.correction.leave_type'.tr(),
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                           ),
                           const SizedBox(height: 6),
                           Container(
@@ -285,7 +308,7 @@ void showAttendanceCorrectionDialog(
                                       children: [
                                         const Icon(Icons.search, size: 14, color: Color(0xFF94A3B8)),
                                         const SizedBox(width: 8),
-                                        Expanded(child: Text(t, overflow: TextOverflow.ellipsis)),
+                                        Expanded(child: Text(_leaveTypeLabel(t), overflow: TextOverflow.ellipsis)),
                                       ],
                                     ),
                                   );
@@ -305,7 +328,7 @@ void showAttendanceCorrectionDialog(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Từ ngày *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                                    Text('attendance.correction.from_date'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                                     const SizedBox(height: 6),
                                     InkWell(
                                       onTap: () async {
@@ -355,7 +378,7 @@ void showAttendanceCorrectionDialog(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Đến ngày *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                                    Text('attendance.correction.to_date'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                                     const SizedBox(height: 6),
                                     InkWell(
                                       onTap: () async {
@@ -404,9 +427,9 @@ void showAttendanceCorrectionDialog(
                           const SizedBox(height: 16),
 
                           // 4. Thời lượng nghỉ (Input + Quick Pills)
-                          const Text(
-                            'Thời lượng nghỉ',
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                          Text(
+                            'attendance.correction.duration'.tr(),
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                           ),
                           const SizedBox(height: 6),
                           TextField(
@@ -428,16 +451,16 @@ void showAttendanceCorrectionDialog(
                             },
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            'Nhập số ngày hoặc giờ theo đơn vị của loại nghỉ; không tính OFF và lễ.',
-                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          Text(
+                            'attendance.correction.duration_hint'.tr(),
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                           ),
                           const SizedBox(height: 8),
 
                           // Quick Pills: Nửa ngày (0.5) | Cả ngày (1.0) | 1.5 ngày | 2 ngày (2.0)
                           Row(
                             children: [
-                              _buildQuickPill('0.5 ngày', 0.5, durationDays == 0.5, () {
+                              _buildQuickPill('attendance.correction.days_pill'.tr(args: {'value': '0.5'}), 0.5, durationDays == 0.5, () {
                                 setModalState(() {
                                   durationDays = 0.5;
                                   durationController.text = '0.5';
@@ -445,7 +468,7 @@ void showAttendanceCorrectionDialog(
                                 });
                               }),
                               const SizedBox(width: 6),
-                              _buildQuickPill('1.0 ngày', 1.0, durationDays == 1.0, () {
+                              _buildQuickPill('attendance.correction.days_pill'.tr(args: {'value': '1.0'}), 1.0, durationDays == 1.0, () {
                                 setModalState(() {
                                   durationDays = 1.0;
                                   durationController.text = '1.0';
@@ -453,7 +476,7 @@ void showAttendanceCorrectionDialog(
                                 });
                               }),
                               const SizedBox(width: 6),
-                              _buildQuickPill('1.5 ngày', 1.5, durationDays == 1.5, () {
+                              _buildQuickPill('attendance.correction.days_pill'.tr(args: {'value': '1.5'}), 1.5, durationDays == 1.5, () {
                                 setModalState(() {
                                   durationDays = 1.5;
                                   durationController.text = '1.5';
@@ -461,7 +484,7 @@ void showAttendanceCorrectionDialog(
                                 });
                               }),
                               const SizedBox(width: 6),
-                              _buildQuickPill('2.0 ngày', 2.0, durationDays == 2.0, () {
+                              _buildQuickPill('attendance.correction.days_pill'.tr(args: {'value': '2.0'}), 2.0, durationDays == 2.0, () {
                                 setModalState(() {
                                   durationDays = 2.0;
                                   durationController.text = '2.0';
@@ -494,18 +517,18 @@ void showAttendanceCorrectionDialog(
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Đăng ký chế độ Ứng phép / Cho phép Âm phép (tối đa 2 ngày)',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF854D0E)),
+                                        'attendance.correction.negative_title'.tr(),
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF854D0E)),
                                       ),
                                       SizedBox(height: 2),
                                       Text(
-                                        'Áp dụng khi số dư phép không đủ. Số ngày âm sẽ được tự động bù trừ khi có ngày tích phép mới hoặc trừ vào quyết toán thôi việc.',
-                                        style: TextStyle(fontSize: 11, color: Color(0xFFA16207), height: 1.3),
+                                        'attendance.correction.negative_desc'.tr(),
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFFA16207), height: 1.3),
                                       ),
                                     ],
                                   ),
@@ -516,9 +539,9 @@ void showAttendanceCorrectionDialog(
                           const SizedBox(height: 16),
 
                           // 6. Chứng từ (PDF, PNG, JPEG; tối đa 10 MB)
-                          const Text(
-                            'Chứng từ (PDF, PNG, JPEG; tối đa 10 MB)',
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                          Text(
+                            'attendance.correction.attachment'.tr(),
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                           ),
                           const SizedBox(height: 6),
                           InkWell(
@@ -542,7 +565,7 @@ void showAttendanceCorrectionDialog(
                                 debugPrint('Error picking file: $e');
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Không thể chọn tệp: $e')),
+                                    SnackBar(content: Text('attendance.correction.pick_file_error'.tr(args: {'error': '$e'}))),
                                   );
                                 }
                               }
@@ -562,12 +585,12 @@ void showAttendanceCorrectionDialog(
                                       color: const Color(0xFFE2E8F0),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: const Text('Chọn tệp', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                                    child: Text('attendance.correction.choose_file'.tr(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      selectedFileName ?? 'Không có tệp nào được chọn',
+                                      selectedFileName ?? 'attendance.correction.no_file'.tr(),
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: selectedFileName != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
@@ -589,9 +612,9 @@ void showAttendanceCorrectionDialog(
                           const SizedBox(height: 16),
 
                           // 7. Lý do khởi tạo đơn yêu cầu (*)
-                          const Text(
-                            'Lý do khởi tạo đơn yêu cầu *',
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                          Text(
+                            'attendance.correction.reason'.tr(),
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                           ),
                           const SizedBox(height: 6),
                           TextField(
@@ -599,7 +622,7 @@ void showAttendanceCorrectionDialog(
                             maxLines: 3,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
-                              hintText: 'Nhập chi tiết lý do và thông tin giải trình liên quan...',
+                              hintText: 'attendance.correction.reason_hint'.tr(),
                               hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                               filled: true,
                               fillColor: const Color(0xFFF8FAFC),
@@ -619,19 +642,19 @@ void showAttendanceCorrectionDialog(
                               color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Text(
-                                    'Quy trình áp dụng: Quy trình xét duyệt đơn từ nhân sự',
-                                    style: TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
+                                    'attendance.correction.process_note'.tr(),
+                                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569)),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 Text(
-                                  'Node S khởi tạo',
-                                  style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+                                  'attendance.correction.process_node'.tr(),
+                                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -705,7 +728,7 @@ void showAttendanceCorrectionDialog(
                             side: const BorderSide(color: Color(0xFFCBD5E1)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Hủy', style: TextStyle(fontSize: 12.5, color: Color(0xFF475569))),
+                          child: Text('common.cancel'.tr(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569))),
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton(
@@ -713,7 +736,7 @@ void showAttendanceCorrectionDialog(
                             Navigator.pop(ctx);
                             final fDate = '${fromDate.year}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}';
                             final tDate = '${toDate.year}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}';
-                            final draftReason = reasonController.text.trim().isEmpty ? '(Bản nháp)' : reasonController.text.trim();
+                            final draftReason = reasonController.text.trim().isEmpty ? 'attendance.correction.draft_placeholder'.tr() : reasonController.text.trim();
 
                             String kind = 'leave';
                             final lowerType = selectedLeaveType.toLowerCase();
@@ -797,8 +820,8 @@ void showAttendanceCorrectionDialog(
 
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('ÄÃ£ lÆ°u báº£n nhÃ¡p lÃªn há»‡ thá»‘ng thÃ nh cÃ´ng.'),
+                                SnackBar(
+                                  content: Text('attendance.correction.draft_saved'.tr()),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -815,7 +838,7 @@ void showAttendanceCorrectionDialog(
                             side: const BorderSide(color: Color(0xFFE2E8F0)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Lưu nháp', style: TextStyle(fontSize: 12.5, color: Color(0xFF334155))),
+                          child: Text('attendance.correction.save_draft'.tr(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155))),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -825,7 +848,7 @@ void showAttendanceCorrectionDialog(
                                 : () async {
                                     if (reasonController.text.trim().isEmpty) {
                                       setModalState(() {
-                                        modalErrorMessage = 'Vui lòng nhập lý do khởi tạo đơn yêu cầu.';
+                                        modalErrorMessage = 'attendance.correction.error_reason_required'.tr();
                                       });
                                       return;
                                     }
@@ -835,21 +858,26 @@ void showAttendanceCorrectionDialog(
                                     final daysSpan = cleanTo.difference(cleanFrom).inDays + 1;
                                     if (cleanFrom.isAfter(cleanTo)) {
                                       setModalState(() {
-                                        modalErrorMessage = 'Từ ngày không được lớn hơn Đến ngày.';
+                                        modalErrorMessage = 'attendance.correction.error_date_order'.tr();
                                       });
                                       return;
                                     }
 
                                     if (durationDays <= 0) {
                                       setModalState(() {
-                                        modalErrorMessage = 'Thời lượng nghỉ phải lớn hơn 0 ngày.';
+                                        modalErrorMessage = 'attendance.correction.error_duration_zero'.tr();
                                       });
                                       return;
                                     }
 
                                     if (durationDays > daysSpan.toDouble()) {
                                       setModalState(() {
-                                        modalErrorMessage = 'Khoảng thời gian từ ${fromDate.day.toString().padLeft(2, '0')}/${fromDate.month.toString().padLeft(2, '0')} đến ${toDate.day.toString().padLeft(2, '0')}/${toDate.month.toString().padLeft(2, '0')} là $daysSpan ngày, thời lượng nghỉ (${durationDays.toStringAsFixed(1)} ngày) không được vượt quá số ngày đã chọn.';
+                                        modalErrorMessage = 'attendance.correction.error_duration_exceeds'.tr(args: {
+                                          'from': '${fromDate.day.toString().padLeft(2, '0')}/${fromDate.month.toString().padLeft(2, '0')}',
+                                          'to': '${toDate.day.toString().padLeft(2, '0')}/${toDate.month.toString().padLeft(2, '0')}',
+                                          'span': daysSpan,
+                                          'duration': durationDays.toStringAsFixed(1),
+                                        });
                                       });
                                       return;
                                     }
@@ -927,7 +955,7 @@ void showAttendanceCorrectionDialog(
                                               children: [
                                                 const Icon(Icons.check_circle_outline, color: Colors.white),
                                                 const SizedBox(width: 8),
-                                                Expanded(child: Text('Đã gửi $selectedLeaveType lên cấp thẩm quyền phê duyệt thành công.')),
+                                                Expanded(child: Text('attendance.correction.submit_success'.tr(args: {'type': _leaveTypeLabel(selectedLeaveType)}))),
                                               ],
                                             ),
                                             backgroundColor: const Color(0xFF059669),
@@ -950,7 +978,7 @@ void showAttendanceCorrectionDialog(
                                   )
                                 : const Icon(Icons.send_rounded, size: 16),
                             label: Text(
-                              isSubmitting ? 'Đang gửi...' : 'Gửi duyệt đơn',
+                              isSubmitting ? 'attendance.correction.submitting'.tr() : 'attendance.correction.submit'.tr(),
                               style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                             ),
                             style: ElevatedButton.styleFrom(

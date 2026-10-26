@@ -21,6 +21,7 @@ import './home/components/home_organization_view.dart';
 import './home/components/home_desktop_users_view.dart';
 import './home/components/home_mobile_dashboard_view.dart';
 import './home/components/home_desktop_dashboard_view.dart';
+import '../core/i18n/app_i18n.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -108,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ph�n h? "$key" dang chu?n b? kh?i ch?y.')),
+        SnackBar(content: Text('home_shell.module_preparing'.tr(args: {'key': key}))),
       );
     }
   }
@@ -118,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 1024;
     final authProvider = context.watch<AuthProvider>();
-    final userName = authProvider.fullName ?? 'Qu?n tr? vi�n';
+    final userName = authProvider.fullName ?? 'home_shell.default_admin'.tr();
     final userInitials = userName.isNotEmpty ? userName[0].toUpperCase() : 'A';
     final tenantDisplay = (authProvider.tenantSlug ?? 'svn').toUpperCase();
 
@@ -192,20 +193,20 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // Tab 0: Trang ch?
+                  // Tab 0: Trang chủ
                   _buildBottomNavItem(
                     icon: Icons.home_outlined,
                     activeIcon: Icons.home,
-                    label: 'Trang ch?',
+                    label: 'home_shell.nav.home'.tr(),
                     isSelected: _mobileNavIndex == 0,
                     onTap: () => setState(() => _mobileNavIndex = 0),
                   ),
 
-                  // Tab 1: Ph�n h?
+                  // Tab 1: Phân hệ
                   _buildBottomNavItem(
                     icon: Icons.apps_outlined,
                     activeIcon: Icons.apps,
-                    label: 'Ph�n h?',
+                    label: 'home_shell.nav.modules'.tr(),
                     isSelected: _mobileNavIndex == 1,
                     onTap: () => setState(() => _mobileNavIndex = 1),
                   ),
@@ -221,23 +222,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildBottomNavItem(
                     icon: Icons.account_tree_outlined,
                     activeIcon: Icons.account_tree,
-                    label: 'So d? t? ch?c',
+                    label: 'home_shell.nav.org'.tr(),
                     isSelected: _mobileNavIndex == 2,
                     onTap: () => setState(() => _mobileNavIndex = 2),
                   ),
 
-                  // Tab 3: T�i kho?n
+                  // Tài khoản
                   _buildBottomNavItem(
                     icon: Icons.person_outline,
                     activeIcon: Icons.person,
-                    label: 'T�i kho?n',
+                    label: 'home_shell.nav.account'.tr(),
                     isSelected: _mobileNavIndex == 3,
                     onTap: () => setState(() => _mobileNavIndex = 3),
                   ),
                 ],
               ),
 
-              // Raised Center Button: Ch?m c�ng
+              // Raised Center Button: Chấm công
               Positioned(
                 top: -18,
                 child: GestureDetector(
@@ -275,8 +276,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        'Ch?m c�ng',
+                      Text(
+                        'home_shell.nav.attendance'.tr(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -376,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================================
-  // MOBILE VIEW 3: SO �? T? CH?C (ORGANIZATION STRUCTURE)
+  // MOBILE VIEW 3: SƠ ĐỒ TỔ CHỨC (ORGANIZATION STRUCTURE)
   // ==========================================
   Widget _buildMobilePeopleView() {
     return SingleChildScrollView(
@@ -435,17 +436,17 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (_desktopTab) {
       case 'Dashboard':
         return _buildDashboardView(userName);
-      case '?ng d?ng':
+      case 'Ứng dụng':
         return _buildApplicationsView();
-      case 'So d? t? ch?c':
+      case 'Sơ đồ tổ chức':
         return _buildOrganizationView();
-      case 'Ngu?i d�ng':
+      case 'Người dùng':
         return _buildUsersView();
-      case 'Vai tr� & Ph�n quy?n':
+      case 'Vai trò & Phân quyền':
         return const RolePermissionScreen();
-      case 'B�o c�o':
+      case 'Báo cáo':
         return const MainAnalysisScreen();
-      case 'C�i d?t':
+      case 'Cài đặt':
         return _buildSettingsView();
       default:
         return _buildDashboardView(userName);
@@ -489,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        'Tenant Admin - $tenantDisplay',
+                        'home_shell.tenant_admin_label'.tr(args: {'tenant': tenantDisplay}),
                         style: const TextStyle(color: AppColors.slate400, fontSize: 11),
                       ),
                     ],
@@ -504,31 +505,31 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
                 _buildDesktopMenuItem('Dashboard', Icons.dashboard_outlined),
-                _buildDesktopMenuItem('?ng d?ng', Icons.apps_outlined),
-                _buildDesktopMenuItem('So d? t? ch?c', Icons.account_tree_outlined),
-                _buildDesktopMenuItem('Ngu?i d�ng', Icons.people_outline),
-                _buildDesktopMenuItem('Vai tr� & Ph�n quy?n', Icons.verified_user_outlined),
+                _buildDesktopMenuItem('Ứng dụng', Icons.apps_outlined),
+                _buildDesktopMenuItem('Sơ đồ tổ chức', Icons.account_tree_outlined),
+                _buildDesktopMenuItem('Người dùng', Icons.people_outline),
+                _buildDesktopMenuItem('Vai trò & Phân quyền', Icons.verified_user_outlined),
 
                 const SizedBox(height: 8),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   child: Text(
-                    'PH�N H? NGHI?P V?',
+                    'home_shell.section_modules'.tr(),
                     style: TextStyle(color: AppColors.slate500, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                   ),
                 ),
-                _buildModuleShortcut('D? �n (Workspace)', Icons.work_outline, 'workspace'),
-                _buildModuleShortcut('Quy tr�nh (Workflow)', Icons.account_tree, 'procedure'),
-                _buildModuleShortcut('Kho v?t tu (Inventory)', Icons.inventory_2, 'inventory'),
-                _buildModuleShortcut('B?o tr� (Maintenance)', Icons.build, 'maintenance'),
-                _buildModuleShortcut('Ch?t lu?ng di?n (Analysis)', Icons.analytics, 'power-quality'),
+                _buildModuleShortcut('home_shell.shortcut.workspace'.tr(), Icons.work_outline, 'workspace'),
+                _buildModuleShortcut('home_shell.shortcut.procedure'.tr(), Icons.account_tree, 'procedure'),
+                _buildModuleShortcut('home_shell.shortcut.inventory'.tr(), Icons.inventory_2, 'inventory'),
+                _buildModuleShortcut('home_shell.shortcut.maintenance'.tr(), Icons.build, 'maintenance'),
+                _buildModuleShortcut('home_shell.shortcut.analysis'.tr(), Icons.analytics, 'power-quality'),
 
                 const SizedBox(height: 8),
                 const Divider(color: AppColors.slate800, height: 1),
                 const SizedBox(height: 8),
 
-                _buildDesktopMenuItem('B�o c�o', Icons.assessment_outlined),
-                _buildDesktopMenuItem('C�i d?t', Icons.settings_outlined),
+                _buildDesktopMenuItem('Báo cáo', Icons.assessment_outlined),
+                _buildDesktopMenuItem('Cài đặt', Icons.settings_outlined),
               ],
             ),
           ),
@@ -553,13 +554,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   border: Border.all(color: AppColors.slate800),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.logout, color: Colors.white60, size: 18),
                     SizedBox(width: 8),
                     Text(
-                      '�ang xu?t',
+                      'home_shell.logout'.tr(),
                       style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -572,6 +573,27 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _tabLabel(String id) {
+    switch (id) {
+      case 'Dashboard':
+        return 'home_shell.tab.dashboard'.tr();
+      case 'Ứng dụng':
+        return 'home_shell.tab.apps'.tr();
+      case 'Sơ đồ tổ chức':
+        return 'home_shell.tab.org'.tr();
+      case 'Người dùng':
+        return 'home_shell.tab.users'.tr();
+      case 'Vai trò & Phân quyền':
+        return 'home_shell.tab.roles'.tr();
+      case 'Báo cáo':
+        return 'home_shell.tab.reports'.tr();
+      case 'Cài đặt':
+        return 'home_shell.tab.settings'.tr();
+      default:
+        return id;
+    }
+  }
+
   Widget _buildDesktopMenuItem(String title, IconData icon) {
     final isActive = _desktopTab == title;
     return Container(
@@ -580,7 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
         dense: true,
         leading: Icon(icon, color: isActive ? Colors.white : AppColors.slate400, size: 18),
         title: Text(
-          title,
+          _tabLabel(title),
           style: TextStyle(
             color: isActive ? Colors.white : AppColors.slate300,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
@@ -624,7 +646,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             children: [
               Text(
-                _desktopTab,
+                _tabLabel(_desktopTab),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800),
               ),
             ],
@@ -633,7 +655,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.refresh, color: AppColors.slate600, size: 20),
-                tooltip: 'T?i l?i d? li?u',
+                tooltip: 'home_shell.reload_data'.tr(),
                 onPressed: _loadAllPlatformData,
               ),
               const SizedBox(width: 8),
@@ -701,9 +723,9 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 40),
           Icon(Icons.settings_outlined, size: 48, color: AppColors.slate300),
           const SizedBox(height: 12),
-          const Text('Cài đặt Không gian làm việc', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800)),
+          Text('home_shell.settings.title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800)),
           const SizedBox(height: 4),
-          const Text('C?u h�nh d?nh danh tenant v� ch�nh s�ch b?o m?t.', style: TextStyle(fontSize: 12, color: AppColors.slate500)),
+          Text('home_shell.settings.subtitle'.tr(), style: TextStyle(fontSize: 12, color: AppColors.slate500)),
         ],
       ),
     );

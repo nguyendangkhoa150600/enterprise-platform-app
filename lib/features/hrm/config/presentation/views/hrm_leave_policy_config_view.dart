@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../services/hrm_service.dart';
 import '../../../../../screens/leave_balances_screen.dart';
 
@@ -41,6 +42,21 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
     _seniorityExtraDaysCtrl.dispose();
     _leaveChangeNoteCtrl.dispose();
     super.dispose();
+  }
+
+  String _basisLabel(String basis) {
+    switch (basis) {
+      case 'Ngày ký HĐLĐ':
+        return 'hrm_config.leave.basis.contract'.tr();
+      case 'Ngày vào làm chính thức':
+        return 'hrm_config.leave.basis.official'.tr();
+      case 'Ngày bắt đầu thử việc':
+        return 'hrm_config.leave.basis.probation'.tr();
+      case 'Ngày 01/01 hàng năm':
+        return 'hrm_config.leave.basis.jan1'.tr();
+      default:
+        return basis;
+    }
   }
 
   Future<void> refreshPolicy() async {
@@ -137,8 +153,8 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
   Future<void> _handleSaveLeavePolicy() async {
     if (_leaveChangeNoteCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập ghi chú thay đổi (bắt buộc) để lưu nhật ký kiểm toán.'),
+        SnackBar(
+          content: Text('hrm_config.leave.err.note_required'.tr()),
           backgroundColor: Color(0xFFDC2626),
           duration: Duration(seconds: 3),
         ),
@@ -170,7 +186,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
         if (res.isSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(res.message.isNotEmpty ? res.message : 'Đã lưu thay đổi chính sách phép năm thành công lên hệ thống!'),
+              content: Text(res.message.isNotEmpty ? res.message : 'hrm_config.leave.saved'.tr()),
               backgroundColor: const Color(0xFF059669),
               duration: const Duration(seconds: 3),
             ),
@@ -191,7 +207,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
         setState(() => _isSavingLeavePolicy = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi kết nối khi lưu chính sách: $e'),
+            content: Text('hrm_config.leave.err.connection'.tr(args: {'error': e})),
             backgroundColor: const Color(0xFFDC2626),
             duration: const Duration(seconds: 4),
           ),
@@ -205,29 +221,29 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.access_time_rounded, size: 20, color: Color(0xFF2563EB)),
             SizedBox(width: 8),
-            Text('Cộng phép tháng', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            Text('hrm_config.leave.accrual.title'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text(
-          'Hệ thống sẽ thực hiện cộng phép tháng 10/2026 cho toàn bộ nhân viên đủ điều kiện theo chính sách hiện hành.\n\nBút toán cộng phép sẽ được ghi lại vào Sổ cái nhân sự.',
+        content: Text(
+          'hrm_config.leave.accrual.confirm_body'.tr(),
           style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã hoàn thành cộng phép tháng 10/2026 cho 45 nhân viên đủ điều kiện.'),
+                SnackBar(
+                  content: Text('hrm_config.leave.accrual.done'.tr()),
                   backgroundColor: Color(0xFF059669),
                   duration: Duration(seconds: 3),
                 ),
@@ -238,7 +254,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Xác nhận chạy', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('hrm_config.leave.accrual.confirm_run'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -250,29 +266,29 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, size: 20, color: Color(0xFFDC2626)),
             SizedBox(width: 8),
-            Text('Chốt phép cuối năm', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            Text('hrm_config.leave.yearend.title'.tr(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text(
-          'Thao tác này sẽ thực hiện chốt sổ cuối năm: reset phần phép còn lại của năm hiện tại về 0 cho tất cả nhân viên (không chuyển phép sang năm sau).\n\nBạn có chắc chắn muốn thực hiện?',
+        content: Text(
+          'hrm_config.leave.yearend.confirm_body'.tr(),
           style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã hoàn tất tác vụ chốt sổ phép cuối năm!'),
+                SnackBar(
+                  content: Text('hrm_config.leave.yearend.done'.tr()),
                   backgroundColor: Color(0xFF059669),
                   duration: Duration(seconds: 3),
                 ),
@@ -283,7 +299,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Xác nhận chốt phép', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('hrm_config.leave.yearend.confirm'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -318,12 +334,12 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Chính sách phép năm',
+                          'hrm_config.leave.title'.tr(),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -332,7 +348,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Thiết lập nguyên tắc tính và tích lũy phép năm áp dụng cho nhân viên.',
+                          'hrm_config.leave.subtitle'.tr(),
                           style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
                         ),
                       ],
@@ -358,8 +374,8 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                           ),
                         ),
                         const SizedBox(width: 5),
-                        const Text(
-                          'Đang áp dụng',
+                        Text(
+                          'hrm_config.leave.status.in_effect'.tr(),
                           style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                         ),
                       ],
@@ -404,16 +420,16 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     child: const Icon(Icons.menu_book_outlined, size: 18, color: Color(0xFFD97706)),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Tóm tắt chính sách',
+                          'hrm_config.leave.summary.title'.tr(),
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         Text(
-                          'Thông tin tóm tắt quy tắc phép năm hiện tại.',
+                          'hrm_config.leave.summary.subtitle'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -436,32 +452,32 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                       icon: Icons.calendar_month_outlined,
                       iconColor: const Color(0xFF2563EB),
                       iconBg: const Color(0xFFEFF6FF),
-                      label: 'Phép cơ bản',
-                      value: '${_leaveDaysPerYearCtrl.text} ngày mỗi năm',
+                      label: 'hrm_config.leave.summary.base'.tr(),
+                      value: 'hrm_config.leave.summary.days_per_year'.tr(args: {'count': _leaveDaysPerYearCtrl.text}),
                     ),
                     const Divider(height: 1, color: Color(0xFFE2E8F0), indent: 46),
                     _buildLeaveSummaryRow(
                       icon: Icons.access_time_rounded,
                       iconColor: const Color(0xFF059669),
                       iconBg: const Color(0xFFECFDF5),
-                      label: 'Bắt đầu tích lũy',
-                      value: 'Theo $_leaveBasis',
+                      label: 'hrm_config.leave.summary.accrual_start'.tr(),
+                      value: 'hrm_config.leave.summary.by_basis'.tr(args: {'basis': _basisLabel(_leaveBasis)}),
                     ),
                     const Divider(height: 1, color: Color(0xFFE2E8F0), indent: 46),
                     _buildLeaveSummaryRow(
                       icon: Icons.people_alt_outlined,
                       iconColor: const Color(0xFF7C3AED),
                       iconBg: const Color(0xFFF5F3FF),
-                      label: 'Phép thâm niên',
-                      value: 'Mỗi ${_seniorityCycleYearsCtrl.text} năm +${_seniorityExtraDaysCtrl.text} ngày',
+                      label: 'hrm_config.leave.summary.seniority'.tr(),
+                      value: 'hrm_config.leave.summary.seniority_rule'.tr(args: {'years': _seniorityCycleYearsCtrl.text, 'days': _seniorityExtraDaysCtrl.text}),
                     ),
                     const Divider(height: 1, color: Color(0xFFE2E8F0), indent: 46),
                     _buildLeaveSummaryRow(
                       icon: Icons.swap_horiz_rounded,
                       iconColor: const Color(0xFFEA580C),
                       iconBg: const Color(0xFFFFF7ED),
-                      label: 'Chuyển phép cuối năm',
-                      value: 'Không chuyển sang năm sau',
+                      label: 'hrm_config.leave.summary.carry_over'.tr(),
+                      value: 'hrm_config.leave.summary.no_carry_over'.tr(),
                     ),
                   ],
                 ),
@@ -476,16 +492,14 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFBFDBFE)),
                 ),
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.info_outline, size: 16, color: Color(0xFF2563EB)),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Chính sách này áp dụng cho toàn bộ nhân viên trong công ty. Phép năm không chuyển sang năm sau: phần còn lại cuối năm được reset về 0.\n\n'
-                        'Áp dụng cho lý do nghỉ Nghỉ phép năm (PHEP_NAM); chỉ lý do này trừ quỹ phép năm.\n\n'
-                        'Đang áp dụng từ ngày 01/01/2026 (cập nhật lúc 14/10/2026 17:45).',
+                        'hrm_config.leave.info.body'.tr(),
                         style: TextStyle(fontSize: 11, color: Color(0xFF1E3A8A), height: 1.35),
                       ),
                     ),
@@ -529,16 +543,16 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     child: const Icon(Icons.calculate_outlined, size: 18, color: Color(0xFF2563EB)),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Cách tính phép',
+                          'hrm_config.leave.calc.title'.tr(),
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         Text(
-                          'Chọn mốc thời gian và số ngày phép năm cơ bản cho toàn bộ nhân viên.',
+                          'hrm_config.leave.calc.subtitle'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -549,7 +563,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
               const Divider(height: 24, color: Color(0xFFF1F5F9)),
 
               // Field 1: Căn cứ tính phép *
-              _buildFormLabel('Căn cứ tính phép', isRequired: true),
+              _buildFormLabel('hrm_config.leave.calc.basis'.tr(), isRequired: true),
               const SizedBox(height: 6),
               Container(
                 height: 42,
@@ -567,11 +581,11 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     borderRadius: BorderRadius.circular(10),
                     icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFF64748B)),
                     style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                    items: const [
-                      DropdownMenuItem(value: 'Ngày ký HĐLĐ', child: Text('Ngày ký HĐLĐ')),
-                      DropdownMenuItem(value: 'Ngày vào làm chính thức', child: Text('Ngày vào làm chính thức')),
-                      DropdownMenuItem(value: 'Ngày bắt đầu thử việc', child: Text('Ngày bắt đầu thử việc')),
-                      DropdownMenuItem(value: 'Ngày 01/01 hàng năm', child: Text('Ngày 01/01 hàng năm')),
+                    items: [
+                      DropdownMenuItem(value: 'Ngày ký HĐLĐ', child: Text('hrm_config.leave.basis.contract'.tr())),
+                      DropdownMenuItem(value: 'Ngày vào làm chính thức', child: Text('hrm_config.leave.basis.official'.tr())),
+                      DropdownMenuItem(value: 'Ngày bắt đầu thử việc', child: Text('hrm_config.leave.basis.probation'.tr())),
+                      DropdownMenuItem(value: 'Ngày 01/01 hàng năm', child: Text('hrm_config.leave.basis.jan1'.tr())),
                     ],
                     onChanged: (val) {
                       if (val != null) setState(() => _leaveBasis = val);
@@ -580,14 +594,14 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Mốc thời gian để bắt đầu tính và tích lũy phép năm.',
+              Text(
+                'hrm_config.leave.calc.basis_hint'.tr(),
                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 14),
 
               // Field 2: Số ngày phép mỗi năm *
-              _buildFormLabel('Số ngày phép mỗi năm', isRequired: true),
+              _buildFormLabel('hrm_config.leave.calc.days_per_year'.tr(), isRequired: true),
               const SizedBox(height: 6),
               Container(
                 height: 42,
@@ -607,14 +621,14 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Cộng mỗi tháng 1 ngày (số ngày một năm chia 12).',
+              Text(
+                'hrm_config.leave.calc.days_hint'.tr(),
                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 14),
 
               // Field 3: Bắt đầu cộng sau (tháng) *
-              _buildFormLabel('Bắt đầu cộng sau (tháng)', isRequired: true),
+              _buildFormLabel('hrm_config.leave.calc.start_after'.tr(), isRequired: true),
               const SizedBox(height: 6),
               Container(
                 height: 42,
@@ -634,8 +648,8 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Số tháng kể từ mốc trên để bắt đầu cộng (0 là cộng ngay từ tháng căn cứ).',
+              Text(
+                'hrm_config.leave.calc.start_after_hint'.tr(),
                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 14),
@@ -650,17 +664,17 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                 ),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Cho ứng phép',
+                            'hrm_config.leave.calc.allow_advance'.tr(),
                             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Được dùng trước phần phép chưa cộng, đến hết năm.',
+                            'hrm_config.leave.calc.allow_advance_hint'.tr(),
                             style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                           ),
                         ],
@@ -711,16 +725,16 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     child: const Icon(Icons.layers_outlined, size: 18, color: Color(0xFFD97706)),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Phép thâm niên',
+                          'hrm_config.leave.summary.seniority'.tr(),
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         Text(
-                          'Cộng thêm số ngày phép theo thâm niên làm việc.',
+                          'hrm_config.leave.seniority.subtitle'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -736,7 +750,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildFormLabel('Chu kỳ thâm niên (năm)'),
+                        _buildFormLabel('hrm_config.leave.seniority.cycle'.tr()),
                         const SizedBox(height: 6),
                         Container(
                           height: 42,
@@ -749,10 +763,10 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                             controller: _seniorityCycleYearsCtrl,
                             keyboardType: TextInputType.number,
                             style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                              suffixText: 'năm',
+                              suffixText: 'hrm_config.leave.unit.year'.tr(),
                               suffixStyle: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                             ),
                           ),
@@ -765,7 +779,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildFormLabel('Phép cộng thêm mỗi chu kỳ'),
+                        _buildFormLabel('hrm_config.leave.seniority.extra'.tr()),
                         const SizedBox(height: 6),
                         Container(
                           height: 42,
@@ -778,10 +792,10 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                             controller: _seniorityExtraDaysCtrl,
                             keyboardType: TextInputType.number,
                             style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                              suffixText: 'ngày',
+                              suffixText: 'hrm_config.leave.unit.day'.tr(),
                               suffixStyle: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                             ),
                           ),
@@ -801,14 +815,14 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.info_outline, size: 16, color: Color(0xFF64748B)),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Cứ đủ mỗi chu kỳ N năm kể từ ngày căn cứ thì được cộng thêm M ngày phép mỗi năm, lặp lại theo chu kỳ (ví dụ 5 năm +1; đủ 5 năm +1, đủ 10 năm +2, đủ 15 năm +3). Để trống cả hai ô nếu không áp dụng phép thâm niên.',
+                        'hrm_config.leave.seniority.explain'.tr(),
                         style: TextStyle(fontSize: 11, color: Color(0xFF475569), height: 1.35),
                       ),
                     ),
@@ -852,16 +866,16 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     child: const Icon(Icons.description_outlined, size: 18, color: Color(0xFF7C3AED)),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Hiệu lực & ghi chú',
+                          'hrm_config.leave.effect.title'.tr(),
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         Text(
-                          'Thiết lập thời gian áp dụng và ghi chú thay đổi chính sách.',
+                          'hrm_config.leave.effect.subtitle'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -872,7 +886,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
               const Divider(height: 24, color: Color(0xFFF1F5F9)),
 
               // Field 1: Áp dụng từ năm
-              _buildFormLabel('Áp dụng từ năm'),
+              _buildFormLabel('hrm_config.leave.effect.apply_year'.tr()),
               const SizedBox(height: 6),
               Container(
                 height: 42,
@@ -890,8 +904,8 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     borderRadius: BorderRadius.circular(10),
                     icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFF64748B)),
                     style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                    items: const [
-                      DropdownMenuItem(value: 'Tự động', child: Text('Tự động')),
+                    items: [
+                      DropdownMenuItem(value: 'Tự động', child: Text('hrm_config.leave.basis.auto'.tr())),
                       DropdownMenuItem(value: '2026', child: Text('2026')),
                       DropdownMenuItem(value: '2027', child: Text('2027')),
                     ],
@@ -902,14 +916,14 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Chính sách luôn có hiệu lực từ ngày 01/01. Để trống thì áp dụng từ 01/01 năm nay. Khi lưu, quỹ phép đã ghi sổ của năm áp dụng được tính lại theo chính sách mới.',
+              Text(
+                'hrm_config.leave.effect.apply_year_hint'.tr(),
                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
               ),
               const SizedBox(height: 14),
 
               // Field 2: Ghi chú thay đổi *
-              _buildFormLabel('Ghi chú thay đổi', isRequired: true),
+              _buildFormLabel('hrm_config.leave.effect.note'.tr(), isRequired: true),
               const SizedBox(height: 6),
               Container(
                 decoration: BoxDecoration(
@@ -923,8 +937,8 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                   maxLength: 1000,
                   onChanged: (_) => setState(() {}),
                   style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)),
-                  decoration: const InputDecoration(
-                    hintText: 'Ví dụ: Tăng phép năm lên 14 ngày theo quy chế mới...',
+                  decoration: InputDecoration(
+                    hintText: 'hrm_config.leave.effect.note_hint'.tr(),
                     hintStyle: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.all(12),
@@ -932,8 +946,8 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                 ),
               ),
               const SizedBox(height: 2),
-              const Text(
-                'Ghi rõ nội dung thay đổi để dễ theo dõi (lưu vào nhật ký kiểm toán).',
+              Text(
+                'hrm_config.leave.effect.note_help'.tr(),
                 style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 16),
@@ -947,7 +961,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.save_rounded, size: 16),
                   label: Text(
-                    _isSavingLeavePolicy ? 'Đang lưu...' : 'Lưu thay đổi chính sách',
+                    _isSavingLeavePolicy ? 'hrm_config.leave.saving'.tr() : 'hrm_config.leave.save_policy'.tr(),
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -995,16 +1009,16 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                     child: const Icon(Icons.event_repeat_rounded, size: 18, color: Color(0xFF059669)),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Tác vụ định kỳ',
+                          'hrm_config.leave.periodic.title'.tr(),
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         Text(
-                          'Chạy thủ công khi cần. Mọi bút toán được ghi vào sổ giao dịch.',
+                          'hrm_config.leave.periodic.subtitle'.tr(),
                           style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -1034,17 +1048,17 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                       child: const Icon(Icons.access_time_rounded, size: 18, color: Color(0xFF0F172A)),
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Cộng phép tháng',
+                            'hrm_config.leave.accrual.title'.tr(),
                             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Cộng phép của một tháng (kể cả tháng hiện tại) cho mọi nhân viên đủ điều kiện.',
+                            'hrm_config.leave.accrual.desc'.tr(),
                             style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.25),
                           ),
                         ],
@@ -1060,7 +1074,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       ),
-                      child: const Text('Chạy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: Text('hrm_config.leave.run'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -1087,17 +1101,17 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                       child: const Icon(Icons.restart_alt_rounded, size: 18, color: Color(0xFF0F172A)),
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Chốt phép cuối năm',
+                            'hrm_config.leave.yearend.title'.tr(),
                             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Chốt phép cuối năm: reset phần còn lại về 0, không chuyển phép sang năm sau.',
+                            'hrm_config.leave.yearend.desc'.tr(),
                             style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.25),
                           ),
                         ],
@@ -1113,7 +1127,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       ),
-                      child: const Text('Chạy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: Text('hrm_config.leave.run'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -1133,7 +1147,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
-          child: const Row(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.warning_amber_rounded, size: 20, color: Color(0xFFD97706)),
@@ -1143,12 +1157,12 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Lưu ý khi thay đổi',
+                      'hrm_config.leave.notice.title'.tr(),
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
                     ),
                     SizedBox(height: 3),
                     Text(
-                      'Việc thay đổi cấu hình có thể ảnh hưởng đến số phép tích lũy và cách tính phép của nhân viên trong tương lai. Vui lòng kiểm tra kỹ trước khi lưu thay đổi.',
+                      'hrm_config.leave.notice.body'.tr(),
                       style: TextStyle(fontSize: 11, color: Color(0xFFB45309), height: 1.35),
                     ),
                   ],
@@ -1167,7 +1181,7 @@ class HrmLeavePolicyConfigViewState extends State<HrmLeavePolicyConfigView> {
           child: ElevatedButton.icon(
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaveBalancesScreen())),
             icon: const Icon(Icons.account_balance_wallet_outlined, size: 16),
-            label: const Text('Xem Quỹ phép & Sổ cái nhân sự', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+            label: Text('hrm_config.leave.view_ledger'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
               foregroundColor: Colors.white,

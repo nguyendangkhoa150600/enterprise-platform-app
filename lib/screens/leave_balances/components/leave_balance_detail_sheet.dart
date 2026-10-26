@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_leave_balance_models.dart';
 import '../../../services/hrm_service.dart';
 
@@ -98,7 +99,7 @@ class _LeaveBalanceDetailSheetState extends State<LeaveBalanceDetailSheet> {
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       Text(
-                        '${b.employeeCode} · ${b.department ?? 'Chưa có phòng ban'} · Năm ${b.year}',
+                        'leave.detail.subtitle'.tr(args: {'code': b.employeeCode, 'dept': b.department ?? 'leave.detail.no_department'.tr(), 'year': b.year}),
                         style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -120,11 +121,11 @@ class _LeaveBalanceDetailSheetState extends State<LeaveBalanceDetailSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildHeaderMetric('Định mức', _formatNumber(b.entitlement)),
-                _buildHeaderMetric('Thâm niên', '+${_formatNumber(b.seniorityDays)}', color: const Color(0xFF059669)),
-                _buildHeaderMetric('Chuyển tiếp', _formatNumber(b.carryover)),
-                _buildHeaderMetric('Đã dùng', _formatNumber(b.used), color: const Color(0xFFDC2626)),
-                _buildHeaderMetric('Còn lại', '${_formatNumber(b.remaining)} ngày',
+                _buildHeaderMetric('leave.card.entitlement'.tr(), _formatNumber(b.entitlement)),
+                _buildHeaderMetric('leave.card.seniority'.tr(), '+${_formatNumber(b.seniorityDays)}', color: const Color(0xFF059669)),
+                _buildHeaderMetric('leave.detail.carryover'.tr(), _formatNumber(b.carryover)),
+                _buildHeaderMetric('leave.card.used'.tr(), _formatNumber(b.used), color: const Color(0xFFDC2626)),
+                _buildHeaderMetric('leave.card.remaining'.tr(), 'leave.days_changed'.tr(args: {'days': _formatNumber(b.remaining)}),
                     color: b.remaining > 0 ? const Color(0xFF059669) : const Color(0xFFDC2626), isBold: true),
               ],
             ),
@@ -138,13 +139,13 @@ class _LeaveBalanceDetailSheetState extends State<LeaveBalanceDetailSheet> {
               children: [
                 const Icon(Icons.receipt_long_outlined, size: 16, color: Color(0xFF0F172A)),
                 const SizedBox(width: 6),
-                const Text(
-                  'Lịch sử giao dịch quỹ phép',
+                Text(
+                  'leave.detail.history_title'.tr(),
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                 ),
                 const Spacer(),
                 Text(
-                  '${_transactions.length} giao dịch',
+                  'leave.detail.tx_count'.tr(args: {'count': _transactions.length}),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
               ],
@@ -156,8 +157,8 @@ class _LeaveBalanceDetailSheetState extends State<LeaveBalanceDetailSheet> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFFD9AB00)))
                 : _transactions.isEmpty
-                    ? const Center(
-                        child: Text('Chưa có phát sinh giao dịch nào', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5)),
+                    ? Center(
+                        child: Text('leave.detail.history_empty'.tr(), style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5)),
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.all(14),
@@ -215,7 +216,7 @@ class _LeaveBalanceDetailSheetState extends State<LeaveBalanceDetailSheet> {
                                       ),
                                     ),
                                     Text(
-                                      'Dư: ${_formatNumber(tx.safeBalanceAfter)}',
+                                      'leave.detail.balance'.tr(args: {'value': _formatNumber(tx.safeBalanceAfter)}),
                                       style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                                     ),
                                   ],

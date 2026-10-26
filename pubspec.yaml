@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -39,7 +41,7 @@ dependencies:
   dio: ^5.8.0+1
   file_picker: ^8.1.7
   excel: any
-  intl: ^0.19.0
+  intl: ^0.20.2
   flutter_screenutil: ^5.9.3
   path_provider: any
   shared_preferences: ^2.5.5
@@ -67,6 +69,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/translations/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

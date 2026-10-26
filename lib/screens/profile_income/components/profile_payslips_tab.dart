@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../features/payroll/widgets/payslip_item_card.dart';
 import '../../../widgets/hrm_payslip_modals.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 class ProfilePayslipsTabContent extends StatelessWidget {
   final List<dynamic> payslips;
@@ -56,18 +57,18 @@ class ProfilePayslipsTabContent extends StatelessWidget {
                     child: const Icon(Icons.receipt_long_rounded, size: 22, color: Color(0xFF2563EB)),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Phiếu lương Cá nhân',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                          'profile.payslips.title'.tr(),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          'Xem chi tiết cấu thành thu nhập, các khoản khấu trừ bảo hiểm, thuế TNCN và thực lĩnh theo từng kỳ đã phát hành.',
-                          style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
+                          'profile.payslips.subtitle'.tr(),
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
                         ),
                       ],
                     ),
@@ -89,17 +90,17 @@ class ProfilePayslipsTabContent extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'KỲ NHẬN LƯƠNG (${payslips.length})',
+                    'profile.payslips.periods_header'.tr(args: {'count': payslips.length}),
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569), letterSpacing: 0.5),
                   ),
                   InkWell(
                     onTap: onRefresh,
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.refresh_rounded, size: 14, color: Color(0xFF2563EB)),
-                        SizedBox(width: 4),
-                        Text('Làm mới', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
+                        const Icon(Icons.refresh_rounded, size: 14, color: Color(0xFF2563EB)),
+                        const SizedBox(width: 4),
+                        Text('common.refresh'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -109,10 +110,10 @@ class ProfilePayslipsTabContent extends StatelessWidget {
             const SizedBox(height: 12),
 
             if (payslips.isEmpty)
-              const EmptyStateView(
+              EmptyStateView(
                 icon: Icons.receipt_outlined,
-                title: 'Chưa có phiếu lương được phát hành.',
-                subtitle: 'Khi phòng Kế toán / Nhân sự khóa sổ kỳ lương và phát hành phiếu lương, bạn sẽ nhận được thông báo và xem chi tiết tại đây.',
+                title: 'profile.payslips.empty_title'.tr(),
+                subtitle: 'profile.payslips.empty_subtitle'.tr(),
               )
             else
               ListView.separated(

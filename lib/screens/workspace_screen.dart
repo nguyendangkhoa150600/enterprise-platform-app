@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/workspace_models.dart';
 import '../services/workspace_service.dart';
 import 'workspace/components/workspace_sheets.dart';
@@ -121,18 +122,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          tooltip: 'Quay lại',
+          tooltip: 'common.back'.tr(),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _activeTab == 0 ? 'Quản lý Dự án' : (_activeTab == 1 ? 'Khách hàng & Hợp đồng' : 'Việc ngoài dự án'),
+              _activeTab == 0 ? 'workspace.title.projects'.tr() : (_activeTab == 1 ? 'workspace.title.customers'.tr() : 'workspace.title.adhoc'.tr()),
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
-            const Text(
-              'SVN DTS / Không gian làm việc',
+            Text(
+              'workspace.header.breadcrumb'.tr(),
               style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
@@ -140,7 +141,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _reloadTab,
           ),
         ],
@@ -162,7 +163,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   Expanded(
                     child: _buildNavTab(
                       index: 0,
-                      label: 'Dự án',
+                      label: 'workspace.tab.projects'.tr(),
                       icon: Icons.folder_open_rounded,
                       badge: _projects.isNotEmpty ? '${_projects.length}' : null,
                     ),
@@ -171,7 +172,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   Expanded(
                     child: _buildNavTab(
                       index: 1,
-                      label: 'Khách hàng',
+                      label: 'workspace.tab.customers'.tr(),
                       icon: Icons.business_outlined,
                       badge: _customers.isNotEmpty ? '${_customers.length}' : null,
                     ),
@@ -180,7 +181,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   Expanded(
                     child: _buildNavTab(
                       index: 2,
-                      label: 'Việc giao lẻ',
+                      label: 'workspace.tab.adhoc'.tr(),
                       icon: Icons.assignment_outlined,
                       badge: _tasks.isNotEmpty ? '${_tasks.length}' : null,
                     ),
@@ -214,7 +215,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add, size: 20),
-        label: const Text('Thêm khách hàng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        label: Text('workspace.action.add_customer'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
         onPressed: _showCreateCustomerDialog,
       );
     } else {
@@ -222,7 +223,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add, size: 20),
-        label: const Text('Giao việc mới', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        label: Text('workspace.action.assign_task'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
         onPressed: _showCreateTaskDialog,
       );
     }
@@ -327,17 +328,17 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         // KPI Cards
         Row(
           children: [
-            Expanded(child: _buildMetricTile('Tổng dự án', '$total', const Color(0xFF2563EB), const Color(0xFFEFF6FF), Icons.folder_copy_outlined)),
+            Expanded(child: _buildMetricTile('workspace.metric.total_projects'.tr(), '$total', const Color(0xFF2563EB), const Color(0xFFEFF6FF), Icons.folder_copy_outlined)),
             const SizedBox(width: 8),
-            Expanded(child: _buildMetricTile('Đang triển khai', '$activeCount', const Color(0xFF059669), const Color(0xFFECFDF5), Icons.play_circle_outline)),
+            Expanded(child: _buildMetricTile('workspace.metric.in_progress'.tr(), '$activeCount', const Color(0xFF059669), const Color(0xFFECFDF5), Icons.play_circle_outline)),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _buildMetricTile('Đã hoàn thành', '$completedCount', const Color(0xFF0F172A), const Color(0xFFF1F5F9), Icons.check_circle_outline)),
+            Expanded(child: _buildMetricTile('workspace.metric.completed'.tr(), '$completedCount', const Color(0xFF0F172A), const Color(0xFFF1F5F9), Icons.check_circle_outline)),
             const SizedBox(width: 8),
-            Expanded(child: _buildMetricTile('Hạng mục quá hạn', '$overdueCount', const Color(0xFFDC2626), const Color(0xFFFEF2F2), Icons.warning_amber_rounded)),
+            Expanded(child: _buildMetricTile('workspace.metric.overdue_items'.tr(), '$overdueCount', const Color(0xFFDC2626), const Color(0xFFFEF2F2), Icons.warning_amber_rounded)),
           ],
         ),
         const SizedBox(height: 14),
@@ -352,8 +353,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           child: TextField(
             onChanged: (val) => setState(() => _projectSearch = val),
             style: const TextStyle(fontSize: 13),
-            decoration: const InputDecoration(
-              hintText: 'Tìm dự án hoặc mã số...',
+            decoration: InputDecoration(
+              hintText: 'workspace.project.search_hint'.tr(),
               hintStyle: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
               border: InputBorder.none,
@@ -370,19 +371,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
             children: [
               _buildFilterChip(
                 selected: _projectStatusFilter == 'ALL',
-                label: 'Tất cả ($total)',
+                label: 'workspace.filter.all_count'.tr(args: {'count': total}),
                 onTap: () => setState(() => _projectStatusFilter = 'ALL'),
               ),
               const SizedBox(width: 6),
               _buildFilterChip(
                 selected: _projectStatusFilter == 'active',
-                label: 'Đang triển khai ($activeCount)',
+                label: 'workspace.filter.active_count'.tr(args: {'count': activeCount}),
                 onTap: () => setState(() => _projectStatusFilter = 'active'),
               ),
               const SizedBox(width: 6),
               _buildFilterChip(
                 selected: _projectStatusFilter == 'completed',
-                label: 'Hoàn thành ($completedCount)',
+                label: 'workspace.filter.completed_count'.tr(args: {'count': completedCount}),
                 onTap: () => setState(() => _projectStatusFilter = 'completed'),
               ),
             ],
@@ -395,11 +396,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 40),
             alignment: Alignment.center,
-            child: const Column(
+            child: Column(
               children: [
                 Icon(Icons.folder_off_outlined, size: 40, color: Color(0xFF94A3B8)),
                 SizedBox(height: 8),
-                Text('Không có dự án nào phù hợp', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                Text('workspace.project.empty'.tr(), style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
               ],
             ),
           )
@@ -498,7 +499,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     const Icon(Icons.business_outlined, size: 13, color: Color(0xFF64748B)),
                     const SizedBox(width: 4),
                     Text(
-                      'Khách hàng: ${project.customerName}',
+                      'workspace.project.customer'.tr(args: {'name': project.customerName}),
                       style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
                     ),
                   ],
@@ -532,13 +533,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
               Row(
                 children: [
                   Text(
-                    '${project.closedItems} / ${project.totalItems} công việc đã đóng',
+                    'workspace.project.items_closed'.tr(args: {'closed': project.closedItems, 'total': project.totalItems}),
                     style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                   ),
                   if (project.overdueItems > 0) ...[
                     const Text(' · ', style: TextStyle(color: Color(0xFF94A3B8))),
                     Text(
-                      '${project.overdueItems} quá hạn',
+                      'workspace.project.overdue_count'.tr(args: {'count': project.overdueItems}),
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
                     ),
                   ],
@@ -578,8 +579,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           child: TextField(
             onChanged: (val) => setState(() => _customerSearch = val),
             style: const TextStyle(fontSize: 13),
-            decoration: const InputDecoration(
-              hintText: 'Tìm khách hàng theo tên hoặc mã...',
+            decoration: InputDecoration(
+              hintText: 'workspace.customer.search_hint'.tr(),
               hintStyle: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
               border: InputBorder.none,
@@ -593,11 +594,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 50),
             alignment: Alignment.center,
-            child: const Column(
+            child: Column(
               children: [
                 Icon(Icons.business_outlined, size: 44, color: Color(0xFF94A3B8)),
                 SizedBox(height: 8),
-                Text('Chưa có khách hàng nào', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                Text('workspace.customer.empty'.tr(), style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
               ],
             ),
           )
@@ -647,7 +648,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${customer.contractCount} hợp đồng · ${customer.projectCount} dự án',
+                      'workspace.customer.counts'.tr(args: {'contracts': customer.contractCount, 'projects': customer.projectCount}),
                       style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                     ),
                   ),
@@ -672,12 +673,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Ngày tạo: ${_formatDate(customer.createdAt)}',
+                    'workspace.customer.created_at'.tr(args: {'date': _formatDate(customer.createdAt)}),
                     style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
                   ),
-                  const Row(
+                  Row(
                     children: [
-                      Text('Xem hợp đồng', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                      Text('workspace.customer.view_contracts'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
                       SizedBox(width: 3),
                       Icon(Icons.arrow_forward_ios, size: 10, color: Color(0xFF2563EB)),
                     ],
@@ -717,15 +718,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           child: Row(
             children: [
               Expanded(
-                child: _buildScopeItem('assigned_to_me', 'Giao cho tôi'),
+                child: _buildScopeItem('assigned_to_me', 'workspace.scope.assigned_to_me'.tr()),
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: _buildScopeItem('assigned_by_me', 'Tôi đã giao'),
+                child: _buildScopeItem('assigned_by_me', 'workspace.scope.assigned_by_me'.tr()),
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: _buildScopeItem('following', 'Theo dõi'),
+                child: _buildScopeItem('following', 'workspace.scope.following'.tr()),
               ),
             ],
           ),
@@ -742,8 +743,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           child: TextField(
             onChanged: (val) => setState(() => _taskSearch = val),
             style: const TextStyle(fontSize: 13),
-            decoration: const InputDecoration(
-              hintText: 'Tìm việc theo tên hoặc mã...',
+            decoration: InputDecoration(
+              hintText: 'workspace.task.search_hint'.tr(),
               hintStyle: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
               prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
               border: InputBorder.none,
@@ -760,31 +761,31 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
             children: [
               _buildFilterChip(
                 selected: _taskStatusFilter == 'ALL',
-                label: 'Tất cả (${_tasks.length})',
+                label: 'workspace.filter.all_count'.tr(args: {'count': _tasks.length}),
                 onTap: () => setState(() => _taskStatusFilter = 'ALL'),
               ),
               const SizedBox(width: 6),
               _buildFilterChip(
                 selected: _taskStatusFilter == 'todo',
-                label: 'Cần làm (${_tasks.where((t) => t.status == 'todo').length})',
+                label: 'workspace.filter.todo_count'.tr(args: {'count': _tasks.where((t) => t.status == 'todo').length}),
                 onTap: () => setState(() => _taskStatusFilter = 'todo'),
               ),
               const SizedBox(width: 6),
               _buildFilterChip(
                 selected: _taskStatusFilter == 'in_progress',
-                label: 'Đang làm (${_tasks.where((t) => t.status == 'in_progress').length})',
+                label: 'workspace.filter.in_progress_count'.tr(args: {'count': _tasks.where((t) => t.status == 'in_progress').length}),
                 onTap: () => setState(() => _taskStatusFilter = 'in_progress'),
               ),
               const SizedBox(width: 6),
               _buildFilterChip(
                 selected: _taskStatusFilter == 'review',
-                label: 'Chờ duyệt (${_tasks.where((t) => t.status == 'review').length})',
+                label: 'workspace.filter.review_count'.tr(args: {'count': _tasks.where((t) => t.status == 'review').length}),
                 onTap: () => setState(() => _taskStatusFilter = 'review'),
               ),
               const SizedBox(width: 6),
               _buildFilterChip(
                 selected: _taskStatusFilter == 'done',
-                label: 'Hoàn thành (${_tasks.where((t) => t.status == 'done').length})',
+                label: 'workspace.filter.done_count'.tr(args: {'count': _tasks.where((t) => t.status == 'done').length}),
                 onTap: () => setState(() => _taskStatusFilter = 'done'),
               ),
             ],
@@ -796,11 +797,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 40),
             alignment: Alignment.center,
-            child: const Column(
+            child: Column(
               children: [
                 Icon(Icons.assignment_turned_in_outlined, size: 40, color: Color(0xFF94A3B8)),
                 SizedBox(height: 8),
-                Text('Không có công việc nào', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                Text('workspace.task.empty'.tr(), style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
               ],
             ),
           )
@@ -927,7 +928,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     const Icon(Icons.schedule, size: 13, color: Color(0xFF64748B)),
                     const SizedBox(width: 4),
                     Text(
-                      'Hạn: ${_formatDate(task.dueDate)}',
+                      'workspace.task.due'.tr(args: {'date': _formatDate(task.dueDate)}),
                       style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
                   ],
@@ -936,12 +937,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     const Icon(Icons.account_tree_outlined, size: 13, color: Color(0xFF64748B)),
                     const SizedBox(width: 4),
                     Text(
-                      '${task.openChildCount}/${task.childCount} việc con',
+                      'workspace.task.subtasks'.tr(args: {'open': task.openChildCount, 'total': task.childCount}),
                       style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
                   ],
                   const Spacer(),
-                  const Text('Chi tiết', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                  Text('workspace.task.detail'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
                 ],
               ),
             ],
@@ -959,7 +960,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           color: const Color(0xFFFEF2F2),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: const Text('Đã huỷ hiệu lực', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+        child: Text('workspace.task.void'.tr(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
       );
     }
     Color color;
@@ -969,28 +970,28 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       case 'in_progress':
         color = const Color(0xFF0284C7);
         bg = const Color(0xFFE0F2FE);
-        label = 'Đang làm';
+        label = 'workspace.status.in_progress'.tr();
         break;
       case 'review':
         color = const Color(0xFFD97706);
         bg = const Color(0xFFFFFBEB);
-        label = 'Chờ duyệt';
+        label = 'workspace.status.review'.tr();
         break;
       case 'done':
         color = const Color(0xFF059669);
         bg = const Color(0xFFECFDF5);
-        label = 'Hoàn thành';
+        label = 'workspace.status.done'.tr();
         break;
       case 'cancelled':
         color = const Color(0xFFDC2626);
         bg = const Color(0xFFFEF2F2);
-        label = 'Đã huỷ';
+        label = 'workspace.status.cancelled'.tr();
         break;
       case 'todo':
       default:
         color = const Color(0xFF64748B);
         bg = const Color(0xFFF1F5F9);
-        label = 'Cần làm';
+        label = 'workspace.status.todo'.tr();
         break;
     }
     return Container(

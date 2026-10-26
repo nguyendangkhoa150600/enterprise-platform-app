@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 
 class OrgHierarchyTreeListView extends StatelessWidget {
@@ -139,21 +140,21 @@ class OrgHierarchyTreeListView extends StatelessWidget {
                 // Quick Action Buttons on hover/row: Add child (+), Edit, Delete
                 IconButton(
                   icon: const Icon(Icons.add, size: 15, color: Color(0xFF64748B)),
-                  tooltip: 'Thêm node con',
+                  tooltip: 'org_chart.add_child_node'.tr(),
                   constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                   padding: EdgeInsets.zero,
                   onPressed: () => onAddChild(node.id),
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF64748B)),
-                  tooltip: 'Chỉnh sửa',
+                  tooltip: 'common.edit'.tr(),
                   constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                   padding: EdgeInsets.zero,
                   onPressed: () => onEditNode(node),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFEF4444)),
-                  tooltip: 'Xóa',
+                  tooltip: 'common.delete'.tr(),
                   constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                   padding: EdgeInsets.zero,
                   onPressed: () => onDeleteNode(node),
@@ -200,7 +201,7 @@ class OrgHierarchyTreeListView extends StatelessWidget {
                   onChanged: onSearchChanged,
                   style: const TextStyle(fontSize: 12.5),
                   decoration: InputDecoration(
-                    hintText: 'Tìm kiếm node...',
+                    hintText: 'org_chart.search_node_hint'.tr(),
                     hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     prefixIcon: const Icon(Icons.search, size: 17, color: Color(0xFF94A3B8)),
                     suffixIcon: searchQuery.isNotEmpty
@@ -220,15 +221,15 @@ class OrgHierarchyTreeListView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Sơ đồ phân cấp',
+                  Text(
+                    'org_chart.tree_view'.tr(),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                   ),
                   Row(
                     children: [
                       InkWell(
                         onTap: onExpandAll,
-                        child: const Text('Mở hết', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
+                        child: Text('org_chart.expand_all'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 6),
@@ -236,7 +237,7 @@ class OrgHierarchyTreeListView extends StatelessWidget {
                       ),
                       InkWell(
                         onTap: onCollapseAll,
-                        child: const Text('Thu gọn', style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                        child: Text('org_chart.collapse_all'.tr(), style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
                       ),
                     ],
                   ),
@@ -266,11 +267,11 @@ class OrgHierarchyTreeListView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Tổng cộng: ${snapshot.nodes.length} node',
+                'org_chart.total_nodes'.tr(args: {'count': snapshot.nodes.length}),
                 style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
               ),
-              const Text(
-                'Bấm node để xem chi tiết',
+              Text(
+                'org_chart.tap_node_detail'.tr(),
                 style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
               ),
             ],
