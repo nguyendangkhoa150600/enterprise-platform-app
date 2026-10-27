@@ -1,3 +1,4 @@
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:dio/dio.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
@@ -56,9 +57,9 @@ class PlatformService {
         }
         return (success: true, error: null, user: newUser);
       }
-      return (success: false, error: 'Không thể tạo người dùng (Mã lỗi ${response.statusCode}).', user: null);
+      return (success: false, error: 'core_misc.platform.create_user_failed_code'.tr(args: {'code': response.statusCode}), user: null);
     } catch (e) {
-      final msg = ApiErrorHandler.parse(e, defaultMessage: 'Không thể tạo người dùng. Vui lòng thử lại.');
+      final msg = ApiErrorHandler.parse(e, defaultMessage: 'core_misc.platform.create_user_failed'.tr());
       return (success: false, error: msg, user: null);
     }
   }
@@ -87,9 +88,9 @@ class PlatformService {
       if (response.statusCode == 200) {
         return (success: true, error: null);
       }
-      return (success: false, error: 'Cập nhật thất bại (Mã lỗi ${response.statusCode}).');
+      return (success: false, error: 'core_misc.platform.update_failed_code'.tr(args: {'code': response.statusCode}));
     } catch (e) {
-      final msg = ApiErrorHandler.parse(e, defaultMessage: 'Không thể cập nhật thông tin người dùng.');
+      final msg = ApiErrorHandler.parse(e, defaultMessage: 'core_misc.platform.update_user_failed'.tr());
       return (success: false, error: msg);
     }
   }
@@ -101,9 +102,9 @@ class PlatformService {
       if (response.statusCode == 200 || response.statusCode == 204) {
         return (success: true, error: null);
       }
-      return (success: false, error: 'Không thể xóa người dùng (Mã lỗi ${response.statusCode}).');
+      return (success: false, error: 'core_misc.platform.delete_failed_code'.tr(args: {'code': response.statusCode}));
     } catch (e) {
-      final msg = ApiErrorHandler.parse(e, defaultMessage: 'Không thể xóa người dùng.');
+      final msg = ApiErrorHandler.parse(e, defaultMessage: 'core_misc.platform.delete_failed'.tr());
       return (success: false, error: msg);
     }
   }
@@ -400,6 +401,6 @@ class PlatformService {
       }
     } catch (_) {}
 
-    return (success: false, error: 'Không thể phân quyền người dùng.');
+    return (success: false, error: 'core_misc.platform.assign_failed'.tr());
   }
 }

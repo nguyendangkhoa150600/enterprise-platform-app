@@ -252,10 +252,13 @@ class OrganizationSnapshot {
   });
 
   factory OrganizationSnapshot.fromJson(Map<String, dynamic> json) {
-    final rawNodes = json['nodes'] as List<dynamic>? ?? [];
-    final rawTypes = json['nodeTypes'] as List<dynamic>? ?? [];
-    final rawAssignments = json['assignments'] as List<dynamic>? ?? [];
-    final rawUsers = json['users'] as List<dynamic>? ?? [];
+    final Map<String, dynamic> map = json['data'] is Map<String, dynamic>
+        ? json['data'] as Map<String, dynamic>
+        : (json['snapshot'] is Map<String, dynamic> ? json['snapshot'] as Map<String, dynamic> : json);
+    final rawNodes = (map['nodes'] ?? json['nodes']) as List<dynamic>? ?? [];
+    final rawTypes = (map['nodeTypes'] ?? json['nodeTypes']) as List<dynamic>? ?? [];
+    final rawAssignments = (map['assignments'] ?? json['assignments']) as List<dynamic>? ?? [];
+    final rawUsers = (map['users'] ?? json['users']) as List<dynamic>? ?? [];
 
     return OrganizationSnapshot(
       nodes: rawNodes.map((e) => OrgNode.fromJson(e as Map<String, dynamic>)).toList(),

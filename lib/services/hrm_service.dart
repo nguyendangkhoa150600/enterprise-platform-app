@@ -4,8 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hrm_models.dart';
 import '../models/hrm_attendance_models.dart';
 import '../models/hrm_attendance_monitor_models.dart';
+import '../models/hrm_work_schedule_models.dart';
+import '../models/hrm_personnel_decision_model.dart';
 import '../providers/auth_provider.dart';
 import 'api_client_helper.dart';
+import '../core/i18n/app_i18n.dart';
 
 class PolicyActionResult {
   final bool isSuccess;
@@ -18,6 +21,9 @@ class PolicyActionResult {
     this.statusCode,
   });
 }
+
+/// Helper function to format GPS coordinates cleanly (stripping trailing zeros)
+String formatCoordinate(dynamic val) => HrmService.formatCoordinate(val);
 
 class HrmService {
   static final HrmService _instance = HrmService._internal();
@@ -116,18 +122,6 @@ class HrmService {
       }
     } catch (_) {}
 
-    // Fallback for special users if not in employee directory
-    empMap['e1e0cc28-0c3c-416d-a1f9-557031cc564a'] ??= const HrmEmployeeItem(
-      id: 'e1e0cc28-0c3c-416d-a1f9-557031cc564a',
-      code: 'NV051',
-      fullName: 'admin',
-      email: 'admin@savinajsc.com',
-      phone: '',
-      department: 'Khối Văn phòng',
-      position: 'Quản trị viên',
-      status: 'OFFICIAL',
-    );
-
     final endpoints = [
       {'path': '/hrm/v1/leave-requests', 'type': HrmRequestType.leave},
       {'path': '/hrm/v1/ot-requests', 'type': HrmRequestType.overtime},
@@ -214,7 +208,7 @@ class HrmService {
       _cachedRequests!.insert(0, newReq);
       return newReq;
     }
-    throw Exception('Không thể tạo đơn yêu cầu (Mã: ${response.statusCode})');
+    throw Exception('svc_hrm.request_create_failed'.tr(args: {'code': response.statusCode}));
   }
 
   // 4. Approve Request
@@ -312,6 +306,121 @@ class HrmService {
     return _cachedPositions!;
   }
 
+  List<HrmPersonnelDecision>? _cachedPersonnelDecisions;
+
+  // 6.6 Get Personnel Decisions (Quyết định nhân sự - 1:1 Web)
+  Future<List<HrmPersonnelDecision>> getPersonnelDecisions({
+    String? status,
+    String? type,
+    String? employeeId,
+    bool forceRefresh = false,
+  }) async {
+    if (_cachedPersonnelDecisions == null || forceRefresh) {
+      try {
+        final queryParams = <String, dynamic>{};
+        if (status != null && status.isNotEmpty && status != 'ALL') queryParams['status'] = status;
+        if (type != null && type.isNotEmpty && type != 'ALL') queryParams['type'] = type;
+        if (employeeId != null && employeeId.isNotEmpty) queryParams['employeeId'] = employeeId;
+
+        final response = await _dio.get('/hrm/v1/personnel-decisions', queryParameters: queryParams);
+        if (response.statusCode == 200 && response.data != null) {
+          final list = (response.data['data'] ?? response.data) as List;
+          _cachedPersonnelDecisions = list.map((item) => HrmPersonnelDecision.fromJson(item as Map<String, dynamic>)).toList();
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getPersonnelDecisions error: $e');
+      }
+
+      _cachedPersonnelDecisions ??= [];
+    }
+    return _cachedPersonnelDecisions!;
+  }
+
+  Future<HrmPersonnelDecision> createPersonnelDecision(Map<String, dynamic> payload) async {
+    final res = await _dio.post('/hrm/v1/personnel-decisions', data: payload);
+    final data = res.data['data'] ?? res.data;
+    final item = HrmPersonnelDecision.fromJson(data as Map<String, dynamic>);
+    _cachedPersonnelDecisions?.insert(0, item);
+    return item;
+  }
+
+  Future<HrmPersonnelDecision> updatePersonnelDecision(String id, Map<String, dynamic> payload) async {
+    final res = await _dio.patch('/hrm/v1/personnel-decisions/$id', data: payload);
+    final data = res.data['data'] ?? res.data;
+    final item = HrmPersonnelDecision.fromJson(data as Map<String, dynamic>);
+    if (_cachedPersonnelDecisions != null) {
+      final idx = _cachedPersonnelDecisions!.indexWhere((d) => d.id == id);
+      if (idx != -1) _cachedPersonnelDecisions![idx] = item;
+    }
+    return item;
+  }
+
+  Future<void> approvePersonnelDecision(String id) async {
+    await _dio.post('/hrm/v1/personnel-decisions/$id/approve');
+    await getPersonnelDecisions(forceRefresh: true);
+  }
+
+  Future<void> rejectPersonnelDecision(String id, String reason) async {
+    await _dio.post('/hrm/v1/personnel-decisions/$id/reject', data: {'reason': reason});
+    await getPersonnelDecisions(forceRefresh: true);
+  }
+
+  Future<void> cancelPersonnelDecision(String id) async {
+    await _dio.post('/hrm/v1/personnel-decisions/$id/cancel');
+    await getPersonnelDecisions(forceRefresh: true);
+  }
+
+  Future<void> retryApplyPersonnelDecision(String id) async {
+    await _dio.post('/hrm/v1/personnel-decisions/$id/retry-apply');
+    await getPersonnelDecisions(forceRefresh: true);
+  }
+
+  // 6.7 Salary Grades & Steps (1:1 Web)
+  Future<List<HrmSalaryGrade>> getSalaryGrades() async {
+    try {
+      final res = await _dio.get('/hrm/v1/salary-grades');
+      if (res.statusCode == 200 && res.data != null) {
+        final list = (res.data['data'] ?? res.data) as List;
+        return list.map((e) => HrmSalaryGrade.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getSalaryGrades error: $e');
+    }
+    return const [];
+  }
+
+  Future<List<HrmSalaryGradeStep>> getSalaryGradeSteps(String gradeId) async {
+    try {
+      final res = await _dio.get('/hrm/v1/salary-grades/$gradeId/steps');
+      if (res.statusCode == 200 && res.data != null) {
+        final list = (res.data['data'] ?? res.data) as List;
+        return list.map((e) => HrmSalaryGradeStep.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getSalaryGradeSteps error: $e');
+    }
+    return [
+      HrmSalaryGradeStep(id: '$gradeId-step-1', salaryGradeId: gradeId, stepNo: 1, baseSalary: 10000000),
+      HrmSalaryGradeStep(id: '$gradeId-step-2', salaryGradeId: gradeId, stepNo: 2, baseSalary: 12500000),
+      HrmSalaryGradeStep(id: '$gradeId-step-3', salaryGradeId: gradeId, stepNo: 3, baseSalary: 15000000),
+      HrmSalaryGradeStep(id: '$gradeId-step-4', salaryGradeId: gradeId, stepNo: 4, baseSalary: 18000000),
+      HrmSalaryGradeStep(id: '$gradeId-step-5', salaryGradeId: gradeId, stepNo: 5, baseSalary: 22000000),
+    ];
+  }
+
+  Future<Map<String, dynamic>?> getAppointmentContext(String employeeId) async {
+    try {
+      final res = await _dio.get('/hrm/v1/employees/$employeeId/appointment-context');
+      if (res.statusCode == 200 && res.data != null) {
+        return (res.data['data'] ?? res.data) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getAppointmentContext error: $e');
+    }
+    return null;
+  }
+
+
   // 7. Get Payslips (Phiếu lương)
   Future<List<HrmPayslipItem>> getPayslips() async {
     if (_cachedPayslips == null) {
@@ -344,6 +453,23 @@ class HrmService {
     return _cachedShifts!;
   }
 
+  /// Standard-workday policies (GET /hrm/v1/timesheet-standards). Returns null when the call fails.
+  Future<({List<Map<String, dynamic>> policies, String? currentId})?> getTimesheetStandards() async {
+    try {
+      final response = await _dio.get('/hrm/v1/timesheet-standards');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data['data'] ?? response.data;
+        if (data is Map<String, dynamic>) {
+          final list = (data['policies'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? <Map<String, dynamic>>[];
+          return (policies: list, currentId: data['currentId']?.toString());
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getTimesheetStandards error: $e');
+    }
+    return null;
+  }
+
   // 9. Get Dependents (Người phụ thuộc)
   Future<List<HrmDependentItem>> getDependents() async {
     return [];
@@ -373,7 +499,7 @@ class HrmService {
               if (config['requireIp'] == true) conditions.add('IP');
               final radius = config['maxGpsAccuracyMeters'] ?? 1000;
               conditions.add('GPS $radius m');
-              if (config['requireDevice'] == true) conditions.add('Thiết bị');
+              if (config['requireDevice'] == true) conditions.add('svc_hrm.cond_device'.tr());
 
               final versionNo = item['version_no']?.toString() ?? '4';
               final effFrom = item['effective_from']?.toString() ?? '07/10/2026';
@@ -383,17 +509,17 @@ class HrmService {
               return {
                 'id': item['id']?.toString() ?? '',
                 'version': 'v$versionNo',
-                'title': item['policy_name']?.toString() ?? 'Quy định chấm công',
+                'title': item['policy_name']?.toString() ?? 'svc_hrm.attendance_policy'.tr(),
                 'validity': '$effFrom - $effTo',
-                'scope': 'Toàn công ty',
+                'scope': 'svc_hrm.scope_company'.tr(),
                 'conditions': conditions.isNotEmpty ? conditions : ['GPS 1000 m'],
                 'isActive': isActive,
-                'statusText': isActive ? 'Đang áp dụng' : 'Hết hiệu lực',
+                'statusText': isActive ? 'svc_hrm.status_in_effect'.tr() : 'svc_hrm.status_expired'.tr(),
                 'gpsRadiusMeters': (radius as num).toDouble(),
                 'requireIp': config['requireIp'] == true,
                 'requireDevice': config['requireDevice'] == true,
                 'timezone': config['timezone']?.toString() ?? 'Asia/Ho_Chi_Minh',
-                'weeklyOff': 'Chưa cấu hình',
+                'weeklyOff': 'svc_hrm.not_configured'.tr(),
               };
             }
             return null;
@@ -410,59 +536,59 @@ class HrmService {
     return [
       {
         'version': 'v4',
-        'title': 'v4 Quy định chấm công',
+        'title': 'svc_hrm.policy_v4'.tr(),
         'validity': '07/10/2026 - 30/11/2026',
-        'scope': 'Toàn công ty',
+        'scope': 'svc_hrm.scope_company'.tr(),
         'conditions': ['GPS 1000 m'],
         'isActive': true,
-        'statusText': 'Đang áp dụng',
+        'statusText': 'svc_hrm.status_in_effect'.tr(),
         'gpsRadiusMeters': 1000.0,
         'requireIp': false,
         'requireDevice': false,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
       {
         'version': 'v3',
-        'title': 'v3 Quy định chấm công',
+        'title': 'svc_hrm.policy_v3'.tr(),
         'validity': '02/10/2026 - 06/10/2026',
-        'scope': 'Toàn công ty',
+        'scope': 'svc_hrm.scope_company'.tr(),
         'conditions': ['GPS 100 m'],
         'isActive': false,
-        'statusText': 'Hết hiệu lực',
+        'statusText': 'svc_hrm.status_expired'.tr(),
         'gpsRadiusMeters': 100.0,
         'requireIp': false,
         'requireDevice': false,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
       {
         'version': 'v2',
-        'title': 'v2 Quy định chấm công',
+        'title': 'svc_hrm.policy_v2'.tr(),
         'validity': '01/10/2026 - 01/10/2026',
-        'scope': 'Toàn công ty',
+        'scope': 'svc_hrm.scope_company'.tr(),
         'conditions': ['GPS 100 m'],
         'isActive': false,
-        'statusText': 'Hết hiệu lực',
+        'statusText': 'svc_hrm.status_expired'.tr(),
         'gpsRadiusMeters': 100.0,
         'requireIp': false,
         'requireDevice': false,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
       {
         'version': 'v1',
-        'title': 'v1 Quy định chấm công',
+        'title': 'svc_hrm.policy_v1'.tr(),
         'validity': '30/09/2026 - 30/09/2026',
-        'scope': 'Toàn công ty',
-        'conditions': ['IP', 'GPS 100 m', 'Thiết bị'],
+        'scope': 'svc_hrm.scope_company'.tr(),
+        'conditions': ['IP', 'GPS 100 m', 'svc_hrm.cond_device'.tr()],
         'isActive': false,
-        'statusText': 'Hết hiệu lực',
+        'statusText': 'svc_hrm.status_expired'.tr(),
         'gpsRadiusMeters': 100.0,
         'requireIp': true,
         'requireDevice': true,
         'timezone': 'Asia/Ho_Chi_Minh',
-        'weeklyOff': 'Chưa cấu hình',
+        'weeklyOff': 'svc_hrm.not_configured'.tr(),
       },
     ];
   }
@@ -481,10 +607,10 @@ class HrmService {
     String timezone = 'Asia/Ho_Chi_Minh',
     List<int> weeklyOff = const [7],
     String changeReason = '',
-    String title = 'Quy định chấm công',
+    String? title,
   }) async {
     final payload = {
-      'title': title,
+      'title': title ?? 'svc_hrm.attendance_policy'.tr(),
       'scope': scope,
       'start_date': startDate,
       if (endDate != null && endDate.isNotEmpty) 'end_date': endDate,
@@ -514,7 +640,7 @@ class HrmService {
       '/hrm/v1/policies',
     ];
 
-    String lastErrorMsg = 'Không thể kết nối đến máy chủ.';
+    String lastErrorMsg = 'svc_hrm.cannot_connect'.tr();
     int? lastStatusCode;
 
     for (final ep in endpoints) {
@@ -528,18 +654,18 @@ class HrmService {
 
         if (res.statusCode == 200 || res.statusCode == 201) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Tạo và kích hoạt phiên bản quy định chấm công thành công!')
-              : 'Tạo và kích hoạt phiên bản quy định chấm công thành công!';
+              ? (res.data['message'] ?? 'svc_hrm.policy_create_success'.tr())
+              : 'svc_hrm.policy_create_success'.tr();
           return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
         } else if (res.statusCode == 400 || res.statusCode == 409 || res.statusCode == 422) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? res.data['error'] ?? 'Dữ liệu không hợp lệ hoặc trùng khoảng hiệu lực.')
-              : 'Trùng khoảng hiệu lực hoặc dữ liệu không hợp lệ (${res.statusCode}).';
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_or_overlap'.tr())
+              : 'svc_hrm.overlap_or_invalid_code'.tr(args: {'code': res.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
         } else if (res.statusCode != 404) {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Máy chủ phản hồi lỗi: ${res.statusCode}')
-              : 'Máy chủ phản hồi lỗi: ${res.statusCode}';
+              ? (res.data['message'] ?? 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode});
           lastErrorMsg = serverMsg.toString();
           lastStatusCode = res.statusCode;
         }
@@ -548,15 +674,15 @@ class HrmService {
         if (e.response != null) {
           final data = e.response?.data;
           final serverMsg = (data is Map<String, dynamic>)
-              ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-              : 'Máy chủ từ chối: ${e.response?.statusCode}';
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
           return PolicyActionResult(
             isSuccess: false,
             message: serverMsg.toString(),
             statusCode: e.response?.statusCode,
           );
         }
-        lastErrorMsg = e.message ?? 'Lỗi kết nối mạng';
+        lastErrorMsg = e.message ?? 'svc_hrm.network_error'.tr();
       } catch (e) {
         debugPrint('[HrmService] createAttendancePolicyVersion error on $ep: $e');
         lastErrorMsg = e.toString();
@@ -627,36 +753,7 @@ class HrmService {
       debugPrint('[HrmService] getWorkCalendarExceptions error: $e');
     }
 
-    // Default 1:1 matching Web Production:
-    return [
-      {
-        'id': '1',
-        'date': '31/12/2026',
-        'name': 'Nghỉ tất niên',
-        'type': 'OFF',
-        'typeLabel': 'Nghỉ (OFF)',
-        'paid': false,
-        'paidLabel': 'Không',
-      },
-      {
-        'id': '2',
-        'date': '05/09/2026',
-        'name': 'Làm bù',
-        'type': 'WORK',
-        'typeLabel': 'Làm việc',
-        'paid': true,
-        'paidLabel': 'Có',
-      },
-      {
-        'id': '3',
-        'date': '02/09/2026',
-        'name': 'Quốc khánh',
-        'type': 'HOLIDAY',
-        'typeLabel': 'Lễ / Tết',
-        'paid': true,
-        'paidLabel': 'Có',
-      },
-    ];
+    return [];
   }
 
   static String formatCoordinate(dynamic val) {
@@ -684,15 +781,15 @@ class HrmService {
         if (listRaw.isNotEmpty) {
           final sites = listRaw.map((e) {
             final Map m = e is Map ? e : {};
-            final lat = (m['latitude'] ?? m['lat'] as num?)?.toDouble() ?? 16.0375;
-            final lng = (m['longitude'] ?? m['lng'] as num?)?.toDouble() ?? 108.212194;
-            final rad = (m['radius_meters'] ?? m['radiusMeters'] ?? m['radius_m'] ?? m['radiusM'] ?? m['radius'] as num?)?.toDouble() ?? 1000.0;
+            final lat = (m['latitude'] ?? m['lat'] as num?)?.toDouble() ?? 0.0;
+            final lng = (m['longitude'] ?? m['lng'] as num?)?.toDouble() ?? 0.0;
+            final rad = (m['radius_meters'] ?? m['radiusMeters'] ?? m['radius_m'] ?? m['radiusM'] ?? m['radius'] as num?)?.toDouble() ?? 0.0;
             final isActive = m['active'] ?? m['is_active'] ?? m['isActive'] ?? (m['status'] == 'ACTIVE' || m['status'] == 'Đang dùng');
             return {
               'id': m['id']?.toString() ?? '',
               'code': m['code']?.toString() ?? '',
-              'name': m['name']?.toString() ?? 'VP Đà Nẵng',
-              'coords': '${formatCoordinate(lat)}, ${formatCoordinate(lng)}',
+              'name': m['name']?.toString() ?? '',
+              'coords': '${HrmService.formatCoordinate(lat)}, ${HrmService.formatCoordinate(lng)}',
               'radius': '${rad.toInt()} m',
               'status': isActive ? 'Đang dùng' : 'Ngừng',
               'isActive': isActive,
@@ -710,21 +807,7 @@ class HrmService {
       debugPrint('[HrmService] getGpsSites error: $e');
     }
 
-    // Default matching real Web Production if server is completely offline:
-    return [
-      {
-        'id': 'site-default-danang',
-        'code': 'SITE_DN_HQ',
-        'name': 'VP Đà Nẵng',
-        'coords': '16.0375, 108.212194',
-        'radius': '1000 m',
-        'status': 'Đang dùng',
-        'isActive': true,
-        'latitude': 16.0375,
-        'longitude': 108.212194,
-        'radiusMeters': 1000.0,
-      },
-    ];
+    return [];
   }
 
   // 12.9. Create GPS Site (Thêm địa điểm chấm công - Gửi API Backend NestJS & Lưu Postgres)
@@ -765,23 +848,23 @@ class HrmService {
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? 'Thêm địa điểm chấm công thành công!')
-            : 'Thêm địa điểm chấm công thành công!';
+            ? (res.data['message'] ?? 'svc_hrm.site_add_success'.tr())
+            : 'svc_hrm.site_add_success'.tr();
         return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
       } else if (res.statusCode == 400 || res.statusCode == 403 || res.statusCode == 409 || res.statusCode == 422) {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? res.data['error'] ?? 'Dữ liệu không hợp lệ hoặc không có quyền.')
-            : 'Yêu cầu không hợp lệ (${res.statusCode}).';
+            ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_or_forbidden'.tr())
+            : 'svc_hrm.bad_request_code'.tr(args: {'code': res.statusCode});
         return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
       } else if (res.statusCode == 500) {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? res.data['error'] ?? 'Máy chủ lỗi nội bộ (500).')
-            : 'Lỗi máy chủ (500): ${res.data}';
+            ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.server_500'.tr())
+            : 'svc_hrm.server_500_data'.tr(args: {'data': res.data});
         return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: 500);
       } else {
         final serverMsg = (res.data is Map<String, dynamic>)
-            ? (res.data['message'] ?? 'Máy chủ phản hồi: ${res.statusCode}')
-            : 'Máy chủ phản hồi: ${res.statusCode}';
+            ? (res.data['message'] ?? 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode}))
+            : 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode});
         return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
       }
     } on DioException catch (e) {
@@ -790,8 +873,8 @@ class HrmService {
       if (e.response != null) {
         final data = e.response?.data;
         final serverMsg = (data is Map<String, dynamic>)
-            ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-            : 'Máy chủ từ chối: ${e.response?.statusCode}';
+            ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+            : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
         return PolicyActionResult(
           isSuccess: false,
           message: serverMsg.toString(),
@@ -800,7 +883,7 @@ class HrmService {
       }
       return PolicyActionResult(
         isSuccess: false,
-        message: e.message ?? 'Lỗi kết nối mạng',
+        message: e.message ?? 'svc_hrm.network_error'.tr(),
         statusCode: null,
       );
     } catch (e) {
@@ -820,7 +903,7 @@ class HrmService {
       try {
         final reason = (site['reason']?.toString().isNotEmpty == true)
             ? site['reason']
-            : 'Cập nhật từ mobile';
+            : 'svc_hrm.updated_from_mobile'.tr();
         final res = await _dio.patch(
           '/api/hrm/v1/time-settings/sites/$id',
           data: {
@@ -834,11 +917,11 @@ class HrmService {
           options: Options(validateStatus: (status) => status != null && status < 500),
         );
         if (res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300) {
-          return PolicyActionResult(isSuccess: true, message: 'Cập nhật thành công', statusCode: res.statusCode);
+          return PolicyActionResult(isSuccess: true, message: 'svc_hrm.update_success'.tr(), statusCode: res.statusCode);
         } else {
           final serverMsg = (res.data is Map<String, dynamic>)
-              ? (res.data['message'] ?? 'Máy chủ phản hồi: ${res.statusCode}')
-              : 'Máy chủ phản hồi: ${res.statusCode}';
+              ? (res.data['message'] ?? 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_response_code'.tr(args: {'code': res.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
         }
       } on DioException catch (e) {
@@ -846,11 +929,11 @@ class HrmService {
         if (e.response != null) {
           final data = e.response?.data;
           final serverMsg = (data is Map<String, dynamic>)
-              ? (data['message'] ?? data['error'] ?? 'Máy chủ từ chối: ${e.response?.statusCode}')
-              : 'Máy chủ từ chối: ${e.response?.statusCode}';
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
           return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: e.response?.statusCode);
         }
-        return PolicyActionResult(isSuccess: false, message: e.message ?? 'Lỗi kết nối mạng');
+        return PolicyActionResult(isSuccess: false, message: e.message ?? 'svc_hrm.network_error'.tr());
       } catch (e) {
         debugPrint('[HrmService] updateGpsSite remote error: $e');
         return PolicyActionResult(isSuccess: false, message: e.toString());
@@ -867,7 +950,7 @@ class HrmService {
           '/api/hrm/v1/time-settings/sites/$id/deactivate',
           data: {
             'expectedUpdatedAt': site['updated_at'] ?? DateTime.now().toIso8601String(),
-            'reason': 'Ngừng dùng từ mobile',
+            'reason': 'svc_hrm.deactivated_from_mobile'.tr(),
           },
           options: Options(validateStatus: (status) => status != null && status < 500),
         );
@@ -900,10 +983,10 @@ class HrmService {
               if (item is Map<String, dynamic>) {
                 return HrmIntegrationDevice(
                   id: item['id']?.toString() ?? '',
-                  name: item['name']?.toString() ?? 'Thiết bị chấm công',
+                  name: item['name']?.toString() ?? 'svc_hrm.attendance_device'.tr(),
                   type: item['type']?.toString() ?? 'FaceID',
                   ipAddress: item['ip']?.toString() ?? item['ipAddress']?.toString() ?? '192.168.1.1',
-                  location: item['location']?.toString() ?? 'Trụ sở chính',
+                  location: item['location']?.toString() ?? 'svc_hrm.head_office'.tr(),
                   status: item['status']?.toString() ?? 'ONLINE',
                   lastSync: DateTime.tryParse(item['lastSync']?.toString() ?? '') ?? DateTime.now(),
                 );
@@ -1157,5 +1240,906 @@ class HrmService {
     }
     return [];
   }
+
+  Future<List<Map<String, dynamic>>> getPayrollPeriods() async {
+    final endpoints = [
+      '/api/hrm/v1/payroll-periods',
+      '/hrm/v1/payroll-periods',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          if (data is List) {
+            return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        }
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getLockedTimesheetPeriods() async {
+    final endpoints = [
+      '/api/hrm/v1/timesheet-periods',
+      '/hrm/v1/timesheet-periods',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          if (data is List) {
+            return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        }
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  Future<bool> createPayrollPeriod(Map<String, dynamic> payload) async {
+    final endpoints = [
+      '/api/hrm/v1/payroll-periods',
+      '/hrm/v1/payroll-periods',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.post(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  // 19. Annual Leave Policy (1:1 Web DevTools Payload)
+  // Payload:
+  // {
+  //   "accrualBasis": "CONTRACT_SIGN_DATE",
+  //   "advanceAllowed": true,
+  //   "annualDays": 13,
+  //   "expectedUpdatedAt": "2026-10-21T02:29:31.424Z",
+  //   "reason": "...",
+  //   "seniorityTiers": [ { "minYears": 5, "bonusDays": 1 } ],
+  //   "startOffsetMonths": 0
+  // }
+  static String mapBasisToWebEnum(String input) {
+    final s = input.trim().toUpperCase();
+    if (s.contains('HĐLĐ') || s.contains('HDLD') || s.contains('CONTRACT') || s.contains('SIGN') || s.contains('KÝ')) {
+      return 'CONTRACT_SIGN_DATE';
+    } else if (s.contains('CHÍNH THỨC') || s.contains('CHINH THUC') || s.contains('OFFICIAL')) {
+      return 'OFFICIAL_START_DATE';
+    } else if (s.contains('THỬ VIỆC') || s.contains('THU VIEC') || s.contains('PROBATION') || s.contains('START') || s.contains('HIRE')) {
+      return 'PROBATION_START_DATE';
+    } else if (s.contains('01/01') || s.contains('NĂM') || s.contains('YEAR') || s.contains('ANNUAL') || s.contains('CALENDAR')) {
+      return 'CALENDAR_YEAR';
+    }
+    return input;
+  }
+
+  static Map<String, dynamic>? _cachedLeavePolicy;
+
+  Future<Map<String, dynamic>?> getAnnualLeavePolicy({bool forceRefresh = false}) async {
+    final endpoints = [
+      '/api/hrm/v1/annual-leave-policy',
+      '/api/hrm/v1/annual-leave-policies',
+      '/api/hrm/v1/leave-policy',
+      '/api/hrm/v1/time-settings',
+      '/hrm/v1/annual-leave-policy',
+    ];
+
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        debugPrint('[HrmService] getAnnualLeavePolicy on $ep returned: ${res.statusCode}, data: ${res.data}');
+        if (res.statusCode == 200 && res.data != null) {
+          final raw = res.data;
+          if (raw is Map) {
+            Map<String, dynamic> map = Map<String, dynamic>.from(raw);
+            if (map['data'] is Map) {
+              map = Map<String, dynamic>.from(map['data'] as Map);
+            }
+            if (map['policy'] is Map) {
+              map = Map<String, dynamic>.from(map['policy'] as Map);
+            }
+            if (map['annualLeavePolicy'] is Map) {
+              map = Map<String, dynamic>.from(map['annualLeavePolicy'] as Map);
+            }
+            if (map['leavePolicy'] is Map) {
+              map = Map<String, dynamic>.from(map['leavePolicy'] as Map);
+            }
+            if (map.containsKey('annualDays') || map.containsKey('accrualBasis') || map.containsKey('startOffsetMonths') || map.containsKey('days_per_year')) {
+              _cachedLeavePolicy = map;
+              return map;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getAnnualLeavePolicy error on $ep: $e');
+      }
+    }
+    return _cachedLeavePolicy;
+  }
+
+  Future<PolicyActionResult> updateAnnualLeavePolicy({
+    required String basis,
+    required double daysPerYear,
+    required int startAfterMonths,
+    required bool allowAdvance,
+    required int seniorityCycleYears,
+    required double seniorityExtraDays,
+    String? expectedUpdatedAt,
+    required String changeNote,
+  }) async {
+    // 1. Fetch current policy from server to get latest expectedUpdatedAt
+    final currentPolicy = await getAnnualLeavePolicy();
+    final latestUpdatedAt = currentPolicy?['updatedAt']?.toString() ??
+        currentPolicy?['updated_at']?.toString() ??
+        expectedUpdatedAt;
+
+    final accrualBasis = mapBasisToWebEnum(basis);
+    final annualDays = daysPerYear % 1 == 0 ? daysPerYear.toInt() : daysPerYear;
+    final bonusDays = seniorityExtraDays % 1 == 0 ? seniorityExtraDays.toInt() : seniorityExtraDays;
+
+    final payload = <String, dynamic>{
+      'accrualBasis': accrualBasis,
+      'advanceAllowed': allowAdvance,
+      'annualDays': annualDays,
+      'startOffsetMonths': startAfterMonths,
+      'reason': changeNote,
+      'seniorityTiers': [
+        {
+          'minYears': seniorityCycleYears,
+          'bonusDays': bonusDays,
+        }
+      ],
+      if (latestUpdatedAt != null && latestUpdatedAt.isNotEmpty)
+        'expectedUpdatedAt': latestUpdatedAt,
+    };
+
+    final endpoints = [
+      '/api/hrm/v1/annual-leave-policy',
+      '/hrm/v1/annual-leave-policy',
+    ];
+
+    String lastErrorMsg = 'svc_hrm.leave_policy_save_failed'.tr();
+    int? lastStatusCode;
+
+    for (final ep in endpoints) {
+      try {
+        debugPrint('[HrmService] PUT $ep with 1:1 web payload: $payload');
+        final res = await _dio.put(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        debugPrint('[HrmService] PUT $ep response: ${res.statusCode} -> ${res.data}');
+
+        if (res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 204) {
+          _cachedLeavePolicy = Map<String, dynamic>.from(payload);
+          if (res.data is Map) {
+            final resMap = Map<String, dynamic>.from(res.data as Map);
+            final sData = resMap['data'] ?? resMap['policy'];
+            if (sData is Map) {
+              _cachedLeavePolicy = Map<String, dynamic>.from(sData);
+            }
+          }
+          final serverMsg = (res.data is Map<String, dynamic>)
+              ? (res.data['message'] ?? 'svc_hrm.leave_policy_update_success'.tr())
+              : 'svc_hrm.leave_policy_update_success'.tr();
+          return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
+        } else if (res.statusCode == 400 || res.statusCode == 422 || res.statusCode == 409) {
+          final serverMsg = (res.data is Map<String, dynamic>)
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode});
+          return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
+        } else {
+          final serverMsg = (res.data is Map<String, dynamic>)
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode});
+          lastErrorMsg = serverMsg.toString();
+          lastStatusCode = res.statusCode;
+        }
+      } on DioException catch (e) {
+        debugPrint('[HrmService] updateAnnualLeavePolicy DioException on $ep: ${e.response?.statusCode} - ${e.message}');
+        if (e.response != null && e.response?.data != null) {
+          final data = e.response?.data;
+          final serverMsg = (data is Map<String, dynamic>)
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
+          return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: e.response?.statusCode);
+        }
+        lastErrorMsg = e.message ?? 'svc_hrm.network_error'.tr();
+      } catch (e) {
+        debugPrint('[HrmService] updateAnnualLeavePolicy error on $ep: $e');
+        lastErrorMsg = e.toString();
+      }
+    }
+
+    return PolicyActionResult(
+      isSuccess: false,
+      message: lastErrorMsg,
+      statusCode: lastStatusCode,
+    );
+  }
+
+  // 20. Auto Attendance Config (1:1 Web /modules/hrm/settings?view=auto-attendance)
+  static Map<String, dynamic>? _cachedAutoAttendanceConfig;
+
+  Future<Map<String, dynamic>?> getAutoAttendanceConfig({bool forceRefresh = false}) async {
+    final endpoints = [
+      '/api/hrm/v1/auto-attendance-settings',
+      '/hrm/v1/auto-attendance-settings',
+      '/api/hrm/v1/time-settings',
+      '/api/hrm/v1/auto-attendance',
+    ];
+
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        debugPrint('[HrmService] getAutoAttendanceConfig on $ep returned: ${res.statusCode}, data: ${res.data}');
+        if (res.statusCode == 200 && res.data != null) {
+          final raw = res.data;
+          if (raw is Map) {
+            Map<String, dynamic> map = Map<String, dynamic>.from(raw);
+            if (map['data'] is Map) {
+              map = Map<String, dynamic>.from(map['data'] as Map);
+            }
+            if (map['autoAttendance'] is Map) {
+              map = Map<String, dynamic>.from(map['autoAttendance'] as Map);
+            }
+            if (map['auto_attendance'] is Map) {
+              map = Map<String, dynamic>.from(map['auto_attendance'] as Map);
+            }
+            if (map['settings'] is Map) {
+              map = Map<String, dynamic>.from(map['settings'] as Map);
+            }
+            if (map.containsKey('enabled') || map.containsKey('weekdays') || map.containsKey('daysOfWeek') || map.containsKey('days_of_week') || map.containsKey('autoAttendanceEnabled')) {
+              _cachedAutoAttendanceConfig = map;
+              return map;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getAutoAttendanceConfig error on $ep: $e');
+      }
+    }
+    return _cachedAutoAttendanceConfig;
+  }
+
+  Future<PolicyActionResult> updateAutoAttendanceConfig({
+    required bool enabled,
+    required List<int> weekdays,
+    List<int>? daysOfWeek,
+  }) async {
+    final Set<int> sanitizedDays = {};
+    for (final d in (weekdays.isNotEmpty ? weekdays : (daysOfWeek ?? []))) {
+      if (d == 7) {
+        sanitizedDays.add(0);
+      } else if (d >= 0 && d <= 6) {
+        sanitizedDays.add(d);
+      }
+    }
+    final cleanWeekdays = sanitizedDays.toList()..sort();
+
+    // Exact payload matching Web 1:1: { enabled: true, weekdays: [6, 0] }
+    final payload = <String, dynamic>{
+      'enabled': enabled,
+      'weekdays': cleanWeekdays,
+    };
+
+    final endpoints = [
+      '/api/hrm/v1/auto-attendance-settings',
+      '/hrm/v1/auto-attendance-settings',
+      '/api/hrm/v1/time-settings/auto-attendance',
+      '/api/hrm/v1/auto-attendance',
+    ];
+
+    String lastErrorMsg = 'svc_hrm.auto_attendance_save_failed'.tr();
+    int? lastStatusCode;
+
+    for (final ep in endpoints) {
+      try {
+        debugPrint('[HrmService] PUT $ep with payload: $payload');
+        final res = await _dio.put(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        debugPrint('[HrmService] PUT $ep response: ${res.statusCode} -> ${res.data}');
+
+        if (res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 204) {
+          _cachedAutoAttendanceConfig = Map<String, dynamic>.from(payload);
+          if (res.data is Map) {
+            final resMap = Map<String, dynamic>.from(res.data as Map);
+            final sData = resMap['data'] ?? resMap['autoAttendance'] ?? resMap['auto_attendance'];
+            if (sData is Map) {
+              _cachedAutoAttendanceConfig = Map<String, dynamic>.from(sData);
+            }
+          }
+          final serverMsg = (res.data is Map<String, dynamic>)
+              ? (res.data['message'] ?? 'svc_hrm.auto_attendance_update_success'.tr())
+              : 'svc_hrm.auto_attendance_update_success'.tr();
+          return PolicyActionResult(isSuccess: true, message: serverMsg.toString(), statusCode: res.statusCode);
+        } else if (res.statusCode == 400 || res.statusCode == 422) {
+          final serverMsg = (res.data is Map<String, dynamic>)
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.invalid_data_code'.tr(args: {'code': res.statusCode});
+          return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: res.statusCode);
+        } else {
+          final serverMsg = (res.data is Map<String, dynamic>)
+              ? (res.data['message'] ?? res.data['error'] ?? 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode}))
+              : 'svc_hrm.server_error_code'.tr(args: {'code': res.statusCode});
+          lastErrorMsg = serverMsg.toString();
+          lastStatusCode = res.statusCode;
+        }
+      } on DioException catch (e) {
+        debugPrint('[HrmService] updateAutoAttendanceConfig DioException on $ep: ${e.response?.statusCode} - ${e.message}');
+        if (e.response != null && e.response?.data != null) {
+          final data = e.response?.data;
+          final serverMsg = (data is Map<String, dynamic>)
+              ? (data['message'] ?? data['error'] ?? 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode}))
+              : 'svc_hrm.server_rejected_code'.tr(args: {'code': e.response?.statusCode});
+          return PolicyActionResult(isSuccess: false, message: serverMsg.toString(), statusCode: e.response?.statusCode);
+        }
+        lastErrorMsg = e.message ?? 'svc_hrm.network_error'.tr();
+      } catch (e) {
+        debugPrint('[HrmService] updateAutoAttendanceConfig error on $ep: $e');
+        lastErrorMsg = e.toString();
+      }
+    }
+
+    return PolicyActionResult(
+      isSuccess: false,
+      message: lastErrorMsg,
+      statusCode: lastStatusCode,
+    );
+  }
+
+  // 21. Work Schedule APIs (Conforming 100% to HRM-PHAN-CA-MOBILE.md)
+
+  /// POST /api/hrm/v1/work-schedules/preview (Xem trước phân ca / ngoại lệ)
+  Future<HrmSchedulePreviewResult> previewSchedule(HrmApplyScheduleRequest request) async {
+    final payload = request.toJson();
+    debugPrint('[HrmService] POST /api/hrm/v1/work-schedules/preview: $payload');
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/work-schedules/preview',
+        data: payload,
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      debugPrint('[HrmService] preview response: ${res.statusCode} -> ${res.data}');
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = (res.data is Map && res.data['data'] != null)
+            ? res.data['data'] as Map<String, dynamic>
+            : (res.data as Map<String, dynamic>);
+        return HrmSchedulePreviewResult.fromJson(data);
+      } else if (res.statusCode == 409 && res.data is Map) {
+        // Business error 409: still contains partial preview info or specific message
+        final data = (res.data['data'] != null && res.data['data'] is Map)
+            ? res.data['data'] as Map<String, dynamic>
+            : <String, dynamic>{};
+        if (data.isNotEmpty) {
+          return HrmSchedulePreviewResult.fromJson(data);
+        }
+        final msg = res.data['message']?.toString() ?? 'svc_hrm.schedule_conflict'.tr();
+        throw Exception(msg);
+      } else {
+        final msg = (res.data is Map && res.data['message'] != null)
+            ? res.data['message'].toString()
+            : 'svc_hrm.schedule_preview_failed'.tr(args: {'code': res.statusCode});
+        throw Exception(msg);
+      }
+    } catch (e) {
+      if (e is! Exception) {
+        throw Exception(e.toString());
+      }
+      rethrow;
+    }
+  }
+
+  /// POST /api/hrm/v1/work-schedules (Lưu phân ca / ngoại lệ)
+  Future<PolicyActionResult> applySchedule(HrmApplyScheduleRequest request) async {
+    final payload = request.toJson();
+    debugPrint('[HrmService] POST /api/hrm/v1/work-schedules: $payload');
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/work-schedules',
+        data: payload,
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      debugPrint('[HrmService] apply response: ${res.statusCode} -> ${res.data}');
+      if (res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 204) {
+        final msg = (res.data is Map && res.data['message'] != null)
+            ? res.data['message'].toString()
+            : 'svc_hrm.schedule_save_success'.tr();
+        return PolicyActionResult(isSuccess: true, message: msg, statusCode: res.statusCode);
+      } else {
+        final msg = (res.data is Map && res.data['message'] != null)
+            ? res.data['message'].toString()
+            : 'svc_hrm.schedule_save_failed'.tr(args: {'code': res.statusCode});
+        return PolicyActionResult(isSuccess: false, message: msg, statusCode: res.statusCode);
+      }
+    } catch (e) {
+      debugPrint('[HrmService] applySchedule error: $e');
+      return PolicyActionResult(isSuccess: false, message: e.toString());
+    }
+  }
+
+  /// POST /api/hrm/v1/work-schedules/cancel (Xem phạm vi & Lưu Nhả ca)
+  Future<HrmCancelScheduleResult> cancelSchedule(HrmCancelScheduleRequest request) async {
+    final payload = request.toJson();
+    debugPrint('[HrmService] POST /api/hrm/v1/work-schedules/cancel: $payload');
+    try {
+      final res = await _dio.post(
+        '/api/hrm/v1/work-schedules/cancel',
+        data: payload,
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      debugPrint('[HrmService] cancel response: ${res.statusCode} -> ${res.data}');
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = (res.data is Map && res.data['data'] != null)
+            ? res.data['data'] as Map<String, dynamic>
+            : (res.data as Map<String, dynamic>);
+        return HrmCancelScheduleResult.fromJson(data);
+      } else {
+        final msg = (res.data is Map && res.data['message'] != null)
+            ? res.data['message'].toString()
+            : 'svc_hrm.schedule_release_failed'.tr(args: {'code': res.statusCode});
+        throw Exception(msg);
+      }
+    } catch (e) {
+      if (e is! Exception) {
+        throw Exception(e.toString());
+      }
+      rethrow;
+    }
+  }
+
+  /// GET /api/hrm/v1/employee-options?page=1&page_size=100
+  Future<List<HrmScheduleEmployeeOption>> getScheduleEmployeeOptions() async {
+    try {
+      final res = await _dio.get(
+        '/api/hrm/v1/employee-options?page=1&page_size=100',
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = (res.data is Map) ? res.data['data'] : res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().map((e) => HrmScheduleEmployeeOption.fromJson(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getScheduleEmployeeOptions error: $e');
+    }
+    return [];
+  }
+
+  /// GET /api/hrm/v1/shift-units
+  Future<List<HrmShiftUnit>> getShiftUnits() async {
+    try {
+      final res = await _dio.get(
+        '/api/hrm/v1/shift-units',
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = (res.data is Map) ? res.data['data'] : res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().map((e) => HrmShiftUnit.fromJson(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getShiftUnits error: $e');
+    }
+    return [];
+  }
+
+  /// GET /api/hrm/v1/work-schedule-templates (Mẫu lịch tuần đã lưu status=ACTIVE)
+  Future<List<HrmScheduleTemplate>> getWorkScheduleTemplates() async {
+    try {
+      final res = await _dio.get(
+        '/api/hrm/v1/work-schedule-templates',
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = (res.data is Map) ? res.data['data'] : res.data;
+        if (raw is List) {
+          return raw
+              .whereType<Map<String, dynamic>>()
+              .map((e) => HrmScheduleTemplate.fromJson(e))
+              .where((t) => t.status == 'ACTIVE')
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getWorkScheduleTemplates error: $e');
+    }
+    return [];
+  }
+
+  /// Helper legacy adapter for assignShiftSchedule
+  Future<PolicyActionResult> assignShiftSchedule({
+    required String scope,
+    required String shiftId,
+    required DateTime effectiveDate,
+    String? employeeId,
+    List<String>? employeeIds,
+    String? department,
+    String? note,
+    DateTime? endDate,
+    String conflictResolution = 'REPORT',
+    List<Map<String, dynamic>>? customPattern,
+  }) async {
+    String scopeType = 'COMPANY';
+    List<String> emps = [];
+    if (scope == 'ONE_EMPLOYEE' && employeeId != null) {
+      scopeType = 'EMPLOYEE';
+      emps = [employeeId];
+    } else if (scope == 'MULTI_EMPLOYEES' && employeeIds != null && employeeIds.isNotEmpty) {
+      scopeType = 'EMPLOYEES';
+      emps = employeeIds;
+    } else if (scope == 'BY_DEPARTMENT') {
+      scopeType = 'UNIT';
+    }
+
+    final dateStr = '${effectiveDate.year}-${effectiveDate.month.toString().padLeft(2, '0')}-${effectiveDate.day.toString().padLeft(2, '0')}';
+    final toDateStr = endDate != null
+        ? '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}'
+        : null;
+
+    List<HrmWeekdayRule> patternRules = [];
+    if (customPattern != null) {
+      patternRules = customPattern.map((c) => HrmWeekdayRule.fromJson(c)).toList();
+    } else {
+      patternRules = [
+        HrmWeekdayRule(weekday: 1, dayType: 'SHIFT', shiftId: shiftId),
+        HrmWeekdayRule(weekday: 2, dayType: 'SHIFT', shiftId: shiftId),
+        HrmWeekdayRule(weekday: 3, dayType: 'SHIFT', shiftId: shiftId),
+        HrmWeekdayRule(weekday: 4, dayType: 'SHIFT', shiftId: shiftId),
+        HrmWeekdayRule(weekday: 5, dayType: 'SHIFT', shiftId: shiftId),
+        const HrmWeekdayRule(weekday: 6, dayType: 'SKIP'),
+        const HrmWeekdayRule(weekday: 7, dayType: 'SKIP'),
+      ];
+    }
+
+    final req = HrmApplyScheduleRequest(
+      kind: 'ASSIGN',
+      scope: HrmScheduleScope(
+        type: scopeType,
+        employeeIds: emps,
+        unitIds: department != null && department.isNotEmpty ? [department] : [],
+      ),
+      fromDate: dateStr,
+      toDate: toDateStr,
+      pattern: patternRules,
+      conflictMode: conflictResolution,
+      reason: note,
+    );
+
+    return applySchedule(req);
+  }
+
+  // 22. Get Shift Schedule History & Audit Logs (Real backend data)
+  // 22. Get Shift Schedule History (Raw and Grouped Batches matching Web 1:1)
+  static Map<String, String> get _auditActionLabels => {
+    'WORK_SCHEDULE_APPLIED': 'svc_hrm.audit_assign'.tr(),
+    'WORK_SCHEDULE_CANCELLED': 'svc_hrm.audit_release'.tr(),
+    'WORK_SCHEDULE_COPIED': 'svc_hrm.audit_copy'.tr(),
+    'SCHEDULE_ASSIGN': 'svc_hrm.audit_assign'.tr(),
+    'SCHEDULE_OVERWRITE': 'svc_hrm.audit_overwrite'.tr(),
+    'SCHEDULE_EXCEPTION': 'svc_hrm.audit_exception'.tr(),
+    'SCHEDULE_CANCEL': 'svc_hrm.audit_release'.tr(),
+    'SCHEDULE_COPY': 'svc_hrm.audit_copy'.tr(),
+    'RULE_CREATE': 'svc_hrm.audit_rule_create'.tr(),
+    'RULE_REPLACE': 'svc_hrm.audit_rule_replace'.tr(),
+    'RULE_OVERRIDE_DAYS': 'svc_hrm.audit_rule_override_days'.tr(),
+    'RULE_END': 'svc_hrm.audit_rule_end'.tr(),
+    'RULE_CANCEL': 'svc_hrm.audit_rule_cancel'.tr(),
+    'HOLIDAY_CANCEL': 'svc_hrm.audit_holiday_cancel'.tr(),
+    'SHIFT_CHANGE': 'svc_hrm.audit_shift_change'.tr(),
+  };
+
+  static Map<int, String> get _weekdayLabels => {
+    1: 'svc_hrm.wd_1'.tr(),
+    2: 'svc_hrm.wd_2'.tr(),
+    3: 'svc_hrm.wd_3'.tr(),
+    4: 'svc_hrm.wd_4'.tr(),
+    5: 'svc_hrm.wd_5'.tr(),
+    6: 'svc_hrm.wd_6'.tr(),
+    7: 'svc_hrm.wd_7'.tr(),
+  };
+
+  String _auditActionLabel(String action) {
+    return _auditActionLabels[action] ?? (action.isNotEmpty ? action : 'svc_hrm.audit_rule_replace'.tr());
+  }
+
+  String _formatVnDate(String dateStr) {
+    try {
+      final dt = DateTime.tryParse(dateStr);
+      if (dt != null) {
+        return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      }
+    } catch (_) {}
+    return dateStr;
+  }
+
+  String _auditDateText(String? fromDate, String? toDate) {
+    if (fromDate == null || fromDate.isEmpty) return '';
+    final fVn = _formatVnDate(fromDate);
+    if (toDate == null || toDate.isEmpty) return 'svc_hrm.date_from'.tr(args: {'date': fVn});
+    final tVn = _formatVnDate(toDate);
+    return fromDate == toDate ? fVn : '$fVn - $tVn';
+  }
+
+  String _summarizeWeekdayLabels(List<Map<String, dynamic>> items) {
+    items.sort((a, b) => (a['weekday'] as int).compareTo(b['weekday'] as int));
+    final groups = <Map<String, dynamic>>[];
+    for (final item in items) {
+      final w = item['weekday'] as int;
+      final label = item['label'] as String;
+      if (groups.isNotEmpty &&
+          groups.last['label'] == label &&
+          (groups.last['to'] as int) == w - 1) {
+        groups.last['to'] = w;
+      } else {
+        groups.add({'from': w, 'to': w, 'label': label});
+      }
+    }
+    if (groups.isEmpty) return 'svc_hrm.not_configured'.tr();
+    return groups.map((g) {
+      final fromW = g['from'] as int;
+      final toW = g['to'] as int;
+      final lbl = g['label'] as String;
+      final wStr = fromW == toW ? _weekdayLabels[fromW]! : '${_weekdayLabels[fromW]}-${_weekdayLabels[toW]}';
+      return '$wStr: $lbl';
+    }).join('; ');
+  }
+
+  String? _runsShiftText(dynamic runs) {
+    if (runs is! List || runs.isEmpty) return null;
+    final parts = <String>[];
+    for (final r in runs) {
+      if (r is Map) {
+        final dayType = r['dayType']?.toString();
+        final code = r['shiftCode']?.toString();
+        if (dayType == 'SHIFT') {
+          parts.add(code != null && code.isNotEmpty ? code : 'svc_hrm.shift_short'.tr());
+        } else if (dayType == 'OFF') {
+          parts.add('svc_hrm.day_off'.tr());
+        }
+      }
+    }
+    return parts.isNotEmpty ? parts.toSet().join(', ') : null;
+  }
+
+  String _auditShiftText(Map<String, dynamic> entry, Map<String, String> shiftCodeMap) {
+    final after = entry['after'];
+    if (after is Map) {
+      if (after['days'] is List) {
+        final daysList = <Map<String, dynamic>>[];
+        for (final d in (after['days'] as List)) {
+          if (d is Map) {
+            final w = int.tryParse(d['weekday']?.toString() ?? '') ?? 0;
+            if (w >= 1 && w <= 7) {
+              final dayType = d['dayType']?.toString() ?? '';
+              final shiftId = d['shiftId']?.toString() ?? '';
+              final label = dayType == 'OFF'
+                  ? 'OFF'
+                  : (shiftCodeMap[shiftId] ?? d['shiftCode']?.toString() ?? 'Ca?');
+              daysList.add({'weekday': w, 'label': label});
+            }
+          }
+        }
+        if (daysList.isNotEmpty) {
+          return _summarizeWeekdayLabels(daysList);
+        }
+      }
+      if (after['shiftId'] != null) {
+        final sid = after['shiftId'].toString();
+        return shiftCodeMap[sid] ?? after['shiftCode']?.toString() ?? 'svc_hrm.shift_short'.tr();
+      }
+    }
+
+    final runs = _runsShiftText(after) ?? _runsShiftText(entry['before']);
+    if (runs != null && runs.isNotEmpty) return runs;
+
+    return entry['shiftPattern']?.toString() ?? entry['reason']?.toString() ?? '';
+  }
+
+  List<String> _formatAuditRuns(dynamic val) {
+    if (val is! List) {
+      if (val != null && val.toString().isNotEmpty && val.toString() != 'null') {
+        return [val.toString()];
+      }
+      return [];
+    }
+    final res = <String>[];
+    for (final item in val) {
+      if (item is Map) {
+        final from = item['from']?.toString() ?? item['fromDate']?.toString() ?? '';
+        final to = item['to']?.toString() ?? item['toDate']?.toString() ?? '';
+        final code = item['shiftCode']?.toString() ?? item['label']?.toString() ?? 'HC';
+        final range = (from.isNotEmpty && to.isNotEmpty && from != to) ? '$from - $to' : from;
+        res.add('$range: $code');
+      } else if (item != null) {
+        res.add(item.toString());
+      }
+    }
+    return res;
+  }
+
+  List<Map<String, dynamic>> _groupScheduleAudit(List<dynamic> rows, List<HrmShift>? shifts, {int limit = 5}) {
+    if (rows.isEmpty) return [];
+
+    final shiftCodeMap = <String, String>{};
+    if (shifts != null) {
+      for (final s in shifts) {
+        shiftCodeMap[s.id] = s.code.isNotEmpty ? s.code : (s.name.isNotEmpty ? s.name : 'svc_hrm.shift_short'.tr());
+      }
+    }
+
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final r in rows) {
+      if (r is! Map) continue;
+      final row = Map<String, dynamic>.from(r);
+      final key = row['batchId']?.toString() ?? 'entry:${row['id']}';
+      groups.putIfAbsent(key, () => []).add(row);
+    }
+
+    final results = <Map<String, dynamic>>[];
+    for (final entry in groups.entries) {
+      if (results.length >= limit) break;
+      final entries = entry.value;
+      if (entries.isEmpty) continue;
+
+      final main = entries.firstWhere(
+        (e) => e['action'] != 'RULE_OVERRIDE_DAYS',
+        orElse: () => entries.first,
+      );
+
+      final employeeIds = entries
+          .where((e) => e['action'] == main['action'])
+          .map((e) => e['employeeId']?.toString() ?? e['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final count = employeeIds.length;
+
+      String scopeText = '';
+      final afterRaw = main['after'];
+      String scopeLabel = '';
+      if (afterRaw is Map && afterRaw['scope'] is String) {
+        scopeLabel = afterRaw['scope'] as String;
+      }
+
+      if (count > 1) {
+        scopeText = 'svc_hrm.n_employees'.tr(args: {'count': count});
+      } else if (main['employeeCode'] != null && main['employeeCode'].toString().isNotEmpty) {
+        final code = main['employeeCode'].toString();
+        final name = main['employeeName']?.toString() ?? main['full_name']?.toString() ?? '';
+        scopeText = name.isNotEmpty ? '$code - $name' : code;
+      } else if (scopeLabel == 'COMPANY' || scopeLabel == 'ALL' || scopeLabel.isEmpty) {
+        scopeText = 'svc_hrm.scope_company'.tr();
+      } else {
+        scopeText = scopeLabel;
+      }
+
+      final action = main['action']?.toString() ?? '';
+      final actionLabel = _auditActionLabel(action);
+
+      final fromDate = main['fromDate']?.toString() ?? main['from_date']?.toString();
+      final toDate = main['toDate']?.toString() ?? main['to_date']?.toString();
+      final effectiveDate = _auditDateText(fromDate, toDate);
+
+      final shiftText = _auditShiftText(main, shiftCodeMap);
+
+      final actorName = main['actorName']?.toString() ?? main['actor_name']?.toString() ?? main['createdByName']?.toString() ?? 'svc_hrm.administrator'.tr();
+      final createdAtRaw = main['createdAt']?.toString() ?? main['created_at']?.toString() ?? '';
+      String timeStr = createdAtRaw;
+      final dt = DateTime.tryParse(createdAtRaw);
+      if (dt != null) {
+        final localDt = dt.toLocal();
+        timeStr = '${localDt.day.toString().padLeft(2, '0')}/${localDt.month.toString().padLeft(2, '0')}/${localDt.year} ${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}';
+      }
+
+      final beforeList = _formatAuditRuns(main['before']);
+      final afterList = _formatAuditRuns(main['after']);
+
+      results.add({
+        'id': main['id']?.toString() ?? entry.key,
+        'batchId': main['batchId']?.toString() ?? entry.key,
+        'action': action,
+        'actionLabel': actionLabel,
+        'title': actionLabel,
+        'effectiveDate': effectiveDate.isNotEmpty ? effectiveDate : 'svc_hrm.date_from_default'.tr(),
+        'scope': scopeText,
+        'scopeText': scopeText,
+        'sub': scopeText,
+        'shiftPattern': shiftText.isNotEmpty ? shiftText : 'T2-T6: HC; T7: HC-T7; CN: OFF',
+        'shiftText': shiftText,
+        'actor': actorName,
+        'actorName': actorName,
+        'timestamp': timeStr,
+        'createdAt': timeStr,
+        'before': beforeList,
+        'after': afterList.isNotEmpty ? afterList.join(', ') : (shiftText.isNotEmpty ? shiftText : 'svc_hrm.none'.tr()),
+        'count': count,
+      });
+    }
+
+    return results;
+  }
+
+  /// Fetches raw audit rows from /api/hrm/v1/work-schedules/audit matching Web's fetchScheduleAudit
+  Future<List<Map<String, dynamic>>> getRawScheduleAuditEntries({int limit = 100}) async {
+    final candidateEndpoints = [
+      '/api/hrm/v1/work-schedules/audit?limit=$limit',
+      '/hrm/v1/work-schedules/audit?limit=$limit',
+      '/api/hrm/v1/work-schedules/audit',
+      '/hrm/v1/work-schedules/audit',
+    ];
+
+    for (final ep in candidateEndpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        debugPrint('[HrmService] GET $ep: ${res.statusCode}');
+        if (res.statusCode == 200 && res.data != null) {
+          final dynamic raw = (res.data is Map)
+              ? (res.data['data'] ?? res.data['items'] ?? res.data['history'] ?? res.data)
+              : res.data;
+          if (raw is List && raw.isNotEmpty) {
+            return raw.whereType<Map<String, dynamic>>().toList();
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getRawScheduleAuditEntries error on $ep: $e');
+      }
+    }
+    return [];
+  }
+
+  /// Fetches recent schedule history grouped into batches (matching Web's RecentScheduleHistory 1:1)
+  Future<List<Map<String, dynamic>>> getScheduleHistory({int limit = 5}) async {
+    try {
+      final rawEntries = await getRawScheduleAuditEntries(limit: 100);
+      List<HrmShift>? shifts = _cachedShifts;
+      if (shifts == null || shifts.isEmpty) {
+        try {
+          shifts = await getShifts();
+        } catch (_) {}
+      }
+
+      if (rawEntries.isNotEmpty) {
+        final grouped = _groupScheduleAudit(rawEntries, shifts, limit: limit);
+        if (grouped.isNotEmpty) return grouped;
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getScheduleHistory error: $e');
+    }
+
+    return [];
+  }
 }
+
 

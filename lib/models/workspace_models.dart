@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 // Workspace Models: Customers, Contracts, Projects, Roles, and Standalone Tasks (1:1 Web Parity)
 
 class CustomerItem {
@@ -23,23 +24,31 @@ class CustomerItem {
     return CustomerItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Khách hàng chưa đặt tên',
+      name: json['name']?.toString() ?? 'models.workspace.customer_unnamed'.tr(),
       note: json['note']?.toString(),
-      contractCount: _parseInt(json['contractCount']),
-      projectCount: _parseInt(json['projectCount']),
+      contractCount: parseInt(json['contractCount']),
+      projectCount: parseInt(json['projectCount']),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
     );
   }
 
-  static int _parseInt(dynamic val, [int fallback = 0]) {
+  static int parseInt(dynamic val, [int fallback = 0]) {
     if (val == null) return fallback;
     if (val is int) return val;
     if (val is num) return val.toInt();
     if (val is String) return int.tryParse(val) ?? fallback;
     return fallback;
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CustomerItem && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class ContractItem {
@@ -75,7 +84,7 @@ class ContractItem {
       id: json['id']?.toString() ?? '',
       customerId: json['customerId']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Hợp đồng chưa đặt tên',
+      name: json['name']?.toString() ?? 'models.workspace.contract_unnamed'.tr(),
       status: json['status']?.toString() ?? 'draft',
       value: json['value'] != null ? double.tryParse(json['value'].toString()) : null,
       signedDate: json['signedDate'] != null ? DateTime.tryParse(json['signedDate'].toString()) : null,
@@ -91,14 +100,14 @@ class ContractItem {
   String get statusLabel {
     switch (status) {
       case 'active':
-        return 'Đang thực hiện';
+        return 'models.workspace.in_progress'.tr();
       case 'completed':
-        return 'Hoàn thành';
+        return 'models.workspace.completed'.tr();
       case 'cancelled':
-        return 'Đã huỷ';
+        return 'models.workspace.cancelled'.tr();
       case 'draft':
       default:
-        return 'Bản nháp';
+        return 'models.status.draft'.tr();
     }
   }
 }
@@ -119,6 +128,7 @@ class ProjectItem {
   final String? myRole;
   final DateTime? startDate;
   final DateTime? endDate;
+  final List<StandaloneTaskItem> tasks;
 
   const ProjectItem({
     required this.id,
@@ -136,44 +146,60 @@ class ProjectItem {
     this.myRole,
     this.startDate,
     this.endDate,
+    this.tasks = const [],
   });
 
   factory ProjectItem.fromJson(Map<String, dynamic> json, [Map<String, String>? customerMap]) {
     final cid = json['customerId']?.toString();
+    final rawTasks = json['tasks'] ?? json['items'] ?? json['children'];
+    List<StandaloneTaskItem> taskList = [];
+    if (rawTasks is List) {
+      taskList = rawTasks.map((t) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(t as Map))).toList();
+    }
+
     return ProjectItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Dự án chưa đặt tên',
+      name: json['name']?.toString() ?? 'models.workspace.project_unnamed'.tr(),
       description: json['description']?.toString(),
       status: json['status']?.toString() ?? 'active',
       projectType: json['projectType']?.toString(),
       customerId: cid,
       customerName: cid != null && customerMap != null ? customerMap[cid] : json['customerName']?.toString(),
       progressPercent: json['progressPercent'] != null ? (double.tryParse(json['progressPercent'].toString()) ?? 0.0) : 0.0,
-      totalItems: CustomerItem._parseInt(json['totalItems']),
-      closedItems: CustomerItem._parseInt(json['closedItems']),
-      overdueItems: CustomerItem._parseInt(json['overdueItems']),
+      totalItems: CustomerItem.parseInt(json['totalItems']),
+      closedItems: CustomerItem.parseInt(json['closedItems']),
+      overdueItems: CustomerItem.parseInt(json['overdueItems']),
       myRole: json['myRole']?.toString(),
       startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
       endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+      tasks: taskList,
     );
   }
 
   String get statusLabel {
     switch (status) {
       case 'active':
-        return 'Đang triển khai';
+        return 'models.workspace.deploying'.tr();
       case 'completed':
-        return 'Hoàn thành';
+        return 'models.workspace.completed'.tr();
       case 'cancelled':
-        return 'Đã huỷ';
+        return 'models.workspace.cancelled'.tr();
       case 'draft':
       default:
-        return 'Khởi tạo';
+        return 'models.workspace.initiated'.tr();
     }
   }
 
-  String get typeLabel => projectType != null && projectType!.isNotEmpty ? projectType! : 'Chưa phân loại';
+  String get typeLabel => projectType != null && projectType!.isNotEmpty ? projectType! : 'models.workspace.uncategorized'.tr();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProjectItem && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class ProjectMemberItem {
@@ -192,7 +218,7 @@ class ProjectMemberItem {
   factory ProjectMemberItem.fromJson(Map<String, dynamic> json) {
     return ProjectMemberItem(
       userId: json['userId']?.toString() ?? json['id']?.toString() ?? '',
-      fullName: json['fullName']?.toString() ?? json['name']?.toString() ?? 'Thành viên',
+      fullName: json['fullName']?.toString() ?? json['name']?.toString() ?? 'models.workspace.member'.tr(),
       email: json['email']?.toString(),
       role: json['role']?.toString() ?? 'technician',
     );
@@ -201,12 +227,12 @@ class ProjectMemberItem {
   String get roleLabel {
     switch (role) {
       case 'manager':
-        return 'Quản lý dự án';
+        return 'models.workspace.project_manager'.tr();
       case 'technician':
-        return 'Kỹ thuật viên';
+        return 'models.maintenance.technician'.tr();
       case 'viewer':
       default:
-        return 'Xem / Theo dõi';
+        return 'models.workspace.viewer'.tr();
     }
   }
 }
@@ -245,23 +271,31 @@ class StandaloneTaskItem {
   });
 
   factory StandaloneTaskItem.fromJson(Map<String, dynamic> json) {
-    final task = json['task'] is Map ? json['task'] as Map<String, dynamic> : json;
+    final task = json['task'] is Map ? json['task'] as Map<String, dynamic> : (json['item'] is Map ? json['item'] as Map<String, dynamic> : json);
     final role = json['myRole']?.toString() ?? task['myRole']?.toString() ?? 'assignee';
+
+    DateTime? parsedDue;
+    for (final key in ['dueDate', 'plannedEnd', 'endDate', 'due_date', 'deadline']) {
+      if (task[key] != null) {
+        parsedDue = DateTime.tryParse(task[key].toString());
+        if (parsedDue != null) break;
+      }
+    }
 
     return StandaloneTaskItem(
       id: task['id']?.toString() ?? '',
       code: task['code']?.toString() ?? '',
-      title: task['title']?.toString() ?? 'Công việc không tên',
+      title: task['title']?.toString() ?? 'models.workspace.task_unnamed'.tr(),
       description: task['description']?.toString(),
       status: task['status']?.toString() ?? 'todo',
       priority: task['priority']?.toString() ?? 'normal',
       assigneeUserId: task['assigneeUserId']?.toString() ?? '',
       assigneeName: task['assigneeName']?.toString() ?? task['assignee']?['name']?.toString(),
       progressPercent: task['progressPercent'] != null ? (double.tryParse(task['progressPercent'].toString()) ?? 0.0) : 0.0,
-      dueDate: task['dueDate'] != null ? DateTime.tryParse(task['dueDate'].toString()) : null,
+      dueDate: parsedDue,
       myRole: role,
-      childCount: CustomerItem._parseInt(task['childCount']),
-      openChildCount: CustomerItem._parseInt(task['openChildCount']),
+      childCount: CustomerItem.parseInt(task['childCount']),
+      openChildCount: CustomerItem.parseInt(task['openChildCount']),
       isReversed: task['reversal'] != null,
     );
   }
@@ -271,6 +305,8 @@ class StandaloneTaskItem {
     switch (status) {
       case 'in_progress':
         return 'Đang làm';
+      case 'blocked':
+        return 'Vướng mắc';
       case 'review':
         return 'Chờ duyệt';
       case 'done':
@@ -279,7 +315,7 @@ class StandaloneTaskItem {
         return 'Đã huỷ';
       case 'todo':
       default:
-        return 'Cần làm';
+        return 'Chưa làm';
     }
   }
 
@@ -295,5 +331,89 @@ class StandaloneTaskItem {
       default:
         return 'Bình thường';
     }
+  }
+}
+
+class DepartmentItem {
+  final String id;
+  final String name;
+  final String? parentPath;
+  final String? parentId;
+
+  const DepartmentItem({
+    required this.id,
+    required this.name,
+    this.parentPath,
+    this.parentId,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DepartmentItem && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+/// A document of the workspace (GET /workspace/v1/documents), flattened with its current version.
+class WorkspaceDocumentItem {
+  final String id;
+  final String name;
+  final String? description;
+  final String? projectId;
+  final String status;
+  final String fileName;
+  final String contentType;
+  final int? sizeBytes;
+  final int versionCount;
+  final DateTime? updatedAt;
+
+  const WorkspaceDocumentItem({
+    required this.id,
+    required this.name,
+    this.description,
+    this.projectId,
+    this.status = 'active',
+    this.fileName = '',
+    this.contentType = '',
+    this.sizeBytes,
+    this.versionCount = 0,
+    this.updatedAt,
+  });
+
+  factory WorkspaceDocumentItem.fromJson(Map<String, dynamic> json) {
+    final v = json['currentVersion'];
+    final ver = v is Map<String, dynamic> ? v : const <String, dynamic>{};
+    return WorkspaceDocumentItem(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      projectId: json['projectId']?.toString(),
+      status: json['status']?.toString() ?? 'active',
+      fileName: ver['fileName']?.toString() ?? '',
+      contentType: ver['contentType']?.toString() ?? '',
+      sizeBytes: (ver['sizeBytes'] as num?)?.toInt(),
+      versionCount: (json['versionCount'] as num?)?.toInt() ?? 0,
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '')?.toLocal(),
+    );
+  }
+
+  /// 'PDF' | 'WORD' | 'EXCEL' | 'OTHER'
+  String get kind {
+    final n = (fileName.isNotEmpty ? fileName : name).toLowerCase();
+    final t = contentType.toLowerCase();
+    if (t.contains('pdf') || n.endsWith('.pdf')) return 'PDF';
+    if (t.contains('word') || n.endsWith('.doc') || n.endsWith('.docx')) return 'WORD';
+    if (t.contains('sheet') || t.contains('excel') || n.endsWith('.xls') || n.endsWith('.xlsx') || n.endsWith('.csv')) return 'EXCEL';
+    return 'OTHER';
+  }
+
+  String get sizeLabel {
+    final b = sizeBytes;
+    if (b == null) return '';
+    if (b >= 1024 * 1024) return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (b >= 1024) return '${(b / 1024).round()} KB';
+    return '$b B';
   }
 }

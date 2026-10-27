@@ -1,7 +1,9 @@
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:dio/dio.dart';
 
 class ApiErrorHandler {
-  static String parse(dynamic error, {String defaultMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại.'}) {
+  static String parse(dynamic error, {String? defaultMessage}) {
+    defaultMessage ??= 'core_misc.err.default'.tr();
     if (error == null) return defaultMessage;
 
     if (error is DioException) {
@@ -25,28 +27,28 @@ class ApiErrorHandler {
 
       // 401 Unauthorized
       if (statusCode == 401 || (rawMsg != null && rawMsg.toLowerCase().contains('unauthorized'))) {
-        return 'Phiên làm việc đã hết hạn hoặc chưa được xác thực (401). Vui lòng đăng xuất và đăng nhập lại để tiếp tục.';
+        return 'core_misc.err.unauth_long'.tr();
       }
 
       // 403 Forbidden
       if (statusCode == 403 || (rawMsg != null && rawMsg.toLowerCase().contains('forbidden'))) {
-        return 'Bạn không có quyền thực hiện thao tác này (403 Forbidden). Vui lòng liên hệ Quản trị viên để được cấp quyền tương ứng.';
+        return 'core_misc.err.forbidden_403'.tr();
       }
 
       // 404 Not Found
       if (statusCode == 404) {
-        return 'Không tìm thấy dữ liệu yêu cầu hoặc tài nguyên đã bị xóa (404 Not Found).';
+        return 'core_misc.err.not_found'.tr();
       }
 
       // 409 Conflict / Duplication
       if (statusCode == 409 || (rawMsg != null && rawMsg.toLowerCase().contains('already exists'))) {
         if (rawMsg != null && rawMsg.toLowerCase().contains('email')) {
-          return 'Địa chỉ email này đã tồn tại trong hệ thống. Vui lòng sử dụng địa chỉ email khác.';
+          return 'core_misc.err.email_exists'.tr();
         }
         if (rawMsg != null && rawMsg.isNotEmpty) {
           return rawMsg;
         }
-        return 'Dữ liệu này đã tồn tại trong hệ thống (bị trùng lặp). Vui lòng kiểm tra lại.';
+        return 'core_misc.err.duplicate'.tr();
       }
 
       // 400 Bad Request / 422 Unprocessable Entity
@@ -54,23 +56,23 @@ class ApiErrorHandler {
         if (rawMsg != null && rawMsg.isNotEmpty) {
           return rawMsg;
         }
-        return 'Thông tin gửi lên chưa hợp lệ. Vui lòng kiểm tra lại các trường dữ liệu.';
+        return 'core_misc.err.invalid_input'.tr();
       }
 
       // 500+ Server Error
       if (statusCode != null && statusCode >= 500) {
-        return 'Máy chủ backend đang gặp sự cố xử lý (Mã lỗi $statusCode). Vui lòng thử lại sau.';
+        return 'core_misc.err.server_error'.tr(args: {'code': statusCode});
       }
 
       // Network / Timeouts
       if (error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.sendTimeout ||
           error.type == DioExceptionType.receiveTimeout) {
-        return 'Hết thời gian chờ kết nối máy chủ (Timeout). Vui lòng kiểm tra lại đường truyền mạng.';
+        return 'core_misc.err.timeout'.tr();
       }
 
       if (error.type == DioExceptionType.connectionError) {
-        return 'Không thể kết nối đến máy chủ API. Vui lòng kiểm tra kết nối mạng của thiết bị hoặc trạng thái server.';
+        return 'core_misc.err.conn_error'.tr();
       }
 
       if (rawMsg != null && rawMsg.trim().isNotEmpty) {
@@ -81,13 +83,13 @@ class ApiErrorHandler {
     final str = error.toString();
     final lowerStr = str.toLowerCase();
     if (lowerStr.contains('unauthorized') || str.contains('401')) {
-      return 'Phiên làm việc đã hết hạn hoặc chưa được xác thực (401). Vui lòng đăng xuất và đăng nhập lại.';
+      return 'core_misc.err.unauth'.tr();
     }
     if (lowerStr.contains('forbidden') || str.contains('403')) {
-      return 'Tài khoản không đủ quyền hạn để thực hiện thao tác này.';
+      return 'core_misc.err.forbidden_account'.tr();
     }
     if (lowerStr.contains('socketexception') || lowerStr.contains('failed host lookup')) {
-      return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng.';
+      return 'core_misc.err.no_connection'.tr();
     }
 
     return defaultMessage;
@@ -96,25 +98,25 @@ class ApiErrorHandler {
   static String _translateValidationMessage(String msg) {
     final lower = msg.toLowerCase();
     if (lower == 'unauthorized') {
-      return 'Phiên làm việc đã hết hạn hoặc chưa được xác thực (401). Vui lòng đăng xuất và đăng nhập lại.';
+      return 'core_misc.err.unauth'.tr();
     }
     if (lower == 'forbidden' || lower.contains('forbidden resource')) {
-      return 'Bạn không có quyền thực hiện thao tác này.';
+      return 'core_misc.err.forbidden_short'.tr();
     }
     if (lower.contains('password') && (lower.contains('12') || lower.contains('short') || lower.contains('longer') || lower.contains('characters'))) {
-      return 'Mật khẩu phải có độ dài từ 12 đến 128 ký tự theo quy định bảo mật.';
+      return 'core_misc.err.password_len'.tr();
     }
     if (lower.contains('email') && (lower.contains('must be an email') || lower.contains('invalid email') || lower.contains('format'))) {
-      return 'Địa chỉ email không đúng định dạng.';
+      return 'core_misc.err.email_format'.tr();
     }
     if (lower.contains('already exists') || lower.contains('duplicate')) {
-      return 'Dữ liệu hoặc email này đã tồn tại trên hệ thống.';
+      return 'core_misc.err.data_exists'.tr();
     }
     if (msg.contains('Gán role qua API')) {
-      return 'Không thể gán vai trò trực tiếp khi tạo. Vui lòng gán sau tại mục Phân quyền.';
+      return 'core_misc.err.role_assign'.tr();
     }
     if (lower.contains('fullname') && lower.contains('empty')) {
-      return 'Họ và tên không được để trống.';
+      return 'core_misc.err.fullname_empty'.tr();
     }
     return msg;
   }

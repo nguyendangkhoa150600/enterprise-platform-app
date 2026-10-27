@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
@@ -88,7 +89,7 @@ class EmployeeDirectoryCard extends StatelessWidget {
                 children: [
                   AppStatusBadge(
                     status: status,
-                    customLabel: isProbation ? 'Thử việc' : 'Chính thức',
+                    customLabel: isProbation ? 'hrm_widgets.employee_card.probation'.tr() : 'hrm_widgets.employee_card.official'.tr(),
                   ),
                   IconButton(
                     icon: const Icon(Icons.more_vert, size: 18, color: AppColors.slate400),
@@ -113,7 +114,7 @@ class EmployeeDirectoryCard extends StatelessWidget {
                   const Icon(Icons.calendar_today_outlined, size: 13, color: AppColors.slate400),
                   const SizedBox(width: 5),
                   Text(
-                    'Ngày vào: ${Formatters.formatDate(employee.hireDate)}',
+                    'hrm_widgets.employee_card.hire_date'.tr(args: {'date': Formatters.formatDate(employee.hireDate)}),
                     style: AppTextStyles.caption.copyWith(color: AppColors.slate500),
                   ),
                 ],
@@ -121,7 +122,7 @@ class EmployeeDirectoryCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'Hồ sơ: ${employee.completionRate}%',
+                    'hrm_widgets.employee_card.profile_rate'.tr(args: {'rate': employee.completionRate}),
                     style: AppTextStyles.caption.copyWith(
                       color: employee.completionRate >= 80 ? AppColors.emerald600 : AppColors.amber,
                       fontWeight: FontWeight.bold,

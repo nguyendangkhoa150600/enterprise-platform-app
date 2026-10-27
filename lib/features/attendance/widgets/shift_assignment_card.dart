@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
@@ -58,13 +59,13 @@ class ShiftAssignmentCard extends StatelessWidget {
                     ),
                     AppStatusBadge(
                       status: status,
-                      customLabel: isAssigned ? 'ĐÃ GÁN CA' : status,
+                      customLabel: isAssigned ? 'att_widgets.shift_card.assigned'.tr() : status,
                     ),
                   ],
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  assignment.shiftName ?? 'Ca hành chính chuẩn (08:00 - 17:30)',
+                  assignment.shiftName ?? 'att_widgets.shift_card.default_shift'.tr(),
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate600),
                 ),
               ],

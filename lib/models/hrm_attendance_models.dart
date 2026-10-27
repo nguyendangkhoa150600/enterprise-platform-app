@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 class LeaveType {
   final String id;
   final String code;
@@ -19,7 +20,7 @@ class LeaveType {
     return LeaveType(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? json['name']?.toString() ?? '',
-      name: json['name']?.toString() ?? json['title']?.toString() ?? json['code']?.toString() ?? 'Nghỉ phép',
+      name: json['name']?.toString() ?? json['title']?.toString() ?? json['code']?.toString() ?? 'models.request.leave'.tr(),
       daysAllowed: (json['days_allowed'] ?? json['daysAllowed'] ?? json['quota']) != null
           ? double.tryParse(json['days_allowed']?.toString() ?? json['daysAllowed']?.toString() ?? json['quota']?.toString() ?? '')
           : null,
@@ -50,11 +51,33 @@ class HrmShift {
     this.graceEarlyMinutes = 5,
   });
 
+  /// Server returns the shift as `{ window: { start, end, breakMinutes, ... } }` with ISO instants.
+  static String? _clock(dynamic iso) {
+    if (iso == null) return null;
+    final dt = DateTime.tryParse(iso.toString());
+    if (dt == null) return null;
+    final l = dt.toLocal();
+    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}:00';
+  }
+
   factory HrmShift.fromJson(Map<String, dynamic> json) {
+    final window = json['window'];
+    if (window is Map<String, dynamic>) {
+      return HrmShift(
+        id: json['id']?.toString() ?? '',
+        code: json['code']?.toString() ?? '',
+        name: json['name']?.toString() ?? '',
+        startTime: _clock(window['start']) ?? '',
+        endTime: _clock(window['end']) ?? '',
+        breakMinutes: (window['breakMinutes'] as num?)?.toInt() ?? 0,
+        graceLateMinutes: (window['graceLateMinutes'] as num?)?.toInt() ?? 0,
+        graceEarlyMinutes: (window['graceEarlyMinutes'] as num?)?.toInt() ?? 0,
+      );
+    }
     return HrmShift(
       id: json['id']?.toString() ?? 's-01',
       code: json['code']?.toString() ?? 'CA_HC',
-      name: json['name']?.toString() ?? 'Ca Hành chính',
+      name: json['name']?.toString() ?? 'models.shift.office_hours'.tr(),
       startTime: json['start_time']?.toString() ?? json['startTime']?.toString() ?? '08:00:00',
       endTime: json['end_time']?.toString() ?? json['endTime']?.toString() ?? '17:30:00',
       breakMinutes: (json['break_minutes'] ?? json['breakMinutes'] as num?)?.toInt() ?? 90,
@@ -82,7 +105,7 @@ class HrmSite {
   factory HrmSite.fromJson(Map<String, dynamic> json) {
     return HrmSite(
       id: json['id']?.toString() ?? 'site-01',
-      name: json['name']?.toString() ?? 'Trụ sở chính SAVINA',
+      name: json['name']?.toString() ?? 'models.site.hq_savina'.tr(),
       latitude: (json['latitude'] as num?)?.toDouble() ?? 10.776889,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 106.700806,
       radiusM: (json['radius_m'] ?? json['radiusM'] as num?)?.toDouble() ?? 100.0,
@@ -96,7 +119,8 @@ class AttendanceContext {
   final String employeeId;
   final String employeeCode;
   final String fullName;
-  final HrmShift shift;
+  final HrmShift? shift;
+  final bool requireGps;
   final List<String> allowedMethods;
   final List<HrmSite> sites;
 
@@ -106,7 +130,8 @@ class AttendanceContext {
     required this.employeeId,
     required this.employeeCode,
     required this.fullName,
-    required this.shift,
+    this.shift,
+    this.requireGps = false,
     required this.allowedMethods,
     required this.sites,
   });
@@ -121,42 +146,10 @@ class AttendanceContext {
       employeeId: emp['id']?.toString() ?? json['employee_id']?.toString() ?? '',
       employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? json['employee_code']?.toString() ?? '',
       fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? emp['name']?.toString() ?? json['full_name']?.toString() ?? '',
-      shift: json['shift'] != null ? HrmShift.fromJson(json['shift']) : HrmShift(id: 's-01', code: 'CA_HC', name: 'Ca Hành chính', startTime: '08:00:00', endTime: '17:30:00'),
-      allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['GPS', 'WIFI_WAN_IP'],
+      shift: json['shift'] is Map<String, dynamic> ? HrmShift.fromJson(json['shift'] as Map<String, dynamic>) : null,
+      requireGps: (json['requireGps'] ?? json['require_gps']) == true,
+      allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       sites: rawSites.map((e) => HrmSite.fromJson(e as Map<String, dynamic>)).toList(),
-    );
-  }
-}
-
-class PrecheckResult {
-  final bool eligible;
-  final String? matchedSiteId;
-  final String matchedSiteName;
-  final double distanceM;
-  final String verificationMethod;
-  final bool canCheckIn;
-  final bool canCheckOut;
-
-  PrecheckResult({
-    required this.eligible,
-    this.matchedSiteId,
-    required this.matchedSiteName,
-    this.distanceM = 15.0,
-    this.verificationMethod = 'GPS',
-    required this.canCheckIn,
-    required this.canCheckOut,
-  });
-
-  factory PrecheckResult.fromJson(Map<String, dynamic> json) {
-    final matched = json['matched_site'] as Map<String, dynamic>? ?? {};
-    return PrecheckResult(
-      eligible: json['eligible'] == true,
-      matchedSiteId: matched['id']?.toString(),
-      matchedSiteName: matched['name']?.toString() ?? 'Trụ sở chính SAVINA',
-      distanceM: (matched['distance_m'] as num?)?.toDouble() ?? 15.0,
-      verificationMethod: json['verification_method']?.toString() ?? 'GPS',
-      canCheckIn: json['can_check_in'] == true,
-      canCheckOut: json['can_check_out'] == true,
     );
   }
 }
@@ -233,7 +226,7 @@ class AttendanceRecord {
       earlyLeaveMinutes: (json['early_leave_minutes'] ?? json['earlyLeaveMinutes'] as num?)?.toInt() ?? 0,
       status: json['status']?.toString() ?? 'VALID',
       attendanceSource: json['attendance_source']?.toString() ?? json['attendanceSource']?.toString() ?? 'MOBILE_APP',
-      matchedSiteName: json['matched_site_name']?.toString() ?? json['matchedSiteName']?.toString() ?? 'Trụ sở chính',
+      matchedSiteName: json['matched_site_name']?.toString() ?? json['matchedSiteName']?.toString() ?? 'models.site.hq'.tr(),
       note: json['note']?.toString(),
       punches: rawPunches.map((p) => AttendancePunch.fromJson(p as Map<String, dynamic>)).toList(),
     );
@@ -292,7 +285,7 @@ class AttendanceCorrection {
     final rawReason = json['reason']?.toString() ?? json['notes']?.toString() ?? json['description']?.toString() ?? '';
     final combinedReason = title.isNotEmpty && rawReason.isNotEmpty && !rawReason.contains(title)
         ? '[$title] $rawReason'
-        : (rawReason.isNotEmpty ? rawReason : (title.isNotEmpty ? title : 'Đơn đề xuất'));
+        : (rawReason.isNotEmpty ? rawReason : (title.isNotEmpty ? title : 'models.request.default_title'.tr()));
 
     double? parsedDuration;
     if (json['duration'] != null) {
@@ -436,11 +429,11 @@ class HrmBoardMonthInfo {
   String get stateLabel {
     switch (state) {
       case 'OPEN':
-        return 'Đang mở';
+        return 'models.period.open'.tr();
       case 'LOCKED':
-        return 'Đã chốt';
+        return 'models.period.locked'.tr();
       case 'REQUESTS_CLOSED':
-        return 'Đã đóng đơn';
+        return 'models.period.closed'.tr();
       default:
         return state;
     }
@@ -738,13 +731,13 @@ class HrmBoardStandard {
 
   HrmBoardStandard({
     this.mode = 'DYNAMIC',
-    this.workdays = 22.0,
+    this.workdays = 0.0,
   });
 
   factory HrmBoardStandard.fromJson(Map<String, dynamic> json) {
     return HrmBoardStandard(
       mode: json['mode']?.toString() ?? 'DYNAMIC',
-      workdays: (json['workdays'] as num?)?.toDouble() ?? 22.0,
+      workdays: (json['workdays'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -872,7 +865,7 @@ class TimesheetCell {
     required this.date,
     this.status = 'PRESENT',
     this.shiftCode = 'CA_HC',
-    this.shiftName = 'Ca Hành chính',
+    String? shiftName,
     this.firstIn,
     this.lastOut,
     this.lateMinutes = 0,
@@ -885,7 +878,7 @@ class TimesheetCell {
     this.leaveType,
     this.punches = const [],
     this.rawBoardDay,
-  });
+  }) : shiftName = shiftName ?? 'models.shift.office_hours'.tr();
 
   factory TimesheetCell.fromBoardDay(int day, HrmBoardDay d) {
     final punches = <AttendancePunch>[];
@@ -896,7 +889,7 @@ class TimesheetCell {
       punches.add(AttendancePunch(punchType: 'OUT', occurredAt: d.checkOut!));
     }
     final isLv = d.status.contains('LEAVE') || d.requests.any((r) => r.kind == 'LEAVE');
-    final String? lvType = d.requests.where((r) => r.kind == 'LEAVE').firstOrNull?.label ?? (isLv ? 'Nghỉ phép' : null);
+    final String? lvType = d.requests.where((r) => r.kind == 'LEAVE').firstOrNull?.label ?? (isLv ? 'models.request.leave'.tr() : null);
     final isAbs = d.status == 'ABSENT';
     final isAbn = d.status == 'ABNORMAL' || isAbs;
     final isLt = d.lateMinutes > 0 || d.earlyLeaveMinutes > 0 || d.status == 'LATE' || d.status == 'LATE_EARLY' || d.status == 'EARLY_LEAVE';
@@ -906,7 +899,7 @@ class TimesheetCell {
       date: d.date,
       status: d.status,
       shiftCode: d.shiftCode ?? 'CA_HC',
-      shiftName: d.shiftName ?? 'Ca Hành chính',
+      shiftName: d.shiftName ?? 'models.shift.office_hours'.tr(),
       firstIn: d.checkIn,
       lastOut: d.checkOut,
       lateMinutes: d.lateMinutes,
@@ -946,7 +939,7 @@ class MonthlyTimesheetSummary {
 
   MonthlyTimesheetSummary({
     this.standardWorkDays = 22.0,
-    this.standardHint = 'Động theo ngày công của tháng',
+    String? standardHint,
     this.actualWorkDays = 0.0,
     this.lateDays = 0,
     this.lateMinutes = 0,
@@ -964,7 +957,7 @@ class MonthlyTimesheetSummary {
     this.holidayDays = 0.0,
     this.totalWorkHours = 0.0,
     this.completionRate = 0.0,
-  });
+  }) : standardHint = standardHint ?? 'models.standard.dynamic'.tr();
 }
 
 class MonthlyTimesheetRow {
@@ -1003,7 +996,7 @@ class MonthlyTimesheetRow {
     final combinedMissing = totalAbsent > 0 ? (totalAbsent + totalAbnormal) : totalAbnormal;
     final standardDays = standard?.workdays ?? 22.0;
     final isFixed = standard?.mode == 'FIXED' || standard?.mode == 'MINUTES';
-    final stdHint = isFixed ? 'Cố định theo cấu hình' : 'Động theo ngày công của tháng';
+    final stdHint = isFixed ? 'models.standard.fixed'.tr() : 'models.standard.dynamic'.tr();
     final totalLeaves = (emp.totals.annualLeaveDays + emp.totals.paidLeaveDays + emp.totals.unpaidLeaveDays).toDouble();
     final otHours = emp.totals.otMinutes / 60.0;
     final rate = standardDays > 0 ? ((emp.totals.workdayUnits / standardDays) * 100.0).clamp(0.0, 100.0) : 0.0;
@@ -1157,4 +1150,90 @@ class HrmTimesheetCalculateResult {
     );
   }
 }
+
+class HrmAttendanceDataRow {
+  final String id;
+  final String employeeId;
+  final String employeeCode;
+  final String employeeName;
+  final String? departmentName;
+  final String workDate;
+  final String? checkInAt;
+  final String? checkOutAt;
+  final int workedMinutes;
+  final int scheduledMinutes;
+  final int lateMinutes;
+  final int earlyMinutes;
+  final String status;
+  final String? source;
+
+  HrmAttendanceDataRow({
+    required this.id,
+    required this.employeeId,
+    required this.employeeCode,
+    required this.employeeName,
+    this.departmentName,
+    required this.workDate,
+    this.checkInAt,
+    this.checkOutAt,
+    this.workedMinutes = 0,
+    this.scheduledMinutes = 0,
+    this.lateMinutes = 0,
+    this.earlyMinutes = 0,
+    this.status = 'VALID',
+    this.source,
+  });
+
+  factory HrmAttendanceDataRow.fromJson(Map<String, dynamic> json) {
+    return HrmAttendanceDataRow(
+      id: json['id']?.toString() ?? '',
+      employeeId: json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? json['employee_code']?.toString() ?? '',
+      employeeName: json['employeeName']?.toString() ?? json['employee_name']?.toString() ?? json['fullName']?.toString() ?? json['full_name']?.toString() ?? '',
+      departmentName: json['departmentName']?.toString() ?? json['department_name']?.toString(),
+      workDate: json['workDate']?.toString() ?? json['work_date']?.toString() ?? '',
+      checkInAt: json['checkInAt']?.toString() ?? json['check_in_at']?.toString() ?? json['firstCheckInAt']?.toString() ?? json['first_check_in_at']?.toString(),
+      checkOutAt: json['checkOutAt']?.toString() ?? json['check_out_at']?.toString() ?? json['lastCheckOutAt']?.toString() ?? json['last_check_out_at']?.toString(),
+      workedMinutes: (json['workedMinutes'] ?? json['worked_minutes'] as num?)?.toInt() ?? 0,
+      scheduledMinutes: (json['scheduledMinutes'] ?? json['scheduled_minutes'] as num?)?.toInt() ?? 0,
+      lateMinutes: (json['lateMinutes'] ?? json['late_minutes'] as num?)?.toInt() ?? 0,
+      earlyMinutes: (json['earlyMinutes'] ?? json['early_minutes'] as num?)?.toInt() ?? 0,
+      status: json['status']?.toString() ?? 'VALID',
+      source: json['source']?.toString() ?? json['attendance_source']?.toString() ?? json['attendanceSource']?.toString(),
+    );
+  }
+}
+
+class HrmAttendanceRawEvent {
+  final String id;
+  final String eventKind; // 'IN' | 'OUT'
+  final String occurredAt;
+  final String? source;
+  final String? deviceId;
+  final Map<String, dynamic>? gpsCoordinates;
+  final String? voidedByCorrectionId;
+
+  HrmAttendanceRawEvent({
+    required this.id,
+    required this.eventKind,
+    required this.occurredAt,
+    this.source,
+    this.deviceId,
+    this.gpsCoordinates,
+    this.voidedByCorrectionId,
+  });
+
+  factory HrmAttendanceRawEvent.fromJson(Map<String, dynamic> json) {
+    return HrmAttendanceRawEvent(
+      id: json['id']?.toString() ?? '',
+      eventKind: json['event_kind']?.toString() ?? json['eventKind']?.toString() ?? json['kind']?.toString() ?? 'IN',
+      occurredAt: json['occurred_at']?.toString() ?? json['occurredAt']?.toString() ?? '',
+      source: json['source']?.toString(),
+      deviceId: json['device_id']?.toString() ?? json['deviceId']?.toString(),
+      gpsCoordinates: json['gps_coordinates'] is Map ? (json['gps_coordinates'] as Map<String, dynamic>) : null,
+      voidedByCorrectionId: json['voided_by_correction_id']?.toString() ?? json['voidedByCorrectionId']?.toString(),
+    );
+  }
+}
+
 

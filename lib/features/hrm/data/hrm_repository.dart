@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../models/hrm_models.dart';
 import '../../../services/hrm_service.dart';
 
@@ -96,7 +97,7 @@ class HrmRepositoryImpl implements HrmRepository {
     if (newStatus == HrmRequestStatus.approved) {
       return await _service.approveRequest(requestId, note: note);
     } else if (newStatus == HrmRequestStatus.rejected) {
-      return await _service.rejectRequest(requestId, reason: reason ?? 'Từ chối bởi quản trị viên');
+      return await _service.rejectRequest(requestId, reason: reason ?? 'hrm_data.repo.rejected_by_admin'.tr());
     }
     return false;
   }

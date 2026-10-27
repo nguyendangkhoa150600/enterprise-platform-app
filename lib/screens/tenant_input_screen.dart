@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/colors.dart';
 import './login_screen.dart';
+import '../core/i18n/app_i18n.dart';
 
 class TenantInputScreen extends StatefulWidget {
   const TenantInputScreen({super.key});
@@ -121,8 +122,8 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Chọn đúng cổng\ncho đúng vai trò.',
+          Text(
+            'tenant.hero.title'.tr(),
             style: TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -132,7 +133,7 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Platform Admin quản trị toàn bộ nền tảng. Tenant Admin và người dùng doanh nghiệp truy cập portal cùng các module đã được cấp entitlement.',
+            'tenant.hero.desc'.tr(),
             style: TextStyle(
               color: AppColors.slate300.withOpacity(0.8),
               fontSize: 14,
@@ -196,8 +197,8 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Tenant Portal',
+            Text(
+              'tenant.form.badge'.tr(),
               style: TextStyle(
                 color: AppColors.slate400,
                 fontSize: 12,
@@ -206,8 +207,8 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Đường dẫn doanh nghiệp',
+            Text(
+              'tenant.form.title'.tr(),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 22,
@@ -215,8 +216,8 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Nhập tên hoặc đường dẫn không gian làm việc của doanh nghiệp bạn.',
+            Text(
+              'tenant.form.subtitle'.tr(),
               style: TextStyle(
                 color: AppColors.slate400,
                 fontSize: 13,
@@ -227,9 +228,9 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
               controller: _urlController,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'URL hoặc Tenant Slug',
+                labelText: 'tenant.form.url_label'.tr(),
                 labelStyle: const TextStyle(color: AppColors.slate400, fontSize: 14),
-                hintText: '/t/tenant-slug/login hoặc tenant-slug',
+                hintText: 'tenant.form.url_hint'.tr(),
                 hintStyle: const TextStyle(color: AppColors.slate500, fontSize: 13),
                 floatingLabelBehavior: FloatingLabelBehavior.always,
                 fillColor: AppColors.slate900.withOpacity(0.5),
@@ -254,7 +255,7 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
               ),
               validator: (val) {
                 if (val == null || val.trim().isEmpty) {
-                  return 'Vui lòng nhập đường dẫn hoặc slug doanh nghiệp.';
+                  return 'tenant.form.url_required'.tr();
                 }
                 return null;
               },
@@ -281,11 +282,11 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Tiếp tục',
+                      'tenant.form.continue'.tr(),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,

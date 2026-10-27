@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/maintenance_models.dart';
 import '../services/module_business_service.dart';
 import '../theme/colors.dart';
+import '../core/i18n/app_i18n.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -64,15 +65,15 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
         backgroundColor: AppColors.slate900,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Bảo trì & Thiết bị (Maintenance)',
+              'maintenance.title'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Quản lý ma trận bảo dưỡng định kỳ, kế hoạch ngăn ngừa & sự cố',
+              'maintenance.subtitle'.tr(),
               style: TextStyle(fontSize: 11, color: AppColors.slate400),
             ),
           ],
@@ -83,15 +84,15 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: AppColors.slate400,
-          tabs: const [
-            Tab(icon: Icon(Icons.event_note_outlined, size: 18), text: 'Lịch bảo dưỡng định kỳ'),
-            Tab(icon: Icon(Icons.warning_amber_outlined, size: 18), text: 'Sự cố thiết bị'),
+          tabs: [
+            Tab(icon: Icon(Icons.event_note_outlined, size: 18), text: 'maintenance.tab.schedules'.tr()),
+            Tab(icon: Icon(Icons.warning_amber_outlined, size: 18), text: 'maintenance.tab.incidents'.tr()),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadData,
           ),
         ],
@@ -127,9 +128,9 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildMetricCard('KẾ HOẠCH ĐÃ LẬP', '${_schedules.length}', Icons.calendar_month_outlined, AppColors.slate800, cardWidth),
-                  _buildMetricCard('ĐẾN HẠN BẢO TRÌ', '$_dueCount', Icons.alarm_outlined, Colors.red.shade600, cardWidth),
-                  _buildMetricCard('SỰ CỐ ĐANG MỞ', '$_openIncidentsCount', Icons.build_outlined, AppColors.amber, cardWidth),
+                  _buildMetricCard('maintenance.metric.plans'.tr(), '${_schedules.length}', Icons.calendar_month_outlined, AppColors.slate800, cardWidth),
+                  _buildMetricCard('maintenance.metric.due'.tr(), '$_dueCount', Icons.alarm_outlined, Colors.red.shade600, cardWidth),
+                  _buildMetricCard('maintenance.metric.open_incidents'.tr(), '$_openIncidentsCount', Icons.build_outlined, AppColors.amber, cardWidth),
                 ],
               );
             },
@@ -140,7 +141,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
           TextField(
             onChanged: (val) => setState(() => _searchQuery = val),
             decoration: InputDecoration(
-              hintText: 'Tìm kiếm thiết bị theo mã hoặc tên...',
+              hintText: 'maintenance.search_hint'.tr(),
               hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
               prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.slate400),
               filled: true,
@@ -178,31 +179,31 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
     String statusText;
     if (item.status == 'OVERDUE') {
       statusColor = Colors.red.shade700;
-      statusText = 'Quá hạn';
+      statusText = 'maintenance.status.overdue'.tr();
     } else if (item.status == 'DUE') {
       statusColor = AppColors.amber;
-      statusText = 'Đến hạn';
+      statusText = 'maintenance.status.due'.tr();
     } else {
       statusColor = AppColors.emerald;
-      statusText = 'Đã lên lịch';
+      statusText = 'maintenance.status.scheduled'.tr();
     }
 
     String freqLabel;
     switch (item.frequency) {
       case 'DAILY':
-        freqLabel = 'Hàng ngày';
+        freqLabel = 'maintenance.freq.daily'.tr();
         break;
       case 'WEEKLY':
-        freqLabel = 'Hàng tuần';
+        freqLabel = 'maintenance.freq.weekly'.tr();
         break;
       case 'MONTHLY':
-        freqLabel = 'Hàng tháng';
+        freqLabel = 'maintenance.freq.monthly'.tr();
         break;
       case 'QUARTERLY':
-        freqLabel = 'Hàng quý';
+        freqLabel = 'maintenance.freq.quarterly'.tr();
         break;
       default:
-        freqLabel = 'Hàng năm';
+        freqLabel = 'maintenance.freq.yearly'.tr();
     }
 
     return Container(
@@ -252,11 +253,11 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
             children: [
               const Icon(Icons.repeat, size: 14, color: AppColors.slate400),
               const SizedBox(width: 4),
-              Text('Chu kỳ: $freqLabel', style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
+              Text('maintenance.cycle'.tr(args: {'freq': freqLabel}), style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
               const SizedBox(width: 16),
               const Icon(Icons.event, size: 14, color: AppColors.slate400),
               const SizedBox(width: 4),
-              Text('Hạn tới: ${item.nextDueDate}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: item.status == 'OVERDUE' ? Colors.red.shade700 : AppColors.slate700)),
+              Text('maintenance.next_due'.tr(args: {'date': item.nextDueDate}), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: item.status == 'OVERDUE' ? Colors.red.shade700 : AppColors.slate700)),
             ],
           ),
         ],
@@ -270,13 +271,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Báo cáo & Ghi nhận sự cố thiết bị',
+          Text(
+            'maintenance.incidents.title'.tr(),
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate900),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Theo dõi tình trạng xử lý các cảnh báo và bất thường kỹ thuật',
+          Text(
+            'maintenance.incidents.subtitle'.tr(),
             style: TextStyle(fontSize: 12, color: AppColors.slate500),
           ),
           const SizedBox(height: 16),
@@ -292,13 +293,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
               String severityText;
               if (inc.severity == 'CRITICAL') {
                 severityColor = Colors.red.shade700;
-                severityText = 'Nghiêm trọng';
+                severityText = 'maintenance.severity.critical'.tr();
               } else if (inc.severity == 'MEDIUM') {
                 severityColor = Colors.orange.shade700;
-                severityText = 'Trung bình';
+                severityText = 'maintenance.severity.medium'.tr();
               } else {
                 severityColor = Colors.blue.shade700;
-                severityText = 'Thấp';
+                severityText = 'maintenance.severity.low'.tr();
               }
 
               return Container(
@@ -338,7 +339,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Thiết bị: ${inc.assetName}',
+                      'maintenance.asset'.tr(args: {'name': inc.assetName}),
                       style: const TextStyle(fontSize: 12, color: AppColors.slate600),
                     ),
                     const SizedBox(height: 10),
@@ -346,7 +347,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
                       children: [
                         const Icon(Icons.person_outline, size: 13, color: AppColors.slate400),
                         const SizedBox(width: 4),
-                        Text(inc.reportedBy ?? 'Kỹ thuật viên', style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
+                        Text(inc.reportedBy ?? 'models.maintenance.technician'.tr(), style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
                         const SizedBox(width: 16),
                         const Icon(Icons.access_time, size: 13, color: AppColors.slate400),
                         const SizedBox(width: 4),

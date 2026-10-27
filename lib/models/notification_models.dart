@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 
 enum NotificationPriority {
   required,
@@ -20,11 +21,11 @@ enum NotificationPriority {
   String get label {
     switch (this) {
       case NotificationPriority.required:
-        return 'Bắt buộc';
+        return 'models.notif.priority_mandatory'.tr();
       case NotificationPriority.actionable:
-        return 'Cần xử lý';
+        return 'models.notif.priority_action'.tr();
       case NotificationPriority.informational:
-        return 'Thông tin';
+        return 'models.notif.priority_info'.tr();
     }
   }
 
@@ -80,17 +81,17 @@ enum NotificationModule {
   String get displayName {
     switch (this) {
       case NotificationModule.hrm:
-        return 'Nhân sự (HRM)';
+        return 'models.notif.cat_hrm'.tr();
       case NotificationModule.procedure:
-        return 'Quy trình';
+        return 'models.notif.cat_procedure'.tr();
       case NotificationModule.workspace:
-        return 'Không gian làm việc';
+        return 'models.notif.cat_workspace'.tr();
       case NotificationModule.maintenance:
-        return 'Bảo trì & Sự cố';
+        return 'models.notif.cat_maintenance'.tr();
       case NotificationModule.inventory:
-        return 'Kho & Vật tư';
+        return 'models.notif.cat_inventory'.tr();
       case NotificationModule.identity:
-        return 'Bảo mật & Tài khoản';
+        return 'models.notif.cat_security'.tr();
     }
   }
 
@@ -170,7 +171,7 @@ class NotificationRecord {
       module: NotificationModule.fromString(json['module']?.toString()),
       category: json['category']?.toString() ?? 'general',
       priority: NotificationPriority.fromString(json['priority']?.toString()),
-      title: json['title']?.toString() ?? 'Thông báo mới',
+      title: json['title']?.toString() ?? 'models.notif.default_title'.tr(),
       body: json['body']?.toString() ?? '',
       deepLink: json['deep_link']?.toString() ?? json['deepLink']?.toString(),
       sourceType: json['source_type']?.toString() ?? json['sourceType']?.toString() ?? 'system',
@@ -187,37 +188,37 @@ class NotificationRecord {
     switch (category) {
       case 'hrm_approval_required':
       case 'leave_request_submitted':
-        return 'Cần duyệt đơn nghỉ phép';
+        return 'models.notif.type_leave_pending'.tr();
       case 'leave_request_approved':
-        return 'Đơn nghỉ phép đã được duyệt';
+        return 'models.notif.type_leave_approved'.tr();
       case 'leave_request_rejected':
-        return 'Đơn nghỉ phép bị từ chối';
+        return 'models.notif.type_leave_rejected'.tr();
       case 'attendance_abnormal':
-        return 'Bất thường chấm công';
+        return 'models.notif.type_attendance'.tr();
       case 'payroll_payslip_issued':
-        return 'Phiếu lương phát hành';
+        return 'models.notif.type_payslip'.tr();
       case 'procedure_instance_assigned':
-        return 'Quy trình được giao';
+        return 'models.notif.type_procedure'.tr();
       case 'procedure_task_deadline':
-        return 'Hạn chót công việc';
+        return 'models.notif.type_deadline'.tr();
       case 'maintenance_incident_reported':
-        return 'Sự cố thiết bị mới';
+        return 'models.notif.type_incident'.tr();
       case 'inventory_stock_alert':
-        return 'Cảnh báo mức tồn kho';
+        return 'models.notif.type_stock'.tr();
       case 'session_expiring':
       case 'session_revoked':
-        return 'Bảo mật phiên đăng nhập';
+        return 'models.notif.type_security'.tr();
       default:
-        return 'Thông báo hệ thống';
+        return 'models.notif.type_system'.tr();
     }
   }
 
   String get timeAgo {
     final diff = DateTime.now().difference(createdAt);
-    if (diff.inMinutes < 1) return 'Vừa xong';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-    if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+    if (diff.inMinutes < 1) return 'models.notif.just_now'.tr();
+    if (diff.inMinutes < 60) return 'models.notif.minutes_ago'.tr(args: {'n': diff.inMinutes});
+    if (diff.inHours < 24) return 'models.notif.hours_ago'.tr(args: {'n': diff.inHours});
+    if (diff.inDays < 7) return 'models.notif.days_ago'.tr(args: {'n': diff.inDays});
     return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
   }
 }
