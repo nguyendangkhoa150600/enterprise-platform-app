@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 class HrmFleetVehicle {
   final String id;
   final String plateNo;
@@ -19,7 +20,7 @@ class HrmFleetVehicle {
     return HrmFleetVehicle(
       id: json['id']?.toString() ?? '',
       plateNo: json['plateNo']?.toString() ?? json['plate_no']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Xe cơ quan',
+      name: json['name']?.toString() ?? 'models.fleet.company_vehicle'.tr(),
       seats: (json['seats'] as num?)?.toInt() ?? 5,
       status: json['status']?.toString().toUpperCase() ?? 'ACTIVE',
       note: json['note']?.toString(),
@@ -120,7 +121,7 @@ class HrmFleetBooking {
       id: json['id']?.toString() ?? '',
       vehicleId: json['vehicleId']?.toString() ?? json['vehicle_id']?.toString() ?? '',
       vehiclePlateNo: json['vehiclePlateNo']?.toString() ?? json['vehicle_plate_no']?.toString() ?? '',
-      vehicleName: json['vehicleName']?.toString() ?? json['vehicle_name']?.toString() ?? 'Xe cơ quan',
+      vehicleName: json['vehicleName']?.toString() ?? json['vehicle_name']?.toString() ?? 'models.fleet.company_vehicle'.tr(),
       driverId: json['driverId']?.toString() ?? json['driver_id']?.toString() ?? '',
       driverName: json['driverName']?.toString() ?? json['driver_name']?.toString(),
       startAt: parseDate(json['startAt'] ?? json['start_at'], DateTime.now()),

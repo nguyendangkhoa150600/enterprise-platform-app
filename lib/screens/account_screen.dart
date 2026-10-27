@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../core/i18n/app_i18n.dart';
+import '../shared/widgets/language_selector_tile.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -37,37 +39,37 @@ class _AccountScreenState extends State<AccountScreen> {
     return [
       {
         'id': 'length',
-        'label': 'Từ 6 ký tự trở lên',
+        'label': 'account.rule.length'.tr(),
         'required': true,
         'passed': next.length >= 6 && next.length <= 128,
       },
       {
         'id': 'different',
-        'label': 'Khác mật khẩu hiện tại',
+        'label': 'account.rule.different'.tr(),
         'required': true,
         'passed': next.isNotEmpty && next != current,
       },
       {
         'id': 'match',
-        'label': 'Xác nhận mật khẩu trùng khớp',
+        'label': 'account.rule.match'.tr(),
         'required': true,
         'passed': next.isNotEmpty && next == conf,
       },
       {
         'id': 'case',
-        'label': 'Có cả chữ hoa và chữ thường',
+        'label': 'account.rule.case'.tr(),
         'required': false,
         'passed': RegExp(r'[a-z]').hasMatch(next) && RegExp(r'[A-Z]').hasMatch(next),
       },
       {
         'id': 'digit',
-        'label': 'Có ít nhất một chữ số',
+        'label': 'account.rule.digit'.tr(),
         'required': false,
         'passed': RegExp(r'\d').hasMatch(next),
       },
       {
         'id': 'symbol',
-        'label': 'Có ít nhất một ký tự đặc biệt',
+        'label': 'account.rule.symbol'.tr(),
         'required': false,
         'passed': RegExp(r'[^A-Za-z0-9]').hasMatch(next),
       },
@@ -81,7 +83,7 @@ class _AccountScreenState extends State<AccountScreen> {
       return {'label': '', 'bars': 0, 'color': Colors.transparent, 'textColor': Colors.transparent};
     }
     if (password.length < 8) {
-      return {'label': 'Yếu', 'bars': 1, 'color': const Color(0xFFEF4444), 'textColor': const Color(0xFFDC2626)};
+      return {'label': 'account.strength.weak'.tr(), 'bars': 1, 'color': const Color(0xFFEF4444), 'textColor': const Color(0xFFDC2626)};
     }
     int classes = 0;
     if (RegExp(r'[a-z]').hasMatch(password)) classes++;
@@ -90,12 +92,12 @@ class _AccountScreenState extends State<AccountScreen> {
     if (RegExp(r'[^A-Za-z0-9]').hasMatch(password)) classes++;
 
     if ((classes >= 4 && password.length >= 12) || (classes >= 3 && password.length >= 16)) {
-      return {'label': 'Mạnh', 'bars': 3, 'color': const Color(0xFF10B981), 'textColor': const Color(0xFF059669)};
+      return {'label': 'account.strength.strong'.tr(), 'bars': 3, 'color': const Color(0xFF10B981), 'textColor': const Color(0xFF059669)};
     }
     if (classes >= 2) {
-      return {'label': 'Trung bình', 'bars': 2, 'color': const Color(0xFFF59E0B), 'textColor': const Color(0xFFD97706)};
+      return {'label': 'account.strength.medium'.tr(), 'bars': 2, 'color': const Color(0xFFF59E0B), 'textColor': const Color(0xFFD97706)};
     }
-    return {'label': 'Yếu', 'bars': 1, 'color': const Color(0xFFEF4444), 'textColor': const Color(0xFFDC2626)};
+    return {'label': 'account.strength.weak'.tr(), 'bars': 1, 'color': const Color(0xFFEF4444), 'textColor': const Color(0xFFDC2626)};
   }
 
   bool _canSubmit() {
@@ -129,15 +131,15 @@ class _AccountScreenState extends State<AccountScreen> {
         _confirmationCtrl.clear();
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đổi mật khẩu thành công! Các phiên đăng nhập khác đã được đăng xuất để bảo mật.'),
+          SnackBar(
+            content: Text('account.password_changed'.tr()),
             backgroundColor: Color(0xFF059669),
             behavior: SnackBarBehavior.floating,
           ),
         );
       } else {
         setState(() {
-          _inlineError = res['message']?.toString() ?? 'Đổi mật khẩu thất bại.';
+          _inlineError = res['message']?.toString() ?? 'account.password_change_failed'.tr();
         });
       }
     }
@@ -146,7 +148,7 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final displayName = auth.fullName ?? 'Người dùng';
+    final displayName = auth.fullName ?? 'account.user'.tr();
     final email = auth.email ?? '';
     final tenantSlug = auth.tenantSlug ?? '';
     final roles = auth.roles.isNotEmpty ? auth.roles : [auth.kind ?? 'tenant-user'];
@@ -167,8 +169,8 @@ class _AccountScreenState extends State<AccountScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Tài khoản của tôi',
+        title: Text(
+          'account.title'.tr(),
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
         ),
         backgroundColor: Colors.white,
@@ -192,15 +194,21 @@ class _AccountScreenState extends State<AccountScreen> {
             // Header Description
             Container(
               margin: const EdgeInsets.only(bottom: 16),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Xem thông tin tài khoản và tự đổi mật khẩu đăng nhập của bạn.',
+                    'account.subtitle'.tr(),
                     style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
                   ),
                 ],
               ),
+            ),
+
+            // Language selector
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: LanguageSelectorTile(),
             ),
 
             // Card 1: Master Hồ sơ
@@ -295,9 +303,9 @@ class _AccountScreenState extends State<AccountScreen> {
                           alignment: WrapAlignment.center,
                           children: roles.map((r) {
                             String label = r;
-                            if (r == 'tenant-admin') label = 'Quản trị doanh nghiệp';
-                            else if (r == 'tenant-user') label = 'Người dùng';
-                            else if (r == 'platform-admin') label = 'Quản trị nền tảng';
+                            if (r == 'tenant-admin') label = 'account.role.tenant_admin'.tr();
+                            else if (r == 'tenant-user') label = 'account.user'.tr();
+                            else if (r == 'platform-admin') label = 'account.role.platform_admin'.tr();
 
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -322,12 +330,12 @@ class _AccountScreenState extends State<AccountScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Column(
                       children: [
-                        _buildProfileRow(Icons.person_outline_rounded, 'Họ và tên', displayName),
+                        _buildProfileRow(Icons.person_outline_rounded, 'account.profile.full_name'.tr(), displayName),
                         const Divider(height: 16, color: Color(0xFFF1F5F9)),
-                        _buildProfileRow(Icons.email_outlined, 'Email đăng nhập', email),
+                        _buildProfileRow(Icons.email_outlined, 'account.profile.login_email'.tr(), email),
                         if (tenantSlug.isNotEmpty) ...[
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
-                          _buildProfileRow(Icons.business_outlined, 'Doanh nghiệp', tenantSlug.toUpperCase()),
+                          _buildProfileRow(Icons.business_outlined, 'account.profile.enterprise'.tr(), tenantSlug.toUpperCase()),
                         ],
                       ],
                     ),
@@ -367,15 +375,15 @@ class _AccountScreenState extends State<AccountScreen> {
                         child: const Icon(Icons.key_rounded, size: 18, color: Color(0xFF2563EB)),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'Đổi mật khẩu',
+                      Text(
+                        'account.change_password.title'.tr(),
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Để bảo mật tài khoản, không nên dùng chung mật khẩu với các dịch vụ khác.',
+                  Text(
+                    'account.change_password.hint'.tr(),
                     style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.35),
                   ),
                   const SizedBox(height: 16),
@@ -406,7 +414,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
                   // Mật khẩu hiện tại
                   _buildPasswordField(
-                    label: 'Mật khẩu hiện tại *',
+                    label: 'account.field.current_password'.tr(),
                     controller: _currentPasswordCtrl,
                     obscure: _obscureCurrent,
                     onToggleObscure: () => setState(() => _obscureCurrent = !_obscureCurrent),
@@ -416,7 +424,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
                   // Mật khẩu mới
                   _buildPasswordField(
-                    label: 'Mật khẩu mới *',
+                    label: 'account.field.new_password'.tr(),
                     controller: _newPasswordCtrl,
                     obscure: _obscureNew,
                     onToggleObscure: () => setState(() => _obscureNew = !_obscureNew),
@@ -461,7 +469,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
                   // Xác nhận mật khẩu mới
                   _buildPasswordField(
-                    label: 'Xác nhận mật khẩu mới *',
+                    label: 'account.field.confirm_password'.tr(),
                     controller: _confirmationCtrl,
                     obscure: _obscureConfirm,
                     onToggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
@@ -480,8 +488,8 @@ class _AccountScreenState extends State<AccountScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Yêu cầu mật khẩu:',
+                        Text(
+                          'account.rules_title'.tr(),
                           style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                         ),
                         const SizedBox(height: 8),
@@ -503,7 +511,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    '${rule['label']}${required ? ' (Bắt buộc)' : ' (Khuyến nghị)'}',
+                                    '${rule['label']}${required ? 'account.rule_required_suffix'.tr() : 'account.rule_recommended_suffix'.tr()}',
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: passed
@@ -542,7 +550,7 @@ class _AccountScreenState extends State<AccountScreen> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Lưu mật khẩu mới', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
+                          : Text('account.save_new_password'.tr(), style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

@@ -1,3 +1,4 @@
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -175,7 +176,7 @@ class AnalysisProvider extends ChangeNotifier {
   // File Picker Handlers
   void selectExcelFiles(List<PlatformFile> files) {
     _selectedFiles.addAll(files);
-    _uploadMessage = 'Đã chọn ${files.length} file Excel.';
+    _uploadMessage = 'core_misc.analysis.files_selected'.tr(args: {'count': files.length});
     _isSuccessUpload = true;
     notifyListeners();
   }
@@ -190,7 +191,7 @@ class AnalysisProvider extends ChangeNotifier {
 
   void selectWordFile(PlatformFile file) {
     _wordFile = file;
-    _wordImportMessage = 'Mẫu báo cáo Word đã sẵn sàng: ${file.name}';
+    _wordImportMessage = 'core_misc.analysis.word_ready'.tr(args: {'name': file.name});
     notifyListeners();
   }
 
@@ -283,7 +284,7 @@ class AnalysisProvider extends ChangeNotifier {
     try {
       await refreshTestingMedia();
     } catch (e) {
-      _processingMessage = 'Không thể tải dữ liệu lượt thử nghiệm.';
+      _processingMessage = 'core_misc.analysis.load_runs_failed'.tr();
     } finally {
       _isReadingFile = false;
       notifyListeners();
@@ -390,13 +391,13 @@ class AnalysisProvider extends ChangeNotifier {
   // Main Processing Flow
   Future<void> runAnalysis() async {
     if (_selectedTestingId == null) {
-      _processingMessage = 'Vui lòng chọn lượt thử nghiệm trước khi chạy.';
+      _processingMessage = 'core_misc.analysis.select_run'.tr();
       _isSuccessProcessing = false;
       notifyListeners();
       return;
     }
     if (_selectedFiles.isEmpty && _existingInputMedia.isEmpty) {
-      _processingMessage = 'Vui lòng tải lên ít nhất một file Excel dữ liệu.';
+      _processingMessage = 'core_misc.analysis.upload_excel'.tr();
       _isSuccessProcessing = false;
       notifyListeners();
       return;
@@ -467,7 +468,7 @@ class AnalysisProvider extends ChangeNotifier {
       // 3. Poll testing status until complete
       progressTimer.cancel();
       _processingProgress = 0.9;
-      _processingMessage = 'Đang phân tích và kiểm tra tiến trình...';
+      _processingMessage = 'core_misc.analysis.processing'.tr();
       notifyListeners();
 
       bool passed = false;
@@ -486,17 +487,17 @@ class AnalysisProvider extends ChangeNotifier {
 
       if (passed) {
         _processingProgress = 1.0;
-        _processingMessage = 'Hoàn thành phân tích thành công!';
+        _processingMessage = 'core_misc.analysis.done'.tr();
         _isSuccessProcessing = true;
         await refreshTestingMedia();
       } else {
         _processingProgress = 0.0;
-        _processingMessage = 'Quá trình phân tích thất bại hoặc hết thời gian chờ.';
+        _processingMessage = 'core_misc.analysis.failed'.tr();
         _isSuccessProcessing = false;
       }
     } catch (e) {
       _processingProgress = 0.0;
-      _processingMessage = 'Lỗi hệ thống: ${e.toString()}';
+      _processingMessage = 'core_misc.analysis.system_error'.tr(args: {'error': e.toString()});
       _isSuccessProcessing = false;
     } finally {
       progressTimer.cancel();

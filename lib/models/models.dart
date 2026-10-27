@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 import 'package:excel/excel.dart' as ex;
 
 class Project {
@@ -145,7 +146,7 @@ class WorkbookTable {
       // Clean display label
       String label = cellVal != null ? cellVal.toString().trim() : '';
       if (label.isEmpty) {
-        label = 'Cột ${colIndex + 1}';
+        label = 'models.table.column_n'.tr(args: {'n': colIndex + 1});
       }
       columns.add(TableColumn(key: key, label: label));
     }

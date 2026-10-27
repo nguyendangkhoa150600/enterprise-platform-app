@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../theme/colors.dart';
 import './home_screen.dart';
+import '../core/i18n/app_i18n.dart';
 
 class LoginScreen extends StatefulWidget {
   final String initialPortal; // 'tenant' or 'platform'
@@ -124,7 +125,15 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Container(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isDesktop ? 960 : 440),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(alignment: Alignment.centerRight, child: _buildLanguageToggle()),
+                  const SizedBox(height: 10),
+                  Container(
               constraints: BoxConstraints(
                 maxWidth: isDesktop ? 960 : 440,
                 minHeight: isDesktop ? 580 : 0,
@@ -172,9 +181,58 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
               ),
             ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLanguageToggle() {
+    return ListenableBuilder(
+      listenable: AppI18n.instance,
+      builder: (context, _) {
+        final isVi = AppI18n.instance.isVietnamese;
+        Widget option(String code, bool selected, Locale locale) {
+          return GestureDetector(
+            onTap: () => AppI18n.instance.setLocale(locale),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.emerald : Colors.transparent,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Text(
+                code,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.slate300,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.35),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              option('VI', isVi, const Locale('vi')),
+              option('EN', !isVi, const Locale('en')),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -217,14 +275,14 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 _buildPortalPillOption(
                   id: 'tenant',
-                  label: 'Doanh nghiệp',
+                  label: 'login.portal.tenant'.tr(),
                   icon: Icons.business_outlined,
                   isSelected: !isPlatform,
                   activeColor: AppColors.emerald,
                 ),
                 _buildPortalPillOption(
                   id: 'platform',
-                  label: 'Quản trị hệ thống',
+                  label: 'login.portal.platform'.tr(),
                   icon: Icons.admin_panel_settings_outlined,
                   isSelected: isPlatform,
                   activeColor: const Color(0xFF6366F1),
@@ -251,7 +309,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 child: Text(
-                  isPlatform ? 'QUẢN TRỊ HỆ THỐNG' : 'DOANH NGHIỆP',
+                  isPlatform ? 'login.badge.platform'.tr() : 'login.badge.tenant'.tr(),
                   style: TextStyle(
                     color: isPlatform ? const Color(0xFFA5B4FC) : AppColors.emeraldAccent,
                     fontSize: 11,
@@ -262,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 14),
               Text(
-                isPlatform ? 'Quản trị hệ thống.' : 'Không gian làm việc.',
+                isPlatform ? 'login.hero.platform_title'.tr() : 'login.hero.tenant_title'.tr(),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: isDesktop ? 30 : 22,
@@ -274,8 +332,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 12),
               Text(
                 isPlatform
-                    ? 'Dành riêng cho người vận hành hệ thống: tạo doanh nghiệp, cấp phân hệ. Không truy cập dữ liệu nội bộ của doanh nghiệp.'
-                    : 'Quy trình, bảo trì thiết bị và kho vật tư của doanh nghiệp bạn, gói gọn trong cùng một ứng dụng.',
+                    ? 'login.hero.platform_desc'.tr()
+                    : 'login.hero.tenant_desc'.tr(),
                 style: TextStyle(
                   color: AppColors.slate300.withOpacity(0.85),
                   fontSize: isDesktop ? 13.5 : 12.5,
@@ -354,7 +412,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             // Header Info
             Text(
-              isPlatform ? 'ĐĂNG NHẬP' : 'ĐĂNG NHẬP DOANH NGHIỆP',
+              isPlatform ? 'login.form.platform_label'.tr() : 'login.form.tenant_label'.tr(),
               style: TextStyle(
                 color: activeAccent,
                 fontSize: 11,
@@ -364,7 +422,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              isPlatform ? 'Cổng quản trị hệ thống' : 'Không gian làm việc',
+              isPlatform ? 'login.form.platform_title'.tr() : 'login.form.tenant_title'.tr(),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -375,8 +433,8 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 6),
             Text(
               isPlatform
-                  ? 'Chỉ dành cho người vận hành hệ thống.'
-                  : 'Nhập email công ty để hệ thống tự động nhận diện doanh nghiệp.',
+                  ? 'login.form.platform_hint'.tr()
+                  : 'login.form.tenant_hint'.tr(),
               style: const TextStyle(
                 color: AppColors.slate400,
                 fontSize: 12.5,
@@ -425,10 +483,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               validator: (val) {
                 if (val == null || val.trim().isEmpty) {
-                  return 'Vui lòng nhập email.';
+                  return 'login.error.email_required'.tr();
                 }
                 if (!val.contains('@')) {
-                  return 'Email không đúng định dạng.';
+                  return 'login.error.email_invalid'.tr();
                 }
                 return null;
               },
@@ -436,8 +494,8 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
 
             // Password Field
-            const Text(
-              'Mật khẩu',
+            Text(
+              'login.form.password'.tr(),
               style: TextStyle(
                 color: AppColors.slate300,
                 fontSize: 13,
@@ -486,7 +544,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               validator: (val) {
                 if (val == null || val.isEmpty) {
-                  return 'Vui lòng nhập mật khẩu.';
+                  return 'login.error.password_required'.tr();
                 }
                 return null;
               },
@@ -531,8 +589,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Ghi nhớ tài khoản',
+                    Text(
+                      'login.form.remember_me'.tr(),
                       style: TextStyle(
                         color: AppColors.slate300,
                         fontSize: 13,
@@ -590,7 +648,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: authProvider.isLoading
                     ? Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           SizedBox(
                             width: 18,
                             height: 18,
@@ -601,13 +659,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           SizedBox(width: 10),
                           Text(
-                            'Đang xác minh...',
+                            'login.form.verifying'.tr(),
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ],
                       )
-                    : const Text(
-                        'Đăng nhập',
+                    : Text(
+                        'login.form.submit'.tr(),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -621,8 +679,8 @@ class _LoginScreenState extends State<LoginScreen> {
             // Footer note
             Text(
               isPlatform
-                  ? 'Chỉ dành cho người quản trị hệ thống. Nhân sự doanh nghiệp đăng nhập ở cổng doanh nghiệp.'
-                  : 'Tài khoản do doanh nghiệp của bạn cấp. Nếu chưa có, liên hệ người quản trị nội bộ.',
+                  ? 'login.footer.platform'.tr()
+                  : 'login.footer.tenant'.tr(),
               style: TextStyle(
                 color: AppColors.slate500,
                 fontSize: 11.5,

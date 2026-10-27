@@ -6,6 +6,7 @@ import '../widgets/upload_controls_panel.dart';
 import '../widgets/threshold_controls_panel.dart';
 import '../widgets/processing_results_panel.dart';
 import '../theme/colors.dart';
+import '../core/i18n/app_i18n.dart';
 
 class MainAnalysisScreen extends StatelessWidget {
   const MainAnalysisScreen({super.key});
@@ -30,8 +31,8 @@ class MainAnalysisScreen extends StatelessWidget {
           ? AppBar(
               backgroundColor: AppColors.slate800,
               iconTheme: const IconThemeData(color: Colors.white),
-              title: const Text(
-                'Savina Phân Tích Chất Lượng Điện',
+              title: Text(
+                'analysis.title'.tr(),
                 style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
               ),
             )
@@ -70,7 +71,7 @@ class MainAnalysisScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Cấp điện áp: ${provider.voltageLevel} • Công suất định mức: ${provider.ratedPower} W',
+                                  'analysis.project_specs'.tr(args: {'voltage': provider.voltageLevel, 'power': provider.ratedPower}),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.slate500,
@@ -141,8 +142,8 @@ class MainAnalysisScreen extends StatelessWidget {
                           color: AppColors.slate300,
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Chào mừng đến với Trình Phân Tích Chất Lượng Điện',
+                        Text(
+                          'analysis.welcome_title'.tr(),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -150,8 +151,8 @@ class MainAnalysisScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Vui lòng chọn một Dự án & Lượt đo ở cột bên trái để bắt đầu.',
+                        Text(
+                          'analysis.welcome_desc'.tr(),
                           style: TextStyle(
                             fontSize: 13,
                             color: AppColors.slate600,
@@ -166,7 +167,7 @@ class MainAnalysisScreen extends StatelessWidget {
                                 backgroundColor: AppColors.slate800,
                                 foregroundColor: Colors.white,
                               ),
-                              child: const Text('Mở danh sách dự án'),
+                              child: Text('analysis.open_projects'.tr()),
                             ),
                           ),
                         ],

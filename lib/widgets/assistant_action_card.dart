@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/assistant_models.dart';
 import '../services/assistant_service.dart';
 
@@ -65,7 +66,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
           widget.onSubmitted?.call();
         } else {
           widget.draft.status = ActionDraftStatus.error;
-          widget.draft.errorMessage = res['error']?.toString() ?? 'Lỗi không xác định khi lưu';
+          widget.draft.errorMessage = res['error']?.toString() ?? 'widgets.action_card.save_unknown_error'.tr();
         }
       });
     }
@@ -172,7 +173,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         Text(
-                          'Phân hệ ${d.module} · Mở trong khung chat',
+                          'widgets.action_card.module_subtitle'.tr(args: {'module': d.module}),
                           style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -190,10 +191,10 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                     ),
                     child: Text(
                       isDone
-                          ? 'ĐÃ LƯU'
+                          ? 'widgets.action_card.badge_saved'.tr()
                           : isCancelled
-                              ? 'ĐÃ HUỶ'
-                              : 'BẢN NHÁP',
+                              ? 'widgets.action_card.badge_cancelled'.tr()
+                              : 'widgets.action_card.badge_draft'.tr(),
                       style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.bold,
@@ -235,7 +236,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                                 widget.draft.status = ActionDraftStatus.cancelled;
                               });
                             },
-                      child: const Text('Huỷ thao tác', style: TextStyle(color: Color(0xFF64748B), fontSize: 12.5)),
+                      child: Text('widgets.action_card.cancel_action'.tr(), style: TextStyle(color: Color(0xFF64748B), fontSize: 12.5)),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -253,10 +254,10 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Row(
+                          : Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Xác nhận & Gửi ngay', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                                Text('widgets.action_card.confirm_send'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                                 SizedBox(width: 4),
                                 Icon(Icons.send_rounded, size: 14),
                               ],
@@ -277,7 +278,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        d.errorMessage ?? 'Có lỗi xảy ra',
+                        d.errorMessage ?? 'widgets.action_card.error_generic'.tr(),
                         style: const TextStyle(fontSize: 11, color: Color(0xFFDC2626)),
                       ),
                     ),
@@ -314,8 +315,8 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Thao tác thành công!',
+                Text(
+                  'widgets.action_card.success'.tr(),
                   style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
                 ),
                 const SizedBox(height: 2),
@@ -326,7 +327,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                 if (d.resultId != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Mã hồ sơ: ${d.resultId}',
+                    'widgets.action_card.record_id'.tr(args: {'id': d.resultId}),
                     style: const TextStyle(fontSize: 10, color: Color(0xFF15803D), fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -339,11 +340,11 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
   }
 
   Widget _buildCancelledView() {
-    return const Center(
+    return Center(
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 8),
         child: Text(
-          'Đã huỷ bản nháp biểu mẫu này.',
+          'widgets.action_card.draft_cancelled'.tr(),
           style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
         ),
       ),
@@ -356,21 +357,21 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
       children: [
         // Title or Destination or Equipment
         if (d.fields.containsKey('title')) ...[
-          _buildFieldLabel('Tiêu đề / Tên công việc'),
+          _buildFieldLabel('widgets.action_card.field_title'.tr()),
           TextField(
             controller: _titleCtrl,
             style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-            decoration: _fieldInputDecoration('Nhập tiêu đề...'),
+            decoration: _fieldInputDecoration('widgets.action_card.field_title_hint'.tr()),
           ),
           const SizedBox(height: 10),
         ],
 
         if (d.fields.containsKey('destination')) ...[
-          _buildFieldLabel('Địa điểm đến'),
+          _buildFieldLabel('widgets.action_card.field_destination'.tr()),
           TextField(
             controller: _destCtrl,
             style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-            decoration: _fieldInputDecoration('Nơi đến công tác...'),
+            decoration: _fieldInputDecoration('widgets.action_card.field_destination_hint'.tr()),
           ),
           const SizedBox(height: 10),
         ],
@@ -384,7 +385,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildFieldLabel('Từ ngày'),
+                      _buildFieldLabel('common.from_date'.tr()),
                       _buildDatePickerChip('fromDate', d.fields['fromDate']?.toString() ?? ''),
                     ],
                   ),
@@ -396,7 +397,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildFieldLabel('Đến ngày'),
+                      _buildFieldLabel('common.to_date'.tr()),
                       _buildDatePickerChip('toDate', d.fields['toDate']?.toString() ?? ''),
                     ],
                   ),
@@ -406,7 +407,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildFieldLabel('Ngày làm OT'),
+                      _buildFieldLabel('widgets.action_card.field_ot_date'.tr()),
                       _buildDatePickerChip('workDate', d.fields['workDate']?.toString() ?? ''),
                     ],
                   ),
@@ -416,7 +417,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildFieldLabel('Hạn chót'),
+                      _buildFieldLabel('widgets.action_card.field_deadline'.tr()),
                       _buildDatePickerChip('dueDate', d.fields['dueDate']?.toString() ?? ''),
                     ],
                   ),
@@ -428,18 +429,18 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
 
         // Location
         if (d.fields.containsKey('location')) ...[
-          _buildFieldLabel('Địa điểm / Link họp trực tuyến'),
+          _buildFieldLabel('widgets.action_card.field_location'.tr()),
           TextField(
             controller: _locationCtrl,
             style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-            decoration: _fieldInputDecoration('Phòng họp hoặc link video...'),
+            decoration: _fieldInputDecoration('widgets.action_card.field_location_hint'.tr()),
           ),
           const SizedBox(height: 10),
         ],
 
         // Priority Chips
         if (d.fields.containsKey('priority')) ...[
-          _buildFieldLabel('Mức độ ưu tiên'),
+          _buildFieldLabel('widgets.action_card.field_priority'.tr()),
           Wrap(
             spacing: 6,
             children: ['low', 'normal', 'high', 'urgent'].map((p) {
@@ -448,19 +449,19 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
               Color col;
               switch (p) {
                 case 'urgent':
-                  label = 'Khẩn cấp';
+                  label = 'widgets.action_card.priority_urgent'.tr();
                   col = const Color(0xFFE11D48);
                   break;
                 case 'high':
-                  label = 'Cao';
+                  label = 'widgets.action_card.priority_high'.tr();
                   col = const Color(0xFFD97706);
                   break;
                 case 'low':
-                  label = 'Thấp';
+                  label = 'widgets.action_card.priority_low'.tr();
                   col = const Color(0xFF64748B);
                   break;
                 default:
-                  label = 'Bình thường';
+                  label = 'widgets.action_card.priority_normal'.tr();
                   col = const Color(0xFF2563EB);
               }
               return ChoiceChip(
@@ -479,12 +480,12 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
         ],
 
         // Reason / Description
-        _buildFieldLabel('Lý do / Nội dung chi tiết'),
+        _buildFieldLabel('widgets.action_card.field_reason'.tr()),
         TextField(
           controller: _reasonCtrl,
           maxLines: 2,
           style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-          decoration: _fieldInputDecoration('Ghi chú nội dung...'),
+          decoration: _fieldInputDecoration('widgets.action_card.field_reason_hint'.tr()),
         ),
       ],
     );
@@ -514,7 +515,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(value.isNotEmpty ? value : 'Chọn ngày', style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A))),
+            Text(value.isNotEmpty ? value : 'widgets.action_card.pick_date'.tr(), style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A))),
             const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF64748B)),
           ],
         ),

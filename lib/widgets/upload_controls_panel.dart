@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import '../core/i18n/app_i18n.dart';
 import '../providers/analysis_provider.dart';
 import '../models/models.dart';
 import '../theme/colors.dart';
@@ -49,8 +50,8 @@ class UploadControlsPanel extends StatelessWidget {
                           size: 48,
                         ),
                         const SizedBox(height: 10),
-                        const Text(
-                          'Kéo thả file đo hoặc bấm để chọn',
+                        Text(
+                          'widgets.upload.drop_title'.tr(),
                           style: TextStyle(
                             color: AppColors.slate700,
                             fontSize: 15,
@@ -58,8 +59,8 @@ class UploadControlsPanel extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Hỗ trợ file Excel (.xlsx), dung lượng tối đa 200MB',
+                        Text(
+                          'widgets.upload.drop_hint'.tr(),
                           style: TextStyle(
                             color: AppColors.slate500,
                             fontSize: 12,
@@ -77,8 +78,8 @@ class UploadControlsPanel extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                             elevation: 2,
                           ),
-                          child: const Text(
-                            'Chọn file',
+                          child: Text(
+                            'widgets.upload.choose_file'.tr(),
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -110,7 +111,7 @@ class UploadControlsPanel extends StatelessWidget {
                 final isExisting = item is TestingMedia;
                 final fileName = isExisting ? item.mediaName : item.name;
                 final fileSizeText = isExisting
-                    ? 'Tệp đã tải lên'
+                    ? 'widgets.upload.uploaded_file'.tr()
                     : _formatFileSize(item.size);
 
                 return Container(
@@ -187,8 +188,8 @@ class UploadControlsPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'CHỌN FILE DỮ LIỆU ĐÍCH ĐỂ HIỂN THỊ BẢNG',
+                Text(
+                  'widgets.upload.select_target'.tr(),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -213,7 +214,7 @@ class UploadControlsPanel extends StatelessWidget {
                     return DropdownMenuItem<int>(
                       value: index + 1,
                       child: Text(
-                        'Mục ${index + 1}: $name',
+                        'widgets.upload.item_label'.tr(args: {'index': index + 1, 'name': name}),
                         style: const TextStyle(fontSize: 13, color: AppColors.slate800),
                       ),
                     );
@@ -245,8 +246,8 @@ class UploadControlsPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Tệp mẫu báo cáo Word',
+                    Text(
+                      'widgets.upload.word_template'.tr(),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -254,8 +255,8 @@ class UploadControlsPanel extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Sử dụng file mẫu .doc hoặc .docx để tạo xuất báo cáo.',
+                    Text(
+                      'widgets.upload.word_template_hint'.tr(),
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.slate500,
@@ -282,7 +283,7 @@ class UploadControlsPanel extends StatelessWidget {
               if (provider.wordFile != null || provider.existingWordMedia != null)
                 TextButton(
                   onPressed: () => provider.removeWordFile(),
-                  child: const Text('Xóa', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                  child: Text('common.delete'.tr(), style: TextStyle(color: Colors.redAccent, fontSize: 13)),
                 ),
               ElevatedButton(
                 onPressed: () => _pickWordFile(context),
@@ -298,8 +299,8 @@ class UploadControlsPanel extends StatelessWidget {
                 ),
                 child: Text(
                   provider.wordFile != null || provider.existingWordMedia != null
-                      ? 'Thay đổi'
-                      : 'Chọn tệp',
+                      ? 'widgets.upload.change'.tr()
+                      : 'widgets.upload.choose_template'.tr(),
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -322,11 +323,11 @@ class UploadControlsPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Lưu file kết quả về máy',
+                        'widgets.upload.save_results'.tr(),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -335,7 +336,7 @@ class UploadControlsPanel extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Tự động tải về các tệp Excel phân tích kết quả.',
+                        'widgets.upload.save_results_hint'.tr(),
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.slate500,
@@ -354,11 +355,11 @@ class UploadControlsPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Làm sạch trước khi phân tích',
+                        'widgets.upload.clean_before'.tr(),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -367,7 +368,7 @@ class UploadControlsPanel extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Xóa các kết quả cũ trước khi bắt đầu xử lý.',
+                        'widgets.upload.clean_before_hint'.tr(),
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.slate500,
@@ -391,25 +392,23 @@ class UploadControlsPanel extends StatelessWidget {
 
   // Pick Excel Files Helper
   Future<void> _pickExcelFiles(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
-      allowMultiple: true,
     );
-    if (result != null && context.mounted) {
-      context.read<AnalysisProvider>().selectExcelFiles(result.files);
+    if (files.isNotEmpty && context.mounted) {
+      context.read<AnalysisProvider>().selectExcelFiles(files);
     }
   }
 
   // Pick Word Report Template Helper
   Future<void> _pickWordFile(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['doc', 'docx'],
-      allowMultiple: false,
     );
-    if (result != null && result.files.isNotEmpty && context.mounted) {
-      context.read<AnalysisProvider>().selectWordFile(result.files.first);
+    if (file != null && context.mounted) {
+      context.read<AnalysisProvider>().selectWordFile(file);
     }
   }
 

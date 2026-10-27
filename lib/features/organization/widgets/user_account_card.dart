@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/platform_models.dart';
@@ -64,7 +65,7 @@ class UserAccountCard extends StatelessWidget {
               ),
               AppStatusBadge(
                 status: user.status,
-                customLabel: isActive ? 'Hoạt động' : 'Tạm khóa',
+                customLabel: isActive ? 'org_widgets.user.active'.tr() : 'org_widgets.user.locked'.tr(),
               ),
             ],
           ),
@@ -83,7 +84,7 @@ class UserAccountCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Expanded(
                       child: Text(
-                        user.roles.isNotEmpty ? user.roles.join(', ') : 'Chưa phân vai trò',
+                        user.roles.isNotEmpty ? user.roles.join(', ') : 'org_widgets.user.no_roles'.tr(),
                         style: AppTextStyles.caption.copyWith(
                           color: user.roles.isNotEmpty ? AppColors.primaryDark : AppColors.slate400,
                           fontWeight: user.roles.isNotEmpty ? FontWeight.bold : FontWeight.normal,
@@ -98,7 +99,7 @@ class UserAccountCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onAssignRole,
                   icon: const Icon(Icons.admin_panel_settings_outlined, size: 14),
-                  label: const Text('Gán vai trò', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  label: Text('org_widgets.user.assign_role'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

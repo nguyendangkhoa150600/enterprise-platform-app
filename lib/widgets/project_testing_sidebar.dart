@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/i18n/app_i18n.dart';
 import '../providers/analysis_provider.dart';
 import '../models/models.dart';
 import '../theme/colors.dart';
@@ -73,7 +74,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                 IconButton(
                   icon: const Icon(Icons.refresh, color: AppColors.slate400),
                   onPressed: () => provider.fetchProjects(),
-                  tooltip: 'Tải lại',
+                  tooltip: 'common.refresh'.tr(),
                 ),
               ],
             ),
@@ -90,8 +91,8 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'DỰ ÁN',
+                      Text(
+                        'widgets.sidebar.projects'.tr(),
                         style: TextStyle(
                           color: AppColors.amber,
                           fontSize: 11,
@@ -101,12 +102,12 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                       ),
                       GestureDetector(
                         onTap: () => _showAddProjectDialog(context),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(Icons.add, color: AppColors.amber, size: 16),
                             SizedBox(width: 4),
                             Text(
-                              'Thêm mới',
+                              'widgets.sidebar.add_new'.tr(),
                               style: TextStyle(
                                 color: AppColors.amber,
                                 fontSize: 12,
@@ -126,7 +127,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                     onChanged: provider.setProjectSearchQuery,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Tìm kiếm dự án...',
+                      hintText: 'widgets.sidebar.search_projects'.tr(),
                       hintStyle: const TextStyle(color: AppColors.slate400, fontSize: 13),
                       prefixIcon: const Icon(Icons.search, color: AppColors.slate400, size: 18),
                       isDense: true,
@@ -218,9 +219,9 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
           Expanded(
             flex: 5,
             child: provider.selectedProjectId == null
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'Chọn dự án để xem các lượt đo',
+                      'widgets.sidebar.select_project'.tr(),
                       style: TextStyle(color: AppColors.slate400, fontSize: 13),
                     ),
                   )
@@ -232,8 +233,8 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'LƯỢT ĐO THỬ NGHIỆM',
+                            Text(
+                              'widgets.sidebar.testings'.tr(),
                               style: TextStyle(
                                 color: AppColors.emeraldAccent,
                                 fontSize: 11,
@@ -243,12 +244,12 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                             ),
                             GestureDetector(
                               onTap: () => _showAddTestingDialog(context),
-                              child: const Row(
+                              child: Row(
                                 children: [
                                   Icon(Icons.add, color: AppColors.emeraldAccent, size: 16),
                                   SizedBox(width: 4),
                                   Text(
-                                    'Thêm mới',
+                                    'widgets.sidebar.add_new'.tr(),
                                     style: TextStyle(
                                       color: AppColors.emeraldAccent,
                                       fontSize: 12,
@@ -268,7 +269,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                           onChanged: provider.setTestingSearchQuery,
                           style: const TextStyle(color: Colors.white, fontSize: 13),
                           decoration: InputDecoration(
-                            hintText: 'Tìm kiếm lượt đo...',
+                            hintText: 'widgets.sidebar.search_testings'.tr(),
                             hintStyle: const TextStyle(color: AppColors.slate400, fontSize: 13),
                             prefixIcon: const Icon(Icons.search, color: AppColors.slate400, size: 18),
                             isDense: true,
@@ -389,17 +390,17 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thêm dự án mới'),
+        title: Text('widgets.sidebar.add_project'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Tên dự án *')),
-            TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Địa chỉ')),
-            TextField(controller: descController, decoration: const InputDecoration(labelText: 'Mô tả ngắn')),
+            TextField(controller: nameController, decoration: InputDecoration(labelText: 'widgets.sidebar.project_name'.tr())),
+            TextField(controller: addressController, decoration: InputDecoration(labelText: 'widgets.sidebar.address'.tr())),
+            TextField(controller: descController, decoration: InputDecoration(labelText: 'widgets.sidebar.short_desc'.tr())),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.isNotEmpty) {
@@ -411,7 +412,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Tạo mới'),
+            child: Text('common.create'.tr()),
           ),
         ],
       ),
@@ -426,17 +427,17 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cập nhật dự án'),
+        title: Text('widgets.sidebar.update_project'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Tên dự án *')),
-            TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Địa chỉ')),
-            TextField(controller: descController, decoration: const InputDecoration(labelText: 'Mô tả')),
+            TextField(controller: nameController, decoration: InputDecoration(labelText: 'widgets.sidebar.project_name'.tr())),
+            TextField(controller: addressController, decoration: InputDecoration(labelText: 'widgets.sidebar.address'.tr())),
+            TextField(controller: descController, decoration: InputDecoration(labelText: 'common.description'.tr())),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.isNotEmpty && project.projectId != null) {
@@ -449,7 +450,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Lưu'),
+            child: Text('common.save'.tr()),
           ),
         ],
       ),
@@ -460,10 +461,10 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc chắn muốn xóa dự án "${project.projectName}" không? Toàn bộ dữ liệu liên quan sẽ bị xóa sạch.'),
+        title: Text('widgets.sidebar.confirm_delete'.tr()),
+        content: Text('widgets.sidebar.delete_project_msg'.tr(args: {'name': project.projectName})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('common.cancel'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
@@ -472,7 +473,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+            child: Text('common.delete'.tr(), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -485,13 +486,13 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thêm lượt đo mới'),
+        title: Text('widgets.sidebar.add_testing'.tr()),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(labelText: 'Tên lượt đo * (ví dụ: Đo tần số định kỳ Lần 1)'),
+          decoration: InputDecoration(labelText: 'widgets.sidebar.testing_name_example'.tr()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.isNotEmpty) {
@@ -499,7 +500,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Tạo mới'),
+            child: Text('common.create'.tr()),
           ),
         ],
       ),
@@ -512,13 +513,13 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cập nhật lượt đo'),
+        title: Text('widgets.sidebar.update_testing'.tr()),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(labelText: 'Tên lượt đo *'),
+          decoration: InputDecoration(labelText: 'widgets.sidebar.testing_name'.tr()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.isNotEmpty && testing.testingId != null) {
@@ -526,7 +527,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Lưu'),
+            child: Text('common.save'.tr()),
           ),
         ],
       ),
@@ -537,10 +538,10 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc chắn muốn xóa lượt đo "${testing.testingName}" không?'),
+        title: Text('widgets.sidebar.confirm_delete'.tr()),
+        content: Text('widgets.sidebar.delete_testing_msg'.tr(args: {'name': testing.testingName})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('common.cancel'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
@@ -549,7 +550,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+            child: Text('common.delete'.tr(), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

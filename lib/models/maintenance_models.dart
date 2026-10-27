@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 class MaintenanceSchedule {
   final String id;
   final String assetCode;
@@ -21,7 +22,7 @@ class MaintenanceSchedule {
     return MaintenanceSchedule(
       id: json['id']?.toString() ?? '',
       assetCode: json['assetCode']?.toString() ?? 'AST-01',
-      assetName: json['assetName']?.toString() ?? 'Thiết bị công nghiệp',
+      assetName: json['assetName']?.toString() ?? 'models.maintenance.default_asset'.tr(),
       frequency: json['frequency']?.toString() ?? 'MONTHLY',
       nextDueDate: json['nextDueDate']?.toString() ?? '',
       status: json['status']?.toString() ?? 'SCHEDULED',
@@ -55,12 +56,12 @@ class MaintenanceIncident {
     return MaintenanceIncident(
       id: json['id']?.toString() ?? '',
       assetCode: json['assetCode']?.toString() ?? '',
-      assetName: json['assetName']?.toString() ?? 'Hệ thống vận hành',
-      title: json['title']?.toString() ?? 'Sự cố thiết bị',
+      assetName: json['assetName']?.toString() ?? 'models.maintenance.default_system'.tr(),
+      title: json['title']?.toString() ?? 'models.maintenance.default_incident'.tr(),
       severity: json['severity']?.toString() ?? 'MEDIUM',
       reportedAt: json['reportedAt']?.toString() ?? '',
       status: json['status']?.toString() ?? 'OPEN',
-      reportedBy: json['reportedBy']?.toString() ?? 'Kỹ thuật viên',
+      reportedBy: json['reportedBy']?.toString() ?? 'models.maintenance.technician'.tr(),
     );
   }
 }

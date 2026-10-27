@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/hrm_attendance_models.dart';
@@ -43,7 +44,7 @@ class AttendanceMetricBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TỔNG KẾT CÔNG THÁNG ${summary.monthYear.toUpperCase()}',
+                    'att_widgets.banner.monthly_summary'.tr(args: {'month': summary.monthYear.toUpperCase()}),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.slate400,
                       fontWeight: FontWeight.bold,
@@ -61,7 +62,7 @@ class AttendanceMetricBanner extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        ' / ${summary.totalWorkDays} ngày công chuẩn',
+                        'att_widgets.banner.standard_days'.tr(args: {'days': summary.totalWorkDays}),
                         style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate300),
                       ),
                     ],
@@ -80,7 +81,7 @@ class AttendanceMetricBanner extends StatelessWidget {
                     const Icon(Icons.timer_outlined, size: 14, color: AppColors.emerald),
                     const SizedBox(width: 5),
                     Text(
-                      '${summary.totalWorkHours}h làm',
+                      'att_widgets.banner.work_hours'.tr(args: {'hours': summary.totalWorkHours}),
                       style: AppTextStyles.caption.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -100,18 +101,18 @@ class AttendanceMetricBanner extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildSubMetric(
-                label: 'Đi muộn / Về sớm',
-                value: '${summary.lateDays + summary.earlyLeaveDays} lần',
+                label: 'att_widgets.banner.late_early'.tr(),
+                value: 'att_widgets.banner.times'.tr(args: {'count': summary.lateDays + summary.earlyLeaveDays}),
                 isWarning: (summary.lateDays + summary.earlyLeaveDays) > 0,
                 onTap: onLateTap,
               ),
               _buildSubMetric(
-                label: 'Nghỉ phép',
-                value: '${summary.leaveDays} ngày',
+                label: 'att_widgets.banner.leave'.tr(),
+                value: 'att_widgets.banner.days'.tr(args: {'count': summary.leaveDays}),
                 onTap: onLeaveTap,
               ),
               _buildSubMetric(
-                label: 'Làm thêm (OT)',
+                label: 'att_widgets.banner.overtime'.tr(),
                 value: '${summary.totalOvertimeHours}h',
                 isSuccess: summary.totalOvertimeHours > 0,
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/hrm_models.dart';
@@ -63,7 +64,7 @@ class PositionJdCard extends StatelessWidget {
                   border: Border.all(color: hasJd ? AppColors.emerald200 : AppColors.warningBorder),
                 ),
                 child: Text(
-                  hasJd ? 'ĐÃ CÓ JD' : 'Chưa thiết lập JD',
+                  hasJd ? 'hrm_widgets.position.has_jd'.tr() : 'hrm_widgets.position.no_jd'.tr(),
                   style: AppTextStyles.badge.copyWith(
                     color: hasJd ? AppColors.successFg : AppColors.warningFg,
                   ),
@@ -91,7 +92,7 @@ class PositionJdCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    'Bậc: ${position.salaryGrade}',
+                    'hrm_widgets.position.grade'.tr(args: {'grade': position.salaryGrade}),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.purpleFg,
                       fontWeight: FontWeight.bold,
@@ -114,14 +115,14 @@ class PositionJdCard extends StatelessWidget {
                   const Icon(Icons.people_alt_outlined, size: 14, color: AppColors.slate500),
                   const SizedBox(width: 5),
                   Text(
-                    '${position.activeEmployeeCount} nhân sự đang giữ chức danh',
+                    'hrm_widgets.position.active_holders'.tr(args: {'count': position.activeEmployeeCount}),
                     style: AppTextStyles.caption.copyWith(color: AppColors.slate600),
                   ),
                 ],
               ),
               Row(
                 children: [
-                  Text('Chi tiết JD', style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  Text('hrm_widgets.position.jd_detail'.tr(), style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
                   const Icon(Icons.chevron_right, size: 14, color: AppColors.primary),
                 ],
               ),

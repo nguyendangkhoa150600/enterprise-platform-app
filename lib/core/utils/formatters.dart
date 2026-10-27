@@ -1,8 +1,12 @@
+import '../i18n/app_i18n.dart';
 import 'package:intl/intl.dart';
 
 /// Formatting utility methods across all modules
 class Formatters {
-  static final NumberFormat _currencyFormatter = NumberFormat('#,###', 'vi_VN');
+  static NumberFormat get _currencyFormatter => NumberFormat(
+        '#,###',
+        AppI18n.instance.locale.languageCode == 'en' ? 'en_US' : 'vi_VN',
+      );
 
   /// Format money to Vietnamese Dong (VNĐ)
   static String formatCurrency(dynamic amount, {bool showSymbol = true}) {

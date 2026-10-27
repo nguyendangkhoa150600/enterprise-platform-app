@@ -1,3 +1,5 @@
+import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
+import '../core/permissions/hrm_permissions.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -10,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isLoggedIn = false;
   String? _kind; // 'tenant-user' | 'platform-admin'
+  String? _userId;
   String? _tenantSlug;
   String? _fullName;
   String? _email;
@@ -22,6 +25,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoggedIn => _isLoggedIn;
   String? get kind => _kind;
+  String? get userId => _userId;
   bool get isPlatformAdmin => _kind == 'platform-admin' || _roles.contains('platform-admin');
   bool get isTenantAdmin => _roles.contains('tenant-admin');
   String? get tenantSlug => _tenantSlug;
@@ -44,9 +48,21 @@ class AuthProvider extends ChangeNotifier {
     return _roles.contains(role);
   }
 
-  bool get canCreateUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.create') || hasPermission('users.create');
-  bool get canUpdateUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.update') || hasPermission('users.update');
-  bool get canDeleteUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.delete') || hasPermission('users.delete');
+  /// Same rule as the web `hasTenantAction`: `tenant.manage` implies every tenant action.
+  bool get canManageTenant => isPlatformAdmin || _permissions.contains('tenant.manage') || _permissions.contains('*');
+  bool hasTenantAction(String action) => canManageTenant || _permissions.contains(action);
+
+  // Tenant shell pages (web tenant-shell.tsx): authorization needs tenant.manage; users / organization need their read action.
+  bool get canViewRoles => canManageTenant;
+  bool get canViewUsers => hasTenantAction('core.users.read');
+  bool get canViewOrganization => hasTenantAction('core.organization.read');
+
+  bool get canCreateUser => hasTenantAction('core.users.create');
+  bool get canUpdateUser => hasTenantAction('core.users.update');
+  bool get canDeleteUser => hasTenantAction('core.users.delete');
+  bool get canCreateOrganization => hasTenantAction('core.organization.create');
+  bool get canUpdateOrganization => hasTenantAction('core.organization.update');
+  bool get canDeleteOrganization => hasTenantAction('core.organization.delete');
 
   void clearError() {
     _errorMessage = null;
@@ -79,6 +95,7 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _isLoggedIn = prefs.getBool('is_logged_in') ?? false;
     _kind = prefs.getString('user_kind') ?? 'tenant-user';
+    _userId = prefs.getString('user_id');
     _tenantSlug = prefs.getString('tenant_slug');
     _fullName = prefs.getString('full_name');
     _email = prefs.getString('email');
@@ -121,7 +138,7 @@ class AuthProvider extends ChangeNotifier {
         .first;
 
     if (cleanSlug.isEmpty) {
-      _errorMessage = 'Tên doanh nghiệp không hợp lệ.';
+      _errorMessage = 'core_misc.auth.invalid_tenant'.tr();
       notifyListeners();
       return false;
     }
@@ -167,10 +184,11 @@ class AuthProvider extends ChangeNotifier {
         final principal = data['principal'];
         
         if (principal == null) {
-          throw Exception('Không nhận được thông tin xác thực từ máy chủ.');
+          throw Exception('core_misc.auth.no_credentials'.tr());
         }
 
         _kind = principal['kind']?.toString() ?? (portal == 'platform' ? 'platform-admin' : 'tenant-user');
+        _userId = principal['userId']?.toString() ?? principal['id']?.toString() ?? principal['sub']?.toString();
         _fullName = principal['displayName']?.toString() ?? principal['fullName']?.toString() ?? (portal == 'platform' ? 'Platform Super Admin' : 'Người dùng');
         _email = principal['email']?.toString() ?? email.trim();
         _tenantId = principal['tenantId']?.toString();
@@ -193,6 +211,7 @@ class AuthProvider extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_logged_in', true);
         await prefs.setString('user_kind', _kind ?? 'tenant-user');
+        if (_userId != null) await prefs.setString('user_id', _userId!);
         await prefs.setString('full_name', _fullName ?? '');
         await prefs.setString('email', _email ?? '');
         await prefs.setString('tenant_id', _tenantId ?? '');
@@ -212,7 +231,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        throw Exception('Đăng nhập thất bại.');
+        throw Exception('core_misc.auth.login_failed'.tr());
       }
     } on DioException catch (e) {
       _isLoading = false;
@@ -222,13 +241,13 @@ class AuthProvider extends ChangeNotifier {
         debugPrint("DioException Response Status: ${e.response!.statusCode}");
       }
       if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-        _errorMessage = 'Hết thời gian chờ kết nối (Timeout). Vui lòng kiểm tra lại đường truyền mạng hoặc máy chủ.';
+        _errorMessage = 'core_misc.auth.timeout'.tr();
       } else if (e.type == DioExceptionType.connectionError) {
-        _errorMessage = 'Không thể kết nối đến máy chủ (${AuthProvider.authBaseUrl}). Vui lòng kiểm tra kết nối mạng của thiết bị.';
+        _errorMessage = 'core_misc.auth.conn_error'.tr(args: {'url': AuthProvider.authBaseUrl});
       } else if (e.response != null && e.response!.data != null && e.response!.data['message'] != null) {
         _errorMessage = e.response!.data['message'].toString();
       } else {
-        _errorMessage = 'Email hoặc mật khẩu không chính xác.';
+        _errorMessage = 'core_misc.auth.bad_credentials'.tr();
       }
       notifyListeners();
       return false;
@@ -271,6 +290,7 @@ class AuthProvider extends ChangeNotifier {
       // Ignore network errors on logout
     }
 
+    HrmCapabilities.instance.clear();
     _isLoggedIn = false;
     _kind = null;
     _fullName = null;
@@ -427,6 +447,11 @@ class AuthProvider extends ChangeNotifier {
             if (instance != null) {
               instance!._cookies = newCookies;
               instance!._isLoggedIn = true;
+              final uid = principal['userId']?.toString() ?? principal['id']?.toString() ?? principal['sub']?.toString();
+              if (uid != null) {
+                instance!._userId = uid;
+                await prefs.setString('user_id', uid);
+              }
               instance!._fullName = principal['displayName']?.toString() ?? principal['fullName']?.toString();
               instance!._email = principal['email']?.toString() ?? savedEmail;
               instance!._tenantId = principal['tenantId']?.toString();
@@ -488,10 +513,10 @@ class AuthProvider extends ChangeNotifier {
           await updateCookiesFromSetCookie(setCookies);
         }
         notifyListeners();
-        return {'success': true, 'message': 'Đổi mật khẩu thành công!'};
+        return {'success': true, 'message': 'core_misc.auth.pwd_changed'.tr()};
       } else {
         final data = res.data;
-        String msg = 'Đổi mật khẩu thất bại.';
+        String msg = 'core_misc.auth.pwd_change_failed'.tr();
         if (data is Map && data['message'] != null) {
           msg = data['message'].toString();
         }
@@ -503,7 +528,7 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-      return {'success': false, 'message': 'Lỗi kết nối máy chủ: $e'};
+      return {'success': false, 'message': 'core_misc.auth.server_conn_error'.tr(args: {'error': e.toString()})};
     }
   }
 }

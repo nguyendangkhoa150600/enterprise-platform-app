@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -7,6 +8,10 @@ class HrmMetricHeader extends StatelessWidget {
   final int totalEmployees;
   final int probationCount;
   final int totalPositions;
+  final String? thirdTitle;
+  final String? thirdSubtitle;
+  final int? thirdCount;
+  final IconData? thirdIcon;
   final VoidCallback? onTotalTap;
   final VoidCallback? onProbationTap;
   final VoidCallback? onPositionsTap;
@@ -16,6 +21,10 @@ class HrmMetricHeader extends StatelessWidget {
     required this.totalEmployees,
     required this.probationCount,
     required this.totalPositions,
+    this.thirdTitle,
+    this.thirdSubtitle,
+    this.thirdCount,
+    this.thirdIcon,
     this.onTotalTap,
     this.onProbationTap,
     this.onPositionsTap,
@@ -29,9 +38,9 @@ class HrmMetricHeader extends StatelessWidget {
         children: [
           Expanded(
             child: _buildMetricCard(
-              title: 'TỔNG NHÂN SỰ',
+              title: 'hrm_widgets.metric.total_staff'.tr(),
               count: '$totalEmployees',
-              subtitle: 'Đang hoạt động',
+              subtitle: 'common.active'.tr(),
               icon: Icons.people_alt_rounded,
               iconColor: AppColors.primary,
               iconBgColor: AppColors.primaryLight,
@@ -41,9 +50,9 @@ class HrmMetricHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: _buildMetricCard(
-              title: 'THỬ VIỆC',
+              title: 'hrm_widgets.metric.probation'.tr(),
               count: '$probationCount',
-              subtitle: 'Cần đánh giá',
+              subtitle: 'hrm_widgets.metric.needs_review'.tr(),
               icon: Icons.hourglass_top_rounded,
               iconColor: AppColors.warningFg,
               iconBgColor: AppColors.warningBg,
@@ -53,10 +62,10 @@ class HrmMetricHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: _buildMetricCard(
-              title: 'CHỨC DANH & JD',
-              count: '$totalPositions',
-              subtitle: 'Vị trí công việc',
-              icon: Icons.work_outline_rounded,
+              title: thirdTitle ?? 'hrm_widgets.metric.decisions'.tr(),
+              count: '${thirdCount ?? totalPositions}',
+              subtitle: thirdSubtitle ?? 'hrm_widgets.metric.appointments_transfers'.tr(),
+              icon: thirdIcon ?? Icons.description_outlined,
               iconColor: AppColors.emerald600,
               iconBgColor: AppColors.emerald50,
               onTap: onPositionsTap,

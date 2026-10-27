@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 
 class HrmMonitorDayRequest {
   final String id;
@@ -40,29 +41,29 @@ class HrmMonitorDayRequest {
   String get kindLabel {
     switch (kind.toUpperCase()) {
       case 'LEAVE':
-        return 'Nghỉ phép';
+        return 'models.request.leave'.tr();
       case 'OT':
-        return 'Làm thêm giờ';
+        return 'models.request.overtime'.tr();
       case 'TRIP':
-        return 'Công tác';
+        return 'models.request.business_trip'.tr();
       case 'CORRECTION':
-        return 'Giải trình công';
+        return 'models.request.attendance_explanation'.tr();
       case 'SHIFT_CHANGE':
-        return 'Đổi ca';
+        return 'models.request.shift_change'.tr();
       default:
-        return 'Đơn khác';
+        return 'models.request.other'.tr();
     }
   }
 
   String get statusLabel {
     switch (status.toUpperCase()) {
       case 'APPROVED':
-        return 'Đã duyệt';
+        return 'models.status.approved'.tr();
       case 'REJECTED':
-        return 'Từ chối';
+        return 'common.reject'.tr();
       case 'PENDING':
       default:
-        return 'Chờ duyệt';
+        return 'models.status.pending'.tr();
     }
   }
 
@@ -169,45 +170,45 @@ class HrmMonitorRow {
 
   String get actualText {
     if ((checkIn == null || checkIn!.isEmpty) && (checkOut == null || checkOut!.isEmpty)) {
-      return 'Chưa chấm';
+      return 'models.attendance.not_punched'.tr();
     }
     if (checkIn != null && checkIn!.isNotEmpty && checkOut != null && checkOut!.isNotEmpty) {
       return '$checkIn – $checkOut';
     }
     if (checkIn != null && checkIn!.isNotEmpty) {
-      return status == 'MISSING_PUNCH' ? '$checkIn (chưa có lượt ra)' : checkIn!;
+      return status == 'MISSING_PUNCH' ? 'models.attendance.punch_missing_out'.tr(args: {'time': checkIn}) : checkIn!;
     }
-    return 'Ra lúc $checkOut';
+    return 'models.attendance.out_at'.tr(args: {'time': checkOut});
   }
 
   String get statusDisplayLabel {
     switch (status) {
       case 'NOT_CHECKED_IN':
-        return 'Chưa vào ca';
+        return 'models.attendance.not_started'.tr();
       case 'ABSENT':
-        return 'Vắng mặt';
+        return 'models.attendance.absent'.tr();
       case 'LATE':
-        return lateMinutes > 0 ? 'Đi trễ $lateMinutes phút' : 'Đi trễ';
+        return lateMinutes > 0 ? 'models.attendance.late_minutes'.tr(args: {'minutes': lateMinutes}) : 'models.attendance.late'.tr();
       case 'EARLY_LEAVE':
-        return earlyLeaveMinutes > 0 ? 'Về sớm $earlyLeaveMinutes phút' : 'Về sớm';
+        return earlyLeaveMinutes > 0 ? 'models.attendance.early_minutes'.tr(args: {'minutes': earlyLeaveMinutes}) : 'models.attendance.early_leave'.tr();
       case 'LATE_EARLY':
-        return 'Đi trễ, về sớm ($lateMinutes p / $earlyLeaveMinutes p)';
+        return 'models.attendance.late_and_early'.tr(args: {'late': lateMinutes, 'early': earlyLeaveMinutes});
       case 'MISSING_PUNCH':
-        return 'Thiếu lượt chấm';
+        return 'models.attendance.missing_punch'.tr();
       case 'CHECKED_IN':
-        return 'Đã vào ca';
+        return 'models.attendance.checked_in'.tr();
       case 'COMPLETED':
-        return 'Đã hoàn thành ca';
+        return 'models.attendance.shift_completed'.tr();
       case 'UPCOMING':
-        return 'Chưa tới giờ ca';
+        return 'models.attendance.before_shift'.tr();
       case 'ON_LEAVE':
-        return leaveName != null && leaveName!.isNotEmpty ? 'Nghỉ phép ($leaveName)' : 'Đang nghỉ phép';
+        return leaveName != null && leaveName!.isNotEmpty ? 'models.attendance.leave_named'.tr(args: {'name': leaveName}) : 'models.attendance.on_leave'.tr();
       case 'ON_TRIP':
-        return 'Công tác';
+        return 'models.request.business_trip'.tr();
       case 'DAY_OFF':
-        return 'Ngày nghỉ';
+        return 'models.attendance.day_off'.tr();
       case 'NO_SCHEDULE':
-        return 'Chưa có lịch';
+        return 'models.attendance.no_schedule'.tr();
       default:
         return status;
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_i18n.dart';
 import '../models/models.dart';
 import '../theme/colors.dart';
 
@@ -57,7 +58,7 @@ class _PowerQualityAnalysisTableState extends State<PowerQualityAnalysisTable>
         children: [
           // Tabs Header
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.slate50,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
@@ -70,13 +71,13 @@ class _PowerQualityAnalysisTableState extends State<PowerQualityAnalysisTable>
               labelColor: AppColors.amber,
               unselectedLabelColor: AppColors.slate600,
               indicatorColor: AppColors.amber,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
-              tabs: const [
-                Tab(text: 'Summary Tables'),
-                Tab(text: 'Harmonics Details'),
-                Tab(text: 'Power Statistics'),
-                Tab(text: 'Raw Data'),
+              labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
+              tabs: [
+                Tab(text: 'widgets.pq_table.tab_summary'.tr()),
+                Tab(text: 'widgets.pq_table.tab_harmonics'.tr()),
+                Tab(text: 'widgets.pq_table.tab_statistics'.tr()),
+                Tab(text: 'widgets.pq_table.tab_raw'.tr()),
               ],
             ),
           ),
@@ -87,17 +88,17 @@ class _PowerQualityAnalysisTableState extends State<PowerQualityAnalysisTable>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildTableList(widget.data.summaryTables, 'Không có dữ liệu Summary.'),
-                _buildTableList(widget.data.harmonicTables, 'Không có dữ liệu Harmonics.'),
-                _buildTableList(widget.data.statisticTables, 'Không có dữ liệu Statistics.'),
+                _buildTableList(widget.data.summaryTables, 'widgets.pq_table.no_summary'.tr()),
+                _buildTableList(widget.data.harmonicTables, 'widgets.pq_table.no_harmonics'.tr()),
+                _buildTableList(widget.data.statisticTables, 'widgets.pq_table.no_statistics'.tr()),
                 rawTable != null
                     ? SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: _buildExcelTable(rawTable),
                       )
-                    : const Center(
+                    : Center(
                         child: Text(
-                          'Không có bảng Excel thô nào được chọn để xem trước.',
+                          'widgets.pq_table.no_raw'.tr(),
                           style: TextStyle(color: AppColors.slate500, fontSize: 13),
                         ),
                       ),

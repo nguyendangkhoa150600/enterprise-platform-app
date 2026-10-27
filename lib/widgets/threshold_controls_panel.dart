@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/i18n/app_i18n.dart';
 import '../providers/analysis_provider.dart';
 import '../theme/colors.dart';
 
@@ -14,13 +15,13 @@ class ThresholdControlsPanel extends StatelessWidget {
 
     // Field displays map
     final List<Map<String, String>> fields = [
-      {'name': 'pstThreshold', 'label': 'Ngưỡng Pst', 'placeholder': '0.8'},
-      {'name': 'pltThreshold', 'label': 'Ngưỡng Plt', 'placeholder': '0.6'},
-      {'name': 'thdUThreshold', 'label': 'Ngưỡng THD U (%)', 'placeholder': '3.0'},
-      {'name': 'tddIThreshold', 'label': 'Ngưỡng TDD I (%)', 'placeholder': '3.0'},
-      {'name': 'uThreshold', 'label': 'Ngưỡng U (%)', 'placeholder': '3.0'},
-      {'name': 'voltageHarmonicThreshold', 'label': 'Sóng hài áp (%)', 'placeholder': '1.5'},
-      {'name': 'currentHarmonicThreshold', 'label': 'Sóng hài dòng (%)', 'placeholder': '2.0'},
+      {'name': 'pstThreshold', 'label': 'widgets.threshold.pst'.tr(), 'placeholder': '0.8'},
+      {'name': 'pltThreshold', 'label': 'widgets.threshold.plt'.tr(), 'placeholder': '0.6'},
+      {'name': 'thdUThreshold', 'label': 'widgets.threshold.thd_u'.tr(), 'placeholder': '3.0'},
+      {'name': 'tddIThreshold', 'label': 'widgets.threshold.tdd_i'.tr(), 'placeholder': '3.0'},
+      {'name': 'uThreshold', 'label': 'widgets.threshold.u'.tr(), 'placeholder': '3.0'},
+      {'name': 'voltageHarmonicThreshold', 'label': 'widgets.threshold.voltage_harmonic'.tr(), 'placeholder': '1.5'},
+      {'name': 'currentHarmonicThreshold', 'label': 'widgets.threshold.current_harmonic'.tr(), 'placeholder': '2.0'},
     ];
 
     return Container(
@@ -39,8 +40,8 @@ class ThresholdControlsPanel extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'CẤU HÌNH NGƯỠNG PHÂN TÍCH',
+              Text(
+                'widgets.threshold.title'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -49,8 +50,8 @@ class ThresholdControlsPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Thiết lập thông số kỹ thuật để chạy thuật toán phân tích kết quả đo.',
+              Text(
+                'widgets.threshold.subtitle'.tr(),
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.slate600,
@@ -59,8 +60,8 @@ class ThresholdControlsPanel extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Voltage Level
-              const Text(
-                'CẤP ĐIỆN ÁP',
+              Text(
+                'widgets.threshold.voltage_level'.tr(),
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -139,8 +140,8 @@ class ThresholdControlsPanel extends StatelessWidget {
               }),
 
               // Rated Power Pdm
-              const Text(
-                'CÔNG SUẤT ĐỊNH MỨC (PDM - W)',
+              Text(
+                'widgets.threshold.rated_power'.tr(),
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -210,7 +211,7 @@ class ThresholdControlsPanel extends StatelessWidget {
                         )
                       : const Icon(Icons.bolt, size: 18),
                   label: Text(
-                    provider.isProcessing ? 'ĐANG PHÂN TÍCH...' : 'BẮT ĐẦU PHÂN TÍCH',
+                    provider.isProcessing ? 'widgets.threshold.analyzing'.tr() : 'widgets.threshold.start'.tr(),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -277,14 +278,14 @@ class ThresholdControlsPanel extends StatelessWidget {
             Positioned.fill(
               child: Container(
                 color: Colors.white.withOpacity(0.85),
-                child: const Center(
+                child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(color: AppColors.amber),
                       SizedBox(height: 12),
                       Text(
-                        'Đang tải cấu hình bảng...',
+                        'widgets.threshold.loading_config'.tr(),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -292,7 +293,7 @@ class ThresholdControlsPanel extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Vui lòng chờ tệp phân tích tải xuống',
+                        'widgets.threshold.loading_wait'.tr(),
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.slate500,

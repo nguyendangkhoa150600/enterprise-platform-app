@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../services/module_business_service.dart';
 import '../theme/colors.dart';
+import '../core/i18n/app_i18n.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -64,15 +65,15 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
         backgroundColor: AppColors.slate900,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Kho vật tư & Tài sản (Inventory)',
+              'inventory.title'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Quản lý danh mục vật tư, định mức tồn kho & sổ kho điện tử',
+              'inventory.subtitle'.tr(),
               style: TextStyle(fontSize: 11, color: AppColors.slate400),
             ),
           ],
@@ -83,15 +84,15 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: AppColors.slate400,
-          tabs: const [
-            Tab(icon: Icon(Icons.inventory_2_outlined, size: 18), text: 'Danh mục vật tư'),
-            Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Sổ kho & Giao dịch'),
+          tabs: [
+            Tab(icon: Icon(Icons.inventory_2_outlined, size: 18), text: 'inventory.tab.materials'.tr()),
+            Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'inventory.tab.ledger'.tr()),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadData,
           ),
         ],
@@ -127,9 +128,9 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildMetricCard('TỔNG LOẠI VẬT TƯ', '${_materials.length}', Icons.layers_outlined, AppColors.slate800, cardWidth),
-                  _buildMetricCard('CẢNH BÁO THIẾU HỤT', '$_lowStockCount', Icons.warning_amber_rounded, Colors.red.shade600, cardWidth),
-                  _buildMetricCard('ĐỦ ĐỊNH MỨC', '${_materials.length - _lowStockCount}', Icons.check_circle_outline, AppColors.emerald, cardWidth),
+                  _buildMetricCard('inventory.metric.total'.tr(), '${_materials.length}', Icons.layers_outlined, AppColors.slate800, cardWidth),
+                  _buildMetricCard('inventory.metric.low'.tr(), '$_lowStockCount', Icons.warning_amber_rounded, Colors.red.shade600, cardWidth),
+                  _buildMetricCard('inventory.metric.ok'.tr(), '${_materials.length - _lowStockCount}', Icons.check_circle_outline, AppColors.emerald, cardWidth),
                 ],
               );
             },
@@ -140,7 +141,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           TextField(
             onChanged: (val) => setState(() => _searchQuery = val),
             decoration: InputDecoration(
-              hintText: 'Tìm kiếm vật tư theo mã, tên hoặc phân loại...',
+              hintText: 'inventory.search_hint'.tr(),
               hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
               prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.slate400),
               filled: true,
@@ -178,13 +179,13 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     String badgeText;
     if (item.status == 'OUT_OF_STOCK') {
       badgeColor = Colors.red.shade700;
-      badgeText = 'Hết hàng';
+      badgeText = 'inventory.status.out'.tr();
     } else if (item.status == 'LOW_STOCK') {
       badgeColor = AppColors.amber;
-      badgeText = 'Tồn kho thấp';
+      badgeText = 'inventory.status.low'.tr();
     } else {
       badgeColor = AppColors.emerald;
-      badgeText = 'Bình thường';
+      badgeText = 'inventory.status.normal'.tr();
     }
 
     return Container(
@@ -231,7 +232,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           ),
           const SizedBox(height: 4),
           Text(
-            'Phân loại: ${item.category} • Kho: ${item.warehouseName}',
+            'inventory.category_warehouse'.tr(args: {'category': item.category, 'warehouse': item.warehouseName}),
             style: const TextStyle(fontSize: 12, color: AppColors.slate500),
           ),
           const SizedBox(height: 12),
@@ -243,7 +244,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('TỒN KHO HIỆN TẠI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.slate400)),
+                  Text('inventory.current_stock'.tr(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.slate400)),
                   const SizedBox(height: 2),
                   Text(
                     '${item.onHand} ${item.unit}',
@@ -254,7 +255,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('MỨC TỐI THIỂU', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.slate400)),
+                  Text('inventory.min_level'.tr(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.slate400)),
                   const SizedBox(height: 2),
                   Text(
                     '${item.minStock} ${item.unit}',
@@ -275,13 +276,13 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Lịch sử xuất nhập điều chuyển (Sổ kho)',
+          Text(
+            'inventory.ledger.title'.tr(),
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate900),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Ghi nhận toàn bộ biến động lượng vật tư theo thời gian thực',
+          Text(
+            'inventory.ledger.subtitle'.tr(),
             style: TextStyle(fontSize: 12, color: AppColors.slate500),
           ),
           const SizedBox(height: 16),
@@ -299,15 +300,15 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
 
               if (tx.type == 'RECEIPT') {
                 typeColor = AppColors.emerald;
-                typeLabel = 'Nhập kho';
+                typeLabel = 'inventory.type.receipt'.tr();
                 typeIcon = Icons.arrow_downward;
               } else if (tx.type == 'ISSUE') {
                 typeColor = Colors.orange.shade700;
-                typeLabel = 'Xuất kho';
+                typeLabel = 'inventory.type.issue'.tr();
                 typeIcon = Icons.arrow_upward;
               } else {
                 typeColor = Colors.purple.shade600;
-                typeLabel = 'Điều chuyển';
+                typeLabel = 'inventory.type.transfer'.tr();
                 typeIcon = Icons.swap_horiz;
               }
 
@@ -361,7 +362,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Số lượng: ${tx.type == 'RECEIPT' ? '+' : '-'}${tx.quantity}',
+                            'inventory.quantity'.tr(args: {'sign': tx.type == 'RECEIPT' ? '+' : '-', 'qty': tx.quantity}),
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,

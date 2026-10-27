@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import '../models/hrm_fleet_models.dart';
 import '../providers/auth_provider.dart';
 import 'api_client_helper.dart';
@@ -18,177 +19,313 @@ class FleetService {
     ApiClientHelper.configureDio(_dio);
   }
 
-  // 1. Get Fleet Vehicles
+  // 1. Get Fleet Vehicles (No mock fallback)
   Future<List<HrmFleetVehicle>> getVehicles({bool forceRefresh = false}) async {
-    try {
-      final res = await _dio.get('/api/hrm/v1/fleet/vehicles');
-      if (res.statusCode == 200 && res.data != null) {
-        final list = (res.data['data'] as List?) ?? [];
-        if (list.isNotEmpty) {
-          return list.map((item) => HrmFleetVehicle.fromJson(item as Map<String, dynamic>)).toList();
-        }
-      }
-    } catch (e) {
-      debugPrint('[FleetService] getVehicles API error: $e');
-    }
-
-    // Default corporate fleet dataset
-    return [
-      const HrmFleetVehicle(
-        id: 'VH-01',
-        plateNo: '51A-982.34',
-        name: 'Toyota Fortuner 2.8 4x4',
-        seats: 7,
-        status: 'ACTIVE',
-        note: 'Xe phục vụ công tác liên tỉnh / ban giám đốc',
-      ),
-      const HrmFleetVehicle(
-        id: 'VH-02',
-        plateNo: '51B-128.56',
-        name: 'Ford Transit Luxury',
-        seats: 16,
-        status: 'ACTIVE',
-        note: 'Xe đưa đón đoàn kỹ thuật công trình',
-      ),
-      const HrmFleetVehicle(
-        id: 'VH-03',
-        plateNo: '51K-334.89',
-        name: 'VinFast VF8 Plus (Điện)',
-        seats: 5,
-        status: 'ACTIVE',
-        note: 'Xe đưa đón đối tác & khách hàng dự án',
-      ),
-      const HrmFleetVehicle(
-        id: 'VH-04',
-        plateNo: '51C-772.10',
-        name: 'Toyota Hilux Bán tải',
-        seats: 5,
-        status: 'MAINTENANCE',
-        note: 'Đang bảo dưỡng định kỳ tại gara',
-      ),
+    final endpoints = [
+      '/api/hrm/v1/fleet/vehicles',
+      '/hrm/v1/fleet/vehicles',
     ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(ep);
+        if (res.statusCode == 200 && res.data != null) {
+          final raw = res.data['data'] ?? res.data;
+          if (raw is List) {
+            return raw.map((item) => HrmFleetVehicle.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+          }
+        }
+      } catch (e) {
+        debugPrint('[FleetService] getVehicles error on $ep: $e');
+      }
+    }
+    return [];
   }
 
-  // 2. Get Fleet Drivers
+  // 2. Create Fleet Vehicle
+  Future<bool> createVehicle({
+    required String plateNo,
+    required String name,
+    required int seats,
+    String? note,
+  }) async {
+    final payload = {
+      'plateNo': plateNo,
+      'name': name,
+      'seats': seats,
+      if (note != null && note.isNotEmpty) 'note': note,
+      'status': 'ACTIVE',
+    };
+    final endpoints = [
+      '/api/hrm/v1/fleet/vehicles',
+      '/hrm/v1/fleet/vehicles',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.post(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          return true;
+        }
+      } catch (e) {
+        debugPrint('[FleetService] createVehicle error on $ep: $e');
+      }
+    }
+    return false;
+  }
+
+  // 3. Update Fleet Vehicle
+  Future<bool> updateVehicle({
+    required String id,
+    required String plateNo,
+    required String name,
+    required int seats,
+    String? note,
+    String? status,
+  }) async {
+    final payload = {
+      'plateNo': plateNo,
+      'name': name,
+      'seats': seats,
+      if (note != null && note.isNotEmpty) 'note': note,
+      if (status != null && status.isNotEmpty) 'status': status,
+    };
+    final endpoints = [
+      '/api/hrm/v1/fleet/vehicles/$id',
+      '/hrm/v1/fleet/vehicles/$id',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.patch(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+        // Fallback PUT
+        final putRes = await _dio.put(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (putRes.statusCode == 200 || putRes.statusCode == 204) return true;
+      } catch (e) {
+        debugPrint('[FleetService] updateVehicle error on $ep: $e');
+      }
+    }
+    return false;
+  }
+
+  // 4. Toggle Fleet Vehicle Status (ACTIVE <-> INACTIVE)
+  Future<bool> toggleVehicleStatus({
+    required String id,
+    required String newStatus,
+  }) async {
+    final payload = {'status': newStatus};
+    final endpoints = [
+      '/api/hrm/v1/fleet/vehicles/$id',
+      '/hrm/v1/fleet/vehicles/$id',
+      '/api/hrm/v1/fleet/vehicles/$id/status',
+      '/hrm/v1/fleet/vehicles/$id/status',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.patch(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+
+        final putRes = await _dio.put(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (putRes.statusCode == 200 || putRes.statusCode == 204) return true;
+      } catch (e) {
+        debugPrint('[FleetService] toggleVehicleStatus error on $ep: $e');
+      }
+    }
+    return false;
+  }
+
+  // 5. Get Fleet Drivers (No mock fallback)
   Future<List<HrmFleetDriver>> getDrivers() async {
-    try {
-      final res = await _dio.get('/api/hrm/v1/fleet/drivers');
-      if (res.statusCode == 200 && res.data != null) {
-        final list = (res.data['data'] as List?) ?? [];
-        if (list.isNotEmpty) {
-          return list.map((item) => HrmFleetDriver.fromJson(item as Map<String, dynamic>)).toList();
-        }
-      }
-    } catch (e) {
-      debugPrint('[FleetService] getDrivers API error: $e');
-    }
-
-    return [
-      const HrmFleetDriver(
-        id: 'DRV-01',
-        employeeId: 'EMP-012',
-        employeeName: 'Nguyễn Văn Thành',
-        employeeCode: 'TX-001',
-        licenseNo: 'B2-882910',
-        status: 'ACTIVE',
-      ),
-      const HrmFleetDriver(
-        id: 'DRV-02',
-        employeeId: 'EMP-015',
-        employeeName: 'Trần Quốc Đạt',
-        employeeCode: 'TX-002',
-        licenseNo: 'D-441290',
-        status: 'ACTIVE',
-      ),
-      const HrmFleetDriver(
-        id: 'DRV-03',
-        employeeId: 'EMP-019',
-        employeeName: 'Lê Hoàng Nam',
-        employeeCode: 'TX-003',
-        licenseNo: 'D-998124',
-        status: 'ACTIVE',
-      ),
+    final endpoints = [
+      '/api/hrm/v1/fleet/drivers',
+      '/hrm/v1/fleet/drivers',
     ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(ep);
+        if (res.statusCode == 200 && res.data != null) {
+          final raw = res.data['data'] ?? res.data;
+          if (raw is List) {
+            return raw.map((item) => HrmFleetDriver.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+          }
+        }
+      } catch (e) {
+        debugPrint('[FleetService] getDrivers error on $ep: $e');
+      }
+    }
+    return [];
   }
 
-  // 3. Get Fleet Bookings
+  // 6. Create Fleet Driver
+  Future<bool> createDriver({
+    required String employeeId,
+    String? licenseNo,
+  }) async {
+    final payload = {
+      'employeeId': employeeId,
+      if (licenseNo != null && licenseNo.isNotEmpty) 'licenseNo': licenseNo,
+      'status': 'ACTIVE',
+    };
+    final endpoints = [
+      '/api/hrm/v1/fleet/drivers',
+      '/hrm/v1/fleet/drivers',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.post(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          return true;
+        }
+      } catch (e) {
+        debugPrint('[FleetService] createDriver error on $ep: $e');
+      }
+    }
+    return false;
+  }
+
+  // 7. Update Fleet Driver
+  Future<bool> updateDriver({
+    required String id,
+    String? licenseNo,
+    String? status,
+  }) async {
+    final payload = {
+      if (licenseNo != null && licenseNo.isNotEmpty) 'licenseNo': licenseNo,
+      if (status != null && status.isNotEmpty) 'status': status,
+    };
+    final endpoints = [
+      '/api/hrm/v1/fleet/drivers/$id',
+      '/hrm/v1/fleet/drivers/$id',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.patch(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+
+        final putRes = await _dio.put(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (putRes.statusCode == 200 || putRes.statusCode == 204) return true;
+      } catch (e) {
+        debugPrint('[FleetService] updateDriver error on $ep: $e');
+      }
+    }
+    return false;
+  }
+
+  // 8. Toggle Fleet Driver Status (ACTIVE <-> INACTIVE)
+  Future<bool> toggleDriverStatus({
+    required String id,
+    required String newStatus,
+  }) async {
+    final payload = {'status': newStatus};
+    final endpoints = [
+      '/api/hrm/v1/fleet/drivers/$id',
+      '/hrm/v1/fleet/drivers/$id',
+      '/api/hrm/v1/fleet/drivers/$id/status',
+      '/hrm/v1/fleet/drivers/$id/status',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.patch(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+
+        final putRes = await _dio.put(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (putRes.statusCode == 200 || putRes.statusCode == 204) return true;
+      } catch (e) {
+        debugPrint('[FleetService] toggleDriverStatus error on $ep: $e');
+      }
+    }
+    return false;
+  }
+
+  // 9. Get Fleet Bookings (No mock fallback)
   Future<List<HrmFleetBooking>> getBookings({
     DateTime? from,
     DateTime? to,
     String? status,
   }) async {
-    try {
-      final queryParams = <String, dynamic>{};
-      if (from != null) queryParams['from'] = from.toIso8601String();
-      if (to != null) queryParams['to'] = to.toIso8601String();
-      if (status != null && status != 'ALL') queryParams['status'] = status;
+    final fromStr = from != null ? DateFormat('yyyy-MM-dd').format(from) : null;
+    final toStr = to != null ? DateFormat('yyyy-MM-dd').format(to) : null;
+    final queryParams = <String, dynamic>{
+      'from': ?fromStr,
+      'to': ?toStr,
+      if (status != null && status != 'ALL') 'status': status,
+    };
 
-      final res = await _dio.get('/api/hrm/v1/fleet/bookings', queryParameters: queryParams);
-      if (res.statusCode == 200 && res.data != null) {
-        final list = (res.data['data'] as List?) ?? [];
-        if (list.isNotEmpty) {
-          return list.map((item) => HrmFleetBooking.fromJson(item as Map<String, dynamic>)).toList();
-        }
-      }
-    } catch (e) {
-      debugPrint('[FleetService] getBookings API error: $e');
-    }
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    return [
-      HrmFleetBooking(
-        id: 'BK-001',
-        vehicleId: 'VH-01',
-        vehiclePlateNo: '51A-982.34',
-        vehicleName: 'Toyota Fortuner 2.8 4x4',
-        driverId: 'DRV-01',
-        driverName: 'Nguyễn Văn Thành',
-        startAt: today.add(const Duration(hours: 8)),
-        endAt: today.add(const Duration(hours: 12)),
-        destination: 'Khu công nghiệp VSIP II, Bình Dương',
-        purpose: 'Khảo sát hiện trường trạm biến áp 110kV',
-        sourceModule: 'hrm',
-        sourceType: 'BUSINESS_TRIP',
-        sourceId: 'REQ-CT-202610-001',
-        sourceLabel: 'Đơn công tác #001',
-        status: 'BOOKED',
-      ),
-      HrmFleetBooking(
-        id: 'BK-002',
-        vehicleId: 'VH-03',
-        vehiclePlateNo: '51K-334.89',
-        vehicleName: 'VinFast VF8 Plus (Điện)',
-        driverId: 'DRV-02',
-        driverName: 'Trần Quốc Đạt',
-        startAt: today.add(const Duration(hours: 13, minutes: 30)),
-        endAt: today.add(const Duration(hours: 17)),
-        destination: 'Trung tâm Hội nghị TP. Thủ Đức',
-        purpose: 'Đưa đón ban lãnh đạo gặp gỡ đối tác EVN',
-        sourceModule: 'hrm',
-        sourceType: 'CUSTOM_REQUEST',
-        sourceId: 'REQ-DX-202610-004',
-        sourceLabel: 'Đơn đặt xe ngoại giao',
-        status: 'BOOKED',
-      ),
-      HrmFleetBooking(
-        id: 'BK-003',
-        vehicleId: 'VH-02',
-        vehiclePlateNo: '51B-128.56',
-        vehicleName: 'Ford Transit Luxury',
-        driverId: 'DRV-03',
-        driverName: 'Lê Hoàng Nam',
-        startAt: today.add(const Duration(days: 1, hours: 7)),
-        endAt: today.add(const Duration(days: 1, hours: 18)),
-        destination: 'Nhà máy Nhiệt điện Vĩnh Tân, Bình Thuận',
-        purpose: 'Đoàn kỹ sư kiểm định chất lượng điện năng',
-        sourceModule: 'work',
-        sourceType: 'WORK_ITEM',
-        sourceId: 'TASK-KD-881',
-        sourceLabel: 'Lệnh điều động kỹ thuật #881',
-        status: 'BOOKED',
-      ),
+    final endpoints = [
+      '/api/hrm/v1/fleet/bookings',
+      '/hrm/v1/fleet/bookings',
     ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(ep, queryParameters: queryParams);
+        if (res.statusCode == 200 && res.data != null) {
+          final raw = res.data['data'] ?? res.data['items'] ?? res.data;
+          if (raw is List) {
+            return raw.map((item) => HrmFleetBooking.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+          }
+        }
+      } catch (e) {
+        debugPrint('[FleetService] getBookings error on $ep: $e');
+      }
+
+      // Fallback: If date query params failed or returned empty, try fetching all bookings and filter client-side
+      if (from != null || to != null) {
+        try {
+          final resAll = await _dio.get(ep, queryParameters: {
+            if (status != null && status != 'ALL') 'status': status,
+          });
+          if (resAll.statusCode == 200 && resAll.data != null) {
+            final raw = resAll.data['data'] ?? resAll.data['items'] ?? resAll.data;
+            if (raw is List) {
+              final allBookings = raw.map((item) => HrmFleetBooking.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+              return allBookings.where((b) {
+                if (from != null && b.endAt.isBefore(from)) return false;
+                if (to != null && b.startAt.isAfter(to)) return false;
+                return true;
+              }).toList();
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    return [];
   }
 }

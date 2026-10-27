@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
+import '../core/i18n/app_i18n.dart';
 import '../providers/analysis_provider.dart';
 import '../models/models.dart';
 import './power_quality_analysis_table.dart';
@@ -28,8 +29,8 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
           children: [
             const Icon(Icons.query_stats, size: 64, color: AppColors.slate300),
             const SizedBox(height: 12),
-            const Text(
-              'Chưa có dữ liệu kết quả phân tích',
+            Text(
+              'widgets.results.empty_title'.tr(),
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -38,7 +39,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Vui lòng chọn lượt thử nghiệm có sẵn hoặc bấm "Bắt đầu phân tích"',
+              'widgets.results.empty_hint'.tr(),
               style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.slate400,
@@ -71,8 +72,8 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    'Đang xử lý phân tích...',
+                  Text(
+                    'widgets.results.processing'.tr(),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -80,8 +81,8 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Quá trình có thể mất từ 10 - 30 giây. Vui lòng giữ ứng dụng mở.',
+                  Text(
+                    'widgets.results.processing_hint'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.slate500,
@@ -133,12 +134,12 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(Icons.file_download_outlined, color: AppColors.amber, size: 24),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Text(
-                        'Danh sách file kết quả phân tích',
+                        'widgets.results.file_list_title'.tr(),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -148,8 +149,8 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Tải về các báo cáo kết quả và bảng tính Excel đã được xử lý bởi thuật toán.',
+                  Text(
+                    'widgets.results.file_list_desc'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.slate500,
@@ -206,7 +207,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      file.mediaType ?? 'Tệp kết quả',
+                                      file.mediaType ?? 'widgets.results.default_file_type'.tr(),
                                       style: const TextStyle(
                                         fontSize: 10,
                                         color: AppColors.slate500,
@@ -238,7 +239,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
     // Show download trigger snackbar
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đang tải tệp "${media.mediaName}"...'),
+        content: Text('widgets.results.downloading'.tr(args: {'name': media.mediaName})),
         duration: const Duration(seconds: 1),
       ),
     );
@@ -270,7 +271,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.emerald,
-            content: Text('Đã tải thành công! Lưu tại: $filePath'),
+            content: Text('widgets.results.downloaded'.tr(args: {'path': filePath})),
             duration: const Duration(seconds: 5),
           ),
         );
@@ -280,7 +281,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.redAccent,
-            content: Text('Tải tệp thất bại: ${e.toString()}'),
+            content: Text('widgets.results.download_failed'.tr(args: {'error': e.toString()})),
           ),
         );
       }

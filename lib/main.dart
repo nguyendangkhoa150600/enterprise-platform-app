@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/i18n/app_i18n.dart';
+import 'core/permissions/hrm_permissions.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import './providers/auth_provider.dart';
-import './providers/analysis_provider.dart';
-import './providers/notification_provider.dart';
-import './screens/login_screen.dart';
-import './screens/home_screen.dart';
+import 'providers/auth_provider.dart';
+import 'providers/analysis_provider.dart';
+import 'providers/notification_provider.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppI18n.instance.init();
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AnalysisProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider<AppI18n>.value(value: AppI18n.instance),
+        ChangeNotifierProvider<HrmCapabilities>.value(value: HrmCapabilities.instance),
       ],
       child: const MyApp(),
     ),
@@ -31,8 +38,18 @@ class MyApp extends StatelessWidget {
       splitScreenMode: true,
       builder: (context, child) {
         final authProvider = context.watch<AuthProvider>();
+        final i18n = context.watch<AppI18n>();
 
         return MaterialApp(
+          // Rebuild the whole tree when the language changes.
+          key: ValueKey(i18n.locale.languageCode),
+          locale: i18n.locale,
+          supportedLocales: AppI18n.supportedLocales,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           title: 'Savina Enterprise Platform',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(

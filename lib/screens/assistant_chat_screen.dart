@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 import 'package:flutter/material.dart';
 import '../models/assistant_models.dart';
 import '../services/assistant_service.dart';
@@ -29,25 +30,101 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   bool _showMentionPopup = false;
   int _mentionStartIndex = -1;
 
-  final List<String> _quickPrompts = [
-    '🌴 Xin nghỉ phép ngày mai',
-    '⏱️ Đăng ký làm thêm giờ tối nay',
-    '✈️ Đi công tác Hà Nội tuần sau',
-    '📅 Đặt lịch họp giao ban tuần',
-    '📋 Giao việc ngoài dự án kiểm tra MBA',
-    '⚠️ Ghi nhận sự cố máy cắt trạm 110kV',
+  String _activeShortcutTab = 'view'; // 'view' (Xem nhanh) hoặc 'create' (Tạo nhanh)
+  Map<String, int> _shortcutCounts = {
+    'view.my_overdue_work': 6,
+    'view.pending_approval': 8,
+  };
+
+  List<QuickShortcutItem> get _viewShortcuts => [
+    const QuickShortcutItem(
+      key: 'view.my_work_today',
+      label: 'Việc hôm nay',
+      icon: Icons.calendar_today_outlined,
+      group: 'view',
+      prompt: 'Xem việc hôm nay của tôi',
+    ),
+    QuickShortcutItem(
+      key: 'view.my_overdue_work',
+      label: 'Việc quá hạn',
+      icon: Icons.alarm_outlined,
+      group: 'view',
+      prompt: 'Xem các việc quá hạn của tôi',
+      count: _shortcutCounts['view.my_overdue_work'] ?? 6,
+    ),
+    QuickShortcutItem(
+      key: 'view.pending_approval',
+      label: 'Chờ tôi duyệt',
+      icon: Icons.checklist_rounded,
+      group: 'view',
+      prompt: 'Xem các yêu cầu đang chờ tôi duyệt',
+      count: _shortcutCounts['view.pending_approval'] ?? 8,
+    ),
+    const QuickShortcutItem(
+      key: 'view.leave_balance',
+      label: 'Phép còn lại',
+      icon: Icons.hourglass_empty_rounded,
+      group: 'view',
+      prompt: 'Xem số ngày phép còn lại của tôi',
+    ),
+  ];
+
+  List<QuickShortcutItem> get _createShortcuts => const [
+    QuickShortcutItem(
+      key: 'create.leave',
+      label: 'Xin nghỉ phép',
+      icon: Icons.edit_note_rounded,
+      group: 'create',
+      prompt: 'Tôi muốn tạo đơn xin nghỉ phép',
+    ),
+    QuickShortcutItem(
+      key: 'create.overtime',
+      label: 'Đăng ký làm thêm giờ (OT)',
+      icon: Icons.more_time_rounded,
+      group: 'create',
+      prompt: 'Tôi muốn đăng ký làm thêm giờ (OT)',
+    ),
+    QuickShortcutItem(
+      key: 'create.business_trip',
+      label: 'Tạo đơn công tác',
+      icon: Icons.flight_takeoff_rounded,
+      group: 'create',
+      prompt: 'Tôi muốn tạo đơn đi công tác',
+    ),
+    QuickShortcutItem(
+      key: 'create.task',
+      label: 'Tạo công việc',
+      icon: Icons.add_task_rounded,
+      group: 'create',
+      prompt: 'Tạo công việc mới',
+    ),
+    QuickShortcutItem(
+      key: 'create.meeting',
+      label: 'Đặt lịch họp',
+      icon: Icons.event_available_rounded,
+      group: 'create',
+      prompt: 'Đặt lịch họp mới',
+    ),
+    QuickShortcutItem(
+      key: 'create.incident',
+      label: 'Báo sự cố thiết bị',
+      icon: Icons.warning_amber_rounded,
+      group: 'create',
+      prompt: 'Báo sự cố thiết bị hư hỏng',
+    ),
   ];
 
   @override
   void initState() {
     super.initState();
     _loadDirectory();
+    _loadShortcutCounts();
 
     // Initial message from Assistant
     _messages.add(AssistantMessage(
       id: 'welcome',
       sender: MessageSender.assistant,
-      text: 'Xin chào! Tôi là **Trợ lý Savina AI**.\nTôi có thể hỗ trợ tạo biểu mẫu ERP, làm đơn từ và giao việc ngay tại khung chat này mà không cần chuyển trang. Bạn cần tôi hỗ trợ việc gì hôm nay?',
+      text: 'assistant.chat.welcome'.tr(),
       timestamp: DateTime.now(),
     ));
 
@@ -56,6 +133,17 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         _handleSendMessage(widget.initialPrompt!);
       });
     }
+  }
+
+  Future<void> _loadShortcutCounts() async {
+    try {
+      final counts = await _assistantService.getShortcutCounts();
+      if (mounted && counts.isNotEmpty) {
+        setState(() {
+          _shortcutCounts = counts;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -157,12 +245,50 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
     _scrollToBottom();
 
-    // 2. Process query via AssistantService
-    final reply = await _assistantService.processUserQuery(text, mentions: mentionedNames);
+    // 2. Process query via AssistantService with real-time SSE delta streaming
+    final botMsgId = 'msg_${DateTime.now().millisecondsSinceEpoch}';
+    bool addedStreamingMsg = false;
+    String streamedText = '';
+
+    final reply = await _assistantService.processUserQuery(
+      text,
+      mentions: mentionedNames,
+      onDelta: (delta) {
+        if (!mounted) return;
+        streamedText += delta;
+        setState(() {
+          if (!addedStreamingMsg) {
+            addedStreamingMsg = true;
+            _isTyping = false;
+            _messages.add(AssistantMessage(
+              id: botMsgId,
+              sender: MessageSender.assistant,
+              text: streamedText,
+              timestamp: DateTime.now(),
+            ));
+          } else {
+            final idx = _messages.indexWhere((m) => m.id == botMsgId);
+            if (idx >= 0) {
+              _messages[idx] = _messages[idx].copyWith(text: streamedText);
+            }
+          }
+        });
+        _scrollToBottom();
+      },
+    );
 
     if (mounted) {
       setState(() {
-        _messages.add(reply);
+        if (addedStreamingMsg) {
+          final idx = _messages.indexWhere((m) => m.id == botMsgId);
+          if (idx >= 0) {
+            _messages[idx] = reply.copyWith(id: botMsgId);
+          } else {
+            _messages.add(reply);
+          }
+        } else {
+          _messages.add(reply);
+        }
         _isTyping = false;
       });
       _scrollToBottom();
@@ -217,13 +343,13 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Text(
-                      'Trợ lý Savina AI',
+                      'assistant.chat.title'.tr(),
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     SizedBox(width: 5),
@@ -232,7 +358,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 ),
                 SizedBox(height: 1),
                 Text(
-                  'Form nhúng trực tiếp · Không chuyển trang',
+                  'assistant.chat.subtitle'.tr(),
                   style: TextStyle(fontSize: 10.5, color: Color(0xFF059669), fontWeight: FontWeight.w500),
                 ),
               ],
@@ -242,14 +368,14 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF64748B), size: 20),
-            tooltip: 'Làm mới cuộc trò chuyện',
+            tooltip: 'assistant.chat.reset_tooltip'.tr(),
             onPressed: () {
               setState(() {
                 _messages.clear();
                 _messages.add(AssistantMessage(
                   id: 'welcome',
                   sender: MessageSender.assistant,
-                  text: 'Xin chào! Cuộc trò chuyện đã được làm mới. Bạn cần hỗ trợ thao tác gì nào?',
+                  text: 'assistant.chat.reset_welcome'.tr(),
                   timestamp: DateTime.now(),
                 ));
               });
@@ -455,7 +581,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Savina đang xử lý biểu mẫu...',
+                  'assistant.chat.processing'.tr(),
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
                 ),
               ],
@@ -467,24 +593,131 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   }
 
   Widget _buildQuickPromptsBar() {
+    final activeItems = _activeShortcutTab == 'view' ? _viewShortcuts : _createShortcuts;
+
     return Container(
-      height: 40,
-      margin: const EdgeInsets.only(bottom: 6),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        scrollDirection: Axis.horizontal,
-        itemCount: _quickPrompts.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, idx) {
-          final p = _quickPrompts[idx];
-          return ActionChip(
-            label: Text(p, style: const TextStyle(fontSize: 11.5, color: Color(0xFF1E293B))),
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFFCBD5E1)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            onPressed: () => _handleSendMessage(p.substring(p.indexOf(' ') + 1)),
-          );
-        },
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 1. Hai tab chuyển đổi "Xem nhanh" và "Tạo nhanh" chuẩn Web Savina
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => setState(() => _activeShortcutTab = 'view'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: _activeShortcutTab == 'view' ? const Color(0xFFFEF3C7) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Xem nhanh',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: _activeShortcutTab == 'view' ? FontWeight.w700 : FontWeight.w600,
+                        color: _activeShortcutTab == 'view' ? const Color(0xFF92400E) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: () => setState(() => _activeShortcutTab = 'create'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: _activeShortcutTab == 'create' ? const Color(0xFFFEF3C7) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Tạo nhanh',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: _activeShortcutTab == 'create' ? FontWeight.w700 : FontWeight.w600,
+                        color: _activeShortcutTab == 'create' ? const Color(0xFF92400E) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 3),
+
+          // 2. Danh sách phím tắt dạng viên thuốc (capsule) có icon + badge số lượng
+          SizedBox(
+            height: 34,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              scrollDirection: Axis.horizontal,
+              itemCount: activeItems.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, idx) {
+                final item = activeItems[idx];
+                final count = _shortcutCounts[item.key] ?? item.count;
+                return Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    onTap: () => _handleSendMessage(item.prompt),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(item.icon, size: 14, color: const Color(0xFF334155)),
+                          const SizedBox(width: 6),
+                          Text(
+                            item.label,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                          if (count != null && count > 0) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '$count',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFB45309),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -503,7 +736,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             // Mention @ trigger button
             IconButton(
               icon: const Icon(Icons.alternate_email_rounded, size: 20, color: Color(0xFF64748B)),
-              tooltip: 'Nhắc tên đồng nghiệp (@)',
+              tooltip: 'assistant.chat.mention_tooltip'.tr(),
               onPressed: () {
                 final text = _inputController.text;
                 _inputController.text = '$text@';
@@ -525,8 +758,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   onChanged: _onInputChanged,
                   onSubmitted: _handleSendMessage,
                   style: const TextStyle(fontSize: 13.5),
-                  decoration: const InputDecoration(
-                    hintText: 'Nhắn cho Trợ lý (hoặc gõ @)...',
+                  decoration: InputDecoration(
+                    hintText: 'assistant.chat.input_hint'.tr(),
                     hintStyle: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                     border: InputBorder.none,
                     isDense: true,
@@ -584,12 +817,12 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 color: const Color(0xFFF8FAFC),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.alternate_email, size: 14, color: Color(0xFF2563EB)),
                     SizedBox(width: 6),
                     Text(
-                      'Nhắc tên đồng nghiệp trong công ty',
+                      'assistant.chat.mention_header'.tr(),
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                     ),
                   ],

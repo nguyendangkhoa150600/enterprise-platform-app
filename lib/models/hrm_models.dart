@@ -1,3 +1,4 @@
+import '../core/i18n/app_i18n.dart';
 enum HrmRequestType {
   leave,
   overtime,
@@ -64,17 +65,17 @@ class HrmRequestItem {
   String get typeLabel {
     switch (type) {
       case HrmRequestType.leave:
-        return 'Nghỉ phép';
+        return 'models.request.leave'.tr();
       case HrmRequestType.overtime:
-        return 'Làm thêm (OT)';
+        return 'models.request.overtime_ot'.tr();
       case HrmRequestType.advance:
-        return 'Tạm ứng lương';
+        return 'models.request.salary_advance'.tr();
       case HrmRequestType.attendanceCorrection:
-        return 'Giải trình công';
+        return 'models.request.attendance_explanation'.tr();
       case HrmRequestType.shiftChange:
-        return 'Đổi ca làm';
+        return 'models.request.change_shift'.tr();
       case HrmRequestType.businessTrip:
-        return 'Công tác';
+        return 'models.request.business_trip'.tr();
     }
   }
 
@@ -98,17 +99,17 @@ class HrmRequestItem {
   String get statusLabel {
     switch (status) {
       case HrmRequestStatus.pending:
-        return 'Chờ duyệt';
+        return 'models.status.pending'.tr();
       case HrmRequestStatus.approved:
-        return 'Đã phê duyệt';
+        return 'models.status.approved_full'.tr();
       case HrmRequestStatus.rejected:
-        return 'Từ chối';
+        return 'common.reject'.tr();
       case HrmRequestStatus.draft:
-        return 'Bản nháp';
+        return 'models.status.draft'.tr();
       case HrmRequestStatus.cancelled:
-        return 'Đã rút / hủy';
+        return 'models.status.withdrawn'.tr();
       case HrmRequestStatus.processing:
-        return 'Đang xử lý';
+        return 'models.status.processing'.tr();
     }
   }
 
@@ -210,9 +211,9 @@ class HrmRequestItem {
       dept = departmentFallback;
     }
 
-    if (empName.isEmpty) empName = 'Nhân viên SAVINA';
+    if (empName.isEmpty) empName = 'models.employee.default_name'.tr();
     if (empCode.isEmpty) empCode = 'NV001';
-    if (dept.isEmpty) dept = 'Ban Tổng Giám đốc';
+    if (dept.isEmpty) dept = 'models.employee.default_dept'.tr();
 
     final leaveTypeMap = json['leaveType'] is Map ? json['leaveType'] as Map<String, dynamic> : (json['leave_type'] is Map ? json['leave_type'] as Map<String, dynamic> : null);
     final leaveTypeName = leaveTypeMap?['name']?.toString() ?? json['leave_type_name']?.toString() ?? json['leaveTypeName']?.toString() ?? '';
@@ -229,10 +230,10 @@ class HrmRequestItem {
     } else if (leaveTypeName.isNotEmpty) {
       reasonStr = leaveTypeName;
     } else {
-      reasonStr = 'Yêu cầu xử lý';
+      reasonStr = 'models.request.default_reason'.tr();
     }
 
-    final titleStr = json['title']?.toString() ?? json['projectName']?.toString() ?? (leaveTypeName.isNotEmpty ? 'Đơn $leaveTypeName' : 'Đơn yêu cầu');
+    final titleStr = json['title']?.toString() ?? json['projectName']?.toString() ?? (leaveTypeName.isNotEmpty ? 'models.request.form_named'.tr(args: {'name': leaveTypeName}) : 'models.request.default_form'.tr());
 
     final startDateRaw = json['fromAt'] ?? json['start_date'] ?? json['startDate'] ?? json['fromDate'] ?? json['from_date'] ??
         (json['workDate'] != null ? '${json['workDate']}T${json['startTime'] ?? '00:00:00'}' : null);
@@ -379,16 +380,16 @@ class HrmEmployeeItem {
     return HrmEmployeeItem(
       id: json['id']?.toString() ?? json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
       code: rawCode?.toString() ?? 'EMP-000',
-      fullName: _extractName(rawName, 'Chưa đặt tên'),
+      fullName: _extractName(rawName, 'models.employee.unnamed'.tr()),
       email: rawEmail?.toString() ?? '',
       phone: json['phone']?.toString() ?? json['mobilePhone']?.toString() ?? json['mobile_phone']?.toString() ?? '',
-      department: _extractName(rawDept, 'Khối Văn phòng'),
-      position: _extractName(rawPos, 'Chuyên viên'),
+      department: _extractName(rawDept, 'models.employee.default_block'.tr()),
+      position: _extractName(rawPos, 'models.employee.default_position'.tr()),
       status: rawStatus?.toString() ?? 'OFFICIAL',
       joinDate: rawJoin != null ? DateTime.tryParse(rawJoin.toString()) : null,
       avatarUrl: json['avatarUrl']?.toString() ?? json['avatar_url']?.toString(),
       baseSalary: rawBaseSalary != null ? _parseDouble(rawBaseSalary) : null,
-      contractType: json['contractType']?.toString() ?? json['contract_type']?.toString() ?? 'Chính thức',
+      contractType: json['contractType']?.toString() ?? json['contract_type']?.toString() ?? 'models.employee.contract_official'.tr(),
       completionRate: _parseInt(rawCompletionRate, 20),
       maritalStatus: json['maritalStatus']?.toString() ?? json['marital_status']?.toString(),
       gender: json['gender']?.toString(),
@@ -412,24 +413,24 @@ class HrmEmployeeItem {
   String get maritalStatusLabel {
     switch (maritalStatus?.toUpperCase()) {
       case 'SINGLE':
-        return 'Độc thân';
+        return 'models.marital.single'.tr();
       case 'MARRIED':
-        return 'Đã kết hôn';
+        return 'models.marital.married'.tr();
       case 'DIVORCED':
-        return 'Ly hôn';
+        return 'models.marital.divorced'.tr();
       default:
-        return maritalStatus?.isNotEmpty == true ? maritalStatus! : 'Độc thân';
+        return maritalStatus?.isNotEmpty == true ? maritalStatus! : 'models.marital.single'.tr();
     }
   }
 
   String get genderLabel {
     switch (gender?.toUpperCase()) {
       case 'MALE':
-        return 'Nam';
+        return 'models.gender.male'.tr();
       case 'FEMALE':
-        return 'Nữ';
+        return 'models.gender.female'.tr();
       default:
-        return gender?.isNotEmpty == true ? gender! : 'Nam';
+        return gender?.isNotEmpty == true ? gender! : 'models.gender.male'.tr();
     }
   }
 
@@ -476,7 +477,7 @@ class HrmPositionItem {
   }
 
   static String _extractUnit(dynamic json) {
-    if (json == null) return 'Chưa phân bổ đơn vị';
+    if (json == null) return 'models.org.unassigned'.tr();
     final unitObj = (json['unit'] is Map ? json['unit'] as Map<String, dynamic> : null) ??
         (json['organizationUnit'] is Map ? json['organizationUnit'] as Map<String, dynamic> : null) ??
         (json['orgUnit'] is Map ? json['orgUnit'] as Map<String, dynamic> : null) ??
@@ -496,7 +497,7 @@ class HrmPositionItem {
         json['unit'];
 
     if (raw is String && raw.trim().isNotEmpty) return raw.trim();
-    return 'Chưa phân bổ đơn vị';
+    return 'models.org.unassigned'.tr();
   }
 
   factory HrmPositionItem.fromJson(Map<String, dynamic> json) {
@@ -533,9 +534,9 @@ class HrmPositionItem {
     return HrmPositionItem(
       id: json['positionId']?.toString() ?? json['id']?.toString() ?? '',
       code: json['positionCode']?.toString() ?? json['code']?.toString() ?? '',
-      title: json['positionName']?.toString() ?? json['title']?.toString() ?? json['name']?.toString() ?? 'Chức danh',
+      title: json['positionName']?.toString() ?? json['title']?.toString() ?? json['name']?.toString() ?? 'models.position.default_title'.tr(),
       department: unitName,
-      salaryGrade: (sg == null || sg.isEmpty || sg == 'null') ? 'Chưa gắn ngạch' : sg,
+      salaryGrade: (sg == null || sg.isEmpty || sg == 'null') ? 'models.position.no_grade'.tr() : sg,
       isConfigured: isConfigured,
       activeEmployeeCount: count,
       jobPurpose: json['jobPurpose']?.toString(),
