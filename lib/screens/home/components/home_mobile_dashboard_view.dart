@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_i18n.dart';
 import 'package:provider/provider.dart';
 import '../../../models/platform_models.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../core/permissions/hrm_permissions.dart';
+import '../../../models/procedure_models.dart';
 import '../../../providers/notification_provider.dart';
 import '../../../theme/colors.dart';
 import '../../assistant_chat_screen.dart';
@@ -11,6 +14,7 @@ import '../../my_requests_screen.dart';
 import '../../user_management_screen.dart';
 import '../../role_permission_screen.dart';
 import 'org_tree_components.dart';
+import 'home_module_stats.dart';
 
 class HomeMobileDashboardView extends StatelessWidget {
   final String userName;
@@ -20,6 +24,7 @@ class HomeMobileDashboardView extends StatelessWidget {
   final List<ModuleCatalogItem> modules;
   final OrganizationSnapshot? orgSnapshot;
   final bool isLoadingData;
+  final HomeModuleStats? moduleStats;
   final ScrollController attentionScrollController;
   final ScrollController homeOrgScrollController;
   final Function(String key) onOpenModule;
@@ -34,11 +39,17 @@ class HomeMobileDashboardView extends StatelessWidget {
     required this.modules,
     required this.orgSnapshot,
     required this.isLoadingData,
+    this.moduleStats,
     required this.attentionScrollController,
     required this.homeOrgScrollController,
     required this.onOpenModule,
     required this.onNavigateTab,
   });
+
+  bool _has(String key) => modules.any((m) => m.key == key && m.isActive);
+  bool get _hasProcedure => _has('procedure-engine') || _has('procedure');
+  bool get _hasMaintenance => _has('maintenance');
+  bool get _hasInventory => _has('inventory');
 
   int get _activeUsersCount => users.where((u) => u.isActive).length;
   int get _activeModulesCount => modules.where((m) => m.isActive).length;
@@ -64,20 +75,28 @@ class HomeMobileDashboardView extends StatelessWidget {
           const SizedBox(height: 20),
 
           // 4. Attention Items (Điểm cần chú ý)
-          _buildMobileAttentionSection(),
-          const SizedBox(height: 20),
+          if (_hasProcedure) ...[
+            _buildMobileAttentionSection(),
+            const SizedBox(height: 20),
+          ],
 
           // 5. Module Summaries (Quy trình, Bảo trì, Kho vật tư)
-          _buildMobileModuleSummariesSection(),
-          const SizedBox(height: 20),
+          if (_hasProcedure || _hasMaintenance || _hasInventory) ...[
+            _buildMobileModuleSummariesSection(),
+            const SizedBox(height: 20),
+          ],
 
           // 6. Enterprise Applications (Ứng dụng doanh nghiệp)
-          _buildMobileEnterpriseAppsSection(),
-          const SizedBox(height: 20),
+          if (_hasProcedure || _hasMaintenance || _hasInventory) ...[
+            _buildMobileEnterpriseAppsSection(),
+            const SizedBox(height: 20),
+          ],
 
           // 7. Sơ đồ tổ chức (Organization Structure)
-          _buildMobileOrgChartSection(),
-          const SizedBox(height: 24),
+          if (context.watch<AuthProvider>().canViewOrganization) ...[
+            _buildMobileOrgChartSection(),
+            const SizedBox(height: 24),
+          ],
         ],
       ),
     );
@@ -90,6 +109,22 @@ class HomeMobileDashboardView extends StatelessWidget {
       children: [
         Row(
           children: [
+            Builder(
+              builder: (ctx) => InkWell(
+                onTap: () => Scaffold.of(ctx).openDrawer(),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Icon(Icons.menu_rounded, size: 20, color: Color(0xFF1E293B)),
+                ),
+              ),
+            ),
             Text(
               'home.mobile.tenant_portal'.tr(args: {'tenant': tenantDisplay.toLowerCase()}),
               style: const TextStyle(fontSize: 12, color: AppColors.slate500, fontWeight: FontWeight.w500),
@@ -247,23 +282,28 @@ class HomeMobileDashboardView extends StatelessWidget {
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen())),
                 ),
                 const SizedBox(width: 8),
-                _buildWelcomeActionButton(
-                  icon: Icons.fingerprint_rounded,
-                  label: 'home.mobile.gps_attendance'.tr(),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
-                ),
-                const SizedBox(width: 8),
-                _buildWelcomeActionButton(
-                  icon: Icons.assignment_outlined,
-                  label: 'home.mobile.my_requests'.tr(),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen())),
-                ),
-                const SizedBox(width: 8),
-                _buildWelcomeActionButton(
-                  icon: Icons.manage_accounts_outlined,
-                  label: 'home.mobile.user_management'.tr(),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())),
-                ),
+                if (_has('hrm') && context.watch<HrmCapabilities>().pageAllowed('/my-work')) ...[
+                  _buildWelcomeActionButton(
+                    icon: Icons.fingerprint_rounded,
+                    label: 'home.mobile.gps_attendance'.tr(),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                if (_has('hrm') && HrmCapabilities.instance.pageAllowed('/requests')) ...[
+                  _buildWelcomeActionButton(
+                    icon: Icons.assignment_outlined,
+                    label: 'home.mobile.my_requests'.tr(),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen())),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                if (context.watch<AuthProvider>().canViewUsers)
+                  _buildWelcomeActionButton(
+                    icon: Icons.manage_accounts_outlined,
+                    label: 'home.mobile.user_management'.tr(),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())),
+                  ),
                 const SizedBox(width: 8),
                 _buildWelcomeActionButton(
                   icon: Icons.verified_user_outlined,
@@ -316,8 +356,12 @@ class HomeMobileDashboardView extends StatelessWidget {
 
   // 3. 4 Top Metric Cards (Grid 2x2)
   Widget _buildMobileMetricsGrid() {
-    final userCount = _activeUsersCount > 0 ? '$_activeUsersCount' : '45';
-    final moduleCount = _activeModulesCount > 0 ? '$_activeModulesCount' : '3';
+    final loading = isLoadingData && users.isEmpty && modules.isEmpty;
+    final userCount = loading ? '—' : '$_activeUsersCount';
+    final moduleCount = loading ? '—' : '$_activeModulesCount';
+    final st = moduleStats;
+    final pendingCount = st == null || !_hasProcedure ? '—' : '${st.needAction.length}';
+    final incidentCount = st == null || !_hasMaintenance ? '—' : '${st.openIncidents}';
 
     return Column(
       children: [
@@ -350,7 +394,7 @@ class HomeMobileDashboardView extends StatelessWidget {
             Expanded(
               child: _buildMetricCard(
                 label: 'home.mobile.pending_records'.tr(),
-                value: '4',
+                value: pendingCount,
                 note: 'home.mobile.procedures_need_action'.tr(),
                 icon: Icons.assignment_outlined,
                 tone: 'amber',
@@ -360,7 +404,7 @@ class HomeMobileDashboardView extends StatelessWidget {
             Expanded(
               child: _buildMetricCard(
                 label: 'home.mobile.incidents_in_progress'.tr(),
-                value: '0',
+                value: incidentCount,
                 note: 'home.mobile.incidents_open'.tr(),
                 icon: Icons.shield_outlined,
                 tone: 'red',
@@ -453,35 +497,15 @@ class HomeMobileDashboardView extends StatelessWidget {
 
   // 4. Điểm cần chú ý (Attention Section)
   Widget _buildMobileAttentionSection() {
-    final items = [
-      {
-        'title': 'home.mobile.mock.t1_title'.tr(),
-        'code': 'PR-20260918-D0A538',
-        'def': 'home.mobile.mock.t1_def'.tr(),
-        'step': 'home.mobile.mock.t1_step'.tr(),
-        'module': 'procedure',
-      },
-      {
-        'title': 'home.mobile.mock.t2_title'.tr(),
-        'code': 'PR-20260918-038357',
-        'def': 'home.mobile.mock.t2_def'.tr(),
-        'step': 'home.mobile.mock.t2_step'.tr(),
-        'module': 'procedure',
-      },
-      {
-        'title': 'home.mobile.mock.t3_title'.tr(),
-        'code': 'PR-20260918-7C50C5',
-        'def': 'home.mobile.mock.t2_def'.tr(),
-        'step': 'home.mobile.mock.t2_step'.tr(),
-        'module': 'procedure',
-      },
-      {
-        'title': 'home.mobile.mock.t4_title'.tr(),
-        'code': 'PR-20260918-4E0BCA',
-        'def': 'home.mobile.mock.t4_def'.tr(),
-        'step': 'home.mobile.mock.t4_step'.tr(),
-        'module': 'maintenance',
-      },
+    final items = <Map<String, String>>[
+      for (final inst in (moduleStats?.needAction ?? const <ProcedureInstance>[]).take(20))
+        {
+          'title': inst.title,
+          'code': inst.code,
+          'def': inst.definitionName,
+          'step': inst.currentStep?.name ?? '',
+          'module': 'procedure',
+        },
     ];
 
     return Container(
@@ -550,6 +574,17 @@ class HomeMobileDashboardView extends StatelessWidget {
           ),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              child: Center(
+                child: Text(
+                  moduleStats == null ? '—' : 'home.mobile.no_attention'.tr(),
+                  style: const TextStyle(fontSize: 12, color: AppColors.slate400),
+                ),
+              ),
+            )
+          else
           ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 255),
             child: Scrollbar(
@@ -612,8 +647,8 @@ class HomeMobileDashboardView extends StatelessWidget {
                     children: [
                       _buildChipTag('home.mobile.procedure'.tr(), const Color(0xFFEFF6FF), const Color(0xFF1D4ED8)),
                       _buildChipTag(it['code']!, const Color(0xFFF1F5F9), AppColors.slate700),
-                      _buildChipTag(it['def']!, const Color(0xFFF8FAFC), AppColors.slate600),
-                      _buildChipTag('home.mobile.step_label'.tr(args: {'step': it['step']!}), const Color(0xFFF8FAFC), AppColors.slate600),
+                      if (it['def']!.isNotEmpty) _buildChipTag(it['def']!, const Color(0xFFF8FAFC), AppColors.slate600),
+                      if (it['step']!.isNotEmpty) _buildChipTag('home.mobile.step_label'.tr(args: {'step': it['step']!}), const Color(0xFFF8FAFC), AppColors.slate600),
                     ],
                   ),
                 ],
@@ -654,42 +689,47 @@ class HomeMobileDashboardView extends StatelessWidget {
 
   // 5. Module Summaries Section (Quy trình, Bảo trì, Kho vật tư)
   Widget _buildMobileModuleSummariesSection() {
+    final st = moduleStats;
+    String n(int? v) => v == null || st == null ? '—' : '$v';
     return Column(
       children: [
+        if (_hasProcedure)
         _buildModuleSummaryCard(
           title: 'home.mobile.procedure'.tr(),
           icon: Icons.account_tree_outlined,
           onOpen: () => onOpenModule('procedure'),
           stats: [
-            {'label': 'home.mobile.running'.tr(), 'value': '4'},
-            {'label': 'home.mobile.pending'.tr(), 'value': '4'},
-            {'label': 'home.mobile.published'.tr(), 'value': '16'},
+            {'label': 'home.mobile.running'.tr(), 'value': n(st?.running.length)},
+            {'label': 'home.mobile.pending'.tr(), 'value': n(st?.needAction.length)},
+            {'label': 'home.mobile.published'.tr(), 'value': n(st?.publishedDefinitions)},
           ],
           customContent: _buildProcedureMiniChart(),
         ),
         const SizedBox(height: 12),
+        if (_hasMaintenance)
         _buildModuleSummaryCard(
           title: 'home.mobile.maintenance'.tr(),
           icon: Icons.build_outlined,
           onOpen: () => onOpenModule('maintenance'),
           stats: [
-            {'label': 'home.mobile.schedules_running'.tr(), 'value': '4'},
-            {'label': 'home.mobile.due_soon'.tr(), 'value': '2'},
-            {'label': 'home.mobile.open_incidents'.tr(), 'value': '0'},
+            {'label': 'home.mobile.schedules_running'.tr(), 'value': n(st?.activeSchedules)},
+            {'label': 'home.mobile.due_soon'.tr(), 'value': n(st?.dueSchedules)},
+            {'label': 'home.mobile.open_incidents'.tr(), 'value': n(st?.openIncidents)},
           ],
-          emptyNote: 'home.mobile.no_open_incidents'.tr(),
+          emptyNote: st != null && st.openIncidents == 0 ? 'home.mobile.no_open_incidents'.tr() : null,
         ),
         const SizedBox(height: 12),
+        if (_hasInventory)
         _buildModuleSummaryCard(
           title: 'home.mobile.inventory'.tr(),
           icon: Icons.inventory_2_outlined,
           onOpen: () => onOpenModule('inventory'),
           stats: [
-            {'label': 'home.mobile.active_warehouses'.tr(), 'value': '—'},
-            {'label': 'home.mobile.item_codes'.tr(), 'value': '—'},
-            {'label': 'home.mobile.low_stock'.tr(), 'value': '—'},
+            {'label': 'home.mobile.active_warehouses'.tr(), 'value': n(st?.warehouseCount)},
+            {'label': 'home.mobile.item_codes'.tr(), 'value': n(st?.materials.length)},
+            {'label': 'home.mobile.low_stock'.tr(), 'value': n(st?.lowStockCount)},
           ],
-          emptyNote: 'home.mobile.no_items'.tr(),
+          emptyNote: st != null && st.materials.isEmpty ? 'home.mobile.no_items'.tr() : null,
         ),
       ],
     );
@@ -809,10 +849,10 @@ class HomeMobileDashboardView extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFF2563EB), width: 6),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                '4',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                moduleStats == null ? '—' : '${moduleStats!.running.length}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
             ),
           ),
@@ -822,11 +862,11 @@ class HomeMobileDashboardView extends StatelessWidget {
               spacing: 8,
               runSpacing: 4,
               children: [
-                _buildMiniLegend(const Color(0xFF8B5CF6), 'home.mobile.legend_initiate'.tr(args: {'count': 4})),
-                _buildMiniLegend(const Color(0xFF2563EB), 'home.mobile.legend_review'.tr(args: {'count': 0})),
-                _buildMiniLegend(const Color(0xFFF97316), 'home.mobile.legend_execute'.tr(args: {'count': 0})),
-                _buildMiniLegend(const Color(0xFFA855F7), 'home.mobile.legend_control'.tr(args: {'count': 0})),
-                _buildMiniLegend(const Color(0xFFEAB308), 'home.mobile.legend_approve'.tr(args: {'count': 0})),
+                _buildMiniLegend(const Color(0xFF8B5CF6), 'home.mobile.legend_initiate'.tr(args: {'count': moduleStats?.runningByStage['S'] ?? 0})),
+                _buildMiniLegend(const Color(0xFF2563EB), 'home.mobile.legend_review'.tr(args: {'count': moduleStats?.runningByStage['R'] ?? 0})),
+                _buildMiniLegend(const Color(0xFFF97316), 'home.mobile.legend_execute'.tr(args: {'count': moduleStats?.runningByStage['E'] ?? 0})),
+                _buildMiniLegend(const Color(0xFFA855F7), 'home.mobile.legend_control'.tr(args: {'count': moduleStats?.runningByStage['C'] ?? 0})),
+                _buildMiniLegend(const Color(0xFFEAB308), 'home.mobile.legend_approve'.tr(args: {'count': moduleStats?.runningByStage['A'] ?? 0})),
               ],
             ),
           ),
@@ -855,7 +895,7 @@ class HomeMobileDashboardView extends StatelessWidget {
 
   // 6. Enterprise Applications Section
   Widget _buildMobileEnterpriseAppsSection() {
-    final apps = [
+    final allApps = <Map<String, Object>>[
       {
         'key': 'inventory',
         'name': 'Inventory',
@@ -878,6 +918,10 @@ class HomeMobileDashboardView extends StatelessWidget {
         'color': const Color(0xFF6366F1),
       },
     ];
+    final apps = allApps.where((a) {
+      final k = a['key'] as String;
+      return k == 'procedure' ? _hasProcedure : _has(k);
+    }).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

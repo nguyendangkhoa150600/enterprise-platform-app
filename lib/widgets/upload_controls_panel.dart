@@ -392,25 +392,23 @@ class UploadControlsPanel extends StatelessWidget {
 
   // Pick Excel Files Helper
   Future<void> _pickExcelFiles(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
-      allowMultiple: true,
     );
-    if (result != null && context.mounted) {
-      context.read<AnalysisProvider>().selectExcelFiles(result.files);
+    if (files.isNotEmpty && context.mounted) {
+      context.read<AnalysisProvider>().selectExcelFiles(files);
     }
   }
 
   // Pick Word Report Template Helper
   Future<void> _pickWordFile(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['doc', 'docx'],
-      allowMultiple: false,
     );
-    if (result != null && result.files.isNotEmpty && context.mounted) {
-      context.read<AnalysisProvider>().selectWordFile(result.files.first);
+    if (file != null && context.mounted) {
+      context.read<AnalysisProvider>().selectWordFile(file);
     }
   }
 

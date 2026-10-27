@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 import '../../../services/platform_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../theme/colors.dart';
 import '../../org_chart_workspace_screen.dart';
 
@@ -597,6 +599,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                         ),
                       ),
                     ),
+                    if (context.watch<AuthProvider>().canCreateOrganization) ...[
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () => _showCreateAppointmentDialog(snapshot),
@@ -613,6 +616,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                         elevation: 0,
                       ),
                     ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -948,6 +952,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                             const Spacer(),
 
                           // Edit & Delete actions
+                          if (context.watch<AuthProvider>().canUpdateOrganization)
                           IconButton(
                             icon: const Icon(Icons.edit_outlined, size: 17, color: Color(0xFF64748B)),
                             tooltip: 'home.org.edit_assignment'.tr(),
@@ -955,6 +960,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                             padding: EdgeInsets.zero,
                             onPressed: () => _showCreateAppointmentDialog(snapshot, assignment),
                           ),
+                          if (context.watch<AuthProvider>().canDeleteOrganization)
                           IconButton(
                             icon: const Icon(Icons.delete_outline, size: 17, color: Color(0xFFEF4444)),
                             tooltip: 'home.org.delete_assignment'.tr(),

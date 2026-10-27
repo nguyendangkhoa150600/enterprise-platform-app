@@ -478,18 +478,20 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
-                    borderRadius: BorderRadius.circular(6),
+                if (myRow?.employeeCode.isNotEmpty == true) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      myRow!.employeeCode,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
+                    ),
                   ),
-                  child: Text(
-                    myRow?.employeeCode.isNotEmpty == true ? myRow!.employeeCode : 'ME (NV-001)',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
-                  ),
-                ),
+                ],
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -904,7 +906,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
       totalWorkedMinutes += r.workedMinutes;
     }
 
-    final standardDays = summary?.standardWorkDays ?? 22.0;
+    final standardDays = summary?.standardWorkDays ?? 0.0;
     final actualWorkDays = summary?.actualWorkDays ?? (validDays + lateDays).toDouble();
     final lateCount = summary?.lateDays ?? lateDays;
     final lateMins = summary?.lateMinutes ?? totalLateMinutes;

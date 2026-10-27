@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 /// Vai trò người gửi trong khung chat
 enum MessageSender {
@@ -152,3 +153,71 @@ class MentionUser {
     );
   }
 }
+
+/// Thao tác Trợ lý lấy từ danh mục `GET /api/<phân hệ>/v1/assistant/actions`
+/// Chuẩn contracts-assistant của Savina ERP
+class AssistantCatalogItem {
+  final String key;
+  final String module;
+  final String title;
+  final List<String> hints;
+  final String page;
+  final String form;
+  final Map<String, dynamic> draft;
+
+  const AssistantCatalogItem({
+    required this.key,
+    required this.module,
+    required this.title,
+    required this.hints,
+    required this.page,
+    required this.form,
+    required this.draft,
+  });
+
+  factory AssistantCatalogItem.fromJson(Map<String, dynamic> json) {
+    return AssistantCatalogItem(
+      key: json['key']?.toString() ?? '',
+      module: json['module']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      hints: (json['hints'] is List)
+          ? (json['hints'] as List).map((e) => e.toString()).toList()
+          : [],
+      page: json['page']?.toString() ?? '',
+      form: json['form']?.toString() ?? '',
+      draft: (json['draft'] is Map) ? Map<String, dynamic>.from(json['draft']) : {},
+    );
+  }
+}
+
+/// Phím tắt "Xem nhanh" và "Tạo nhanh" theo chuẩn Savina ERP
+class QuickShortcutItem {
+  final String key;
+  final String label;
+  final IconData icon;
+  final String group; // 'view' hoặc 'create'
+  final String prompt;
+  final int? count;
+
+  const QuickShortcutItem({
+    required this.key,
+    required this.label,
+    required this.icon,
+    required this.group,
+    required this.prompt,
+    this.count,
+  });
+
+  QuickShortcutItem copyWith({int? count}) {
+    return QuickShortcutItem(
+      key: key,
+      label: label,
+      icon: icon,
+      group: group,
+      prompt: prompt,
+      count: count ?? this.count,
+    );
+  }
+}
+
+

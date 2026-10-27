@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -87,12 +88,263 @@ class AssistantService {
     return [];
   }
 
+  // Cache danh mục hành động được phép của người dùng từ các phân hệ ERP
+  List<AssistantCatalogItem>? _cachedCatalog;
+  DateTime? _lastCatalogFetch;
+
+  /// Lấy danh mục thao tác hợp lệ theo phân quyền người dùng từ các phân hệ ERP
+  /// Chuẩn contracts-assistant của Savina ERP (`/api/<module>/v1/assistant/actions`)
+  Future<List<AssistantCatalogItem>> getCatalogActions({bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _cachedCatalog != null &&
+        _lastCatalogFetch != null &&
+        DateTime.now().difference(_lastCatalogFetch!).inMinutes < 15) {
+      return _cachedCatalog!;
+    }
+
+    final moduleActionEndpoints = [
+      '/api/workspace/v1/assistant/actions',
+      '/api/hrm/v1/assistant/actions',
+      '/api/maintenance/v1/assistant/actions',
+      '/api/procedure/v1/assistant/actions',
+    ];
+
+    final List<AssistantCatalogItem> allActions = [];
+
+    for (final ep in moduleActionEndpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final raw = res.data['actions'] ?? res.data['data'] ?? res.data;
+          if (raw is List) {
+            for (final item in raw) {
+              if (item is Map<String, dynamic>) {
+                allActions.add(AssistantCatalogItem.fromJson(item));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[AssistantService] getCatalogActions error on $ep: $e');
+      }
+    }
+
+    if (allActions.isNotEmpty) {
+      _cachedCatalog = allActions;
+      _lastCatalogFetch = DateTime.now();
+      return allActions;
+    }
+
+    return _cachedCatalog ?? [];
+  }
+
+  /// Lấy danh sách phím tắt từ API `/api/assistant/v1/shortcuts`
+  Future<List<Map<String, dynamic>>> getShortcuts({String page = '/applications'}) async {
+    try {
+      final res = await _dio.get(
+        '/api/assistant/v1/shortcuts',
+        queryParameters: {'page': page},
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['shortcuts'] ?? res.data['data'] ?? res.data;
+        if (raw is List) {
+          return raw.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[AssistantService] getShortcuts error: $e');
+    }
+    return [];
+  }
+
+  /// Lấy số lượng badge cho các phím tắt `/api/assistant/v1/shortcuts/counts`
+  Future<Map<String, int>> getShortcutCounts({String page = '/applications'}) async {
+    try {
+      final res = await _dio.get(
+        '/api/assistant/v1/shortcuts/counts',
+        queryParameters: {'page': page},
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+      if (res.statusCode == 200 && res.data is Map<String, dynamic>) {
+        final map = <String, int>{};
+        (res.data as Map<String, dynamic>).forEach((k, v) {
+          if (v is int) {
+            map[k] = v;
+          } else if (v is num) {
+            map[k] = v.toInt();
+          }
+        });
+        return map;
+      }
+    } catch (e) {
+      debugPrint('[AssistantService] getShortcutCounts error: $e');
+    }
+    return {};
+  }
+
+  String? _currentConversationId;
+
+  /// Xóa ngữ cảnh hội thoại hiện tại (tạo hội thoại mới)
+  void resetConversation() {
+    _currentConversationId = null;
+  }
+
+  /// Thử gọi API Trợ lý Savina thật từ microservice savina-agent (chuẩn /api/assistant/v1/chat qua SSE Stream)
+  Future<AssistantMessage?> _tryCallSavinaAgentApi(
+    String prompt, {
+    List<String> mentions = const [],
+    void Function(String deltaText)? onDelta,
+  }) async {
+    final endpoints = [
+      '/api/assistant/v1/chat',
+      '/modules/assistant/v1/chat',
+    ];
+
+    for (final ep in endpoints) {
+      try {
+        final streamResponse = await _dio.post<ResponseBody>(
+          ep,
+          data: {
+            'message': prompt,
+            if (_currentConversationId != null && _currentConversationId!.isNotEmpty)
+              'conversation_id': _currentConversationId,
+            'deep_thinking': false,
+            'page': '/applications',
+            'open_forms': [],
+          },
+          options: Options(
+            responseType: ResponseType.stream,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'text/event-stream',
+            },
+            connectTimeout: const Duration(seconds: 8),
+            receiveTimeout: const Duration(seconds: 45),
+            validateStatus: (s) => s != null && s < 500,
+          ),
+        );
+
+        if (streamResponse.statusCode == 200 && streamResponse.data != null) {
+          String buffer = '';
+          String fullText = '';
+          AssistantActionDraft? actionDraft;
+
+          await for (final chunk in utf8.decoder.bind(streamResponse.data!.stream)) {
+            buffer += chunk;
+            while (buffer.contains('\n\n')) {
+              final idx = buffer.indexOf('\n\n');
+              final block = buffer.substring(0, idx);
+              buffer = buffer.substring(idx + 2);
+
+              String? eventType;
+              String? dataStr;
+
+              for (final line in block.split('\n')) {
+                final trimmed = line.trim();
+                if (trimmed.startsWith('event:')) {
+                  eventType = trimmed.substring(6).trim();
+                } else if (trimmed.startsWith('data:')) {
+                  dataStr = trimmed.substring(5).trim();
+                }
+              }
+
+              if (eventType == null || dataStr == null || dataStr.isEmpty) continue;
+
+              try {
+                final jsonMap = jsonDecode(dataStr);
+                if (jsonMap is Map<String, dynamic>) {
+                  switch (eventType) {
+                    case 'conversation':
+                      final id = jsonMap['id']?.toString();
+                      if (id != null && id.isNotEmpty) {
+                        _currentConversationId = id;
+                      }
+                      break;
+                    case 'delta':
+                      final t = jsonMap['text']?.toString() ?? '';
+                      if (t.isNotEmpty) {
+                        fullText += t;
+                        onDelta?.call(t);
+                      }
+                      break;
+                    case 'action':
+                      final actObj = jsonMap['action'];
+                      if (actObj is Map<String, dynamic>) {
+                        final key = actObj['key']?.toString() ?? '';
+                        final reqId = actObj['requestId']?.toString() ??
+                            'req_${DateTime.now().millisecondsSinceEpoch}';
+                        final title = jsonMap['title']?.toString() ?? actObj['title']?.toString() ?? key;
+                        final fields = actObj['draft'] is Map<String, dynamic>
+                            ? Map<String, dynamic>.from(actObj['draft'])
+                            : (actObj['fields'] is Map<String, dynamic>
+                                ? Map<String, dynamic>.from(actObj['fields'])
+                                : <String, dynamic>{});
+
+                        actionDraft = AssistantActionDraft(
+                          requestId: reqId,
+                          key: key,
+                          title: title,
+                          module: key.startsWith('hrm')
+                              ? 'HRM'
+                              : (key.startsWith('workspace')
+                                  ? 'WORKSPACE'
+                                  : (key.startsWith('maintenance') ? 'MAINTENANCE' : 'ERP')),
+                          fields: fields,
+                        );
+                      }
+                      break;
+                    default:
+                      break;
+                  }
+                }
+              } catch (err) {
+                debugPrint('[AssistantService] Error parsing SSE block: $err');
+              }
+            }
+          }
+
+          if (fullText.trim().isNotEmpty || actionDraft != null) {
+            return AssistantMessage(
+              id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+              sender: MessageSender.assistant,
+              text: fullText.trim(),
+              timestamp: DateTime.now(),
+              actionDraft: actionDraft,
+              mentions: mentions,
+            );
+          }
+        } else {
+          debugPrint('[AssistantService] savina-agent $ep returned status: ${streamResponse.statusCode}');
+        }
+      } catch (e) {
+        debugPrint('[AssistantService] savina-agent endpoint $ep not reachable: $e');
+      }
+    }
+    return null;
+  }
+
   /// Phân tích câu nói của người dùng và sinh ra tin nhắn phản hồi kèm Action Draft nhúng
-  Future<AssistantMessage> processUserQuery(String prompt, {List<String> mentions = const []}) async {
+  Future<AssistantMessage> processUserQuery(
+    String prompt, {
+    List<String> mentions = const [],
+    void Function(String deltaText)? onDelta,
+  }) async {
+    // 1. Thử gọi API Trợ lý Savina AI thật nếu service đang online (chuẩn /api/assistant/v1/chat qua SSE)
+    final liveAgentReply = await _tryCallSavinaAgentApi(prompt, mentions: mentions, onDelta: onDelta);
+    if (liveAgentReply != null) {
+      return liveAgentReply;
+    }
+
+    // 2. Chế độ dự phòng (Graceful Degradation): Phân tích ý định theo chuẩn Action Contracts của Savina ERP
     final lower = prompt.toLowerCase().trim();
     final now = DateTime.now();
     final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final tomorrow = now.add(const Duration(days: 1));
+
     final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
 
     // 1. Ý định Tạo đơn nghỉ phép (HRM Leave Request)
@@ -393,6 +645,29 @@ class AssistantService {
           };
         }
       }
+
+      if (draft.key == 'workspace.work-item.create') {
+        final title = draft.fields['title']?.toString() ?? 'assistant.svc.task_title_default'.tr();
+        final projectId = draft.fields['projectId']?.toString() ?? '';
+        final priority = draft.fields['priority']?.toString() ?? 'normal';
+        final desc = draft.fields['description']?.toString() ?? '';
+
+        final ok = await _workspaceService.createWorkItem(
+          projectId: projectId,
+          title: title,
+          description: desc,
+          priority: priority,
+        );
+
+        if (ok) {
+          return {
+            'success': true,
+            'id': 'WORKITEM-${DateTime.now().millisecondsSinceEpoch % 10000}',
+            'label': 'assistant.svc.label_task'.tr(args: {'title': title}),
+          };
+        }
+      }
+
 
       if (draft.key == 'workspace.event.create') {
         // Tạo sự kiện trên Workspace API

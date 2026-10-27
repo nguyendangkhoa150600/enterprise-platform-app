@@ -8,15 +8,15 @@ abstract class AttendanceRepository {
   Future<AttendanceRecord> checkIn({
     String? employeeId,
     String verificationMethod = 'GPS',
-    double latitude = 10.776889,
-    double longitude = 106.700806,
+    double? latitude,
+    double? longitude,
     String deviceId = 'mobile-device-savina',
   });
   Future<AttendanceRecord> checkOut({
     String? employeeId,
     String verificationMethod = 'GPS',
-    double latitude = 10.776889,
-    double longitude = 106.700806,
+    double? latitude,
+    double? longitude,
     String deviceId = 'mobile-device-savina',
   });
   Future<MonthlyAttendanceSummary> getMonthlySummary({String? monthYear, bool forceRefresh = false});
@@ -51,8 +51,8 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   Future<AttendanceRecord> checkIn({
     String? employeeId,
     String verificationMethod = 'GPS',
-    double latitude = 10.776889,
-    double longitude = 106.700806,
+    double? latitude,
+    double? longitude,
     String deviceId = 'mobile-device-savina',
   }) async {
     return await _service.checkIn(
@@ -68,8 +68,8 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   Future<AttendanceRecord> checkOut({
     String? employeeId,
     String verificationMethod = 'GPS',
-    double latitude = 10.776889,
-    double longitude = 106.700806,
+    double? latitude,
+    double? longitude,
     String deviceId = 'mobile-device-savina',
   }) async {
     return await _service.checkOut(

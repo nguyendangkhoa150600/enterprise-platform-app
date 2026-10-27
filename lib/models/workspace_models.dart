@@ -26,21 +26,29 @@ class CustomerItem {
       code: json['code']?.toString() ?? '',
       name: json['name']?.toString() ?? 'models.workspace.customer_unnamed'.tr(),
       note: json['note']?.toString(),
-      contractCount: _parseInt(json['contractCount']),
-      projectCount: _parseInt(json['projectCount']),
+      contractCount: parseInt(json['contractCount']),
+      projectCount: parseInt(json['projectCount']),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
     );
   }
 
-  static int _parseInt(dynamic val, [int fallback = 0]) {
+  static int parseInt(dynamic val, [int fallback = 0]) {
     if (val == null) return fallback;
     if (val is int) return val;
     if (val is num) return val.toInt();
     if (val is String) return int.tryParse(val) ?? fallback;
     return fallback;
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CustomerItem && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class ContractItem {
@@ -120,6 +128,7 @@ class ProjectItem {
   final String? myRole;
   final DateTime? startDate;
   final DateTime? endDate;
+  final List<StandaloneTaskItem> tasks;
 
   const ProjectItem({
     required this.id,
@@ -137,10 +146,17 @@ class ProjectItem {
     this.myRole,
     this.startDate,
     this.endDate,
+    this.tasks = const [],
   });
 
   factory ProjectItem.fromJson(Map<String, dynamic> json, [Map<String, String>? customerMap]) {
     final cid = json['customerId']?.toString();
+    final rawTasks = json['tasks'] ?? json['items'] ?? json['children'];
+    List<StandaloneTaskItem> taskList = [];
+    if (rawTasks is List) {
+      taskList = rawTasks.map((t) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(t as Map))).toList();
+    }
+
     return ProjectItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
@@ -151,12 +167,13 @@ class ProjectItem {
       customerId: cid,
       customerName: cid != null && customerMap != null ? customerMap[cid] : json['customerName']?.toString(),
       progressPercent: json['progressPercent'] != null ? (double.tryParse(json['progressPercent'].toString()) ?? 0.0) : 0.0,
-      totalItems: CustomerItem._parseInt(json['totalItems']),
-      closedItems: CustomerItem._parseInt(json['closedItems']),
-      overdueItems: CustomerItem._parseInt(json['overdueItems']),
+      totalItems: CustomerItem.parseInt(json['totalItems']),
+      closedItems: CustomerItem.parseInt(json['closedItems']),
+      overdueItems: CustomerItem.parseInt(json['overdueItems']),
       myRole: json['myRole']?.toString(),
       startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
       endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+      tasks: taskList,
     );
   }
 
@@ -175,6 +192,14 @@ class ProjectItem {
   }
 
   String get typeLabel => projectType != null && projectType!.isNotEmpty ? projectType! : 'models.workspace.uncategorized'.tr();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProjectItem && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class ProjectMemberItem {
@@ -246,8 +271,16 @@ class StandaloneTaskItem {
   });
 
   factory StandaloneTaskItem.fromJson(Map<String, dynamic> json) {
-    final task = json['task'] is Map ? json['task'] as Map<String, dynamic> : json;
+    final task = json['task'] is Map ? json['task'] as Map<String, dynamic> : (json['item'] is Map ? json['item'] as Map<String, dynamic> : json);
     final role = json['myRole']?.toString() ?? task['myRole']?.toString() ?? 'assignee';
+
+    DateTime? parsedDue;
+    for (final key in ['dueDate', 'plannedEnd', 'endDate', 'due_date', 'deadline']) {
+      if (task[key] != null) {
+        parsedDue = DateTime.tryParse(task[key].toString());
+        if (parsedDue != null) break;
+      }
+    }
 
     return StandaloneTaskItem(
       id: task['id']?.toString() ?? '',
@@ -259,42 +292,128 @@ class StandaloneTaskItem {
       assigneeUserId: task['assigneeUserId']?.toString() ?? '',
       assigneeName: task['assigneeName']?.toString() ?? task['assignee']?['name']?.toString(),
       progressPercent: task['progressPercent'] != null ? (double.tryParse(task['progressPercent'].toString()) ?? 0.0) : 0.0,
-      dueDate: task['dueDate'] != null ? DateTime.tryParse(task['dueDate'].toString()) : null,
+      dueDate: parsedDue,
       myRole: role,
-      childCount: CustomerItem._parseInt(task['childCount']),
-      openChildCount: CustomerItem._parseInt(task['openChildCount']),
+      childCount: CustomerItem.parseInt(task['childCount']),
+      openChildCount: CustomerItem.parseInt(task['openChildCount']),
       isReversed: task['reversal'] != null,
     );
   }
 
   String get statusLabel {
-    if (isReversed) return 'models.workspace.voided'.tr();
+    if (isReversed) return 'Đã huỷ hiệu lực';
     switch (status) {
       case 'in_progress':
-        return 'models.workspace.doing'.tr();
+        return 'Đang làm';
+      case 'blocked':
+        return 'Vướng mắc';
       case 'review':
-        return 'models.status.pending'.tr();
+        return 'Chờ duyệt';
       case 'done':
-        return 'models.workspace.completed'.tr();
+        return 'Hoàn thành';
       case 'cancelled':
-        return 'models.workspace.cancelled'.tr();
+        return 'Đã huỷ';
       case 'todo':
       default:
-        return 'models.workspace.todo'.tr();
+        return 'Chưa làm';
     }
   }
 
   String get priorityLabel {
     switch (priority) {
       case 'urgent':
-        return 'models.workspace.urgent'.tr();
+        return 'Khẩn cấp';
       case 'high':
         return 'Cao';
       case 'low':
-        return 'models.workspace.low'.tr();
+        return 'Thấp';
       case 'normal':
       default:
-        return 'models.workspace.normal'.tr();
+        return 'Bình thường';
     }
+  }
+}
+
+class DepartmentItem {
+  final String id;
+  final String name;
+  final String? parentPath;
+  final String? parentId;
+
+  const DepartmentItem({
+    required this.id,
+    required this.name,
+    this.parentPath,
+    this.parentId,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DepartmentItem && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+/// A document of the workspace (GET /workspace/v1/documents), flattened with its current version.
+class WorkspaceDocumentItem {
+  final String id;
+  final String name;
+  final String? description;
+  final String? projectId;
+  final String status;
+  final String fileName;
+  final String contentType;
+  final int? sizeBytes;
+  final int versionCount;
+  final DateTime? updatedAt;
+
+  const WorkspaceDocumentItem({
+    required this.id,
+    required this.name,
+    this.description,
+    this.projectId,
+    this.status = 'active',
+    this.fileName = '',
+    this.contentType = '',
+    this.sizeBytes,
+    this.versionCount = 0,
+    this.updatedAt,
+  });
+
+  factory WorkspaceDocumentItem.fromJson(Map<String, dynamic> json) {
+    final v = json['currentVersion'];
+    final ver = v is Map<String, dynamic> ? v : const <String, dynamic>{};
+    return WorkspaceDocumentItem(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      projectId: json['projectId']?.toString(),
+      status: json['status']?.toString() ?? 'active',
+      fileName: ver['fileName']?.toString() ?? '',
+      contentType: ver['contentType']?.toString() ?? '',
+      sizeBytes: (ver['sizeBytes'] as num?)?.toInt(),
+      versionCount: (json['versionCount'] as num?)?.toInt() ?? 0,
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '')?.toLocal(),
+    );
+  }
+
+  /// 'PDF' | 'WORD' | 'EXCEL' | 'OTHER'
+  String get kind {
+    final n = (fileName.isNotEmpty ? fileName : name).toLowerCase();
+    final t = contentType.toLowerCase();
+    if (t.contains('pdf') || n.endsWith('.pdf')) return 'PDF';
+    if (t.contains('word') || n.endsWith('.doc') || n.endsWith('.docx')) return 'WORD';
+    if (t.contains('sheet') || t.contains('excel') || n.endsWith('.xls') || n.endsWith('.xlsx') || n.endsWith('.csv')) return 'EXCEL';
+    return 'OTHER';
+  }
+
+  String get sizeLabel {
+    final b = sizeBytes;
+    if (b == null) return '';
+    if (b >= 1024 * 1024) return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (b >= 1024) return '${(b / 1024).round()} KB';
+    return '$b B';
   }
 }

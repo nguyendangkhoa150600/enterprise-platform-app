@@ -993,14 +993,14 @@ class HrmProfileModals {
                       InkWell(
                         onTap: () async {
                           try {
-                            final result = await FilePicker.platform.pickFiles(
+                            final picked = await FilePicker.pickFile(
                               type: FileType.custom,
                               allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
                             );
-                            if (result != null && result.files.isNotEmpty) {
+                            if (picked != null) {
                               setModalState(() {
-                                attachedFileName = result.files.first.name;
-                                attachedFilePath = result.files.first.path;
+                                attachedFileName = picked.name;
+                                attachedFilePath = picked.path;
                               });
                             }
                           } catch (_) {}
@@ -1780,14 +1780,14 @@ class HrmProfileModals {
               InkWell(
                 onTap: () async {
                   try {
-                    final res = await FilePicker.platform.pickFiles(
+                    final picked = await FilePicker.pickFile(
                       type: FileType.custom,
                       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
                     );
-                    if (res != null && res.files.isNotEmpty) {
+                    if (picked != null) {
                       setModalState(() {
-                        pickedName = res.files.first.name;
-                        pickedPath = res.files.first.path;
+                        pickedName = picked.name;
+                        pickedPath = picked.path;
                       });
                     }
                   } catch (_) {

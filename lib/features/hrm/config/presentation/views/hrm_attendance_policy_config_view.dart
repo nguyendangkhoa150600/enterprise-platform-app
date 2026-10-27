@@ -24,64 +24,7 @@ class _HrmAttendancePolicyConfigViewState extends State<HrmAttendancePolicyConfi
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> versions = widget.policyVersions.isNotEmpty
         ? widget.policyVersions
-        : <Map<String, dynamic>>[
-            {
-              'version': 'v4',
-              'title': 'hrm_config.attendance.sample.title_v4'.tr(),
-              'validity': '07/10/2026 - 30/11/2026',
-              'scope': 'hrm_config.attendance.scope.company'.tr(),
-              'conditions': ['GPS 1000 m'],
-              'isActive': true,
-              'statusText': 'hrm_config.attendance.status.in_effect'.tr(),
-              'gpsRadiusMeters': 1000.0,
-              'requireIp': false,
-              'requireDevice': false,
-              'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
-            },
-            {
-              'version': 'v3',
-              'title': 'hrm_config.attendance.sample.title_v3'.tr(),
-              'validity': '02/10/2026 - 06/10/2026',
-              'scope': 'hrm_config.attendance.scope.company'.tr(),
-              'conditions': ['GPS 100 m'],
-              'isActive': false,
-              'statusText': 'hrm_config.attendance.status.expired'.tr(),
-              'gpsRadiusMeters': 100.0,
-              'requireIp': false,
-              'requireDevice': false,
-              'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
-            },
-            {
-              'version': 'v2',
-              'title': 'hrm_config.attendance.sample.title_v2'.tr(),
-              'validity': '01/10/2026 - 01/10/2026',
-              'scope': 'hrm_config.attendance.scope.company'.tr(),
-              'conditions': ['GPS 100 m'],
-              'isActive': false,
-              'statusText': 'hrm_config.attendance.status.expired'.tr(),
-              'gpsRadiusMeters': 100.0,
-              'requireIp': false,
-              'requireDevice': false,
-              'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
-            },
-            {
-              'version': 'v1',
-              'title': 'hrm_config.attendance.sample.title_v1'.tr(),
-              'validity': '30/09/2026 - 30/09/2026',
-              'scope': 'hrm_config.attendance.scope.company'.tr(),
-              'conditions': ['IP', 'GPS 100 m', 'hrm_config.attendance.cond.device'.tr()],
-              'isActive': false,
-              'statusText': 'hrm_config.attendance.status.expired'.tr(),
-              'gpsRadiusMeters': 100.0,
-              'requireIp': true,
-              'requireDevice': true,
-              'timezone': 'Asia/Ho_Chi_Minh',
-              'weeklyOff': 'hrm_config.attendance.not_configured'.tr(),
-            },
-          ];
+        : <Map<String, dynamic>>[];
 
     Map<String, dynamic> activeVersion = versions.isNotEmpty ? versions.first : <String, dynamic>{};
     for (final v in versions) {

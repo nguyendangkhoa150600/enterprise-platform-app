@@ -267,16 +267,16 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
 
   Future<void> _pickDocument(String docKey, String docLabel) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
       );
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
+      if (file != null) {
+        final fileSize = await file.length() ?? 0;
         setState(() {
           _uploadedDocs[docKey] = {
             'name': file.name,
-            'size': file.size,
+            'size': fileSize,
             'path': file.path,
             'uploadedAt': DateTime.now().toIso8601String(),
           };

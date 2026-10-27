@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/i18n/app_i18n.dart';
+import '../shared/widgets/no_access_view.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
@@ -87,6 +88,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final canUpdate = authProvider.canUpdateUser;
     final canDelete = authProvider.canDeleteUser;
     final canManage = canUpdate || canDelete;
+    if (!authProvider.canViewUsers) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white, elevation: 0),
+      body: NoAccessView(message: 'perm.no_access_users'.tr()),
+    );
+    }
 
     final filtered = _filteredUsers;
 

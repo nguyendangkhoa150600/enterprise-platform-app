@@ -34,19 +34,7 @@ class _HrmGpsLocationsConfigViewState extends State<HrmGpsLocationsConfigView> {
   Widget build(BuildContext context) {
     final allSites = widget.gpsSites.isNotEmpty
         ? widget.gpsSites
-        : [
-            {
-              'id': '1',
-              'name': 'hrm_config.gps.sample.name'.tr(),
-              'coords': '16.0375, 108.212194',
-              'radius': '1000 m',
-              'status': 'Đang dùng',
-              'isActive': true,
-              'latitude': 16.0375,
-              'longitude': 108.212194,
-              'radiusMeters': 1000.0,
-            },
-          ];
+        : <Map<String, dynamic>>[];
 
     final activeCount = allSites.where((s) => s['isActive'] == true || s['status'] == 'Đang dùng').length;
 

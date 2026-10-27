@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/i18n/app_i18n.dart';
+import '../shared/widgets/no_access_view.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
@@ -27,7 +28,24 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
   String _searchQuery = '';
   String _roleFilter = 'all'; // 'all' | 'system' | 'custom'
 
-  List<Map<String, dynamic>> get _moduleDefs => [
+  /// Modules offered for role access: the tenant's real module catalog (GET /platform/v1/modules/catalog).
+  /// Icons/colors are only presentation hints keyed by module key.
+  List<Map<String, dynamic>> get _moduleDefs {
+    if (_modules.isEmpty) return _presentationModuleDefs;
+    final known = {for (final d in _presentationModuleDefs) d['key']: d};
+    return _modules.map((m) {
+      final k = known[m.key];
+      return <String, dynamic>{
+        'key': m.key,
+        'name': m.name.isNotEmpty ? m.name : (k?['name'] ?? m.key),
+        'desc': m.description.isNotEmpty ? m.description : (k?['desc'] ?? ''),
+        'icon': k?['icon'] ?? Icons.apps_outlined,
+        'color': k?['color'] ?? const Color(0xFF2563EB),
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _presentationModuleDefs => [
     {
       'key': 'hrm',
       'name': 'roles.module_hrm_name'.tr(),
@@ -132,10 +150,15 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final canManage = auth.hasPermission('tenant:write') ||
-        auth.hasPermission('tenant:admin') ||
-        auth.hasRole('tenant-admin') ||
-        auth.hasRole('platform-admin');
+    // Same rule as the web: the authorization page needs tenant.manage.
+    final canManage = auth.canManageTenant;
+    if (!auth.canViewRoles) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white, elevation: 0),
+      body: NoAccessView(message: 'perm.no_access_roles'.tr()),
+    );
+    }
 
     final systemRoleCount = _roles.where((r) => r.isSystem).length;
     final customRoleCount = _roles.where((r) => !r.isSystem).length;

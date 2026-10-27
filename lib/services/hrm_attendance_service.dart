@@ -44,34 +44,16 @@ class HrmAttendanceService {
     return null;
   }
 
-  // 2. Precheck GPS / Wi-Fi conditions
-  Future<PrecheckResult?> precheck({
-    double latitude = 10.776889,
-    double longitude = 106.700806,
-    double accuracy = 12.5,
-    String wifiSsid = 'SVN_OFFICE_5G',
-  }) async {
-    return PrecheckResult(
-      eligible: true,
-      matchedSiteName: 'svc_hrm.head_office_savina'.tr(),
-      distanceM: 12.5,
-      verificationMethod: 'GPS',
-      canCheckIn: true,
-      canCheckOut: true,
-    );
-  }
-
   // 3. Check-In (Quẹt thẻ Vào ca)
   Future<AttendanceRecord> checkIn({
     String? employeeId,
     String verificationMethod = 'GPS',
-    double latitude = 10.776889,
-    double longitude = 106.700806,
-    double accuracy = 14.0,
+    double? latitude,
+    double? longitude,
+    double? accuracy,
     String deviceId = 'mobile-device-savina',
   }) async {
     final now = DateTime.now();
-    final nowIso = now.toIso8601String();
     final idempotencyKey = 'checkin-${now.millisecondsSinceEpoch}';
 
     try {
@@ -81,18 +63,15 @@ class HrmAttendanceService {
           'Idempotency-Key': idempotencyKey,
           'X-Device-Id': deviceId,
         }),
+        // Same payload as the web portal: the server uses its own clock and validates GPS against the sites.
         data: {
-          if (employeeId != null) 'employee_id': employeeId,
-          'source': 'MOBILE_APP',
-          'verification_method': verificationMethod,
-          'device_id': deviceId,
-          'occurred_at': nowIso,
-          'gps_coordinates': {
-            'latitude': latitude,
-            'longitude': longitude,
-            'accuracy': accuracy,
-            'is_mocked': false,
-          },
+          if (employeeId != null) 'employeeId': employeeId,
+          'externalEventId': idempotencyKey,
+          'verificationMethod': verificationMethod,
+          'deviceId': deviceId,
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+          if (accuracy != null) 'accuracy': accuracy,
         },
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -111,12 +90,12 @@ class HrmAttendanceService {
   Future<AttendanceRecord> checkOut({
     String? employeeId,
     String verificationMethod = 'GPS',
-    double latitude = 10.776889,
-    double longitude = 106.700806,
+    double? latitude,
+    double? longitude,
+    double? accuracy,
     String deviceId = 'mobile-device-savina',
   }) async {
     final now = DateTime.now();
-    final nowIso = now.toIso8601String();
     final idempotencyKey = 'checkout-${now.millisecondsSinceEpoch}';
 
     try {
@@ -127,11 +106,13 @@ class HrmAttendanceService {
           'X-Device-Id': deviceId,
         }),
         data: {
-          if (employeeId != null) 'employee_id': employeeId,
-          'source': 'MOBILE_APP',
-          'verification_method': verificationMethod,
-          'device_id': deviceId,
-          'occurred_at': nowIso,
+          if (employeeId != null) 'employeeId': employeeId,
+          'externalEventId': idempotencyKey,
+          'verificationMethod': verificationMethod,
+          'deviceId': deviceId,
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+          if (accuracy != null) 'accuracy': accuracy,
         },
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

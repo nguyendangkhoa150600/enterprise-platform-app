@@ -13,6 +13,8 @@ import './attendance/components/attendance_day_modals.dart';
 import './attendance/components/attendance_correction_dialog.dart';
 import './attendance/components/attendance_history_views.dart';
 import '../services/hrm_attendance_service.dart';
+import '../services/device_location_service.dart';
+import 'package:geolocator/geolocator.dart';
 import '../utils/error_handler.dart';
 import '../core/i18n/app_i18n.dart';
 
@@ -32,7 +34,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   DateTime _currentTime = DateTime.now();
 
   AttendanceContext? _context;
-  PrecheckResult? _precheck;
+  DeviceLocationFix? _geoFix;
+  bool _isLocating = false;
+  HrmTimesheetBoard? _currentMonthBoard;
   AttendanceRecord? _todayRecord;
   List<AttendanceRecord> _history = [];
   List<AttendanceCorrection> _corrections = [];
@@ -47,8 +51,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   // Matrix View State
   int _historyViewMode = 0; // 0: Bảng công ma trận, 1: Nhật ký quẹt thẻ
-  String _selectedMonth = '10/2026';
-  final List<String> _availableMonths = ['10/2026', '09/2026', '08/2026'];
+  late String _selectedMonth;
+  late final List<String> _availableMonths;
+
+  static String _monthLabel(DateTime d) => '${d.month.toString().padLeft(2, '0')}/${d.year}';
   int _matrixSubTab = 0; // 0: Bảng chấm công, 1: Chi tiết bảng chấm công
   int _requestsSubTab = 1; // 0: Bản nháp, 1: Tạo đơn mới (Catalog), 2: Chờ duyệt, 3: Lịch sử
   HrmTimesheetBoard? _timesheetBoard;
@@ -98,6 +104,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _availableMonths = [for (var i = 0; i < 3; i++) _monthLabel(DateTime(now.year, now.month - i))];
+    _selectedMonth = _availableMonths.first;
     _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex.clamp(0, 1));
     _startLiveClock();
     _loadAllAttendanceData();
@@ -159,19 +168,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     final localDrafts = await _loadLocalDrafts();
     final results = await Future.wait([
       _service.getAttendanceContext(),
-      _service.precheck(),
       _service.getTodayAttendance(),
       _service.getAttendanceHistory(),
       _service.getCorrections(),
       _service.getLeaveTypes(),
       _service.getDrafts(),
-      _service.getTimesheetBoard(month: _parseSelectedMonthKey(_selectedMonth), self: true),
+      _service.getTimesheetBoard(month: _parseSelectedMonthKey(_monthLabel(DateTime.now())), self: true),
     ]);
+    _refreshLocation();
 
     if (mounted) {
-      final todayRec = results[2] as AttendanceRecord?;
-      final allRemote = ((results[4] as List<AttendanceCorrection>?) ?? []).where((c) => !_cancelledRequestIds.contains(c.id)).toList();
-      final explicitDrafts = (results[6] as List<AttendanceCorrection>?) ?? [];
+      final todayRec = results[1] as AttendanceRecord?;
+      final allRemote = ((results[3] as List<AttendanceCorrection>?) ?? []).where((c) => !_cancelledRequestIds.contains(c.id)).toList();
+      final explicitDrafts = (results[5] as List<AttendanceCorrection>?) ?? [];
       final combinedDrafts = <AttendanceCorrection>[
         ...explicitDrafts,
         ...allRemote.where((c) => c.status == 'DRAFT'),
@@ -186,13 +195,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
       setState(() {
         _context = results[0] as AttendanceContext?;
-        _precheck = results[1] as PrecheckResult?;
         _todayRecord = todayRec;
-        _history = (results[3] as List<AttendanceRecord>?) ?? [];
+        _history = (results[2] as List<AttendanceRecord>?) ?? [];
         _corrections = allRemote.where((c) => c.status != 'DRAFT').toList();
         _drafts = uniqueDrafts;
-        _leaveTypes = (results[5] as List<LeaveType>?) ?? [];
-        _timesheetBoard = results[7] as HrmTimesheetBoard?;
+        _leaveTypes = (results[4] as List<LeaveType>?) ?? [];
+        _currentMonthBoard = results[6] as HrmTimesheetBoard?;
+        if (_selectedMonth == _monthLabel(DateTime.now())) _timesheetBoard = _currentMonthBoard;
         _isInShift = todayRec?.firstCheckInAt != null && todayRec?.lastCheckOutAt == null;
         _isLoading = false;
         _isLoadingTimesheet = false;
@@ -201,18 +210,61 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     }
   }
 
+  Future<void> _refreshLocation({bool requestPermission = true}) async {
+    if (_isLocating) return;
+    setState(() => _isLocating = true);
+    final fix = await DeviceLocationService.getFix(requestPermission: requestPermission);
+    if (mounted) {
+      setState(() {
+        _geoFix = fix;
+        _isLocating = false;
+      });
+    }
+  }
+
+  Future<void> _onLocationCardTap() async {
+    final st = _geoFix?.status;
+    if (st == DeviceLocationStatus.permissionDeniedForever) {
+      await Geolocator.openAppSettings();
+    } else if (st == DeviceLocationStatus.serviceDisabled) {
+      await Geolocator.openLocationSettings();
+    }
+    await _refreshLocation();
+  }
+
+  /// Gets a fresh position for a punch. Returns null (and tells the user) when the policy requires GPS but it is unavailable.
+  Future<DeviceLocationFix?> _fixForPunch() async {
+    final fix = await DeviceLocationService.getFix();
+    if (mounted) setState(() => _geoFix = fix);
+    if (!fix.isOk && (_context?.requireGps ?? true)) {
+      if (mounted) {
+        setState(() => _isPunching = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('attendance.geo.required_failed'.tr()),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+      return null;
+    }
+    return fix;
+  }
+
   Future<void> _handleCheckIn() async {
     setState(() => _isPunching = true);
     try {
-      final record = await _service.checkIn();
+      final fix = await _fixForPunch();
+      if (fix == null) return;
+      final record = await _service.checkIn(latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy);
       final history = await _service.getAttendanceHistory();
-      final precheck = await _service.precheck();
 
       if (mounted) {
         setState(() {
           _todayRecord = record;
           _history = history;
-          _precheck = precheck;
           _isInShift = true; // Chuyển sang hiển thị QUẸT RA
           _isPunching = false;
         });
@@ -250,15 +302,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   Future<void> _handleCheckOut() async {
     setState(() => _isPunching = true);
     try {
-      final record = await _service.checkOut();
+      final fix = await _fixForPunch();
+      if (fix == null) return;
+      final record = await _service.checkOut(latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy);
       final history = await _service.getAttendanceHistory();
-      final precheck = await _service.precheck();
 
       if (mounted) {
         setState(() {
           _todayRecord = record;
           _history = history;
-          _precheck = precheck;
           _isInShift = false; // Quẹt ra xong lập tức chuyển lại hiển thị QUẸT VÀO cho ca/lượt tiếp theo
           _isPunching = false;
         });
@@ -414,6 +466,131 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   // ==========================================
   // TAB 1: TODAY ATTENDANCE PUNCH PANEL
   // ==========================================
+  String _shiftLabel(HrmShift? shift) {
+    if (shift == null || shift.startTime.length < 5 || shift.endTime.length < 5) {
+      return 'attendance.today.no_shift'.tr();
+    }
+    var name = shift.name;
+    if (name.isEmpty) {
+      final todayKey = '${_currentTime.year}-${_currentTime.month.toString().padLeft(2, '0')}-${_currentTime.day.toString().padLeft(2, '0')}';
+      name = _currentMonthBoard?.myEmployee?.days[todayKey]?.shiftName ?? '';
+    }
+    if (name.isEmpty) name = 'attendance.today.shift_unnamed'.tr();
+    final args = {'name': name, 'start': shift.startTime.substring(0, 5), 'end': shift.endTime.substring(0, 5), 'break': shift.breakMinutes};
+    return shift.breakMinutes > 0 ? 'attendance.today.shift_line'.tr(args: args) : 'attendance.today.shift_line_no_break'.tr(args: args);
+  }
+
+  Widget _buildLocationCard() {
+    final fix = _geoFix;
+    late final Color color;
+    late final String text;
+    if (fix == null || (_isLocating && !(fix.isOk))) {
+      color = const Color(0xFFD97706);
+      text = 'attendance.geo.locating'.tr();
+    } else {
+      switch (fix.status) {
+        case DeviceLocationStatus.ok:
+          color = const Color(0xFF059669);
+          text = 'attendance.geo.ok'.tr();
+        case DeviceLocationStatus.permissionDenied:
+          color = const Color(0xFFDC2626);
+          text = 'attendance.geo.permission_denied'.tr();
+        case DeviceLocationStatus.permissionDeniedForever:
+          color = const Color(0xFFDC2626);
+          text = 'attendance.geo.permission_forever'.tr();
+        case DeviceLocationStatus.serviceDisabled:
+          color = const Color(0xFFDC2626);
+          text = 'attendance.geo.service_disabled'.tr();
+        case DeviceLocationStatus.failed:
+          color = const Color(0xFFDC2626);
+          text = 'attendance.geo.failed'.tr();
+      }
+    }
+    final ok = fix?.isOk == true;
+    String two(int v) => v.toString().padLeft(2, '0');
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: ok ? null : _onLocationCardTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: Icon(ok ? Icons.radar : Icons.location_off_outlined, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'attendance.today.location_status'.tr(),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (ok)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                    child: Text(
+                      'attendance.geo.accuracy'.tr(args: {'meters': fix!.accuracy!.round()}),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                    ),
+                  ),
+              ],
+            ),
+            if (ok) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildVerificationBadge(
+                    icon: Icons.gps_fixed,
+                    label: 'attendance.geo.coords'.tr(args: {'lat': fix!.latitude!.toStringAsFixed(5), 'lng': fix.longitude!.toStringAsFixed(5)}),
+                  ),
+                  _buildVerificationBadge(
+                    icon: Icons.update,
+                    label: 'attendance.geo.updated'.tr(args: {'time': '${two(fix.at!.hour)}:${two(fix.at!.minute)}:${two(fix.at!.second)}'}),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('attendance.geo.server_verify'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmtDays(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+
   Widget _buildTodayTab() {
     final shift = _context?.shift;
     final hasCheckedIn = _todayRecord?.firstCheckInAt != null;
@@ -536,12 +713,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                       const Icon(Icons.schedule, size: 15, color: Color(0xFFFDE047)),
                       const SizedBox(width: 6),
                       Text(
-                        'attendance.today.shift_line'.tr(args: {
-                          'name': shift?.name ?? 'attendance.today.default_shift'.tr(),
-                          'start': shift?.startTime.substring(0, 5) ?? '08:00',
-                          'end': shift?.endTime.substring(0, 5) ?? '17:30',
-                          'break': shift?.breakMinutes ?? 90,
-                        }),
+                        _shiftLabel(shift),
                         style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
                       ),
                     ],
@@ -552,111 +724,38 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           ),
           const SizedBox(height: 16),
 
-          // 2. Location & Network Verification Radar
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFECFDF5),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.radar, color: Color(0xFF059669), size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'attendance.today.location_status'.tr(),
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF10B981),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'attendance.today.location_valid'.tr(),
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text('attendance.today.distance'.tr(args: {'meters': 15}), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildVerificationBadge(icon: Icons.gps_fixed, label: 'GPS: 10.7768, 106.7008'),
-                    _buildVerificationBadge(icon: Icons.wifi, label: 'Wi-Fi: SVN_OFFICE_5G'),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          // 2. Location verification (real device GPS)
+          _buildLocationCard(),
           const SizedBox(height: 16),
 
           // 3. Dynamic Punch Action Hero Card (Chuyển đổi linh hoạt giữa Quẹt Vào & Quẹt Ra nhiều lần trong ngày)
           _buildDynamicPunchCard(),
           const SizedBox(height: 20),
 
-          // 4. Monthly KPI Summary Cards
+          // 4. Monthly KPI Summary Cards (real timesheet board of the current month)
           Text(
-            'attendance.today.monthly_summary'.tr(args: {'month': '09/2026'}),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Color(0xFF64748B)),
+            'attendance.today.monthly_summary'.tr(args: {'month': _monthLabel(_currentTime)}),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(child: _buildKpiCard(label: 'attendance.kpi.total_days'.tr(), value: '22', unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFF2563EB))),
-              const SizedBox(width: 8),
-              Expanded(child: _buildKpiCard(label: 'attendance.kpi.on_time'.tr(), value: '20', unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFF059669))),
-              const SizedBox(width: 8),
-              Expanded(child: _buildKpiCard(label: 'attendance.kpi.late'.tr(), value: '1', unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFFD97706))),
-              const SizedBox(width: 8),
-              Expanded(child: _buildKpiCard(label: 'attendance.kpi.explanation'.tr(), value: '1', unit: 'attendance.kpi.unit_requests'.tr(), color: const Color(0xFF7C3AED))),
-            ],
-          ),
+          Builder(builder: (context) {
+            final me = _currentMonthBoard?.myEmployee;
+            final monthKey = _parseSelectedMonthKey(_monthLabel(_currentTime));
+            String v(String Function() f) => me == null ? '--' : f();
+            final onTime = me?.days.values.where((d) => d.status == 'PRESENT').length ?? 0;
+            final explanations = _corrections.where((c) => (c.requestDate.isNotEmpty ? c.requestDate : c.createdAt).startsWith(monthKey)).length;
+            return Row(
+              children: [
+                Expanded(child: _buildKpiCard(label: 'attendance.kpi.total_days'.tr(), value: v(() => _fmtDays(me!.totals.workdayUnits)), unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFF2563EB))),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKpiCard(label: 'attendance.kpi.on_time'.tr(), value: v(() => '$onTime'), unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFF059669))),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKpiCard(label: 'attendance.kpi.late'.tr(), value: v(() => '${me!.totals.lateDays}'), unit: 'attendance.kpi.unit_days'.tr(), color: const Color(0xFFD97706))),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKpiCard(label: 'attendance.kpi.explanation'.tr(), value: '$explanations', unit: 'attendance.kpi.unit_requests'.tr(), color: const Color(0xFF7C3AED))),
+              ],
+            );
+          }),
         ],
       ),
     );

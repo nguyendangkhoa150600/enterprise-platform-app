@@ -547,16 +547,15 @@ void showAttendanceCorrectionDialog(
                           InkWell(
                             onTap: () async {
                               try {
-                                final result = await FilePicker.platform.pickFiles(
+                                final file = await FilePicker.pickFile(
                                   type: FileType.custom,
                                   allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'xlsx', 'xls'],
-                                  allowMultiple: false,
                                 );
-                                if (result != null && result.files.isNotEmpty) {
-                                  final file = result.files.first;
-                                  final sizeKb = (file.size / 1024).toStringAsFixed(1);
-                                  final sizeMb = (file.size / (1024 * 1024)).toStringAsFixed(2);
-                                  final sizeText = file.size > 1024 * 1024 ? '$sizeMb MB' : '$sizeKb KB';
+                                if (file != null) {
+                                  final fileSize = await file.length() ?? 0;
+                                  final sizeKb = (fileSize / 1024).toStringAsFixed(1);
+                                  final sizeMb = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+                                  final sizeText = fileSize > 1024 * 1024 ? '$sizeMb MB' : '$sizeKb KB';
                                   setModalState(() {
                                     selectedFileName = '${file.name} ($sizeText)';
                                   });
@@ -790,7 +789,7 @@ void showAttendanceCorrectionDialog(
 
                             final draftObj = savedDraft ?? AttendanceCorrection(
                               id: draftItem?.id ?? 'DFT-${DateTime.now().millisecondsSinceEpoch}',
-                              employeeId: attendanceContext?.employeeId ?? 'emp-01',
+                              employeeId: attendanceContext?.employeeId ?? '',
                               attendanceId: item?.id,
                               requestDate: fDate,
                               fromDate: fDate,

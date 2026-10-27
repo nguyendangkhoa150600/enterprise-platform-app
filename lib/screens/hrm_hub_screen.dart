@@ -1,4 +1,7 @@
-﻿import 'dart:async';
+﻿import 'package:provider/provider.dart';
+import '../core/permissions/hrm_permissions.dart';
+import '../shared/widgets/no_access_view.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/i18n/app_i18n.dart';
 import '../models/hrm_models.dart';
@@ -68,9 +71,51 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
   List<Map<String, dynamic>> _gpsSites = [];
   List<Map<String, dynamic>> _payrollPeriods = [];
 
+  HrmCapabilities get _caps => HrmCapabilities.instance;
+
+  /// Same page/tab permissions as the web (hrmPagePermissions / HRM_HUBS).
+  bool _viewAllowed(String view) {
+    switch (view) {
+      case 'dashboard':
+        return _caps.pageAllowed('/');
+      case 'attendance_monitor':
+        return _caps.pageAllowed('/attendance-monitor');
+      case 'schedule':
+        return _caps.tabAllowed('/settings', 'schedules');
+      case 'requests':
+      case 'approvals':
+        return _caps.pageAllowed('/approvals');
+      case 'profile_income':
+      case 'my_profile':
+      case 'dependents':
+        return _caps.tabAllowed('/profile', 'profile');
+      case 'my_payslips':
+        return _caps.tabAllowed('/profile', 'payslips');
+      case 'employees':
+        return _caps.tabAllowed('/employees', 'employees');
+      case 'shifts':
+        return _caps.tabAllowed('/settings', 'shifts');
+      case 'timesheet':
+        return _caps.pageAllowed('/timekeeping');
+      case 'payroll':
+        return _caps.tabAllowed('/payroll', 'runs');
+      case 'advances':
+        return _caps.tabAllowed('/payroll', 'advances');
+      case 'config':
+      case 'policy':
+      case 'settings':
+        return _caps.pageAllowed('/settings');
+      case 'integrations':
+        return _caps.tabAllowed('/settings', 'operations');
+      default:
+        return true;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _caps.load();
     if (widget.initialView != null) {
       _activeView = widget.initialView!;
     } else if (widget.initialTabIndex == 1) {
@@ -263,6 +308,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    context.watch<HrmCapabilities>();
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -321,7 +367,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
           ),
         ],
       ),
-      body: _isLoading
+      body: (_isLoading || !_caps.loaded)
           ? const Center(child: CircularProgressIndicator())
           : _buildActiveContentView(),
     );
@@ -331,6 +377,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
   // VIEW DISPATCHER
   // ==========================================
   Widget _buildActiveContentView() {
+    if (!_viewAllowed(_activeView)) {
+      return NoAccessView(message: 'perm.no_access_hrm'.tr());
+    }
     switch (_activeView) {
       case 'dashboard':
         return _buildOverviewTab();
@@ -461,6 +510,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                   const SizedBox(height: 12),
                   Row(
                     children: [
+                      if (_viewAllowed('employees'))
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () => _navigateToView('employees'),
@@ -475,7 +525,8 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      if (_viewAllowed('employees') && _viewAllowed('approvals')) const SizedBox(width: 8),
+                      if (_viewAllowed('approvals'))
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _navigateToView('approvals'),
@@ -496,6 +547,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 16),
 
+            if (_caps.can('hrm.dashboard.read')) ...[
             // 3. Section: QUY MÔ & LỰC LƯỢNG LAO ĐỘNG
             _buildSectionHeader(
               icon: Icons.people_outline,
@@ -541,6 +593,8 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 16),
 
+            ],
+            if (_caps.can('hrm.dashboard.read')) ...[
             // 4. Section: TÌNH HÌNH CHẤM CÔNG HÔM NAY
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -625,6 +679,8 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 16),
 
+            ],
+            if (_caps.pageAllowed('/approvals')) ...[
             // 5. Section: ĐƠN TỪ & YÊU CẦU CHỜ XỬ LÝ
             _buildSectionHeader(
               icon: Icons.mark_email_unread_outlined,
@@ -670,6 +726,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 20),
 
+            ],
             // 6. Section: PHÂN KHU CHỨC NĂNG NGHIỆP VỤ
             _buildSectionHeader(
               icon: Icons.bolt,
@@ -677,6 +734,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               title: 'hrm_hub.dash.section_modules'.tr(),
             ),
             const SizedBox(height: 10),
+            if (_viewAllowed('employees'))
             _buildBusinessActionCard(
               icon: Icons.person_outline,
               title: 'hrm_hub.module.employees_title'.tr(),
@@ -684,6 +742,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => _navigateToView('employees'),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('dependents'))
             _buildBusinessActionCard(
               icon: Icons.family_restroom_outlined,
               title: 'hrm_hub.module.dependents_title'.tr(),
@@ -691,6 +750,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => _navigateToView('dependents'),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('shifts'))
             _buildBusinessActionCard(
               icon: Icons.calendar_month_outlined,
               title: 'hrm_hub.module.shifts_title'.tr(),
@@ -698,6 +758,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => _navigateToView('shifts'),
             ),
             const SizedBox(height: 8),
+            if (_caps.pageAllowed('/my-work'))
             _buildBusinessActionCard(
               icon: Icons.access_time,
               title: 'hrm_hub.module.attendance_title'.tr(),
@@ -705,6 +766,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('attendance_monitor'))
             _buildBusinessActionCard(
               icon: Icons.insights_rounded,
               title: 'hrm_hub.title.attendance_monitor'.tr(),
@@ -724,6 +786,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               },
             ),
             const SizedBox(height: 8),
+            if (_caps.pageAllowed('/leave'))
             _buildBusinessActionCard(
               icon: Icons.beach_access_rounded,
               title: 'hrm_hub.module.leave_title'.tr(),
@@ -731,6 +794,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaveBalancesScreen())),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('approvals'))
             _buildBusinessActionCard(
               icon: Icons.assignment_turned_in_outlined,
               title: 'hrm_hub.module.approvals_title'.tr(),
@@ -738,6 +802,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => _navigateToView('approvals'),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('timesheet'))
             _buildBusinessActionCard(
               icon: Icons.calculate_outlined,
               title: 'hrm_hub.module.timesheet_title'.tr(),
@@ -745,6 +810,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => _navigateToView('timesheet'),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('payroll'))
             _buildBusinessActionCard(
               icon: Icons.account_balance_wallet_outlined,
               title: 'hrm_hub.title.payroll'.tr(),
@@ -752,6 +818,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => _navigateToView('payroll'),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('advances'))
             _buildBusinessActionCard(
               icon: Icons.price_change_outlined,
               title: 'hrm_hub.title.advances'.tr(),
@@ -759,6 +826,7 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
               onTap: () => _navigateToView('advances'),
             ),
             const SizedBox(height: 8),
+            if (_viewAllowed('config'))
             _buildBusinessActionCard(
               icon: Icons.tune_rounded,
               title: 'hrm_hub.module.config_title'.tr(),

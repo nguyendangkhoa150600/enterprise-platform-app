@@ -1,4 +1,5 @@
 import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
+import '../core/permissions/hrm_permissions.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -47,9 +48,21 @@ class AuthProvider extends ChangeNotifier {
     return _roles.contains(role);
   }
 
-  bool get canCreateUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.create') || hasPermission('users.create');
-  bool get canUpdateUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.update') || hasPermission('users.update');
-  bool get canDeleteUser => isPlatformAdmin || isTenantAdmin || hasPermission('core.users.delete') || hasPermission('users.delete');
+  /// Same rule as the web `hasTenantAction`: `tenant.manage` implies every tenant action.
+  bool get canManageTenant => isPlatformAdmin || _permissions.contains('tenant.manage') || _permissions.contains('*');
+  bool hasTenantAction(String action) => canManageTenant || _permissions.contains(action);
+
+  // Tenant shell pages (web tenant-shell.tsx): authorization needs tenant.manage; users / organization need their read action.
+  bool get canViewRoles => canManageTenant;
+  bool get canViewUsers => hasTenantAction('core.users.read');
+  bool get canViewOrganization => hasTenantAction('core.organization.read');
+
+  bool get canCreateUser => hasTenantAction('core.users.create');
+  bool get canUpdateUser => hasTenantAction('core.users.update');
+  bool get canDeleteUser => hasTenantAction('core.users.delete');
+  bool get canCreateOrganization => hasTenantAction('core.organization.create');
+  bool get canUpdateOrganization => hasTenantAction('core.organization.update');
+  bool get canDeleteOrganization => hasTenantAction('core.organization.delete');
 
   void clearError() {
     _errorMessage = null;
@@ -277,6 +290,7 @@ class AuthProvider extends ChangeNotifier {
       // Ignore network errors on logout
     }
 
+    HrmCapabilities.instance.clear();
     _isLoggedIn = false;
     _kind = null;
     _fullName = null;

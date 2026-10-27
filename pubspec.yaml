@@ -39,7 +39,7 @@ dependencies:
 
   provider: ^6.1.5
   dio: ^5.8.0+1
-  file_picker: ^8.1.7
+  file_picker: ^13.3.0
   excel: any
   intl: ^0.20.2
   flutter_screenutil: ^5.9.3
@@ -47,6 +47,8 @@ dependencies:
   shared_preferences: ^2.5.5
   pdf: ^3.11.1
   printing: ^5.13.3
+  geolocator: ^14.1.2
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:

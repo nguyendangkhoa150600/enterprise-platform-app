@@ -51,7 +51,29 @@ class HrmShift {
     this.graceEarlyMinutes = 5,
   });
 
+  /// Server returns the shift as `{ window: { start, end, breakMinutes, ... } }` with ISO instants.
+  static String? _clock(dynamic iso) {
+    if (iso == null) return null;
+    final dt = DateTime.tryParse(iso.toString());
+    if (dt == null) return null;
+    final l = dt.toLocal();
+    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}:00';
+  }
+
   factory HrmShift.fromJson(Map<String, dynamic> json) {
+    final window = json['window'];
+    if (window is Map<String, dynamic>) {
+      return HrmShift(
+        id: json['id']?.toString() ?? '',
+        code: json['code']?.toString() ?? '',
+        name: json['name']?.toString() ?? '',
+        startTime: _clock(window['start']) ?? '',
+        endTime: _clock(window['end']) ?? '',
+        breakMinutes: (window['breakMinutes'] as num?)?.toInt() ?? 0,
+        graceLateMinutes: (window['graceLateMinutes'] as num?)?.toInt() ?? 0,
+        graceEarlyMinutes: (window['graceEarlyMinutes'] as num?)?.toInt() ?? 0,
+      );
+    }
     return HrmShift(
       id: json['id']?.toString() ?? 's-01',
       code: json['code']?.toString() ?? 'CA_HC',
@@ -97,7 +119,8 @@ class AttendanceContext {
   final String employeeId;
   final String employeeCode;
   final String fullName;
-  final HrmShift shift;
+  final HrmShift? shift;
+  final bool requireGps;
   final List<String> allowedMethods;
   final List<HrmSite> sites;
 
@@ -107,7 +130,8 @@ class AttendanceContext {
     required this.employeeId,
     required this.employeeCode,
     required this.fullName,
-    required this.shift,
+    this.shift,
+    this.requireGps = false,
     required this.allowedMethods,
     required this.sites,
   });
@@ -122,42 +146,10 @@ class AttendanceContext {
       employeeId: emp['id']?.toString() ?? json['employee_id']?.toString() ?? '',
       employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? json['employee_code']?.toString() ?? '',
       fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? emp['name']?.toString() ?? json['full_name']?.toString() ?? '',
-      shift: json['shift'] != null ? HrmShift.fromJson(json['shift']) : HrmShift(id: 's-01', code: 'CA_HC', name: 'models.shift.office_hours'.tr(), startTime: '08:00:00', endTime: '17:30:00'),
-      allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['GPS', 'WIFI_WAN_IP'],
+      shift: json['shift'] is Map<String, dynamic> ? HrmShift.fromJson(json['shift'] as Map<String, dynamic>) : null,
+      requireGps: (json['requireGps'] ?? json['require_gps']) == true,
+      allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       sites: rawSites.map((e) => HrmSite.fromJson(e as Map<String, dynamic>)).toList(),
-    );
-  }
-}
-
-class PrecheckResult {
-  final bool eligible;
-  final String? matchedSiteId;
-  final String matchedSiteName;
-  final double distanceM;
-  final String verificationMethod;
-  final bool canCheckIn;
-  final bool canCheckOut;
-
-  PrecheckResult({
-    required this.eligible,
-    this.matchedSiteId,
-    required this.matchedSiteName,
-    this.distanceM = 15.0,
-    this.verificationMethod = 'GPS',
-    required this.canCheckIn,
-    required this.canCheckOut,
-  });
-
-  factory PrecheckResult.fromJson(Map<String, dynamic> json) {
-    final matched = json['matched_site'] as Map<String, dynamic>? ?? {};
-    return PrecheckResult(
-      eligible: json['eligible'] == true,
-      matchedSiteId: matched['id']?.toString(),
-      matchedSiteName: matched['name']?.toString() ?? 'models.site.hq_savina'.tr(),
-      distanceM: (matched['distance_m'] as num?)?.toDouble() ?? 15.0,
-      verificationMethod: json['verification_method']?.toString() ?? 'GPS',
-      canCheckIn: json['can_check_in'] == true,
-      canCheckOut: json['can_check_out'] == true,
     );
   }
 }
@@ -739,13 +731,13 @@ class HrmBoardStandard {
 
   HrmBoardStandard({
     this.mode = 'DYNAMIC',
-    this.workdays = 22.0,
+    this.workdays = 0.0,
   });
 
   factory HrmBoardStandard.fromJson(Map<String, dynamic> json) {
     return HrmBoardStandard(
       mode: json['mode']?.toString() ?? 'DYNAMIC',
-      workdays: (json['workdays'] as num?)?.toDouble() ?? 22.0,
+      workdays: (json['workdays'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 import '../../../services/platform_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
 
 Widget buildOrgCategoryOption({
   required String label,
@@ -76,6 +78,10 @@ void showOrgNodeDetailBottomSheet(
   required void Function({OrgNode? existingNode, String? parentNodeId, String? defaultCategory}) onOpenAddOrEditDialog,
   required void Function(OrgNode node) onConfirmDeleteNode,
 }) {
+  final auth = Provider.of<AuthProvider>(context, listen: false);
+  final canCreateOrg = auth.canCreateOrganization;
+  final canUpdateOrg = auth.canUpdateOrganization;
+  final canDeleteOrg = auth.canDeleteOrganization;
   final nameCtrl = TextEditingController(text: node.name);
   final codeCtrl = TextEditingController(text: node.code);
   final descCtrl = TextEditingController(text: node.description ?? '');
@@ -271,6 +277,7 @@ void showOrgNodeDetailBottomSheet(
               // 6. Action Buttons: Xóa node & Lưu thay đổi
               Row(
                 children: [
+                  if (canDeleteOrg)
                   OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(ctx);
@@ -284,7 +291,8 @@ void showOrgNodeDetailBottomSheet(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  if (canDeleteOrg && canUpdateOrg) const SizedBox(width: 10),
+                  if (canUpdateOrg)
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () async {
@@ -470,6 +478,7 @@ void showOrgNodeDetailBottomSheet(
                               ],
                             ),
                           ),
+                          if (canUpdateOrg)
                           IconButton(
                             icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
                             onPressed: () {
@@ -493,6 +502,7 @@ void showOrgNodeDetailBottomSheet(
                   }),
 
                 const SizedBox(height: 10),
+                if (canCreateOrg)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -686,6 +696,11 @@ void showOrgNodeAddOrEditDialog(
   required PlatformService platformService,
   required VoidCallback onRefreshSnapshot,
 }) {
+  final authForGuard = Provider.of<AuthProvider>(context, listen: false);
+  if (existingNode != null ? !authForGuard.canUpdateOrganization : !authForGuard.canCreateOrganization) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('perm.no_access_org_edit'.tr())));
+    return;
+  }
   final isEditing = existingNode != null;
   final nameCtrl = TextEditingController(text: existingNode?.name ?? '');
   final codeCtrl = TextEditingController(text: existingNode?.code ?? '');
@@ -883,6 +898,10 @@ void confirmDeleteOrgNode(
   required PlatformService platformService,
   required VoidCallback onRefreshSnapshot,
 }) {
+  if (!Provider.of<AuthProvider>(context, listen: false).canDeleteOrganization) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('perm.no_access_org_edit'.tr())));
+    return;
+  }
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(

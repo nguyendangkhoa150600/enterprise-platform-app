@@ -381,11 +381,12 @@ void showCorrectionFormDialog({
                         const SizedBox(height: 6),
                         InkWell(
                           onTap: () async {
-                            final res = await FilePicker.platform.pickFiles(type: FileType.any);
-                            if (res != null && res.files.isNotEmpty) {
+                            final picked = await FilePicker.pickFile(type: FileType.any);
+                            if (picked != null) {
+                              final pickedSize = await picked.length() ?? 0;
                               setModalState(() {
-                                selectedFileName = res.files.first.name;
-                                selectedFileSize = res.files.first.size;
+                                selectedFileName = picked.name;
+                                selectedFileSize = pickedSize;
                               });
                             }
                           },

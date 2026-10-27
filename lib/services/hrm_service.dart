@@ -22,6 +22,9 @@ class PolicyActionResult {
   });
 }
 
+/// Helper function to format GPS coordinates cleanly (stripping trailing zeros)
+String formatCoordinate(dynamic val) => HrmService.formatCoordinate(val);
+
 class HrmService {
   static final HrmService _instance = HrmService._internal();
   factory HrmService() => _instance;
@@ -118,18 +121,6 @@ class HrmService {
         empMap[e.id] = e;
       }
     } catch (_) {}
-
-    // Fallback for special users if not in employee directory
-    empMap['e1e0cc28-0c3c-416d-a1f9-557031cc564a'] ??= HrmEmployeeItem(
-      id: 'e1e0cc28-0c3c-416d-a1f9-557031cc564a',
-      code: 'NV051',
-      fullName: 'admin',
-      email: 'admin@savinajsc.com',
-      phone: '',
-      department: 'Khối Văn phòng',
-      position: 'svc_hrm.administrator'.tr(),
-      status: 'OFFICIAL',
-    );
 
     final endpoints = [
       {'path': '/hrm/v1/leave-requests', 'type': HrmRequestType.leave},
@@ -395,12 +386,7 @@ class HrmService {
     } catch (e) {
       debugPrint('[HrmService] getSalaryGrades error: $e');
     }
-    return const [
-      HrmSalaryGrade(id: 'grade-cv', code: 'CV', name: 'Ngạch Chuyên viên'),
-      HrmSalaryGrade(id: 'grade-ql', code: 'QL', name: 'Ngạch Quản lý'),
-      HrmSalaryGrade(id: 'grade-kt', code: 'KT', name: 'Ngạch Kỹ thuật'),
-      HrmSalaryGrade(id: 'grade-nv', code: 'NV', name: 'Ngạch Nhân viên hành chính'),
-    ];
+    return const [];
   }
 
   Future<List<HrmSalaryGradeStep>> getSalaryGradeSteps(String gradeId) async {
@@ -465,6 +451,23 @@ class HrmService {
       _cachedShifts ??= [];
     }
     return _cachedShifts!;
+  }
+
+  /// Standard-workday policies (GET /hrm/v1/timesheet-standards). Returns null when the call fails.
+  Future<({List<Map<String, dynamic>> policies, String? currentId})?> getTimesheetStandards() async {
+    try {
+      final response = await _dio.get('/hrm/v1/timesheet-standards');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data['data'] ?? response.data;
+        if (data is Map<String, dynamic>) {
+          final list = (data['policies'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? <Map<String, dynamic>>[];
+          return (policies: list, currentId: data['currentId']?.toString());
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmService] getTimesheetStandards error: $e');
+    }
+    return null;
   }
 
   // 9. Get Dependents (Người phụ thuộc)
@@ -750,36 +753,7 @@ class HrmService {
       debugPrint('[HrmService] getWorkCalendarExceptions error: $e');
     }
 
-    // Default 1:1 matching Web Production:
-    return [
-      {
-        'id': '1',
-        'date': '31/12/2026',
-        'name': 'Nghỉ tất niên',
-        'type': 'OFF',
-        'typeLabel': 'Nghỉ (OFF)',
-        'paid': false,
-        'paidLabel': 'Không',
-      },
-      {
-        'id': '2',
-        'date': '05/09/2026',
-        'name': 'Làm bù',
-        'type': 'WORK',
-        'typeLabel': 'Làm việc',
-        'paid': true,
-        'paidLabel': 'Có',
-      },
-      {
-        'id': '3',
-        'date': '02/09/2026',
-        'name': 'Quốc khánh',
-        'type': 'HOLIDAY',
-        'typeLabel': 'Lễ / Tết',
-        'paid': true,
-        'paidLabel': 'Có',
-      },
-    ];
+    return [];
   }
 
   static String formatCoordinate(dynamic val) {
@@ -807,15 +781,15 @@ class HrmService {
         if (listRaw.isNotEmpty) {
           final sites = listRaw.map((e) {
             final Map m = e is Map ? e : {};
-            final lat = (m['latitude'] ?? m['lat'] as num?)?.toDouble() ?? 16.0375;
-            final lng = (m['longitude'] ?? m['lng'] as num?)?.toDouble() ?? 108.212194;
-            final rad = (m['radius_meters'] ?? m['radiusMeters'] ?? m['radius_m'] ?? m['radiusM'] ?? m['radius'] as num?)?.toDouble() ?? 1000.0;
+            final lat = (m['latitude'] ?? m['lat'] as num?)?.toDouble() ?? 0.0;
+            final lng = (m['longitude'] ?? m['lng'] as num?)?.toDouble() ?? 0.0;
+            final rad = (m['radius_meters'] ?? m['radiusMeters'] ?? m['radius_m'] ?? m['radiusM'] ?? m['radius'] as num?)?.toDouble() ?? 0.0;
             final isActive = m['active'] ?? m['is_active'] ?? m['isActive'] ?? (m['status'] == 'ACTIVE' || m['status'] == 'Đang dùng');
             return {
               'id': m['id']?.toString() ?? '',
               'code': m['code']?.toString() ?? '',
-              'name': m['name']?.toString() ?? 'VP Đà Nẵng',
-              'coords': '${formatCoordinate(lat)}, ${formatCoordinate(lng)}',
+              'name': m['name']?.toString() ?? '',
+              'coords': '${HrmService.formatCoordinate(lat)}, ${HrmService.formatCoordinate(lng)}',
               'radius': '${rad.toInt()} m',
               'status': isActive ? 'Đang dùng' : 'Ngừng',
               'isActive': isActive,
@@ -833,21 +807,7 @@ class HrmService {
       debugPrint('[HrmService] getGpsSites error: $e');
     }
 
-    // Default matching real Web Production if server is completely offline:
-    return [
-      {
-        'id': 'site-default-danang',
-        'code': 'SITE_DN_HQ',
-        'name': 'VP Đà Nẵng',
-        'coords': '16.0375, 108.212194',
-        'radius': '1000 m',
-        'status': 'Đang dùng',
-        'isActive': true,
-        'latitude': 16.0375,
-        'longitude': 108.212194,
-        'radiusMeters': 1000.0,
-      },
-    ];
+    return [];
   }
 
   // 12.9. Create GPS Site (Thêm địa điểm chấm công - Gửi API Backend NestJS & Lưu Postgres)
@@ -2178,54 +2138,7 @@ class HrmService {
       debugPrint('[HrmService] getScheduleHistory error: $e');
     }
 
-    // Baseline fallback matching Web's active database snapshot
-    return [
-      {
-        'id': 'hist-web-1',
-        'effectiveDate': 'svc_hrm.date_from_default'.tr(),
-        'scope': 'svc_hrm.scope_company'.tr(),
-        'scopeText': 'svc_hrm.scope_company'.tr(),
-        'shiftPattern': 'T2-T6: HC; T7: HC-T7; CN: OFF',
-        'actor': 'Hà Nguyên Hoàng',
-        'actorName': 'Hà Nguyên Hoàng',
-        'timestamp': '11/10/2026 20:55',
-        'action': 'RULE_REPLACE',
-        'actionLabel': 'svc_hrm.audit_rule_replace'.tr(),
-        'title': 'svc_hrm.audit_rule_replace'.tr(),
-        'before': ['01/01/2026: HC (Mẫu)'],
-        'after': 'svc_hrm.none'.tr(),
-      },
-      {
-        'id': 'hist-web-2',
-        'effectiveDate': 'svc_hrm.date_from_default'.tr(),
-        'scope': 'svc_hrm.scope_company'.tr(),
-        'scopeText': 'svc_hrm.scope_company'.tr(),
-        'shiftPattern': 'T2-T6: Ca?; T7: HC-T7; CN: OFF',
-        'actor': 'Hà Nguyên Hoàng',
-        'actorName': 'Hà Nguyên Hoàng',
-        'timestamp': '11/10/2026 20:54',
-        'action': 'RULE_REPLACE',
-        'actionLabel': 'svc_hrm.audit_rule_replace'.tr(),
-        'title': 'svc_hrm.audit_rule_replace'.tr(),
-        'before': ['01/01/2026: Ca?'],
-        'after': 'svc_hrm.none'.tr(),
-      },
-      {
-        'id': 'hist-web-3',
-        'effectiveDate': 'svc_hrm.date_from_default'.tr(),
-        'scope': 'svc_hrm.n_employees_plus'.tr(),
-        'scopeText': 'svc_hrm.n_employees_plus'.tr(),
-        'shiftPattern': 'T2-T6: HC; T7: HC-T7; CN: OFF',
-        'actor': 'Hà Nguyên Hoàng',
-        'actorName': 'Hà Nguyên Hoàng',
-        'timestamp': '11/10/2026 11:41',
-        'action': 'RULE_REPLACE',
-        'actionLabel': 'svc_hrm.audit_rule_replace'.tr(),
-        'title': 'svc_hrm.audit_rule_replace'.tr(),
-        'before': ['01/01/2026: HC (Mẫu)'],
-        'after': 'svc_hrm.none'.tr(),
-      },
-    ];
+    return [];
   }
 }
 

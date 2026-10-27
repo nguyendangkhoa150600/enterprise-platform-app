@@ -432,7 +432,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          if (_context?.shift != null)
+                          if (_context?.shift != null && _context!.shift!.startTime.length >= 5 && _context!.shift!.endTime.length >= 5)
                             Row(
                               children: [
                                 Container(
@@ -442,7 +442,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    '${_context!.shift.name} (${_context!.shift.startTime.substring(0, 5)} - ${_context!.shift.endTime.substring(0, 5)})',
+                                    '${_context!.shift!.name.isNotEmpty ? '${_context!.shift!.name} ' : ''}(${_context!.shift!.startTime.substring(0, 5)} - ${_context!.shift!.endTime.substring(0, 5)})',
                                     style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                                   ),
                                 ),

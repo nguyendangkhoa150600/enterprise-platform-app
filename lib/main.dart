@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/i18n/app_i18n.dart';
+import 'core/permissions/hrm_permissions.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'providers/auth_provider.dart';
@@ -19,6 +20,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AnalysisProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider<AppI18n>.value(value: AppI18n.instance),
+        ChangeNotifierProvider<HrmCapabilities>.value(value: HrmCapabilities.instance),
       ],
       child: const MyApp(),
     ),

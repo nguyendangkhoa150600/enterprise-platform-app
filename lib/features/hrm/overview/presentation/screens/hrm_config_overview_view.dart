@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/i18n/app_i18n.dart';
 import '../widgets/config_category_section.dart';
+import 'package:provider/provider.dart';
+import '../../../../../core/permissions/hrm_permissions.dart';
 
 /// HRM Configuration Overview Screen (Trung tâm cấu hình HRM).
 /// Displays 6 categorized groups with 14 configuration items matching Web 1:1.
@@ -32,6 +34,7 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
   @override
   Widget build(BuildContext context) {
     final q = _searchQuery.trim().toLowerCase();
+    final caps = context.watch<HrmCapabilities>();
 
     // 1. Leave Category Items
     final allLeaveItems = [
@@ -157,6 +160,9 @@ class _HrmConfigOverviewViewState extends State<HrmConfigOverviewView> {
 
     // Search Filtering
     bool matchesQuery(Map<String, dynamic> it) {
+      // Same visibility rule as the web settings tabs.
+      final tab = hrmConfigKeyToSettingsTab[it['key']];
+      if (tab != null && !caps.tabAllowed('/settings', tab)) return false;
       if (q.isEmpty) return true;
       return (it['title'] as String).toLowerCase().contains(q) ||
           (it['desc'] as String).toLowerCase().contains(q);

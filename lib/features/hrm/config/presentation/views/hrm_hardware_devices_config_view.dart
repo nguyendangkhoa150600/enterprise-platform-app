@@ -24,32 +24,7 @@ class HrmHardwareDevicesConfigView extends StatelessWidget {
             'status': d.status,
             'type': d.type,
           }).toList()
-        : [
-            {
-              'name': 'Hikvision FaceID DS-K1T671MF',
-              'location': 'hrm_config.hardware.sample.loc1'.tr(),
-              'ip': '192.168.1.201 : 8000',
-              'sync': 'hrm_config.hardware.sample.sync1'.tr(),
-              'status': 'ONLINE',
-              'type': 'FaceID AI',
-            },
-            {
-              'name': 'hrm_config.hardware.sample.name2'.tr(),
-              'location': 'hrm_config.hardware.sample.loc2'.tr(),
-              'ip': '192.168.1.202 : 4370',
-              'sync': 'hrm_config.hardware.sample.sync2'.tr(),
-              'status': 'ONLINE',
-              'type': 'hrm_config.hardware.sample.type2'.tr(),
-            },
-            {
-              'name': 'Mobile App SVN DTS (GPS & Wi-Fi)',
-              'location': 'hrm_config.hardware.sample.loc3'.tr(),
-              'ip': 'Cloud sync / WebSocket',
-              'sync': 'hrm_config.hardware.sample.sync3'.tr(),
-              'status': 'ONLINE',
-              'type': 'Mobile App',
-            },
-          ];
+        : <Map<String, dynamic>>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

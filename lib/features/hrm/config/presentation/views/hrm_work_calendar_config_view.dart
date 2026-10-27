@@ -31,29 +31,7 @@ class _HrmWorkCalendarConfigViewState extends State<HrmWorkCalendarConfigView> {
   Widget build(BuildContext context) {
     final allItems = widget.calendarExceptions.isNotEmpty
         ? widget.calendarExceptions
-        : [
-            {
-              'id': '1',
-              'date': '31/12/2026',
-              'name': 'hrm_config.calendar.sample.year_end'.tr(),
-              'type': 'OFF',
-              'paid': false,
-            },
-            {
-              'id': '2',
-              'date': '05/09/2026',
-              'name': 'hrm_config.calendar.sample.makeup'.tr(),
-              'type': 'WORK',
-              'paid': true,
-            },
-            {
-              'id': '3',
-              'date': '02/09/2026',
-              'name': 'hrm_config.calendar.sample.national_day'.tr(),
-              'type': 'HOLIDAY',
-              'paid': true,
-            },
-          ];
+        : <Map<String, dynamic>>[];
 
     final filtered = allItems.where((item) {
       if (_typeFilter != 'ALL') {
