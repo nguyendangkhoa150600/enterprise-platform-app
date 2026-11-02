@@ -981,8 +981,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             MaterialPageRoute(
                               builder: (_) => OrgChartWorkspaceScreen(
                                 snapshot: snapshot.data!,
-                                treeName: 'users.org_tree_name'.tr(),
-                                treeCode: 'SAVINA-MAIN',
                                 onDataChanged: _loadUsers,
                               ),
                             ),

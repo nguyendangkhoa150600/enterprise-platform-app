@@ -104,8 +104,11 @@ class _WorkspaceMyTasksViewState extends State<WorkspaceMyTasksView> {
         ),
         const SizedBox(height: 14),
 
-        // 2. Heading & Stats Badges (Matching Web: 9 việc đang mở · Đã xong tuần này 0)
-        Row(
+        // 2. Heading & Stats Badges (Wrap for responsive small screens)
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
           children: [
             const Text(
               'Công việc của tôi',
@@ -115,7 +118,6 @@ class _WorkspaceMyTasksViewState extends State<WorkspaceMyTasksView> {
                 color: Color(0xFF0F172A),
               ),
             ),
-            const SizedBox(width: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -132,7 +134,6 @@ class _WorkspaceMyTasksViewState extends State<WorkspaceMyTasksView> {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -232,45 +233,27 @@ class _WorkspaceMyTasksViewState extends State<WorkspaceMyTasksView> {
         ),
         const SizedBox(height: 14),
 
-        // 5. Table Header Columns matching Web: CÔNG VIỆC | DỰ ÁN | ƯU TIÊN | TRẠNG THÁI | HẠN | TIẾN ĐỘ
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
+        // 5. Section Header Bar (Mobile-friendly)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
           child: Row(
-            children: const [
-              Expanded(
-                flex: 7,
-                child: Text(
-                  'CÔNG VIỆC / DỰ ÁN',
-                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5),
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'DANH SÁCH DỰ ÁN & CÔNG VIỆC',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 0.5,
                 ),
               ),
-              Expanded(
-                flex: 4,
-                child: Text(
-                  'ƯU TIÊN',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5),
-                ),
-              ),
-              Expanded(
-                flex: 4,
-                child: Text(
-                  'TRẠNG THÁI',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5),
-                ),
-              ),
-              Expanded(
-                flex: 5,
-                child: Text(
-                  'HẠN / TIẾN ĐỘ',
-                  textAlign: TextAlign.end,
-                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5),
+              Text(
+                '${filteredProjects.length} dự án',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF94A3B8),
                 ),
               ),
             ],
@@ -657,151 +640,137 @@ class _WorkspaceMyTasksViewState extends State<WorkspaceMyTasksView> {
     return InkWell(
       onTap: () => widget.onTaskTap?.call(task),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Column 1: Task Code & Title
-            Expanded(
-              flex: 7,
-              child: Row(
-                children: [
-                  const Icon(Icons.subdirectory_arrow_right_rounded, size: 14, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      displayTitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
-                        height: 1.25,
-                      ),
+            // Dòng 1: Tiêu đề công việc full-width (đọc trọn vẹn, không bị ép ngang)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(Icons.subdirectory_arrow_right_rounded, size: 15, color: Color(0xFF94A3B8)),
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    displayTitle,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0F172A),
+                      height: 1.3,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
+            const SizedBox(height: 7),
 
-            // Column 2: Priority Dropdown Pill
-            Expanded(
-              flex: 4,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
-                  decoration: BoxDecoration(
-                    color: priorityBg,
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(color: priorityBorder),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
+            // Dòng 2: Hàng chip thông tin Wrap() tự co giãn trên mọi màn hình
+            Padding(
+              padding: const EdgeInsets.only(left: 20),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 5,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // 1. Chip Ưu tiên
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: priorityBg,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: priorityBorder),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
                           priorityText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 9.5,
+                            fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: priorityColor,
                           ),
                         ),
-                      ),
-                      const Icon(Icons.arrow_drop_down, size: 12, color: Color(0xFF94A3B8)),
-                    ],
+                        const SizedBox(width: 2),
+                        const Icon(Icons.arrow_drop_down, size: 13, color: Color(0xFF94A3B8)),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
 
-            // Column 3: Status Dropdown Pill
-            Expanded(
-              flex: 4,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
-                  decoration: BoxDecoration(
-                    color: statusBg,
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(color: statusBorder),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
+                  // 2. Chip Trạng thái (hiển thị trọn vẹn tên trạng thái)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: statusBg,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: statusBorder),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
                           statusText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 9.5,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: statusColor,
                           ),
                         ),
-                      ),
-                      const Icon(Icons.arrow_drop_down, size: 12, color: Color(0xFF94A3B8)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-
-            // Column 4: Due Date / Progress
-            Expanded(
-              flex: 5,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: isOverdue ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: isOverdue ? const Color(0xFFFECACA) : const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 9.5,
-                            color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            dueText,
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                              color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFF334155),
-                            ),
-                          ),
-                        ],
-                      ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.arrow_drop_down, size: 13, color: Color(0xFF94A3B8)),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
+
+                  // 3. Chip Hạn chót
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: isOverdue ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: isOverdue ? const Color(0xFFFECACA) : const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 10,
+                          color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          dueText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFF334155),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 4. Chip Tiến độ %
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 28,
+                          width: 24,
                           height: 3.5,
                           decoration: BoxDecoration(
                             color: const Color(0xFFE2E8F0),

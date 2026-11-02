@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/platform_models.dart';
+import '../models/hrm_models.dart';
+import '../services/hrm_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
 import '../services/module_business_service.dart';
@@ -48,9 +50,12 @@ class _HomeScreenState extends State<HomeScreen> {
   OrganizationSnapshot? _orgSnapshot;
   bool _isLoadingData = false;
   HomeModuleStats? _moduleStats;
+  List<HrmRequestItem> _pendingHrmRequests = [];
   final ModuleBusinessService _businessService = ModuleBusinessService();
+  final HrmService _hrmService = HrmService();
 
   final ScrollController _attentionScrollController = ScrollController();
+  final ScrollController _requestsScrollController = ScrollController();
   final ScrollController _homeOrgScrollController = ScrollController();
 
   @override
@@ -62,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _attentionScrollController.dispose();
+    _requestsScrollController.dispose();
     _homeOrgScrollController.dispose();
     super.dispose();
   }
@@ -80,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _platformService.getOrganizationSnapshot(),
       HomeModuleStats.load(_businessService),
       HrmCapabilities.instance.load(force: true),
+      _hrmService.getRequests(status: 'pending').catchError((_) => <HrmRequestItem>[]),
     ]);
 
     if (mounted) {
@@ -88,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _modules = results[1] as List<ModuleCatalogItem>;
         _orgSnapshot = results[2] as OrganizationSnapshot;
         _moduleStats = results[3] as HomeModuleStats;
+        _pendingHrmRequests = (results[5] as List<HrmRequestItem>?) ?? [];
         _isLoadingData = false;
       });
     }
@@ -198,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -290,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           border: Border.all(color: Colors.white, width: 3.5),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2563EB).withOpacity(0.35),
+                              color: const Color(0xFF2563EB).withValues(alpha: 0.35),
                               blurRadius: 12,
                               offset: const Offset(0, 5),
                             ),
@@ -387,10 +395,13 @@ class _HomeScreenState extends State<HomeScreen> {
       orgSnapshot: _orgSnapshot,
       isLoadingData: _isLoadingData,
       moduleStats: _moduleStats,
+      pendingRequests: _pendingHrmRequests,
       attentionScrollController: _attentionScrollController,
+      requestsScrollController: _requestsScrollController,
       homeOrgScrollController: _homeOrgScrollController,
       onOpenModule: _openModule,
       onNavigateTab: (idx) => setState(() => _mobileNavIndex = idx),
+      onRefreshRequests: _loadAllPlatformData,
     );
   }
 
@@ -865,7 +876,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         selected: isActive,
-        selectedTileColor: Colors.white.withOpacity(0.08),
+        selectedTileColor: Colors.white.withValues(alpha: 0.08),
         onTap: () => setState(() => _desktopTab = title),
       ),
     );

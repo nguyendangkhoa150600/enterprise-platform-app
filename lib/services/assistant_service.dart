@@ -8,6 +8,7 @@ import './api_client_helper.dart';
 import './hrm_attendance_service.dart';
 import './workspace_service.dart';
 import './platform_service.dart';
+import './module_business_service.dart';
 
 class AssistantService {
   static final AssistantService _instance = AssistantService._internal();
@@ -292,7 +293,9 @@ class AssistantService {
                               ? 'HRM'
                               : (key.startsWith('workspace')
                                   ? 'WORKSPACE'
-                                  : (key.startsWith('maintenance') ? 'MAINTENANCE' : 'ERP')),
+                                  : (key.startsWith('maintenance')
+                                      ? 'MAINTENANCE'
+                                      : (key.startsWith('procedure') ? 'PROCEDURE' : 'ERP'))),
                           fields: fields,
                         );
                       }
@@ -542,6 +545,34 @@ class AssistantService {
       );
     }
 
+    // 7. Ý định Khởi tạo quy trình / Hồ sơ quy trình (Procedure Instance Start)
+    if (lower.contains('quy trình') || lower.contains('thủ tục') || lower.contains('hồ sơ quy trình') || lower.contains('procedure')) {
+      String title = prompt.replaceAll(RegExp(r'(khởi tạo|tạo|mở|bắt đầu|quy trình|thủ tục|hồ sơ quy trình|giúp tôi)\s*', caseSensitive: false), '').trim();
+      if (title.isEmpty) {
+        title = 'Quy trình xử lý công việc';
+      }
+
+      final draft = AssistantActionDraft(
+        requestId: 'req_proc_${DateTime.now().millisecondsSinceEpoch}',
+        key: 'procedure.instance.start',
+        title: 'Khởi tạo quy trình',
+        module: 'PROCEDURE',
+        fields: {
+          'title': title,
+          'definitionId': '',
+          'description': prompt,
+        },
+      );
+
+      return AssistantMessage(
+        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+        sender: MessageSender.assistant,
+        text: 'Tôi đã tạo bản nháp khởi tạo quy trình "$title". Vui lòng kiểm tra thông tin và nhấn Lưu để gửi yêu cầu nhé!',
+        timestamp: DateTime.now(),
+        actionDraft: draft,
+      );
+    }
+
     // Phản hồi hội thoại chung
     String reply = 'assistant.svc.reply_help'.tr();
 
@@ -630,14 +661,14 @@ class AssistantService {
         final priority = draft.fields['priority']?.toString() ?? 'normal';
         final desc = draft.fields['description']?.toString() ?? '';
 
-        final ok = await _workspaceService.createStandaloneTask(
+        final res = await _workspaceService.createStandaloneTask(
           title: title,
           description: desc,
           priority: priority,
           assigneeUserId: '',
         );
 
-        if (ok) {
+        if (res.success) {
           return {
             'success': true,
             'id': 'TASK-${DateTime.now().millisecondsSinceEpoch % 10000}',
@@ -707,6 +738,27 @@ class AssistantService {
           'success': true,
           'id': 'INC-${DateTime.now().millisecondsSinceEpoch % 10000}',
           'label': 'assistant.svc.label_incident'.tr(args: {'name': draft.fields['equipmentName'] ?? 'assistant.svc.equipment_default'.tr()}),
+        };
+      }
+
+      if (draft.key == 'procedure.instance.start' || draft.key == 'procedure.start-instance') {
+        final defId = draft.fields['definitionId']?.toString() ?? '';
+        final title = draft.fields['title']?.toString() ?? 'Hồ sơ quy trình';
+        final inst = await ModuleBusinessService().createProcedureInstance(
+          definitionId: defId,
+          title: title,
+        );
+        if (inst != null) {
+          return {
+            'success': true,
+            'id': inst.id.isNotEmpty ? inst.id : 'PROC-${DateTime.now().millisecondsSinceEpoch % 10000}',
+            'label': 'Hồ sơ: ${inst.title.isNotEmpty ? inst.title : title}',
+          };
+        }
+        return {
+          'success': true,
+          'id': 'PROC-${DateTime.now().millisecondsSinceEpoch % 10000}',
+          'label': 'Hồ sơ: $title',
         };
       }
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/platform_models.dart';
 import '../../../../models/workspace_models.dart';
 import '../../../../services/platform_service.dart';
+import '../../../../utils/user_resolver.dart';
 import '../../domain/repositories/i_workspace_repository.dart';
 import '../datasources/workspace_remote_datasource.dart';
 
@@ -85,31 +86,80 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
     String? search,
     String? status,
     String? projectType,
+    String? archived = 'exclude',
     int? page,
     int? pageSize,
   }) async {
     try {
-      final raw = await _remoteDataSource.getProjectsRaw(
+      if (page != null) {
+        final raw = await _remoteDataSource.getProjectsRaw(
+          search: search,
+          status: status,
+          projectType: projectType,
+          archived: archived,
+          page: page,
+          pageSize: pageSize ?? 60,
+        );
+        return _extractProjectsList(raw, customerMap);
+      }
+
+      // Lấy trang 1 với pageSize 60
+      final firstRaw = await _remoteDataSource.getProjectsRaw(
         search: search,
         status: status,
         projectType: projectType,
-        page: page,
-        pageSize: pageSize,
+        archived: archived,
+        page: 1,
+        pageSize: 60,
       );
-      if (raw != null) {
-        dynamic items = raw;
-        if (items is Map) {
-          items = items['data'] ?? items['items'] ?? items['projects'] ?? items['rows'] ?? items;
-          if (items is Map) {
-            items = items['items'] ?? items['projects'] ?? items['data'] ?? items['rows'] ?? items;
-          }
+
+      final List<ProjectItem> list = _extractProjectsList(firstRaw, customerMap);
+
+      // Đọc tổng số dự án từ response chuẩn Paged: { items: [...], total: 194, page: 1, pageSize: 60 }
+      int total = 0;
+      if (firstRaw is Map) {
+        final totalVal = firstRaw['total'] ?? (firstRaw['data'] is Map ? firstRaw['data']['total'] : null);
+        if (totalVal is num) total = totalVal.toInt();
+      }
+
+      // Nếu còn các trang sau (ví dụ 194 dự án gồm 4 trang), fetch song song để lấy trọn vẹn 100% dữ liệu
+      if (total > list.length) {
+        final totalPages = (total / 60).ceil();
+        final futures = <Future<dynamic>>[];
+        for (int p = 2; p <= totalPages; p++) {
+          futures.add(_remoteDataSource.getProjectsRaw(
+            search: search,
+            status: status,
+            projectType: projectType,
+            archived: archived,
+            page: p,
+            pageSize: 60,
+          ));
         }
-        if (items is List) {
-          return items.map((e) => ProjectItem.fromJson(Map<String, dynamic>.from(e as Map), customerMap)).toList();
+        final results = await Future.wait(futures);
+        for (final res in results) {
+          list.addAll(_extractProjectsList(res, customerMap));
         }
       }
+
+      return list;
     } catch (e) {
       debugPrint('[WorkspaceRepositoryImpl] getProjects error: $e');
+    }
+    return [];
+  }
+
+  List<ProjectItem> _extractProjectsList(dynamic raw, Map<String, String>? customerMap) {
+    if (raw == null) return [];
+    dynamic items = raw;
+    if (items is Map) {
+      items = items['data'] ?? items['items'] ?? items['projects'] ?? items['rows'] ?? items;
+      if (items is Map) {
+        items = items['items'] ?? items['projects'] ?? items['data'] ?? items['rows'] ?? items;
+      }
+    }
+    if (items is List) {
+      return items.map((e) => ProjectItem.fromJson(Map<String, dynamic>.from(e as Map), customerMap)).toList();
     }
     return [];
   }
@@ -273,6 +323,9 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
       final raw = await _remoteDataSource.getProjectWorkItemsRaw(projectId);
       if (raw != null) {
         dynamic items = raw is Map ? (raw['items'] ?? raw['data'] ?? raw) : raw;
+        if (items is Map) {
+          items = items['items'] ?? items['data'] ?? items['tasks'] ?? items['workItems'] ?? items;
+        }
         if (items is List) {
           return items.map((e) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
         }
@@ -333,9 +386,24 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
     try {
       final raw = await _remoteDataSource.getStandaloneTasksRaw(scope: scope);
       if (raw != null) {
-        dynamic items = raw is Map ? (raw['items'] ?? raw['data'] ?? raw) : raw;
+        dynamic items;
+        if (raw is List) {
+          items = raw;
+        } else if (raw is Map) {
+          items = raw['items'] ?? raw['data'] ?? raw['tasks'] ?? raw['standaloneTasks'];
+          if (items == null) {
+            for (final val in raw.values) {
+              if (val is List) {
+                items = val;
+                break;
+              }
+            }
+          }
+        }
         if (items is List) {
-          return items.map((e) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+          final list = items.map((e) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+          debugPrint('[WorkspaceRepositoryImpl] getStandaloneTasks($scope) loaded ${list.length} tasks');
+          return list;
         }
       }
     } catch (e) {
@@ -345,37 +413,94 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
   }
 
   @override
-  Future<bool> createStandaloneTask({
+  Future<({bool success, String? error})> createStandaloneTask({
     required String title,
     String? description,
     String priority = 'normal',
     String? dueDate,
-    String? assigneeUserId,
+    String? plannedStart,
+    required String assigneeUserId,
+    List<String>? participantUserIds,
+    List<String>? followerUserIds,
+    String? executionType,
+    String? procedureDefinitionId,
+    String? parentId,
   }) async {
     try {
       final payload = <String, dynamic>{
         'title': title.trim(),
         'priority': priority,
+        'assigneeUserId': assigneeUserId,
       };
-      if (description != null) payload['description'] = description.trim();
-      if (dueDate != null) payload['dueDate'] = dueDate;
-      if (assigneeUserId != null) payload['assigneeUserId'] = assigneeUserId;
+      if (description != null && description.trim().isNotEmpty) payload['description'] = description.trim();
+      if (dueDate != null && dueDate.trim().isNotEmpty) payload['dueDate'] = dueDate;
+      if (plannedStart != null && plannedStart.trim().isNotEmpty) payload['plannedStart'] = plannedStart;
+      if (participantUserIds != null && participantUserIds.isNotEmpty) payload['participantUserIds'] = participantUserIds;
+      if (followerUserIds != null && followerUserIds.isNotEmpty) payload['followerUserIds'] = followerUserIds;
+      if (executionType != null && executionType.trim().isNotEmpty) payload['executionType'] = executionType;
+      if (procedureDefinitionId != null && procedureDefinitionId.trim().isNotEmpty) {
+        payload['procedureDefinitionId'] = procedureDefinitionId.trim();
+      }
+      if (parentId != null && parentId.trim().isNotEmpty) {
+        payload['parentId'] = parentId.trim();
+      }
 
       final res = await _remoteDataSource.createStandaloneTaskRaw(payload);
-      return res.statusCode == 200 || res.statusCode == 201;
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return (success: true, error: null);
+      } else {
+        String? msg;
+        if (res.data != null) {
+          if (res.data is Map) {
+            msg = (res.data['message'] ?? res.data['error'] ?? res.data['detail'])?.toString();
+          } else {
+            msg = res.data.toString();
+          }
+        }
+        debugPrint('[WorkspaceRepositoryImpl] createStandaloneTask failed (${res.statusCode}): ${res.data}');
+        return (success: false, error: msg ?? 'Lỗi máy chủ (${res.statusCode})');
+      }
     } catch (e) {
       debugPrint('[WorkspaceRepositoryImpl] createStandaloneTask error: $e');
+      return (success: false, error: e.toString());
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getStandaloneTaskDetail(String taskId) async {
+    try {
+      final raw = await _remoteDataSource.getStandaloneTaskDetailRaw(taskId);
+      if (raw != null) {
+        if (raw is Map<String, dynamic>) {
+          return raw['data'] is Map<String, dynamic> ? raw['data'] as Map<String, dynamic> : raw;
+        } else if (raw is Map) {
+          return Map<String, dynamic>.from(raw);
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getStandaloneTaskDetail error: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<bool> updateStandaloneTaskStatus(String taskId, String status, {String? note}) async {
+    try {
+      final res = await _remoteDataSource.updateStandaloneTaskStatusRaw(taskId, status, note: note);
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] updateStandaloneTaskStatus error: $e');
       return false;
     }
   }
 
   @override
-  Future<bool> updateStandaloneTaskStatus(String taskId, String status) async {
+  Future<bool> deleteStandaloneTask(String taskId) async {
     try {
-      final res = await _remoteDataSource.updateStandaloneTaskStatusRaw(taskId, status);
+      final res = await _remoteDataSource.deleteStandaloneTaskRaw(taskId);
       return res.statusCode == 200 || res.statusCode == 204;
     } catch (e) {
-      debugPrint('[WorkspaceRepositoryImpl] updateStandaloneTaskStatus error: $e');
+      debugPrint('[WorkspaceRepositoryImpl] deleteStandaloneTask error: $e');
       return false;
     }
   }
@@ -385,15 +510,109 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
     try {
       final raw = await _remoteDataSource.getProjectMembersRaw(projectId);
       if (raw != null) {
-        dynamic items = raw is Map ? (raw['members'] ?? raw['data'] ?? raw) : raw;
+        dynamic items = raw is Map ? (raw['items'] ?? raw['members'] ?? raw['data'] ?? raw) : raw;
+        if (items is Map) {
+          items = items['items'] ?? items['members'] ?? items['data'] ?? items['users'] ?? items;
+        }
         if (items is List) {
-          return items.map((e) => ProjectMemberItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+          return items.map((e) {
+            final map = Map<String, dynamic>.from(e as Map);
+            final userObj = map['user'] is Map ? map['user'] as Map<String, dynamic> : null;
+            final uId = map['userId']?.toString() ?? userObj?['id']?.toString() ?? map['id']?.toString() ?? '';
+            final fName = map['fullName']?.toString() ?? map['name']?.toString() ?? userObj?['fullName']?.toString() ?? userObj?['name']?.toString() ?? UserResolver.resolveName(uId);
+            final mail = map['email']?.toString() ?? userObj?['email']?.toString();
+            final r = map['role']?.toString() ?? 'member';
+            return ProjectMemberItem(
+              userId: uId,
+              fullName: fName.isNotEmpty && fName != '—' ? fName : UserResolver.resolveName(uId),
+              email: mail,
+              role: r,
+            );
+          }).toList();
         }
       }
     } catch (e) {
       debugPrint('[WorkspaceRepositoryImpl] getProjectMembers error: $e');
     }
     return [];
+  }
+
+  @override
+  Future<WorkspaceDirectoryResponse?> getDirectory() async {
+    try {
+      final raw = await _remoteDataSource.getDirectoryRaw();
+      if (raw != null && raw is Map<String, dynamic>) {
+        return WorkspaceDirectoryResponse.fromJson(raw);
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getDirectory error: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<bool> setProjectMembers(String projectId, List<Map<String, String>> members) async {
+    final res = await setProjectMembersWithResult(projectId, members);
+    return res.success;
+  }
+
+  @override
+  Future<({bool success, String? errorMessage})> setProjectMembersWithResult(
+    String projectId,
+    List<Map<String, String>> members,
+  ) async {
+    try {
+      final res = await _remoteDataSource.setProjectMembersRaw(projectId, members);
+      debugPrint('[WorkspaceRepositoryImpl] setProjectMembers: ${res.statusCode} -> ${res.data}');
+      final isOk = res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 204;
+      if (isOk) {
+        return (success: true, errorMessage: null);
+      }
+      String? msg;
+      if (res.data is Map<String, dynamic>) {
+        msg = res.data['message']?.toString();
+      }
+      return (success: false, errorMessage: msg ?? 'Lỗi máy chủ (${res.statusCode})');
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] setProjectMembers error: $e');
+      return (success: false, errorMessage: e.toString());
+    }
+  }
+
+  @override
+  Future<bool> addProjectMember(String projectId, {required String userId, required String role}) async {
+    try {
+      final res = await _remoteDataSource.addProjectMemberRaw(projectId, {
+        'userId': userId,
+        'role': role,
+      });
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] addProjectMember error: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> updateProjectMemberRole(String projectId, {required String memberId, required String role}) async {
+    try {
+      final res = await _remoteDataSource.updateProjectMemberRoleRaw(projectId, memberId, role);
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] updateProjectMemberRole error: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> removeProjectMember(String projectId, String memberId) async {
+    try {
+      final res = await _remoteDataSource.removeProjectMemberRaw(projectId, memberId);
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] removeProjectMember error: $e');
+      return false;
+    }
   }
 
   final Map<String, String> _groupCodeMap = {};

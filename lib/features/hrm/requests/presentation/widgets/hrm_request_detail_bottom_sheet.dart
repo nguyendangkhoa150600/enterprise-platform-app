@@ -376,33 +376,63 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: SingleChildScrollView(
-          controller: _scrollCtrl,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Top Title & Close Button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Sticky Header: Drag Handle, Title & Close Button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'hrm_requests.detail_title'.tr(),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF64748B)),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'hrm_requests.detail_title'.tr(),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF64748B)),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+            ),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
-              // Top Card Banner matching Web
-              Container(
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                controller: _scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Top Card Banner matching Web
+                    Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFBEB),
@@ -653,7 +683,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _comments.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (context, index) => const SizedBox(height: 10),
                   itemBuilder: (ctx, idx) {
                     final c = _comments[idx];
                     return Row(
@@ -854,20 +884,13 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                             ? null
                             : () async {
                                 final opinion = _opinionCtrl.text.trim();
-                                if (opinion.isEmpty) {
-                                  setState(() {
-                                    _opinionError = 'hrm_requests.opinion_required'.tr();
-                                  });
-                                  _scrollToBottom();
-                                  return;
-                                }
                                 setState(() {
                                   _opinionError = null;
                                   _isActionBusy = true;
                                 });
                                 final messenger = ScaffoldMessenger.of(context);
                                 final nav = Navigator.of(context);
-                                final ok = await widget.hrmService.rejectRequest(_request.id, reason: opinion);
+                                final ok = await widget.hrmService.rejectRequest(_request.id, reason: opinion.isNotEmpty ? opinion : null);
                                 if (ok) {
                                   await widget.hrmService.postRequestComment(
                                     kind: _request.apiKind,
@@ -979,6 +1002,9 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
           ),
         ),
       ),
-    );
+    ],
+  ),
+),
+);
   }
 }

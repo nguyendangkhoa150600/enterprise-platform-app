@@ -15,6 +15,7 @@ import '../../main_analysis_screen.dart';
 import '../../role_permission_screen.dart';
 import '../../user_management_screen.dart';
 import '../../assistant_chat_screen.dart';
+import '../../enterprise_applications_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../core/permissions/hrm_permissions.dart';
 import '../../../models/platform_models.dart';
@@ -593,7 +594,12 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'icon': Icons.inventory_2_outlined,
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
-                  'onTap': () => setState(() => _selectedCategory = 'APPS'),
+                  'onTap': () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const EnterpriseApplicationsScreen(),
+                    ),
+                  ),
                 },
               ],
             ),

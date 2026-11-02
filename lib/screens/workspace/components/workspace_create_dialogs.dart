@@ -4,6 +4,7 @@ import '../../../core/i18n/app_i18n.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
 import '../../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
+import '../../../utils/app_toast.dart';
 
 void showWorkspaceCreateCustomerDialog(
   BuildContext context, {
@@ -54,7 +55,7 @@ void showWorkspaceCreateCustomerDialog(
               if (ctx.mounted) Navigator.pop(ctx);
               onCustomerCreated();
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('workspace.dialog.customer_added'.tr())));
+                AppToast.success(context, 'workspace.dialog.customer_added'.tr());
               }
             }
           },
@@ -371,9 +372,7 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
   Future<void> _submitTask() async {
     final title = _taskTitleCtrl.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên công việc')),
-      );
+      AppToast.error(context, 'Vui lòng nhập tên công việc');
       return;
     }
 
@@ -401,15 +400,11 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
       if (mounted) Navigator.pop(context);
       widget.onCreated();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tạo công việc thành công!')),
-        );
+        AppToast.success(context, 'Tạo công việc thành công!');
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể tạo công việc, vui lòng thử lại!')),
-        );
+        AppToast.error(context, 'Không thể tạo công việc, vui lòng thử lại!');
       }
     }
   }
@@ -417,9 +412,7 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
   Future<void> _submitProject() async {
     final name = _projectNameCtrl.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên dự án')),
-      );
+      AppToast.error(context, 'Vui lòng nhập tên dự án');
       return;
     }
 
@@ -451,15 +444,11 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
       if (mounted) Navigator.pop(context);
       widget.onCreated();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tạo dự án thành công!')),
-        );
+        AppToast.success(context, 'Tạo dự án thành công!');
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể tạo dự án, vui lòng thử lại!')),
-        );
+        AppToast.error(context, 'Không thể tạo dự án, vui lòng thử lại!');
       }
     }
   }
@@ -598,9 +587,7 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
                       TextButton.icon(
                         onPressed: () {
                           _taskTitleCtrl.text = '';
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Đã sẵn sàng thêm công việc tiếp theo')),
-                          );
+                          AppToast.show(context, 'Đã sẵn sàng thêm công việc tiếp theo');
                         },
                         icon: const Icon(Icons.add, size: 16, color: Color(0xFF334155)),
                         label: const Text(

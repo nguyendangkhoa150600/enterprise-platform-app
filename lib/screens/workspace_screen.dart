@@ -10,6 +10,8 @@ import 'workspace/components/workspace_create_dialogs.dart';
 import 'workspace/components/workspace_documents_reports_view.dart';
 import 'workspace/components/workspace_my_tasks_view.dart';
 import 'workspace/components/workspace_sheets.dart';
+import 'workspace/components/workspace_standalone_task_dialog.dart';
+import 'workspace/components/workspace_standalone_task_detail_sheet.dart';
 
 /// Màn hình chính phân hệ Workspace
 /// Refactor theo Senior Flutter Developer Standard: SRP, Clean Architecture, < 250 lines
@@ -114,13 +116,27 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   Widget? _buildFab(int activeTab) {
-    if (activeTab == 0 || activeTab == 1) {
+    if (activeTab == 0) {
       return FloatingActionButton.extended(
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add, size: 20),
-        label: Text('workspace.action.assign_task'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        label: Text(
+          'workspace.action.assign_task'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
         onPressed: _showCreateTaskDialog,
+      );
+    } else if (activeTab == 1) {
+      return FloatingActionButton.extended(
+        backgroundColor: const Color(0xFFEAB308),
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text(
+          'Giao việc',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        onPressed: _showAssignStandaloneTaskModal,
       );
     } else if (activeTab == 2) {
       return FloatingActionButton.extended(
@@ -146,7 +162,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     switch (activeTab) {
       case 0:
         return WorkspaceMyTasksView(
-          projects: _controller.projects,
+          projects: _controller.myWorkProjects.isNotEmpty ? _controller.myWorkProjects : _controller.projects,
           tasks: _controller.tasks,
           onTaskTap: _showTaskStatusDialog,
           onProjectTap: _showProjectDetailSheet,
@@ -208,11 +224,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   void _showTaskStatusDialog(StandaloneTaskItem task) {
-    showWorkspaceTaskStatusSheet(
+    showWorkspaceStandaloneTaskDetailSheet(
       context,
       task: task,
       service: _service,
-      onStatusChanged: _controller.reloadTab,
+      onRefresh: _controller.reloadTab,
     );
   }
 
@@ -232,6 +248,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       customers: _controller.customers,
       onCreated: _controller.reloadTab,
       initialTab: 0,
+    );
+  }
+
+  void _showAssignStandaloneTaskModal() {
+    showWorkspaceAssignStandaloneTaskModal(
+      context,
+      service: _service,
+      onCreated: () {
+        _controller.setTaskScope('assigned_by_me');
+      },
     );
   }
 

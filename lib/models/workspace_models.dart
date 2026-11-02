@@ -1,3 +1,4 @@
+import '../utils/user_resolver.dart';
 import '../core/i18n/app_i18n.dart';
 // Workspace Models: Customers, Contracts, Projects, Roles, and Standalone Tasks (1:1 Web Parity)
 
@@ -180,8 +181,14 @@ class ProjectItem {
   String get statusLabel {
     switch (status) {
       case 'active':
+      case 'deploying':
+      case 'in_progress':
         return 'models.workspace.deploying'.tr();
+      case 'paused':
+      case 'blocked':
+        return 'Tạm dừng';
       case 'completed':
+      case 'done':
         return 'models.workspace.completed'.tr();
       case 'cancelled':
         return 'models.workspace.cancelled'.tr();
@@ -225,14 +232,18 @@ class ProjectMemberItem {
   }
 
   String get roleLabel {
-    switch (role) {
+    switch (role.toLowerCase()) {
+      case 'owner':
+        return 'Chủ nhiệm';
       case 'manager':
-        return 'models.workspace.project_manager'.tr();
+      case 'pm':
+        return 'Quản lý';
+      case 'member':
       case 'technician':
-        return 'models.maintenance.technician'.tr();
+        return 'Thành viên';
       case 'viewer':
       default:
-        return 'models.workspace.viewer'.tr();
+        return 'Người xem';
     }
   }
 }
@@ -242,16 +253,23 @@ class StandaloneTaskItem {
   final String code;
   final String title;
   final String? description;
-  final String status; // 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled'
+  final String status; // 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled' | 'blocked'
   final String priority; // 'urgent' | 'high' | 'normal' | 'low'
   final String assigneeUserId;
   final String? assigneeName;
+  final String createdBy;
+  final String? creatorName;
   final double progressPercent;
+  final DateTime? plannedStart;
   final DateTime? dueDate;
+  final DateTime? createdAt;
+  final List<String> participantUserIds;
+  final List<String> followerUserIds;
   final String myRole; // 'assigner' | 'assignee' | 'participant' | 'follower'
   final int childCount;
   final int openChildCount;
   final bool isReversed;
+  final String? reversalReason;
 
   const StandaloneTaskItem({
     required this.id,
@@ -262,12 +280,19 @@ class StandaloneTaskItem {
     required this.priority,
     required this.assigneeUserId,
     this.assigneeName,
+    this.createdBy = '',
+    this.creatorName,
     this.progressPercent = 0.0,
+    this.plannedStart,
     this.dueDate,
+    this.createdAt,
+    this.participantUserIds = const [],
+    this.followerUserIds = const [],
     this.myRole = 'assignee',
     this.childCount = 0,
     this.openChildCount = 0,
     this.isReversed = false,
+    this.reversalReason,
   });
 
   factory StandaloneTaskItem.fromJson(Map<String, dynamic> json) {
@@ -282,6 +307,53 @@ class StandaloneTaskItem {
       }
     }
 
+    DateTime? parsedStart;
+    for (final key in ['plannedStart', 'startDate', 'start_date']) {
+      if (task[key] != null) {
+        parsedStart = DateTime.tryParse(task[key].toString());
+        if (parsedStart != null) break;
+      }
+    }
+
+    DateTime? parsedCreated;
+    if (task['createdAt'] != null) {
+      parsedCreated = DateTime.tryParse(task['createdAt'].toString());
+    }
+
+    final assigneeId = task['assigneeUserId']?.toString() ?? '';
+    final creatorId = task['createdBy']?.toString() ?? '';
+
+    final pUsers = (task['participantUserIds'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    final fUsers = (task['followerUserIds'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+    String? resolvedAssignee = task['assigneeName']?.toString() ??
+        task['assignee']?['name']?.toString() ??
+        task['assignee']?['fullName']?.toString() ??
+        task['assigneeUserName']?.toString();
+    if (resolvedAssignee != null && (UserResolver.isUuid(resolvedAssignee) || resolvedAssignee == assigneeId)) {
+      resolvedAssignee = null;
+    }
+    if (resolvedAssignee == null && assigneeId.isNotEmpty) {
+      final name = UserResolver.resolveName(assigneeId);
+      if (name != '—' && !UserResolver.isUuid(name)) {
+        resolvedAssignee = name;
+      }
+    }
+
+    String? resolvedCreator = task['creatorName']?.toString() ??
+        task['creator']?['name']?.toString() ??
+        task['creator']?['fullName']?.toString() ??
+        task['creatorUserName']?.toString();
+    if (resolvedCreator != null && (UserResolver.isUuid(resolvedCreator) || resolvedCreator == creatorId)) {
+      resolvedCreator = null;
+    }
+    if (resolvedCreator == null && creatorId.isNotEmpty) {
+      final name = UserResolver.resolveName(creatorId);
+      if (name != '—' && !UserResolver.isUuid(name)) {
+        resolvedCreator = name;
+      }
+    }
+
     return StandaloneTaskItem(
       id: task['id']?.toString() ?? '',
       code: task['code']?.toString() ?? '',
@@ -289,15 +361,37 @@ class StandaloneTaskItem {
       description: task['description']?.toString(),
       status: task['status']?.toString() ?? 'todo',
       priority: task['priority']?.toString() ?? 'normal',
-      assigneeUserId: task['assigneeUserId']?.toString() ?? '',
-      assigneeName: task['assigneeName']?.toString() ?? task['assignee']?['name']?.toString(),
+      assigneeUserId: assigneeId,
+      assigneeName: resolvedAssignee,
+      createdBy: creatorId,
+      creatorName: resolvedCreator,
       progressPercent: task['progressPercent'] != null ? (double.tryParse(task['progressPercent'].toString()) ?? 0.0) : 0.0,
+      plannedStart: parsedStart,
       dueDate: parsedDue,
+      createdAt: parsedCreated,
+      participantUserIds: pUsers,
+      followerUserIds: fUsers,
       myRole: role,
       childCount: CustomerItem.parseInt(task['childCount']),
       openChildCount: CustomerItem.parseInt(task['openChildCount']),
       isReversed: task['reversal'] != null,
+      reversalReason: task['reversal'] is Map ? task['reversal']['reason']?.toString() : null,
     );
+  }
+
+  String get myRoleLabel {
+    switch (myRole) {
+      case 'assigner':
+        return 'Người giao';
+      case 'assignee':
+        return 'Người phụ trách';
+      case 'participant':
+        return 'Người cùng thực hiện';
+      case 'follower':
+        return 'Người theo dõi';
+      default:
+        return 'Người giao';
+    }
   }
 
   String get statusLabel {
@@ -417,3 +511,78 @@ class WorkspaceDocumentItem {
     return '$b B';
   }
 }
+
+/// Người trong danh bạ Workspace: GET /api/workspace/v1/directory
+class WorkspaceDirectoryPerson {
+  final String userId;
+  final String displayName;
+  final String? email;
+  final List<String> unitNames;
+  final String? positionName;
+
+  const WorkspaceDirectoryPerson({
+    required this.userId,
+    required this.displayName,
+    this.email,
+    this.unitNames = const [],
+    this.positionName,
+  });
+
+  factory WorkspaceDirectoryPerson.fromJson(Map<String, dynamic> json) {
+    final units = <String>[];
+    if (json['unitNames'] is List) {
+      for (final u in json['unitNames']) {
+        if (u != null && u.toString().isNotEmpty) {
+          units.add(u.toString());
+        }
+      }
+    }
+    return WorkspaceDirectoryPerson(
+      userId: json['userId']?.toString() ?? '',
+      displayName: json['displayName']?.toString() ?? '',
+      email: json['email']?.toString(),
+      unitNames: units,
+      positionName: json['positionName']?.toString(),
+    );
+  }
+
+  String get subtitle {
+    final parts = <String>[displayName];
+    if (positionName != null && positionName!.trim().isNotEmpty) {
+      parts.add(positionName!.trim());
+    }
+    if (unitNames.isNotEmpty) {
+      parts.add(unitNames.join(', '));
+    } else if (email != null && email!.trim().isNotEmpty) {
+      parts.add(email!.trim());
+    }
+    return parts.join(' · ');
+  }
+}
+
+class WorkspaceDirectoryResponse {
+  final List<WorkspaceDirectoryPerson> people;
+  final bool degraded;
+
+  const WorkspaceDirectoryResponse({
+    this.people = const [],
+    this.degraded = false,
+  });
+
+  factory WorkspaceDirectoryResponse.fromJson(Map<String, dynamic> json) {
+    final rawPeople = json['people'];
+    final list = <WorkspaceDirectoryPerson>[];
+    if (rawPeople is List) {
+      for (final p in rawPeople) {
+        if (p is Map<String, dynamic>) {
+          list.add(WorkspaceDirectoryPerson.fromJson(p));
+        }
+      }
+    }
+    return WorkspaceDirectoryResponse(
+      people: list,
+      degraded: json['degraded'] == true,
+    );
+  }
+}
+

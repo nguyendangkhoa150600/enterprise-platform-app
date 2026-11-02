@@ -5,11 +5,29 @@ import '../services/hrm_service.dart';
 
 class UserResolver {
   static final Map<String, String> _userDisplayNames = {};
+  static final Map<String, String> _rawNames = {};
+  static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
+
   static bool _hasLoaded = false;
+  static bool get hasLoaded => _hasLoaded;
   static Future<void>? _loadingFuture;
 
+  /// Register user into cache immediately
+  static void registerUser(String? id, String? fullName, {String? email, String? username}) {
+    if (id == null || id.trim().isEmpty) return;
+    final cleanId = id.trim();
+    if (fullName != null && fullName.trim().isNotEmpty && fullName != 'Người dùng') {
+      _rawNames[cleanId] = fullName.trim();
+    }
+    final label = _formatUserLabel(fullName, email, username);
+    if (label != null) {
+      _userDisplayNames[cleanId] = label;
+    }
+    changeNotifier.value++;
+  }
+
   /// Returns the human-readable display name or account for a given userId / UUID.
-  /// If not resolved yet, it triggers a background fetch and returns a clean label.
+  /// If not resolved yet, it triggers a background fetch and returns fallback (never returns raw UUID).
   static String resolve(String? rawId, {String fallback = '—'}) {
     if (rawId == null || rawId.trim().isEmpty) return fallback;
     final clean = rawId.trim();
@@ -22,32 +40,66 @@ class UserResolver {
     if (_userDisplayNames.containsKey(clean)) {
       return _userDisplayNames[clean]!;
     }
+    if (_rawNames.containsKey(clean)) {
+      return _rawNames[clean]!;
+    }
 
     // 3. Check AuthProvider (current user)
     final auth = AuthProvider.instance;
     if (auth != null) {
       if (auth.userId == clean) {
-        final label = _formatUserLabel(auth.fullName, auth.email, null) ?? clean;
+        final label = _formatUserLabel(auth.fullName, auth.email, null) ?? auth.fullName ?? clean;
         _userDisplayNames[clean] = label;
+        if (auth.fullName != null && auth.fullName!.isNotEmpty) {
+          _rawNames[clean] = auth.fullName!;
+        }
         return label;
       }
     }
 
     // 4. If it's a UUID, trigger ensureLoaded()
-    if (_isUuid(clean)) {
+    if (isUuid(clean)) {
       ensureLoaded();
-    }
-
-    // 5. If we still don't have this UUID, but current user is logged in and no other users exist yet,
-    // and this decision was just created in this session, check if we can fall back to current user's name
-    if (_userDisplayNames.containsKey(clean)) {
-      return _userDisplayNames[clean]!;
+      return fallback;
     }
 
     return clean;
   }
 
-  static bool _isUuid(String s) {
+  /// Returns only the full name without email or parenthetical details
+  static String resolveName(String? rawId, {String fallback = '—'}) {
+    if (rawId == null || rawId.trim().isEmpty) return fallback;
+    final clean = rawId.trim();
+
+    // 1. If it already looks like a name with spaces and no hyphens, return as-is
+    if (!clean.contains('-') && clean.contains(' ')) return clean;
+
+    // 2. Check rawNames first
+    if (_rawNames.containsKey(clean)) {
+      return _rawNames[clean]!;
+    }
+
+    // 3. Check userDisplayNames
+    if (_userDisplayNames.containsKey(clean)) {
+      final res = _userDisplayNames[clean]!;
+      final paren = res.indexOf(' (');
+      if (paren > 0) return res.substring(0, paren);
+      return res;
+    }
+
+    // 4. If it's a UUID, never return the UUID string to user! Return fallback
+    if (isUuid(clean)) {
+      ensureLoaded();
+      return fallback;
+    }
+
+    final res = resolve(rawId, fallback: fallback);
+    final paren = res.indexOf(' (');
+    if (paren > 0) return res.substring(0, paren);
+    return res;
+  }
+
+  static bool isUuid(String s) {
     return RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(s);
   }
 
@@ -81,43 +133,28 @@ class UserResolver {
       // 1. Current user
       final auth = AuthProvider.instance;
       if (auth != null && auth.userId != null && auth.userId!.isNotEmpty) {
-        final label = _formatUserLabel(auth.fullName, auth.email, null);
-        if (label != null) {
-          _userDisplayNames[auth.userId!] = label;
-        }
+        registerUser(auth.userId, auth.fullName, email: auth.email);
       }
 
       // 2. Tenant users from PlatformService
       final platformService = PlatformService();
       final tenantUsers = await platformService.getTenantUsers();
       for (final u in tenantUsers) {
-        final label = _formatUserLabel(u.fullName, u.email, u.username);
-        if (label != null) {
-          _userDisplayNames[u.id] = label;
-        }
-        // Match current user if email matches
-        if (auth != null && auth.email != null && auth.email!.isNotEmpty) {
-          if (u.email.toLowerCase() == auth.email!.toLowerCase()) {
-            if (label != null) {
-              _userDisplayNames[u.id] = label;
-            }
-          }
-        }
+        registerUser(u.id, u.fullName, email: u.email, username: u.username);
       }
 
       // 3. Employees from HrmService
-      final employees = await HrmService().getEmployees();
-      for (final e in employees) {
-        String label = e.fullName;
-        if (e.code.isNotEmpty) {
-          label = '${e.fullName} (${e.code})';
-        } else if (e.email.isNotEmpty) {
-          label = '${e.fullName} (${e.email})';
+      try {
+        final employees = await HrmService().getEmployees();
+        for (final e in employees) {
+          registerUser(e.id, e.fullName, email: e.email);
         }
-        _userDisplayNames[e.id] = label;
+      } catch (e) {
+        debugPrint('[UserResolver] Error loading employees: $e');
       }
 
       _hasLoaded = true;
+      changeNotifier.value++;
     } catch (e) {
       debugPrint('[UserResolver] Error loading users/employees: $e');
     }

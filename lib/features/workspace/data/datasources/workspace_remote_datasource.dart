@@ -16,6 +16,15 @@ class WorkspaceRemoteDataSource {
     ApiClientHelper.configureDio(_dio);
   }
 
+  // 0. Danh bạ tổ chức Workspace: GET /api/workspace/v1/directory
+  Future<dynamic> getDirectoryRaw() async {
+    final res = await _dio.get(
+      '/api/workspace/v1/directory',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
+  }
+
   // Tài liệu
   Future<dynamic> getDocumentsRaw({String? search, String? projectId}) async {
     final res = await _dio.get(
@@ -82,6 +91,7 @@ class WorkspaceRemoteDataSource {
     String? search,
     String? status,
     String? projectType,
+    String? archived = 'exclude',
     int? page,
     int? pageSize,
   }) async {
@@ -89,6 +99,7 @@ class WorkspaceRemoteDataSource {
     if (search != null && search.isNotEmpty) query['search'] = search;
     if (status != null && status != 'ALL') query['status'] = status;
     if (projectType != null && projectType != 'ALL') query['projectType'] = projectType;
+    if (archived != null && archived.isNotEmpty && archived != 'ALL') query['archived'] = archived;
     if (page != null) query['page'] = page;
     if (pageSize != null) query['pageSize'] = pageSize;
 
@@ -192,10 +203,25 @@ class WorkspaceRemoteDataSource {
     );
   }
 
-  Future<Response> updateStandaloneTaskStatusRaw(String taskId, String status) async {
+  Future<dynamic> getStandaloneTaskDetailRaw(String taskId) async {
+    final res = await _dio.get(
+      '/api/workspace/v1/standalone-tasks/$taskId',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
+  }
+
+  Future<Response> updateStandaloneTaskStatusRaw(String taskId, String status, {String? note}) async {
     return await _dio.patch(
       '/api/workspace/v1/standalone-tasks/$taskId/status',
-      data: {'status': status},
+      data: {'status': status, if (note != null && note.isNotEmpty) 'note': note},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> deleteStandaloneTaskRaw(String taskId) async {
+    return await _dio.delete(
+      '/api/workspace/v1/standalone-tasks/$taskId',
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
   }
@@ -207,6 +233,37 @@ class WorkspaceRemoteDataSource {
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
     return res.data;
+  }
+
+  Future<Response> setProjectMembersRaw(String projectId, List<Map<String, String>> members) async {
+    return await _dio.put(
+      '/api/workspace/v1/projects/$projectId/members',
+      data: {'members': members},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> addProjectMemberRaw(String projectId, Map<String, dynamic> data) async {
+    return await _dio.post(
+      '/api/workspace/v1/projects/$projectId/members',
+      data: data,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> updateProjectMemberRoleRaw(String projectId, String memberId, String role) async {
+    return await _dio.patch(
+      '/api/workspace/v1/projects/$projectId/members/$memberId',
+      data: {'role': role},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> removeProjectMemberRaw(String projectId, String memberId) async {
+    return await _dio.delete(
+      '/api/workspace/v1/projects/$projectId/members/$memberId',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
   }
 
   // 6. Nhóm dự án, Phân loại & Mã dự án

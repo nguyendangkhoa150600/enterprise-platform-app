@@ -15,6 +15,7 @@ abstract class IWorkspaceRepository {
     String? search,
     String? status,
     String? projectType,
+    String? archived,
     int? page,
     int? pageSize,
   });
@@ -71,19 +72,52 @@ abstract class IWorkspaceRepository {
   });
 
   /// Tạo việc ngoài dự án: POST /standalone-tasks
-  Future<bool> createStandaloneTask({
+  Future<({bool success, String? error})> createStandaloneTask({
     required String title,
     String? description,
     String priority = 'normal',
     String? dueDate,
-    String? assigneeUserId,
+    String? plannedStart,
+    required String assigneeUserId,
+    List<String>? participantUserIds,
+    List<String>? followerUserIds,
+    String? executionType,
+    String? procedureDefinitionId,
+    String? parentId,
   });
 
+  /// Chi tiết việc ngoài dự án: GET /standalone-tasks/{id}
+  Future<Map<String, dynamic>?> getStandaloneTaskDetail(String taskId);
+
   /// Cập nhật trạng thái việc ngoài dự án: PATCH /standalone-tasks/{id}/status
-  Future<bool> updateStandaloneTaskStatus(String taskId, String status);
+  Future<bool> updateStandaloneTaskStatus(String taskId, String status, {String? note});
+
+  /// Xoá việc ngoài dự án: DELETE /standalone-tasks/{id}
+  Future<bool> deleteStandaloneTask(String taskId);
+
+  /// Danh bạ tổ chức Workspace: GET /directory
+  Future<WorkspaceDirectoryResponse?> getDirectory();
 
   /// Lấy danh sách thành viên dự án: GET /projects/{id}/members
   Future<List<ProjectMemberItem>> getProjectMembers(String projectId);
+
+  /// Cập nhật toàn bộ danh sách thành viên: PUT /projects/{id}/members
+  Future<bool> setProjectMembers(String projectId, List<Map<String, String>> members);
+
+  /// Cập nhật toàn bộ danh sách thành viên kèm thông báo lỗi chi tiết: PUT /projects/{id}/members
+  Future<({bool success, String? errorMessage})> setProjectMembersWithResult(
+    String projectId,
+    List<Map<String, String>> members,
+  );
+
+  /// Thêm thành viên vào dự án: POST /projects/{id}/members
+  Future<bool> addProjectMember(String projectId, {required String userId, required String role});
+
+  /// Cập nhật vai trò thành viên: PATCH /projects/{id}/members/{memberId}
+  Future<bool> updateProjectMemberRole(String projectId, {required String memberId, required String role});
+
+  /// Xoá thành viên khỏi dự án: DELETE /projects/{id}/members/{memberId}
+  Future<bool> removeProjectMember(String projectId, String memberId);
 
   /// Tạo nhanh khách hàng mới: POST /customers
   Future<CustomerItem?> createCustomer({

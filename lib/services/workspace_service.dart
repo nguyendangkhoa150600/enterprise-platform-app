@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import '../features/workspace/data/repositories/workspace_repository_impl.dart';
 import '../features/workspace/domain/repositories/i_workspace_repository.dart';
 import '../models/workspace_models.dart';
@@ -100,12 +101,14 @@ class WorkspaceService {
     String? status,
     String? projectType,
     String? customerId,
+    String? archived = 'exclude',
     Map<String, String>? customerMap,
   }) =>
       _repository.getProjects(
         customerMap: customerMap,
         status: status,
         projectType: projectType,
+        archived: archived,
       );
 
   Future<ProjectItem?> getProjectDetail(String id, {Map<String, String>? customerMap}) =>
@@ -147,34 +150,72 @@ class WorkspaceService {
   Future<bool> deleteProject(String id) =>
       _repository.deleteProject(id);
 
+  Future<List<StandaloneTaskItem>> getProjectWorkItems(String projectId) =>
+      _repository.getProjectWorkItems(projectId);
+
   Future<List<ProjectMemberItem>> getProjectMembers(String projectId) =>
       _repository.getProjectMembers(projectId);
 
-  Future<bool> setProjectMembers(String projectId, List<Map<String, String>> members) async {
-    return true;
-  }
+  Future<bool> addProjectMember(String projectId, {required String userId, required String role}) =>
+      _repository.addProjectMember(projectId, userId: userId, role: role);
+
+  Future<bool> updateProjectMemberRole(String projectId, {required String memberId, required String role}) =>
+      _repository.updateProjectMemberRole(projectId, memberId: memberId, role: role);
+
+  Future<bool> removeProjectMember(String projectId, String memberId) =>
+      _repository.removeProjectMember(projectId, memberId);
+
+  Future<WorkspaceDirectoryResponse?> getDirectory() =>
+      _repository.getDirectory();
+
+  Future<bool> setProjectMembers(String projectId, List<Map<String, String>> members) =>
+      _repository.setProjectMembers(projectId, members);
+
+  Future<({bool success, String? errorMessage})> setProjectMembersWithResult(
+    String projectId,
+    List<Map<String, String>> members,
+  ) =>
+      _repository.setProjectMembersWithResult(projectId, members);
 
   // 4. Tasks & Work Items
   Future<List<StandaloneTaskItem>> getStandaloneTasks({String scope = 'assigned_to_me'}) =>
       _repository.getStandaloneTasks(scope: scope);
 
-  Future<bool> createStandaloneTask({
+  Future<({bool success, String? error})> createStandaloneTask({
     required String title,
     String? description,
     String priority = 'normal',
     required String assigneeUserId,
     DateTime? dueDate,
+    DateTime? plannedStart,
+    List<String>? participantUserIds,
+    List<String>? followerUserIds,
+    String? executionType,
+    String? procedureDefinitionId,
+    String? parentId,
   }) =>
       _repository.createStandaloneTask(
         title: title,
         description: description,
         priority: priority,
         assigneeUserId: assigneeUserId,
-        dueDate: dueDate?.toIso8601String().substring(0, 10),
+        dueDate: dueDate != null ? DateFormat('yyyy-MM-dd').format(dueDate) : null,
+        plannedStart: plannedStart != null ? DateFormat('yyyy-MM-dd').format(plannedStart) : null,
+        participantUserIds: participantUserIds,
+        followerUserIds: followerUserIds,
+        executionType: executionType,
+        procedureDefinitionId: procedureDefinitionId,
+        parentId: parentId,
       );
 
+  Future<Map<String, dynamic>?> getStandaloneTaskDetail(String taskId) =>
+      _repository.getStandaloneTaskDetail(taskId);
+
   Future<bool> changeStandaloneTaskStatus(String id, String status, {String? note}) =>
-      _repository.updateStandaloneTaskStatus(id, status);
+      _repository.updateStandaloneTaskStatus(id, status, note: note);
+
+  Future<bool> deleteStandaloneTask(String taskId) =>
+      _repository.deleteStandaloneTask(taskId);
 
   Future<bool> createWorkItem({
     required String projectId,
