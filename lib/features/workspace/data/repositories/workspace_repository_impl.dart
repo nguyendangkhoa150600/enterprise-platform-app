@@ -4,6 +4,7 @@ import '../../../../models/workspace_models.dart';
 import '../../../../services/platform_service.dart';
 import '../../../../utils/user_resolver.dart';
 import '../../domain/repositories/i_workspace_repository.dart';
+import '../../domain/models/workspace_report_models.dart';
 import '../datasources/workspace_remote_datasource.dart';
 
 /// Triển khai IWorkspaceRepository theo chuẩn 76 API trong workspace-api-for-app.docx
@@ -368,14 +369,43 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
   }
 
   @override
-  Future<bool> updateWorkItemStatus(String workItemId, String status) async {
+  Future<bool> updateWorkItemStatus(
+    String workItemId,
+    String status, {
+    String? note,
+    List<String>? confirmedConditionIds,
+  }) async {
     try {
-      final res = await _remoteDataSource.updateWorkItemStatusRaw(workItemId, status);
+      final res = await _remoteDataSource.updateWorkItemStatusRaw(
+        workItemId,
+        status,
+        note: note,
+        confirmedConditionIds: confirmedConditionIds,
+      );
       return res.statusCode == 200 || res.statusCode == 204;
     } catch (e) {
       debugPrint('[WorkspaceRepositoryImpl] updateWorkItemStatus error: $e');
       return false;
     }
+  }
+
+  @override
+  Future<WorkItemCompletionPolicy?> getWorkItemCompletionPolicy(String workItemId) async {
+    try {
+      final raw = await _remoteDataSource.getWorkItemDetailRaw(workItemId);
+      if (raw != null && raw is Map<String, dynamic>) {
+        final data = raw['data'] ?? raw;
+        if (data is Map<String, dynamic> && data['completion'] != null) {
+          final comp = data['completion'];
+          if (comp is Map<String, dynamic>) {
+            return WorkItemCompletionPolicy.fromJson(comp);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getWorkItemCompletionPolicy error: $e');
+    }
+    return null;
   }
 
   @override
@@ -616,6 +646,7 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
   }
 
   final Map<String, String> _groupCodeMap = {};
+  final List<String> _projectGroups = [];
 
   @override
   Future<List<String>> getProjectGroups() async {
@@ -856,5 +887,160 @@ class WorkspaceRepositoryImpl implements IWorkspaceRepository {
       }
     }
     return result;
+  }
+
+  @override
+  Future<bool> createProjectGroup(String name, String code) async {
+    try {
+      final res = await _remoteDataSource.createProjectGroupRaw(name: name, code: code);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        // Cập nhật bộ nhớ đệm nhóm
+        if (!_projectGroups.contains(name.trim())) {
+          _projectGroups.add(name.trim());
+        }
+        _groupCodeMap[name.trim()] = code.trim();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] createProjectGroup error: $e');
+    }
+    return false;
+  }
+
+  @override
+  Future<ProjectChatFeedPage> getProjectChatFeed(
+    String projectId, {
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    bool? onlyWithChat,
+  }) async {
+    try {
+      final raw = await _remoteDataSource.getProjectChatFeedRaw(
+        projectId,
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        onlyWithChat: onlyWithChat,
+      );
+      if (raw != null && raw is Map<String, dynamic>) {
+        final data = raw['data'] ?? raw;
+        if (data is Map<String, dynamic>) {
+          return ProjectChatFeedPage.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getProjectChatFeed error: $e');
+    }
+    return const ProjectChatFeedPage();
+  }
+
+  @override
+  Future<ProjectChatThread> getProjectChatFeedThread(
+    String projectId,
+    String workItemId, {
+    String? before,
+  }) async {
+    try {
+      final raw = await _remoteDataSource.getProjectChatFeedThreadRaw(
+        projectId,
+        workItemId,
+        before: before,
+      );
+      if (raw != null && raw is Map<String, dynamic>) {
+        final data = raw['data'] ?? raw;
+        if (data is Map<String, dynamic>) {
+          return ProjectChatThread.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getProjectChatFeedThread error: $e');
+    }
+    return const ProjectChatThread();
+  }
+
+  @override
+  Future<ReportBundle?> getWorkspaceReports({
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+  }) async {
+    try {
+      final raw = await _remoteDataSource.getReportsRaw(
+        from: from,
+        to: to,
+        projectIds: projectIds,
+        groups: groups,
+        tagIds: tagIds,
+        userId: userId,
+      );
+      if (raw != null && raw is Map<String, dynamic>) {
+        final data = raw['data'] ?? raw;
+        if (data is Map<String, dynamic>) {
+          return ReportBundle.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getWorkspaceReports error: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<ReportItemList?> getWorkspaceReportItems({
+    required String kind,
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+    String? assigneeUserId,
+    String? status,
+    String? priority,
+  }) async {
+    try {
+      final raw = await _remoteDataSource.getReportItemsRaw(
+        kind: kind,
+        from: from,
+        to: to,
+        projectIds: projectIds,
+        groups: groups,
+        tagIds: tagIds,
+        userId: userId,
+        assigneeUserId: assigneeUserId,
+        status: status,
+        priority: priority,
+      );
+      if (raw != null && raw is Map<String, dynamic>) {
+        final data = raw['data'] ?? raw;
+        if (data is Map<String, dynamic>) {
+          return ReportItemList.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getWorkspaceReportItems error: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<List<TagItem>> getWorkspaceTags() async {
+    try {
+      final raw = await _remoteDataSource.getWorkspaceTagsRaw();
+      if (raw != null && raw is Map<String, dynamic>) {
+        final data = raw['data'] ?? raw;
+        final items = data is Map<String, dynamic> ? data['items'] : (raw['items'] ?? data);
+        if (items is List) {
+          return items.whereType<Map<String, dynamic>>().map(TagItem.fromJson).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkspaceRepositoryImpl] getWorkspaceTags error: $e');
+    }
+    return [];
   }
 }

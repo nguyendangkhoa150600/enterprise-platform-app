@@ -2293,6 +2293,7 @@
   "inventory.type.issue": "Issue",
   "inventory.type.receipt": "Receipt",
   "inventory.type.transfer": "Transfer",
+  "inventory.unit_price": "UNIT PRICE",
   "language.app_language": "App language",
   "language.name_en": "English",
   "language.name_vi": "Tiếng Việt",

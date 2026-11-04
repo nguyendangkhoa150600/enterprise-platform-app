@@ -1,4 +1,5 @@
 import '../../../../models/workspace_models.dart';
+import '../models/workspace_report_models.dart';
 
 /// Contract định nghĩa toàn bộ thao tác dữ liệu của phân hệ Workspace
 /// Tuân thủ chuẩn 76 API theo tài liệu workspace-api-for-app.docx
@@ -63,7 +64,15 @@ abstract class IWorkspaceRepository {
   });
 
   /// Cập nhật trạng thái công việc dự án: PATCH /work-items/{id}/status
-  Future<bool> updateWorkItemStatus(String workItemId, String status);
+  Future<bool> updateWorkItemStatus(
+    String workItemId,
+    String status, {
+    String? note,
+    List<String>? confirmedConditionIds,
+  });
+
+  /// Lấy cấu hình điều kiện hoàn thành của công việc: GET /work-items/{id}
+  Future<WorkItemCompletionPolicy?> getWorkItemCompletionPolicy(String workItemId);
 
   /// Lấy danh sách việc ngoài dự án (việc giao lẻ): GET /standalone-tasks
   Future<List<StandaloneTaskItem>> getStandaloneTasks({
@@ -129,9 +138,55 @@ abstract class IWorkspaceRepository {
   /// Lấy danh sách nhóm dự án: GET /project-groups
   Future<List<String>> getProjectGroups();
 
+  /// Thêm nhanh nhóm dự án mới: POST /project-groups
+  Future<bool> createProjectGroup(String name, String code);
+
   /// Lấy danh sách phòng ban cây tổ chức
   Future<List<DepartmentItem>> getDepartments();
 
   /// Xem trước mã dự án được sinh tự động theo quy tắc: GET /project-code-preview
   Future<String?> getProjectCodePreview(String group);
+
+  /// Lấy trang trao đổi của các công việc trong dự án: GET /projects/{id}/chat-feed
+  Future<ProjectChatFeedPage> getProjectChatFeed(
+    String projectId, {
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    bool? onlyWithChat,
+  });
+
+  /// Lấy tin nhắn trao đổi của một công việc: GET /projects/{id}/chat-feed/{workItemId}
+  Future<ProjectChatThread> getProjectChatFeedThread(
+    String projectId,
+    String workItemId, {
+    String? before,
+  });
+
+  /// Tải gói báo cáo tổng hợp: GET /reports
+  Future<ReportBundle?> getWorkspaceReports({
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+  });
+
+  /// Tải danh sách công việc chi tiết sau một con số báo cáo: GET /reports/items
+  Future<ReportItemList?> getWorkspaceReportItems({
+    required String kind,
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+    String? assigneeUserId,
+    String? status,
+    String? priority,
+  });
+
+  /// Lấy danh sách nhãn dự án: GET /tags
+  Future<List<TagItem>> getWorkspaceTags();
 }

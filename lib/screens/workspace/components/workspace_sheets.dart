@@ -3,6 +3,8 @@ import '../../../core/i18n/app_i18n.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
 import 'workspace_project_detail_sheet.dart';
+import 'workspace_complete_work_item_dialog.dart';
+import 'workspace_cancel_work_item_dialog.dart';
 export 'workspace_project_detail_sheet.dart';
 
 void showWorkspaceProjectDetailSheet(
@@ -311,76 +313,127 @@ class TaskStatusSheet extends StatelessWidget {
             Text(task.description!, style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
           ],
           const SizedBox(height: 16),
-          Text('workspace.task.update_status'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-          const SizedBox(height: 8),
+          Text('workspace.task.update_status'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+          const SizedBox(height: 10),
 
-          Row(
+          // Primary Actions
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               if (task.status == 'todo')
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'in_progress');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.task.start'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.play_arrow, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'in_progress'),
+                  label: Text('workspace.task.start'.tr()),
                 ),
               if (task.status == 'in_progress') ...[
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD97706), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'review');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.task.submit_review'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.rate_review_outlined, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD97706), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'review'),
+                  label: Text('workspace.task.submit_review'.tr()),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'done');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.status.done'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
+                  onPressed: () async {
+                    final completed = await showCompleteWorkItemDialog(
+                      context,
+                      workItemId: task.id,
+                      workItemCode: task.code,
+                      workItemTitle: task.title,
+                      service: service,
+                    );
+                    if (completed && context.mounted) {
+                      Navigator.pop(context);
+                      onStatusChanged();
+                    }
+                  },
+                  label: Text('workspace.status.done'.tr()),
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFDC2626)),
+                  style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+                  onPressed: () => _updateStatus(context, 'blocked'),
+                  label: const Text('Báo vướng mắc'),
+                ),
+              ],
+              if (task.status == 'blocked') ...[
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.play_arrow, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'in_progress'),
+                  label: const Text('Tiếp tục thực hiện'),
                 ),
               ],
               if (task.status == 'review')
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'done');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.task.approve_done'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
+                  onPressed: () async {
+                    final completed = await showCompleteWorkItemDialog(
+                      context,
+                      workItemId: task.id,
+                      workItemCode: task.code,
+                      workItemTitle: task.title,
+                      service: service,
+                    );
+                    if (completed && context.mounted) {
+                      Navigator.pop(context);
+                      onStatusChanged();
+                    }
+                  },
+                  label: Text('workspace.task.approve_done'.tr()),
                 ),
               if (task.status == 'done')
-                Expanded(
-                  child: Center(child: Text('workspace.task.already_done'.tr(), style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold))),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.replay, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF475569), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'in_progress'),
+                  label: const Text('Mở lại công việc'),
+                ),
+              if (task.status == 'cancelled' || task.status == 'canceled' || task.status == 'da_huy')
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.replay, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'todo'),
+                  label: const Text('Khôi phục công việc'),
+                ),
+              if (task.status != 'cancelled' && task.status != 'canceled' && task.status != 'da_huy' && task.status != 'done')
+                TextButton.icon(
+                  icon: const Icon(Icons.cancel_outlined, size: 15, color: Color(0xFF64748B)),
+                  label: const Text('Huỷ công việc', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                  onPressed: () async {
+                    final cancelled = await showCancelWorkItemDialog(
+                      context,
+                      workItemId: task.id,
+                      workItemCode: task.code,
+                      workItemTitle: task.title,
+                      service: service,
+                    );
+                    if (cancelled && context.mounted) {
+                      Navigator.pop(context);
+                      onStatusChanged();
+                    }
+                  },
                 ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _updateStatus(BuildContext context, String newStatus) async {
+    bool ok = await service.updateWorkItemStatus(task.id, newStatus);
+    if (!ok) {
+      ok = await service.changeStandaloneTaskStatus(task.id, newStatus);
+    }
+    if (context.mounted) {
+      Navigator.pop(context);
+      onStatusChanged();
+    }
   }
 }

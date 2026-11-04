@@ -22,6 +22,7 @@ import './user_management_screen.dart';
 import './my_requests_screen.dart';
 import './workspace_screen.dart';
 import './assistant_chat_screen.dart';
+import '../features/crm/presentation/screens/crm_hub_screen.dart';
 import './home/components/home_mobile_profile_view.dart';
 import './home/components/home_mobile_modules_view.dart';
 import './home/components/home_organization_view.dart';
@@ -135,6 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 4)));
     } else if (key == 'workspace-reports' || key == 'bao-cao-cong-viec') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 5)));
+    } else if (key == 'crm' || key == 'sales' || key == 'ban-hang' || key == 'khach-hang-crm') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CrmHubScreen()));
     } else if (key == 'assistant' || key == 'savina-agent' || key == 'ai' || key == 'tro-ly') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen()));
     } else {

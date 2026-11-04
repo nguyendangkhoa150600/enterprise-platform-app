@@ -11,6 +11,12 @@ import '../../leave_balances_screen.dart';
 import '../../fleet_schedule_screen.dart';
 import '../../maintenance_screen.dart';
 import '../../inventory_screen.dart';
+import '../../inventory/inventory_overview_screen.dart';
+import '../../inventory/inventory_items_screen.dart';
+import '../../inventory/inventory_transactions_screen.dart';
+import '../../inventory/inventory_assets_screen.dart';
+import '../../inventory/inventory_reports_screen.dart';
+import '../../inventory/inventory_settings_screen.dart';
 import '../../main_analysis_screen.dart';
 import '../../role_permission_screen.dart';
 import '../../user_management_screen.dart';
@@ -56,12 +62,17 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   /// Sections not shown on mobile.
   static const _hiddenSections = {
     'BẢO TRÌ & THIẾT BỊ',
-    'KHO & VẬT TƯ',
     'CHẤT LƯỢNG ĐIỆN & CSKH',
   };
 
-  bool _mod(String key) => widget.modules.any((m) => m.key == key && m.isActive);
+  bool _mod(String key) => widget.modules.any((m) => m.key == key && (m.isActive == true));
   bool get _modProcedure => _mod('procedure-engine') || _mod('procedure');
+  bool get _modInventory =>
+      _mod('inventory') ||
+      _mod('warehouse') ||
+      _mod('kho') ||
+      _mod('supply-chain') ||
+      widget.modules.isEmpty;
 
   /// HRM menu item: the HRM module is available AND the user holds a permission of that web page.
   bool _hrm(String path) => _mod('hrm') && HrmCapabilities.instance.pageAllowed(path);
@@ -71,6 +82,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     context.watch<HrmCapabilities>();
+    final canShowInventory = (auth.isTenantAdmin == true) || (auth.isPlatformAdmin == true) || _modInventory;
     final showApps = _selectedCategory == 'ALL' || _selectedCategory == 'APPS';
     // The ORG and ADMIN major categories are hidden from the mobile menu.
     const showOrg = false;
@@ -281,6 +293,95 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
               ],
             ),
 
+            // 3. KHO & VẬT TƯ (TỒN KHO)
+            _buildMenuSection(
+              title: 'KHO & VẬT TƯ',
+              items: [
+                {
+                  'title': 'Tổng quan',
+                  'visible': canShowInventory,
+                  'icon': Icons.space_dashboard_rounded,
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryOverviewScreen())),
+                },
+                {
+                  'title': 'Kho & Danh mục',
+                  'visible': canShowInventory,
+                  'icon': Icons.inventory_2_outlined,
+                  'bg': const Color(0xFFECFDF5), // Emerald 50
+                  'iconColor': const Color(0xFF059669),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryItemsScreen())),
+                },
+                {
+                  'title': 'Giao dịch & Nhập xuất',
+                  'visible': canShowInventory,
+                  'icon': Icons.swap_horiz_rounded,
+                  'bg': const Color(0xFFF0F9FF), // Sky 50
+                  'iconColor': const Color(0xFF0284C7),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen())),
+                },
+                {
+                  'title': 'Chứng từ kho',
+                  'visible': canShowInventory,
+                  'icon': Icons.receipt_long_outlined,
+                  'bg': const Color(0xFFFAF5FF), // Purple 50
+                  'iconColor': const Color(0xFF9333EA),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen(
+                    title: 'Chứng từ kho',
+                    subtitle: 'Danh sách phiếu nhập, xuất & luân chuyển kho',
+                  ))),
+                },
+                {
+                  'title': 'Duyệt chứng từ',
+                  'visible': canShowInventory,
+                  'icon': Icons.assignment_turned_in_outlined,
+                  'bg': const Color(0xFFFEF3C7), // Amber 50
+                  'iconColor': const Color(0xFFD97706),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen(
+                    title: 'Duyệt chứng từ',
+                    subtitle: 'Phê duyệt các chứng từ xuất nhập kho',
+                  ))),
+                },
+                {
+                  'title': 'Yêu cầu xuất từ đơn bán',
+                  'visible': canShowInventory,
+                  'icon': Icons.outbox_rounded,
+                  'bg': const Color(0xFFFFF7ED), // Orange 50
+                  'iconColor': const Color(0xFFEA580C),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen(
+                    title: 'Yêu cầu xuất từ đơn bán',
+                    subtitle: 'Đơn bán hàng cần xuất kho và giao hàng',
+                    initialFilter: 'ISSUE',
+                  ))),
+                },
+                {
+                  'title': 'Cây tài sản',
+                  'visible': canShowInventory,
+                  'icon': Icons.account_tree_outlined,
+                  'bg': const Color(0xFFEEF2FF), // Indigo 50
+                  'iconColor': const Color(0xFF4F46E5),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryAssetsScreen())),
+                },
+                {
+                  'title': 'Báo cáo kho',
+                  'visible': canShowInventory,
+                  'icon': Icons.bar_chart_rounded,
+                  'bg': const Color(0xFFF0FDF4), // Green 50
+                  'iconColor': const Color(0xFF16A34A),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryReportsScreen())),
+                },
+                {
+                  'title': 'Cài đặt',
+                  'visible': canShowInventory,
+                  'icon': Icons.tune_rounded,
+                  'bg': const Color(0xFFF1F5F9), // Slate 50
+                  'iconColor': const Color(0xFF475569),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventorySettingsScreen())),
+                },
+              ],
+            ),
+
             // 3. QUẢN TRỊ NHÂN SỰ (HRM)
             _buildMenuSection(
               title: 'QUẢN TRỊ NHÂN SỰ (HRM)',
@@ -427,36 +528,6 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
               ],
             ),
 
-            // 5. KHO & VẬT TƯ
-            _buildMenuSection(
-              title: 'KHO & VẬT TƯ',
-              items: [
-                {
-                  'title': 'Sổ kho',
-                  'visible': _mod('inventory'),
-                  'icon': Icons.inventory_2_outlined,
-                  'bg': const Color(0xFFECFDF5), // Emerald 50
-                  'iconColor': const Color(0xFF059669),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen())),
-                },
-                {
-                  'title': 'Xuất nhập kho',
-                  'visible': _mod('inventory'),
-                  'icon': Icons.swap_horiz_rounded,
-                  'bg': const Color(0xFFF0F9FF), // Sky 50
-                  'iconColor': const Color(0xFF0284C7),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen())),
-                },
-                {
-                  'title': 'Cảnh báo tồn',
-                  'visible': _mod('inventory'),
-                  'icon': Icons.warning_amber_rounded,
-                  'bg': const Color(0xFFFFFBEB), // Amber 50
-                  'iconColor': const Color(0xFFD97706),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryScreen())),
-                },
-              ],
-            ),
 
             // 6. CHẤT LƯỢNG ĐIỆN & KHÁCH HÀNG
             _buildMenuSection(

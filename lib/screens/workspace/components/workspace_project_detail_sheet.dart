@@ -4,6 +4,11 @@ import '../../../services/workspace_service.dart';
 import '../../../utils/user_resolver.dart';
 import 'workspace_sheets.dart';
 import 'workspace_project_members_sheet.dart';
+import 'workspace_tab_chats.dart';
+import 'workspace_project_kanban_view.dart';
+import 'workspace_project_gantt_view.dart';
+import 'workspace_landscape_fullscreen_screen.dart';
+import 'workspace_documents_reports_view.dart';
 
 class ProjectDetailSheet extends StatefulWidget {
   final ProjectItem project;
@@ -77,6 +82,20 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
       debugPrint('[ProjectDetailSheet] loadWorkItems error: $e');
       if (mounted) setState(() => _isLoadingTasks = false);
     }
+  }
+
+  void _openLandscapeFullscreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => WorkspaceLandscapeFullscreenScreen(
+          project: _project,
+          tasks: _tasks,
+          initialViewMode: _viewMode,
+          service: widget.service,
+          onRefresh: _loadWorkItems,
+        ),
+      ),
+    );
   }
 
   void _syncMembersWithTasks() {
@@ -184,25 +203,33 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
   }
 
   Widget _buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 2, right: 12, left: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SizedBox(
+      height: 38,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          const SizedBox(width: 32),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(2),
+          // Thanh kéo xám luôn ở chính giữa đỉnh modal
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
-            onPressed: () => Navigator.pop(context),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          // Nút đóng X gọn gàng ở góc phải
+          Positioned(
+            right: 12,
+            child: IconButton(
+              icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
+              tooltip: 'Đóng',
+              onPressed: () => Navigator.pop(context),
+              splashRadius: 18,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
           ),
         ],
       ),
@@ -469,6 +496,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
     final totalTasks = _tasks.isNotEmpty ? _tasks.length : _project.totalItems;
     final tabs = [
       {'title': 'Công việc ($totalTasks)', 'index': 0},
+      {'title': 'Trao đổi', 'index': 6},
       {'title': 'Lịch', 'index': 1},
       {'title': 'Tài liệu', 'index': 2},
       {'title': 'Tài chính', 'index': 3},
@@ -531,6 +559,11 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
         return _buildRequestsTabView();
       case 5:
         return _buildActivityTabView();
+      case 6:
+        return WorkspaceTabChatsView(
+          projectId: _project.id,
+          service: widget.service,
+        );
       default:
         return _buildTasksTabView();
     }
@@ -568,7 +601,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
           child: Row(
             children: [
-              // Segment Bảng | Kanban
+              // Segment Bảng | Kanban | Gantt
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFE2E8F0),
@@ -579,7 +612,27 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
                   children: [
                     _buildViewModePill('Bảng', _viewMode == 'table', () => setState(() => _viewMode = 'table')),
                     _buildViewModePill('Kanban', _viewMode == 'kanban', () => setState(() => _viewMode = 'kanban')),
+                    _buildViewModePill('Gantt', _viewMode == 'gantt', () => setState(() => _viewMode = 'gantt')),
                   ],
+                ),
+              ),
+
+              // Nút xem toàn màn hình nằm ngang
+              Tooltip(
+                message: 'Xem toàn màn hình nằm ngang',
+                child: InkWell(
+                  onTap: _openLandscapeFullscreen,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: const Icon(Icons.screen_rotation, size: 16, color: Color(0xFF334155)),
+                  ),
                 ),
               ),
               const Spacer(),
@@ -620,6 +673,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
                   {'id': 'ALL', 'label': 'Tất cả trạng thái'},
                   {'id': 'todo', 'label': 'Chưa làm'},
                   {'id': 'in_progress', 'label': 'Đang làm'},
+                  {'id': 'blocked', 'label': 'Vướng mắc'},
                   {'id': 'review', 'label': 'Chờ duyệt'},
                   {'id': 'done', 'label': 'Đã xong'},
                   {'id': 'cancelled', 'label': 'Đã huỷ'},
@@ -669,7 +723,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
         ),
         const SizedBox(height: 6),
 
-        // Tasks List
+        // Tasks List / Kanban / Gantt
         Expanded(
           child: _isLoadingTasks
               ? const Center(child: CircularProgressIndicator(color: Color(0xFFEAB308)))
@@ -687,19 +741,31 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
                         ],
                       ),
                     )
-                  : RefreshIndicator(
-                      color: const Color(0xFFEAB308),
-                      onRefresh: _loadWorkItems,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (ctx, idx) {
-                          final task = filtered[idx];
-                          return _buildTaskCard(task, idx + 1);
-                        },
-                      ),
-                    ),
+                  : _viewMode == 'kanban'
+                      ? WorkspaceProjectKanbanView(
+                          tasks: filtered,
+                          service: widget.service,
+                          onRefresh: _loadWorkItems,
+                        )
+                      : _viewMode == 'gantt'
+                          ? WorkspaceProjectGanttView(
+                              tasks: filtered,
+                              service: widget.service,
+                              onRefresh: _loadWorkItems,
+                            )
+                          : RefreshIndicator(
+                              color: const Color(0xFFEAB308),
+                              onRefresh: _loadWorkItems,
+                              child: ListView.separated(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                                itemBuilder: (ctx, idx) {
+                                  final task = filtered[idx];
+                                  return _buildTaskCard(task, idx + 1);
+                                },
+                              ),
+                            ),
         ),
       ],
     );
@@ -812,30 +878,48 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
                 ),
                 const Spacer(),
 
-                // Progress Bar
-                SizedBox(
-                  width: 60,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: (task.progressPercent / 100).clamp(0.0, 1.0),
-                      minHeight: 5,
-                      backgroundColor: const Color(0xFFE2E8F0),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        task.progressPercent >= 100 ? const Color(0xFF10B981) : const Color(0xFF3B82F6),
+                // Progress Bar - Đồng bộ chuẩn với Kanban: Nếu Đã huỷ thì không hiển thị 100% xanh lá
+                if (task.status == 'cancelled' || task.status == 'canceled' || task.status == 'da_huy')
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Đã huỷ',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                    ),
+                  )
+                else ...[
+                  SizedBox(
+                    width: 60,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: (task.progressPercent / 100).clamp(0.0, 1.0),
+                        minHeight: 5,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          task.status == 'done' || task.status == 'completed' || task.progressPercent >= 100
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF3B82F6),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${task.progressPercent.toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: task.progressPercent >= 100 ? const Color(0xFF047857) : const Color(0xFF3B82F6),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${task.progressPercent.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: task.status == 'done' || task.status == 'completed' || task.progressPercent >= 100
+                          ? const Color(0xFF047857)
+                          : const Color(0xFF3B82F6),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ],
@@ -896,6 +980,13 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
         text = const Color(0xFF047857);
         label = 'Đã xong';
         break;
+      case 'blocked':
+      case 'stuck':
+      case 'vuong_mac':
+        bg = const Color(0xFFFEF2F2);
+        text = const Color(0xFFDC2626);
+        label = 'Vướng mắc';
+        break;
       case 'cancelled':
       case 'canceled':
       case 'da_huy':
@@ -955,18 +1046,10 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
   }
 
   Widget _buildDocumentsTabView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.folder_open_outlined, size: 40, color: Color(0xFF94A3B8)),
-          const SizedBox(height: 8),
-          const Text(
-            'Chưa có tài liệu đính kèm cho dự án này',
-            style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-          ),
-        ],
-      ),
+    return WorkspaceDocumentsView(
+      projects: [_project],
+      initialProjectId: _project.id,
+      onRefresh: _loadWorkItems,
     );
   }
 
@@ -1104,6 +1187,8 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
         return 'Chưa làm';
       case 'in_progress':
         return 'Đang làm';
+      case 'blocked':
+        return 'Vướng mắc';
       case 'review':
         return 'Chờ duyệt';
       case 'done':

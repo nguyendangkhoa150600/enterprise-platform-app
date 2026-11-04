@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 import '../features/workspace/data/repositories/workspace_repository_impl.dart';
 import '../features/workspace/domain/repositories/i_workspace_repository.dart';
 import '../models/workspace_models.dart';
+import '../features/workspace/domain/models/workspace_report_models.dart';
 
 /// Facade Service giữ nguyên 100% contract cho các widget hiện hành
 /// Nhưng phân phối toàn bộ logic sang IWorkspaceRepository (Clean Architecture)
@@ -243,11 +244,93 @@ class WorkspaceService {
         parentId: parentTaskId,
       );
 
-  Future<bool> updateWorkItemStatus(String workItemId, String status) =>
-      _repository.updateWorkItemStatus(workItemId, status);
+  Future<bool> updateWorkItemStatus(
+    String workItemId,
+    String status, {
+    String? note,
+    List<String>? confirmedConditionIds,
+  }) =>
+      _repository.updateWorkItemStatus(
+        workItemId,
+        status,
+        note: note,
+        confirmedConditionIds: confirmedConditionIds,
+      );
+
+  Future<WorkItemCompletionPolicy?> getWorkItemCompletionPolicy(String workItemId) =>
+      _repository.getWorkItemCompletionPolicy(workItemId);
 
   // 5. Metadata: Project Groups & Departments
   Future<List<String>> getProjectGroups() => _repository.getProjectGroups();
+  Future<bool> createProjectGroup(String name, String code) => _repository.createProjectGroup(name, code);
   Future<List<DepartmentItem>> getDepartments() => _repository.getDepartments();
   Future<String?> getProjectCodePreview(String group) => _repository.getProjectCodePreview(group);
+
+  // 6. Trao đổi công việc (Chat Feed)
+  Future<ProjectChatFeedPage> getProjectChatFeed(
+    String projectId, {
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    bool? onlyWithChat,
+  }) =>
+      _repository.getProjectChatFeed(
+        projectId,
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        onlyWithChat: onlyWithChat,
+      );
+
+  Future<ProjectChatThread> getProjectChatFeedThread(
+    String projectId,
+    String workItemId, {
+    String? before,
+  }) =>
+      _repository.getProjectChatFeedThread(projectId, workItemId, before: before);
+
+  // 7. Báo cáo & Phân tích (Reports)
+  Future<ReportBundle?> getWorkspaceReports({
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+  }) =>
+      _repository.getWorkspaceReports(
+        from: from,
+        to: to,
+        projectIds: projectIds,
+        groups: groups,
+        tagIds: tagIds,
+        userId: userId,
+      );
+
+  Future<ReportItemList?> getWorkspaceReportItems({
+    required String kind,
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+    String? assigneeUserId,
+    String? status,
+    String? priority,
+  }) =>
+      _repository.getWorkspaceReportItems(
+        kind: kind,
+        from: from,
+        to: to,
+        projectIds: projectIds,
+        groups: groups,
+        tagIds: tagIds,
+        userId: userId,
+        assigneeUserId: assigneeUserId,
+        status: status,
+        priority: priority,
+      );
+
+  Future<List<TagItem>> getWorkspaceTags() => _repository.getWorkspaceTags();
 }

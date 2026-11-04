@@ -5,6 +5,7 @@ import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
 import '../../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
 import '../../../utils/app_toast.dart';
+import 'workspace_create_project_group_dialog.dart';
 
 void showWorkspaceCreateCustomerDialog(
   BuildContext context, {
@@ -973,7 +974,42 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 1. Nhóm dự án (Web Screenshot 1)
-        _buildSectionLabel('Nhóm dự án'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionLabel('Nhóm dự án'),
+            InkWell(
+              onTap: () async {
+                final newGroupName = await showCreateProjectGroupDialog(context, service: widget.service);
+                if (newGroupName != null && newGroupName.isNotEmpty) {
+                  if (!_projectGroups.contains(newGroupName)) {
+                    setState(() => _projectGroups.add(newGroupName));
+                  }
+                  _updateProjectCode(newGroupName);
+                }
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, size: 14, color: Color(0xFF2563EB)),
+                    SizedBox(width: 2),
+                    Text(
+                      'Thêm nhóm',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
         SearchableDropdownField<String>(
           value: _projectGroup,

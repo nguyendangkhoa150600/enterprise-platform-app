@@ -2293,6 +2293,7 @@
   "inventory.type.issue": "Xuất kho",
   "inventory.type.receipt": "Nhập kho",
   "inventory.type.transfer": "Điều chuyển",
+  "inventory.unit_price": "ĐƠN GIÁ",
   "language.app_language": "Ngôn ngữ ứng dụng",
   "language.name_en": "English",
   "language.name_vi": "Tiếng Việt",

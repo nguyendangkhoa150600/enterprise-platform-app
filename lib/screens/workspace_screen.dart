@@ -4,6 +4,7 @@ import '../features/workspace/presentation/controllers/workspace_controller.dart
 import '../features/workspace/presentation/widgets/tabs/workspace_customers_tab_view.dart';
 import '../features/workspace/presentation/widgets/tabs/workspace_other_tasks_tab_view.dart';
 import '../features/workspace/presentation/widgets/tabs/workspace_projects_tab_view.dart';
+import '../features/workspace/presentation/widgets/tabs/workspace_reports_tab_view.dart';
 import '../models/workspace_models.dart';
 import '../services/workspace_service.dart';
 import 'workspace/components/workspace_create_dialogs.dart';
@@ -189,9 +190,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           onRefresh: _controller.reloadTab,
         );
       case 5:
-        return WorkspaceReportsView(
+        return WorkspaceReportsTabView(
           projects: _controller.projects,
-          tasks: _controller.tasks,
+          service: _service,
           onRefresh: _controller.reloadTab,
         );
       default:
