@@ -174,6 +174,22 @@ class HrmService {
       } catch (_) {}
     }
 
+    // Fetch direct approvers to enrich pending requests
+    try {
+      final approvers = await getDirectApprovers();
+      if (approvers.isNotEmpty) {
+        for (var i = 0; i < all.length; i++) {
+          final req = all[i];
+          if (req.status == HrmRequestStatus.pending && (req.currentAssigneeName == null || req.currentAssigneeName!.isEmpty)) {
+            final name = approvers[req.id];
+            if (name != null && name.isNotEmpty) {
+              all[i] = req.copyWith(currentAssigneeName: name);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
     if (all.isNotEmpty) {
       _cachedRequests = all;
     } else {
@@ -275,16 +291,23 @@ class HrmService {
   // 6. Get Employees Directory (NhÃ¢n sá»±)
   Future<List<HrmEmployeeItem>> getEmployees({String? search, String? department, bool forceRefresh = false}) async {
     if (_cachedEmployees == null || forceRefresh) {
-      try {
-        final response = await _dio.get(
-          '/hrm/v1/employees',
-          queryParameters: {'page_size': 100},
-        );
-        if (response.statusCode == 200 && response.data != null) {
-          final list = (response.data['data'] ?? response.data) as List;
-          _cachedEmployees = list.map((item) => HrmEmployeeItem.fromJson(item)).toList();
-        }
-      } catch (_) {}
+      final endpoints = [
+        '/api/hrm/v1/employees',
+        '/hrm/v1/employees',
+      ];
+      for (final ep in endpoints) {
+        try {
+          final response = await _dio.get(
+            ep,
+            queryParameters: {'page_size': 100},
+          );
+          if (response.statusCode == 200 && response.data != null) {
+            final list = (response.data['data'] ?? response.data) as List;
+            _cachedEmployees = list.map((item) => HrmEmployeeItem.fromJson(item)).toList();
+            if (_cachedEmployees!.isNotEmpty) break;
+          }
+        } catch (_) {}
+      }
 
       _cachedEmployees ??= [];
     }
@@ -500,4 +523,86 @@ class HrmService {
     return [];
   }
 
+  // 12. Direct Approvers (Người duyệt trực tiếp theo luồng đơn)
+  Future<Map<String, String>> getDirectApprovers() async {
+    final Map<String, String> map = {};
+    try {
+      final endpoints = [
+        '/hrm/v1/request-direct-approvers',
+        '/api/hrm/v1/request-direct-approvers',
+        '/request-direct-approvers',
+      ];
+      for (final ep in endpoints) {
+        try {
+          final res = await _dio.get(ep);
+          if (res.statusCode == 200 && res.data != null) {
+            final list = res.data['data'] ?? (res.data is List ? res.data : null);
+            if (list is List) {
+              for (final item in list) {
+                if (item is Map) {
+                  final reqId = item['requestId']?.toString() ?? '';
+                  final name = item['assigneeName']?.toString() ?? '';
+                  if (reqId.isNotEmpty && name.isNotEmpty) {
+                    map[reqId] = name;
+                  }
+                }
+              }
+              if (map.isNotEmpty) break;
+            }
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return map;
+  }
+
+  // 13. Employee Asset Custody (Vật tư & Tài sản cấp phát)
+  Future<List<Map<String, dynamic>>> getEmployeeCustody(String employeeId) async {
+    try {
+      final res = await _dio.get('/hrm/v1/employees/' + Uri.encodeComponent(employeeId) + '/custody');
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? (res.data is List ? res.data : null);
+        if (raw is List) {
+          return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<bool> assignEmployeeCustody(String employeeId, String materialCode) async {
+    try {
+      final res = await _dio.post(
+        '/hrm/v1/employees/' + Uri.encodeComponent(employeeId) + '/custody',
+        data: {'materialCode': materialCode},
+      );
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> revokeEmployeeCustody(String employeeId, String materialCode) async {
+    try {
+      final res = await _dio.post(
+        '/hrm/v1/employees/' + Uri.encodeComponent(employeeId) + '/custody/' + Uri.encodeComponent(materialCode) + '/revoke',
+      );
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAssignableCustodyAssets() async {
+    try {
+      final res = await _dio.get('/hrm/v1/custody/assignable');
+      if (res.statusCode == 200 && res.data != null) {
+        final raw = res.data['data'] ?? (res.data is List ? res.data : null);
+        if (raw is List) {
+          return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
 }

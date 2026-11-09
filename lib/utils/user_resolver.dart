@@ -10,6 +10,8 @@ class UserResolver {
 
   static bool _hasLoaded = false;
   static bool get hasLoaded => _hasLoaded;
+  static Map<String, String> get allUserDisplayNames => Map.unmodifiable(_userDisplayNames);
+  static Map<String, String> get allRawNames => Map.unmodifiable(_rawNames);
   static Future<void>? _loadingFuture;
 
   /// Register user into cache immediately

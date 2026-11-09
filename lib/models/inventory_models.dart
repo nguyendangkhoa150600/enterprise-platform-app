@@ -97,28 +97,102 @@ class StockInventoryRow {
 class AssetItem {
   final String id;
   final String code;
+  final String? internalCode;
   final String name;
+  final String? parentId;
   final String? type;
   final String? status;
+  final String? criticality;
   final String? serialNumber;
+  final Map<String, dynamic>? specs;
+  final List<dynamic>? taskTemplate;
+  final String? qrCode;
+  final double? purchasePrice;
+  final int? manufactureYear;
+  final String? manufacturer;
+  final String? supplier;
 
   AssetItem({
     required this.id,
     required this.code,
+    this.internalCode,
     required this.name,
+    this.parentId,
     this.type,
     this.status,
+    this.criticality,
     this.serialNumber,
+    this.specs,
+    this.taskTemplate,
+    this.qrCode,
+    this.purchasePrice,
+    this.manufactureYear,
+    this.manufacturer,
+    this.supplier,
   });
 
+  String get typeLabel => type == 'LOCATION' ? 'Vị trí' : 'Thiết bị';
+
+  String get statusLabel {
+    switch (status) {
+      case 'OPERATING':
+        return 'Đang vận hành';
+      case 'MAINTENANCE':
+        return 'Bảo trì';
+      case 'DISPOSED':
+        return 'Thanh lý';
+      case 'IDLE':
+        return 'Chờ vận hành';
+      default:
+        return status ?? 'Đang vận hành';
+    }
+  }
+
+  String get criticalityLabel {
+    switch (criticality) {
+      case 'CRITICAL':
+        return 'Cấp Nghiêm trọng';
+      case 'HIGH':
+        return 'Cấp Cao';
+      case 'MEDIUM':
+        return 'Cấp Trung bình';
+      case 'LOW':
+        return 'Cấp Thấp';
+      default:
+        return 'Cấp Trung bình';
+    }
+  }
+
+  Map<String, String> get resolvedSpecs {
+    if (specs != null && specs!.isNotEmpty) {
+      return specs!.map((k, v) => MapEntry(k, v?.toString() ?? ''));
+    }
+    return {};
+  }
+
   factory AssetItem.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic>? parsedSpecs;
+    if (json['specs'] is Map) {
+      parsedSpecs = Map<String, dynamic>.from(json['specs'] as Map);
+    }
+
     return AssetItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
+      internalCode: json['internalCode']?.toString() ?? json['internal_code']?.toString(),
       name: json['name']?.toString() ?? '',
+      parentId: json['parentId']?.toString() ?? json['parent_id']?.toString(),
       type: json['type']?.toString(),
       status: json['status']?.toString(),
-      serialNumber: json['serialNumber']?.toString(),
+      criticality: json['criticality']?.toString(),
+      serialNumber: json['serialNumber']?.toString() ?? json['serial_number']?.toString(),
+      specs: parsedSpecs,
+      taskTemplate: json['taskTemplate'] is List ? json['taskTemplate'] as List : null,
+      qrCode: json['qrCode']?.toString() ?? json['qr_code']?.toString(),
+      purchasePrice: (json['purchasePrice'] as num?)?.toDouble() ?? (json['purchase_price'] as num?)?.toDouble(),
+      manufactureYear: (json['manufactureYear'] as num?)?.toInt() ?? (json['manufacture_year'] as num?)?.toInt(),
+      manufacturer: json['manufacturer']?.toString(),
+      supplier: json['supplier']?.toString(),
     );
   }
 }
@@ -351,8 +425,6 @@ class InventoryItem {
   final String? type;
   final String? status;
   final String? usageState;
-  final double? minStock;
-  final double? maxStock;
   final double available;
   final double onHand;
   final double inUse;
@@ -367,6 +439,8 @@ class InventoryItem {
   final String? rootCode;
   final String? rootName;
   final List<ItemWarehouseStock> warehouseStocks;
+  final double? minStock;
+  final double? maxStock;
 
   InventoryItem({
     required this.code,
@@ -377,8 +451,6 @@ class InventoryItem {
     this.type,
     this.status,
     this.usageState,
-    this.minStock,
-    this.maxStock,
     required this.available,
     this.onHand = 0.0,
     this.inUse = 0.0,
@@ -392,6 +464,8 @@ class InventoryItem {
     this.rootCode,
     this.rootName,
     this.warehouseStocks = const [],
+    this.minStock,
+    this.maxStock,
   }) : _isSerialized = isSerialized;
 
   bool get isInStock => (kind ?? 'STOCK') == 'STOCK';
@@ -424,8 +498,6 @@ class InventoryItem {
     String? type,
     String? status,
     String? usageState,
-    double? minStock,
-    double? maxStock,
     double? onHand,
     double? inUse,
     double? available,
@@ -435,6 +507,8 @@ class InventoryItem {
     String? trackingType,
     bool? isSerialized,
     List<ItemWarehouseStock>? warehouseStocks,
+    double? minStock,
+    double? maxStock,
   }) {
     return InventoryItem(
       code: code,
@@ -445,8 +519,6 @@ class InventoryItem {
       type: type ?? this.type,
       status: status ?? this.status,
       usageState: usageState ?? this.usageState,
-      minStock: minStock ?? this.minStock,
-      maxStock: maxStock ?? this.maxStock,
       available: available ?? this.available,
       onHand: onHand ?? this.onHand,
       inUse: inUse ?? this.inUse,
@@ -460,6 +532,8 @@ class InventoryItem {
       rootCode: rootCode,
       rootName: rootName,
       warehouseStocks: warehouseStocks ?? this.warehouseStocks,
+      minStock: minStock ?? this.minStock,
+      maxStock: maxStock ?? this.maxStock,
     );
   }
 
@@ -473,8 +547,6 @@ class InventoryItem {
       type: json['type']?.toString(),
       status: json['status']?.toString(),
       usageState: json['usage_state']?.toString() ?? json['usageState']?.toString(),
-      minStock: (json['min_stock'] as num?)?.toDouble() ?? (json['minStock'] as num?)?.toDouble(),
-      maxStock: (json['max_stock'] as num?)?.toDouble() ?? (json['maxStock'] as num?)?.toDouble(),
       available: (json['available'] as num?)?.toDouble() ?? 0.0,
       onHand: (json['onHand'] as num?)?.toDouble() ?? (json['quantity'] as num?)?.toDouble() ?? 0.0,
       inUse: (json['inUse'] as num?)?.toDouble() ?? 0.0,
@@ -487,6 +559,8 @@ class InventoryItem {
       installedAtName: json['installed_at_name']?.toString() ?? json['installedAtName']?.toString(),
       rootCode: json['root_code']?.toString() ?? json['rootCode']?.toString(),
       rootName: json['root_name']?.toString() ?? json['rootName']?.toString(),
+      minStock: (json['minStock'] as num?)?.toDouble() ?? (json['min_stock'] as num?)?.toDouble(),
+      maxStock: (json['maxStock'] as num?)?.toDouble() ?? (json['max_stock'] as num?)?.toDouble(),
     );
   }
 }
@@ -519,6 +593,342 @@ class InventoryOverviewData {
       recentTransactions: [],
       materials: [],
       items: [],
+    );
+  }
+}
+
+enum CustodyState {
+  inUse,
+  maintenance,
+  inStock,
+  stopped,
+  disposed,
+}
+
+class CustodyAssetItem {
+  final String id;
+  final String code;
+  final String name;
+  final String status;
+  final String? assetCategory;
+  final String? serialNumber;
+  final String? unit;
+  final double? purchasePrice;
+  final String? assignedEmployeeId;
+  final String? assignedEmployeeName;
+  final DateTime? assignedAt;
+
+  CustodyAssetItem({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.status = 'OPERATING',
+    this.assetCategory,
+    this.serialNumber,
+    this.unit,
+    this.purchasePrice,
+    this.assignedEmployeeId,
+    this.assignedEmployeeName,
+    this.assignedAt,
+  });
+
+  CustodyState get custodyState {
+    if (assignedEmployeeId != null && assignedEmployeeId!.isNotEmpty) {
+      return CustodyState.inUse;
+    }
+    if (status == 'MAINTENANCE') return CustodyState.maintenance;
+    if (status == 'STOPPED') return CustodyState.stopped;
+    if (status == 'DISPOSED') return CustodyState.disposed;
+    return CustodyState.inStock;
+  }
+
+  String get custodyStateLabel => stateLabel;
+
+  String get stateLabel {
+    switch (custodyState) {
+      case CustodyState.inUse:
+        return 'Đang sử dụng';
+      case CustodyState.maintenance:
+        return 'Bảo trì';
+      case CustodyState.inStock:
+        return 'Tồn kho';
+      case CustodyState.stopped:
+        return 'Ngừng hoạt động';
+      case CustodyState.disposed:
+        return 'Đã thanh lý';
+    }
+  }
+
+  String get categoryLabel {
+    switch (assetCategory) {
+      case 'INDUSTRIAL':
+        return 'Thiết bị công nghiệp';
+      case 'IT_OFFICE':
+        return 'Thiết bị CNTT, văn phòng';
+      case 'TOOL_PPE':
+        return 'Dụng cụ, bảo hộ';
+      case 'VEHICLE':
+        return 'Phương tiện';
+      default:
+        return assetCategory ?? '—';
+    }
+  }
+
+  factory CustodyAssetItem.fromJson(Map<String, dynamic> json, {String? employeeNameFallback}) {
+    DateTime? parsedAssignedAt;
+    final assignedAtRaw = json['assignedAt'] ?? json['assigned_at'];
+    if (assignedAtRaw != null) {
+      parsedAssignedAt = DateTime.tryParse(assignedAtRaw.toString());
+    }
+
+    return CustodyAssetItem(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'OPERATING',
+      assetCategory: json['assetCategory']?.toString() ?? json['asset_category']?.toString(),
+      serialNumber: json['serialNumber']?.toString() ?? json['serial_number']?.toString(),
+      unit: json['unit']?.toString() ?? 'Cái',
+      purchasePrice: (json['purchasePrice'] as num?)?.toDouble() ?? (json['purchase_price'] as num?)?.toDouble(),
+      assignedEmployeeId: json['assignedEmployeeId']?.toString() ?? json['assigned_employee_id']?.toString(),
+      assignedEmployeeName: employeeNameFallback ?? json['assignedEmployeeName']?.toString() ?? json['employeeName']?.toString(),
+      assignedAt: parsedAssignedAt,
+    );
+  }
+}
+
+
+
+class StockDocumentLineItem {
+  final String id;
+  final String? documentId;
+  final int lineNo;
+  final String materialId;
+  final String materialCode;
+  final String materialName;
+  final String unit;
+  final double quantity;
+  final double? unitPrice;
+  final double? amount;
+  final String? lotNumber;
+  final String? direction;
+  final List<String> serials;
+
+  StockDocumentLineItem({
+    required this.id,
+    this.documentId,
+    this.lineNo = 1,
+    this.materialId = '',
+    required this.materialCode,
+    required this.materialName,
+    this.unit = 'Cái',
+    required this.quantity,
+    this.unitPrice,
+    this.amount,
+    this.lotNumber,
+    this.direction,
+    this.serials = const [],
+  });
+
+  factory StockDocumentLineItem.fromJson(Map<String, dynamic> json) {
+    List<String> parsedSerials = [];
+    if (json['serials'] is List) {
+      parsedSerials = (json['serials'] as List).map((e) => e.toString()).toList();
+    }
+    return StockDocumentLineItem(
+      id: json['id']?.toString() ?? '',
+      documentId: json['documentId']?.toString() ?? json['document_id']?.toString(),
+      lineNo: (json['lineNo'] as num?)?.toInt() ?? (json['line_no'] as num?)?.toInt() ?? 1,
+      materialId: json['materialId']?.toString() ?? json['material_id']?.toString() ?? '',
+      materialCode: json['materialCode']?.toString() ?? json['material_code']?.toString() ?? '',
+      materialName: json['materialName']?.toString() ?? json['material_name']?.toString() ?? '',
+      unit: json['unit']?.toString() ?? 'Cái',
+      quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
+      unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? (json['unit_price'] as num?)?.toDouble(),
+      amount: (json['amount'] as num?)?.toDouble(),
+      lotNumber: json['lotNumber']?.toString() ?? json['lot_number']?.toString(),
+      direction: json['direction']?.toString(),
+      serials: parsedSerials,
+    );
+  }
+}
+
+class StockDocumentItem {
+  final String id;
+  final String code;
+  final String docType;
+  final String status;
+  final String warehouseId;
+  final String warehouseCode;
+  final String? targetWarehouseId;
+  final String? targetWarehouseCode;
+  final String? sourceType;
+  final String? sourceId;
+  final String documentDate;
+  final String? note;
+  final String? rejectReason;
+  final String? reversesDocumentId;
+  final String createdBy;
+  final String? submittedBy;
+  final String? approvedBy;
+  final String? rejectedBy;
+  final String? postedBy;
+  final DateTime? postedAt;
+  final DateTime createdAt;
+  final List<StockDocumentLineItem> lines;
+
+  StockDocumentItem({
+    required this.id,
+    required this.code,
+    required this.docType,
+    required this.status,
+    required this.warehouseId,
+    required this.warehouseCode,
+    this.targetWarehouseId,
+    this.targetWarehouseCode,
+    this.sourceType,
+    this.sourceId,
+    required this.documentDate,
+    this.note,
+    this.rejectReason,
+    this.reversesDocumentId,
+    required this.createdBy,
+    this.submittedBy,
+    this.approvedBy,
+    this.rejectedBy,
+    this.postedBy,
+    this.postedAt,
+    required this.createdAt,
+    this.lines = const [],
+  });
+
+  String get docTypeLabel {
+    switch (docType) {
+      case 'RECEIPT_PURCHASE':
+        return 'Nhập mua hàng';
+      case 'RECEIPT_SALES_RETURN':
+        return 'Nhập trả hàng bán';
+      case 'RECEIPT_TRANSFER':
+        return 'Nhập điều chuyển';
+      case 'RECEIPT_OTHER':
+        return 'Nhập khác';
+      case 'ISSUE_SALES':
+        return 'Xuất bán hàng';
+      case 'ISSUE_PROJECT':
+        return 'Xuất cho dự án';
+      case 'ISSUE_WARRANTY':
+        return 'Xuất bảo hành';
+      case 'ISSUE_TRANSFER':
+        return 'Xuất điều chuyển';
+      case 'ISSUE_OTHER':
+        return 'Xuất khác';
+      case 'ADJUSTMENT':
+        return 'Điều chỉnh tồn';
+      case 'TRANSFER':
+        return 'Điều chuyển kho';
+      default:
+        return docType;
+    }
+  }
+
+  String get statusLabel {
+    switch (status) {
+      case 'POSTED':
+        return 'Đã ghi sổ';
+      case 'DRAFT':
+        return 'Nháp';
+      case 'PENDING':
+        return 'Chờ duyệt';
+      case 'APPROVED':
+        return 'Đã duyệt';
+      case 'REJECTED':
+        return 'Từ chối';
+      case 'CANCELLED':
+        return 'Đã huỷ';
+      default:
+        return status;
+    }
+  }
+
+  String get sourceLabel {
+    if (sourceType == null || sourceType!.isEmpty) return 'Không có nguồn';
+    switch (sourceType) {
+      case 'crm_order':
+      case 'crm_sales_order':
+        return 'Đơn bán';
+      case 'crm_delivery':
+        return 'Đợt giao hàng';
+      case 'crm_warranty':
+        return 'Bảo hành';
+      case 'crm_return':
+        return 'Trả hàng';
+      default:
+        return sourceType!;
+    }
+  }
+
+  double get totalQuantity {
+    return lines.fold(0.0, (sum, l) => sum + l.quantity);
+  }
+
+  double get totalCost {
+    return lines.fold(0.0, (sum, l) => sum + (l.amount ?? (l.quantity * (l.unitPrice ?? 0.0))));
+  }
+
+  bool get isReversal =>
+      (reversesDocumentId != null && reversesDocumentId!.isNotEmpty) ||
+      (note != null && note!.startsWith('Đảo chứng từ'));
+
+  String get warehouseDisplay {
+    if (targetWarehouseCode != null && targetWarehouseCode!.isNotEmpty) {
+      return '$warehouseCode → $targetWarehouseCode';
+    }
+    return warehouseCode;
+  }
+
+  factory StockDocumentItem.fromJson(Map<String, dynamic> json) {
+    List<StockDocumentLineItem> parsedLines = [];
+    if (json['lines'] is List) {
+      parsedLines = (json['lines'] as List)
+          .map((e) => StockDocumentLineItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+
+    DateTime parsedCreatedAt = DateTime.now();
+    final createdRaw = json['createdAt'] ?? json['created_at'];
+    if (createdRaw != null) {
+      parsedCreatedAt = DateTime.tryParse(createdRaw.toString()) ?? DateTime.now();
+    }
+
+    DateTime? parsedPostedAt;
+    final postedRaw = json['postedAt'] ?? json['posted_at'];
+    if (postedRaw != null) {
+      parsedPostedAt = DateTime.tryParse(postedRaw.toString());
+    }
+
+    return StockDocumentItem(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      docType: json['docType']?.toString() ?? json['doc_type']?.toString() ?? 'RECEIPT_PURCHASE',
+      status: json['status']?.toString() ?? 'POSTED',
+      warehouseId: json['warehouseId']?.toString() ?? json['warehouse_id']?.toString() ?? '',
+      warehouseCode: json['warehouseCode']?.toString() ?? json['warehouse_code']?.toString() ?? '',
+      targetWarehouseId: json['targetWarehouseId']?.toString() ?? json['target_warehouse_id']?.toString(),
+      targetWarehouseCode: json['targetWarehouseCode']?.toString() ?? json['target_warehouse_code']?.toString(),
+      sourceType: json['sourceType']?.toString() ?? json['source_type']?.toString(),
+      sourceId: json['sourceId']?.toString() ?? json['source_id']?.toString(),
+      documentDate: json['documentDate']?.toString() ?? json['document_date']?.toString() ?? '',
+      note: json['note']?.toString(),
+      rejectReason: json['rejectReason']?.toString() ?? json['reject_reason']?.toString(),
+      reversesDocumentId: json['reversesDocumentId']?.toString() ?? json['reverses_document_id']?.toString(),
+      createdBy: json['createdBy']?.toString() ?? json['created_by']?.toString() ?? '',
+      submittedBy: json['submittedBy']?.toString() ?? json['submitted_by']?.toString(),
+      approvedBy: json['approvedBy']?.toString() ?? json['approved_by']?.toString(),
+      rejectedBy: json['rejectedBy']?.toString() ?? json['rejected_by']?.toString(),
+      postedBy: json['postedBy']?.toString() ?? json['posted_by']?.toString(),
+      postedAt: parsedPostedAt,
+      createdAt: parsedCreatedAt,
+      lines: parsedLines,
     );
   }
 }

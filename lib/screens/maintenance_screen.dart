@@ -2,65 +2,143 @@ import 'package:flutter/material.dart';
 import '../models/maintenance_models.dart';
 import '../services/module_business_service.dart';
 import '../theme/colors.dart';
-import '../core/i18n/app_i18n.dart';
+import 'maintenance/components/maintenance_history_tab_view.dart';
+import 'maintenance/components/maintenance_matrix_tab_view.dart';
+import 'maintenance/components/maintenance_occurrences_tab_view.dart';
+import 'maintenance/components/maintenance_overview_tab_view.dart';
+import 'maintenance/components/maintenance_schedules_tab_view.dart';
 
 class MaintenanceScreen extends StatefulWidget {
-  const MaintenanceScreen({super.key});
+  final int initialTab;
+  final String view; // 'dashboard' | 'matrix' | 'schedules' | 'occurrences' | 'history' | 'settings'
+
+  const MaintenanceScreen({
+    super.key,
+    this.initialTab = 0,
+    this.view = 'dashboard',
+  });
 
   @override
   State<MaintenanceScreen> createState() => _MaintenanceScreenState();
 }
 
-class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTickerProviderStateMixin {
+class _MaintenanceScreenState extends State<MaintenanceScreen> {
   final ModuleBusinessService _service = ModuleBusinessService();
-  late TabController _tabController;
+
+  Map<String, dynamic>? _workspace;
+  Map<String, dynamic>? _matrix;
   List<MaintenanceSchedule> _schedules = [];
   List<MaintenanceIncident> _incidents = [];
+  List<Map<String, dynamic>> _occurrences = [];
+  List<Map<String, dynamic>> _history = [];
   bool _isLoading = true;
-  String _searchQuery = '';
+
+  String get _currentView {
+    if (widget.view != 'dashboard') return widget.view;
+    switch (widget.initialTab) {
+      case 1:
+        return 'matrix';
+      case 2:
+        return 'schedules';
+      case 3:
+        return 'occurrences';
+      case 4:
+        return 'history';
+      case 5:
+        return 'settings';
+      default:
+        return widget.view;
+    }
+  }
+
+  String get _title {
+    switch (_currentView) {
+      case 'matrix':
+        return 'Ma trận bảo trì';
+      case 'schedules':
+        return 'Lịch bảo trì';
+      case 'occurrences':
+        return 'Phiếu phát sinh';
+      case 'history':
+        return 'Lịch sử bảo trì';
+      case 'settings':
+        return 'Cài đặt bảo trì';
+      default:
+        return 'Bảo trì phòng ngừa';
+    }
+  }
+
+  String get _subtitle {
+    switch (_currentView) {
+      case 'matrix':
+        return 'Ma trận chu kỳ bảo trì theo thiết bị';
+      case 'schedules':
+        return 'Kế hoạch bảo dưỡng định kỳ thiết bị';
+      case 'occurrences':
+        return 'Phiếu công tác & sự cố phát sinh';
+      case 'history':
+        return 'Nhật ký thực hiện bảo trì';
+      case 'settings':
+        return 'Cấu hình tần suất & tích hợp module';
+      default:
+        return 'Quản lý lịch bảo trì, ma trận chu kỳ & phiếu công tác';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadData();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     final results = await Future.wait([
+      _service.getMaintenanceWorkspace(),
+      _service.getMaintenanceMatrix(),
       _service.getMaintenanceSchedules(),
       _service.getMaintenanceIncidents(),
+      _service.getMaintenanceOccurrences(),
+      _service.getMaintenanceHistory(),
     ]);
+
     if (mounted) {
       setState(() {
-        _schedules = results[0] as List<MaintenanceSchedule>;
-        _incidents = results[1] as List<MaintenanceIncident>;
+        _workspace = results[0] as Map<String, dynamic>?;
+        _matrix = results[1] as Map<String, dynamic>?;
+        _schedules = results[2] as List<MaintenanceSchedule>;
+        _incidents = results[3] as List<MaintenanceIncident>;
+        _occurrences = results[4] as List<Map<String, dynamic>>;
+        _history = results[5] as List<Map<String, dynamic>>;
         _isLoading = false;
       });
     }
   }
 
-  List<MaintenanceSchedule> get _filteredSchedules {
-    if (_searchQuery.isEmpty) return _schedules;
-    return _schedules.where((s) =>
-        s.assetName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        s.assetCode.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+  Map<String, dynamic> get _metrics {
+    if (_workspace != null && _workspace!['metrics'] is Map) {
+      return Map<String, dynamic>.from(_workspace!['metrics'] as Map);
+    }
+    return {
+      'activeSchedules': _schedules.where((s) => s.status != 'COMPLETED').length,
+      'upcomingOccurrences': _schedules.where((s) => s.status == 'DUE' || s.status == 'OVERDUE').length,
+      'generatedOccurrences': _occurrences.length,
+      'completedOccurrences': _history.length,
+      'openIncidents': _incidents.where((i) => i.status != 'RESOLVED').length,
+    };
   }
 
-  int get _dueCount => _schedules.where((s) => s.status == 'DUE' || s.status == 'OVERDUE').length;
-  int get _openIncidentsCount => _incidents.where((i) => i.status == 'OPEN' || i.status == 'IN_PROGRESS').length;
+  void _navigateToView(String targetView) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => MaintenanceScreen(view: targetView)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.slate50,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: AppColors.slate900,
         foregroundColor: Colors.white,
@@ -69,30 +147,19 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'maintenance.title'.tr(),
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              _title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              'maintenance.subtitle'.tr(),
-              style: TextStyle(fontSize: 11, color: AppColors.slate400),
+              _subtitle,
+              style: const TextStyle(fontSize: 11, color: AppColors.slate400),
             ),
-          ],
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.emerald,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: AppColors.slate400,
-          tabs: [
-            Tab(icon: Icon(Icons.event_note_outlined, size: 18), text: 'maintenance.tab.schedules'.tr()),
-            Tab(icon: Icon(Icons.warning_amber_outlined, size: 18), text: 'maintenance.tab.incidents'.tr()),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'common.refresh'.tr(),
+            tooltip: 'Làm mới dữ liệu',
             onPressed: _loadData,
           ),
         ],
@@ -101,304 +168,95 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildSchedulesTab(),
-                  _buildIncidentsTab(),
-                ],
-              ),
+              child: _buildBody(),
             ),
     );
   }
 
-  Widget _buildSchedulesTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Metrics
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 650;
-              final cardWidth = isCompact ? (constraints.maxWidth - 12) / 2 : (constraints.maxWidth - 24) / 3;
-
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _buildMetricCard('maintenance.metric.plans'.tr(), '${_schedules.length}', Icons.calendar_month_outlined, AppColors.slate800, cardWidth),
-                  _buildMetricCard('maintenance.metric.due'.tr(), '$_dueCount', Icons.alarm_outlined, Colors.red.shade600, cardWidth),
-                  _buildMetricCard('maintenance.metric.open_incidents'.tr(), '$_openIncidentsCount', Icons.build_outlined, AppColors.amber, cardWidth),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // Search Bar
-          TextField(
-            onChanged: (val) => setState(() => _searchQuery = val),
-            decoration: InputDecoration(
-              hintText: 'maintenance.search_hint'.tr(),
-              hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
-              prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.slate400),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.slate200),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.slate200),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Schedules List
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _filteredSchedules.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              return _buildScheduleCard(_filteredSchedules[index]);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScheduleCard(MaintenanceSchedule item) {
-    Color statusColor;
-    String statusText;
-    if (item.status == 'OVERDUE') {
-      statusColor = Colors.red.shade700;
-      statusText = 'maintenance.status.overdue'.tr();
-    } else if (item.status == 'DUE') {
-      statusColor = AppColors.amber;
-      statusText = 'maintenance.status.due'.tr();
-    } else {
-      statusColor = AppColors.emerald;
-      statusText = 'maintenance.status.scheduled'.tr();
-    }
-
-    String freqLabel;
-    switch (item.frequency) {
-      case 'DAILY':
-        freqLabel = 'maintenance.freq.daily'.tr();
-        break;
-      case 'WEEKLY':
-        freqLabel = 'maintenance.freq.weekly'.tr();
-        break;
-      case 'MONTHLY':
-        freqLabel = 'maintenance.freq.monthly'.tr();
-        break;
-      case 'QUARTERLY':
-        freqLabel = 'maintenance.freq.quarterly'.tr();
-        break;
+  Widget _buildBody() {
+    switch (_currentView) {
+      case 'matrix':
+        return MaintenanceMatrixTabView(
+          matrix: _matrix,
+          onRefresh: _loadData,
+        );
+      case 'schedules':
+        return MaintenanceSchedulesTabView(
+          schedules: _schedules,
+          onRefresh: _loadData,
+        );
+      case 'occurrences':
+        return MaintenanceOccurrencesTabView(
+          incidents: _incidents,
+          occurrences: _occurrences,
+          onRefresh: _loadData,
+        );
+      case 'history':
+        return MaintenanceHistoryTabView(
+          history: _history,
+          onRefresh: _loadData,
+        );
+      case 'settings':
+        return _buildSettingsView();
       default:
-        freqLabel = 'maintenance.freq.yearly'.tr();
+        return MaintenanceOverviewTabView(
+          metrics: _metrics,
+          schedules: _schedules,
+          incidents: _incidents,
+          occurrences: _occurrences,
+          onNavigate: _navigateToView,
+        );
     }
+  }
 
-    return Container(
+  Widget _buildSettingsView() {
+    return ListView(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.slate100,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  item.assetCode,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.slate700),
-                ),
+              const Text(
+                'Cấu hình Bảo trì phòng ngừa',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  statusText,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor),
-                ),
+              const SizedBox(height: 8),
+              const Text(
+                'Các chu kỳ tần suất chuẩn được cấu hình và đồng bộ tự động từ Web ERP: Ngày, Tuần, Tháng, Quý, Năm.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
               ),
+              const SizedBox(height: 16),
+              _buildSettingRow('Tự động sinh phiếu công tác', 'Kích hoạt'),
+              _buildSettingRow('Đồng bộ với Kho & Vật tư', 'Đang kết nối'),
+              _buildSettingRow('Đồng bộ với Quy trình', 'Đang kết nối'),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            item.assetName,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.slate900),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.repeat, size: 14, color: AppColors.slate400),
-              const SizedBox(width: 4),
-              Text('maintenance.cycle'.tr(args: {'freq': freqLabel}), style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
-              const SizedBox(width: 16),
-              const Icon(Icons.event, size: 14, color: AppColors.slate400),
-              const SizedBox(width: 4),
-              Text('maintenance.next_due'.tr(args: {'date': item.nextDueDate}), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: item.status == 'OVERDUE' ? Colors.red.shade700 : AppColors.slate700)),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildIncidentsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'maintenance.incidents.title'.tr(),
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate900),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'maintenance.incidents.subtitle'.tr(),
-            style: TextStyle(fontSize: 12, color: AppColors.slate500),
-          ),
-          const SizedBox(height: 16),
-
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _incidents.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final inc = _incidents[index];
-              Color severityColor;
-              String severityText;
-              if (inc.severity == 'CRITICAL') {
-                severityColor = Colors.red.shade700;
-                severityText = 'maintenance.severity.critical'.tr();
-              } else if (inc.severity == 'MEDIUM') {
-                severityColor = Colors.orange.shade700;
-                severityText = 'maintenance.severity.medium'.tr();
-              } else {
-                severityColor = Colors.blue.shade700;
-                severityText = 'maintenance.severity.low'.tr();
-              }
-
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.slate200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          inc.assetCode,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate500),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: severityColor.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            severityText,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: severityColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      inc.title,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.slate900),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'maintenance.asset'.tr(args: {'name': inc.assetName}),
-                      style: const TextStyle(fontSize: 12, color: AppColors.slate600),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline, size: 13, color: AppColors.slate400),
-                        const SizedBox(width: 4),
-                        Text(inc.reportedBy ?? 'models.maintenance.technician'.tr(), style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.access_time, size: 13, color: AppColors.slate400),
-                        const SizedBox(width: 4),
-                        Text(inc.reportedAt, style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(String title, String val, IconData icon, Color color, double width) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate200),
-      ),
+  Widget _buildSettingRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(4),
             ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.slate400),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  val,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
-                ),
-              ],
-            ),
+            child: Text(value, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
           ),
         ],
       ),

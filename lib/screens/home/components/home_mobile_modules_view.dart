@@ -14,6 +14,8 @@ import '../../inventory_screen.dart';
 import '../../inventory/inventory_overview_screen.dart';
 import '../../inventory/inventory_items_screen.dart';
 import '../../inventory/inventory_transactions_screen.dart';
+import '../../inventory/inventory_documents_screen.dart';
+import '../../inventory/inventory_issue_requests_screen.dart';
 import '../../inventory/inventory_assets_screen.dart';
 import '../../inventory/inventory_reports_screen.dart';
 import '../../inventory/inventory_settings_screen.dart';
@@ -327,10 +329,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'icon': Icons.receipt_long_outlined,
                   'bg': const Color(0xFFFAF5FF), // Purple 50
                   'iconColor': const Color(0xFF9333EA),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen(
-                    title: 'Chứng từ kho',
-                    subtitle: 'Danh sách phiếu nhập, xuất & luân chuyển kho',
-                  ))),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen())),
                 },
                 {
                   'title': 'Duyệt chứng từ',
@@ -338,7 +337,8 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'icon': Icons.assignment_turned_in_outlined,
                   'bg': const Color(0xFFFEF3C7), // Amber 50
                   'iconColor': const Color(0xFFD97706),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen(
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen(
+                    initialStatus: 'PENDING',
                     title: 'Duyệt chứng từ',
                     subtitle: 'Phê duyệt các chứng từ xuất nhập kho',
                   ))),
@@ -349,23 +349,27 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'icon': Icons.outbox_rounded,
                   'bg': const Color(0xFFFFF7ED), // Orange 50
                   'iconColor': const Color(0xFFEA580C),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen(
-                    title: 'Yêu cầu xuất từ đơn bán',
-                    subtitle: 'Đơn bán hàng cần xuất kho và giao hàng',
-                    initialFilter: 'ISSUE',
-                  ))),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryIssueRequestsScreen())),
                 },
                 {
                   'title': 'Cây tài sản',
-                  'visible': canShowInventory,
+                  'visible': false,
                   'icon': Icons.account_tree_outlined,
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryAssetsScreen(initialTab: 1))),
+                },
+                {
+                  'title': 'Tài sản',
+                  'visible': false,
+                  'icon': Icons.devices_other_rounded,
                   'bg': const Color(0xFFEEF2FF), // Indigo 50
                   'iconColor': const Color(0xFF4F46E5),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryAssetsScreen())),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryAssetsScreen(initialTab: 0))),
                 },
                 {
                   'title': 'Báo cáo kho',
-                  'visible': canShowInventory,
+                  'visible': false,
                   'icon': Icons.bar_chart_rounded,
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
@@ -373,7 +377,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 },
                 {
                   'title': 'Cài đặt',
-                  'visible': canShowInventory,
+                  'visible': false,
                   'icon': Icons.tune_rounded,
                   'bg': const Color(0xFFF1F5F9), // Slate 50
                   'iconColor': const Color(0xFF475569),
@@ -497,33 +501,57 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
               ],
             ),
 
-            // 4. BẢO TRÌ & THIẾT BỊ
+            // 4. BẢO TRÌ (BẢO TRÌ PHÒNG NGỪA)
             _buildMenuSection(
-              title: 'BẢO TRÌ & THIẾT BỊ',
+              title: 'BẢO TRÌ',
               items: [
                 {
-                  'title': 'Thiết bị MBA',
-                  'visible': _mod('maintenance'),
-                  'icon': Icons.bolt_rounded,
-                  'bg': const Color(0xFFFFF7ED), // Orange 50
-                  'iconColor': const Color(0xFFEA580C),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen())),
+                  'title': 'Tổng quan',
+                  'visible': true,
+                  'icon': Icons.space_dashboard_rounded,
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'dashboard'))),
+                },
+                {
+                  'title': 'Ma trận bảo trì',
+                  'visible': true,
+                  'icon': Icons.grid_view_rounded,
+                  'bg': const Color(0xFFECFDF5), // Emerald 50
+                  'iconColor': const Color(0xFF059669),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'matrix'))),
                 },
                 {
                   'title': 'Lịch bảo trì',
-                  'visible': _mod('maintenance'),
+                  'visible': true,
                   'icon': Icons.calendar_month_outlined,
-                  'bg': const Color(0xFFEFF6FF), // Blue 50
-                  'iconColor': const Color(0xFF2563EB),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen())),
+                  'bg': const Color(0xFFFFFBEB), // Amber 50
+                  'iconColor': const Color(0xFFD97706),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'schedules'))),
                 },
                 {
-                  'title': 'Phiếu công tác',
-                  'visible': _mod('maintenance'),
-                  'icon': Icons.build_circle_outlined,
+                  'title': 'Phiếu phát sinh',
+                  'visible': true,
+                  'icon': Icons.warning_amber_rounded,
+                  'bg': const Color(0xFFFFF1F2), // Rose 50
+                  'iconColor': const Color(0xFFE11D48),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'occurrences'))),
+                },
+                {
+                  'title': 'Lịch sử',
+                  'visible': true,
+                  'icon': Icons.history_rounded,
                   'bg': const Color(0xFFFAF5FF), // Purple 50
                   'iconColor': const Color(0xFF9333EA),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen())),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'history'))),
+                },
+                {
+                  'title': 'Cài đặt',
+                  'visible': true,
+                  'icon': Icons.tune_rounded,
+                  'bg': const Color(0xFFF1F5F9), // Slate 50
+                  'iconColor': const Color(0xFF475569),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'settings'))),
                 },
               ],
             ),

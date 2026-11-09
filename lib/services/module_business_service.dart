@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import '../models/procedure_models.dart';
 import '../models/inventory_models.dart';
@@ -231,7 +232,10 @@ class ModuleBusinessService {
     return null;
   }
 
+  String? lastInventoryError;
+
   Future<dynamic> _inventoryPost(String path, {dynamic data}) async {
+    lastInventoryError = null;
     final endpoints = [
       '/api/inventory/v1$path',
       '/inventory/v1$path',
@@ -242,7 +246,16 @@ class ModuleBusinessService {
         if (response.statusCode == 200 || response.statusCode == 201) {
           return response.data ?? true;
         }
-      } catch (_) {}
+      } catch (e) {
+        if (e is DioException) {
+          final resData = e.response?.data;
+          if (resData is Map) {
+            lastInventoryError = resData['message']?.toString() ?? resData['error']?.toString();
+          } else if (resData is String && resData.isNotEmpty) {
+            lastInventoryError = resData;
+          }
+        }
+      }
     }
     return null;
   }
@@ -347,6 +360,156 @@ class ModuleBusinessService {
     return res != null;
   }
 
+  Future<bool> retireAsset(String code) async {
+    final res = await _inventoryDelete('/assets/${Uri.encodeComponent(code)}');
+    return res != null;
+  }
+
+  Future<List<Map<String, dynamic>>> getAssetDocuments(String code) async {
+    try {
+      final res = await _inventoryGet('/assets/${Uri.encodeComponent(code)}/documents');
+      List? list;
+      if (res is List) {
+        list = res;
+      } else if (res is Map) {
+        if (res['documents'] is List) {
+          list = res['documents'] as List;
+        } else if (res['data'] is List) {
+          list = res['data'] as List;
+        } else if (res['items'] is List) {
+          list = res['items'] as List;
+        }
+      }
+      if (list != null) {
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<String?> getAssetDocumentDownloadUrl(String code, String documentId) async {
+    try {
+      final res = await _inventoryGet('/assets/${Uri.encodeComponent(code)}/documents/${Uri.encodeComponent(documentId)}/download');
+      if (res is Map && res['url'] != null) {
+        return res['url'].toString();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> deleteAssetDocument(String code, String documentId) async {
+    try {
+      final res = await _inventoryDelete('/assets/${Uri.encodeComponent(code)}/documents/${Uri.encodeComponent(documentId)}');
+      return res != null;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> uploadAssetDocument(String code, String fileName, int sizeBytes, List<int> bytes) async {
+    try {
+      String contentType = 'application/octet-stream';
+      final lower = fileName.toLowerCase();
+      if (lower.endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      } else if (lower.endsWith('.pdf')) {
+        contentType = 'application/pdf';
+      } else if (lower.endsWith('.docx')) {
+        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      } else if (lower.endsWith('.xlsx')) {
+        contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      }
+
+      final res = await _inventoryPost('/assets/${Uri.encodeComponent(code)}/documents', data: {
+        'fileName': fileName,
+        'contentType': contentType,
+        'sizeBytes': sizeBytes,
+      });
+      if (res is Map && res['uploadUrl'] != null) {
+        final uploadUrl = res['uploadUrl'].toString();
+        final client = HttpClient();
+        client.badCertificateCallback = (cert, host, port) => true;
+        final uri = Uri.parse(uploadUrl);
+        final request = await client.putUrl(uri);
+        request.headers.set('content-type', contentType);
+        request.headers.set('content-length', sizeBytes.toString());
+        request.add(bytes);
+        final response = await request.close();
+        return response.statusCode == 200 || response.statusCode == 201;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> createAssetIncident({
+    required String assetCode,
+    required String title,
+    String? description,
+    String priority = 'HIGH',
+    String? assignedEmployeeId,
+    String? procedureId,
+    String? vehicleId,
+    List<String>? attachmentUrls,
+  }) async {
+    final endpoints = [
+      '/api/maintenance/v1/incidents',
+      '/maintenance/v1/incidents',
+      '/api/inventory/v1/assets/${Uri.encodeComponent(assetCode)}/incidents',
+    ];
+    final payload = {
+      'assetCode': assetCode,
+      'title': title,
+      if (description != null && description.isNotEmpty) 'description': description,
+      'priority': priority,
+      'severity': priority,
+      if (assignedEmployeeId != null && assignedEmployeeId.isNotEmpty) ...{
+        'assignedTo': assignedEmployeeId,
+        'assigneeId': assignedEmployeeId,
+      },
+      if (procedureId != null && procedureId.isNotEmpty) 'procedureId': procedureId,
+      if (vehicleId != null && vehicleId.isNotEmpty) 'vehicleId': vehicleId,
+      if (attachmentUrls != null && attachmentUrls.isNotEmpty) 'attachments': attachmentUrls,
+    };
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.post(ep, data: payload);
+        if (res.statusCode == 200 || res.statusCode == 201) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  Future<List<Map<String, dynamic>>> getAssetSpareParts(String code) async {
+    try {
+      final res = await _inventoryGet('/assets/${Uri.encodeComponent(code)}/spare-parts');
+      final list = res is List ? res : (res is Map && res['data'] is List ? res['data'] : null);
+      if (list is List) {
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getAssetMaintenanceHistory(String code) async {
+    final endpoints = [
+      '/api/maintenance/v1/occurrences?assetCode=${Uri.encodeComponent(code)}',
+      '/maintenance/v1/occurrences?assetCode=${Uri.encodeComponent(code)}',
+      '/api/inventory/v1/assets/${Uri.encodeComponent(code)}/history',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(ep);
+        final data = res.data;
+        final list = data is List ? data : (data is Map && data['items'] is List ? data['items'] : (data is Map && data['data'] is List ? data['data'] : null));
+        if (list is List) {
+          return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      } catch (_) {}
+    }
+    return [];
+  }
+
   Future<bool> createMaterial(Map<String, dynamic> input) async {
     final payload = {
       'category': 'SPARE_PART',
@@ -416,6 +579,256 @@ class ModuleBusinessService {
     if (res != null) return true;
     res = await _inventoryPatch(itemPath, data: patch);
     return res != null;
+  }
+
+  // --- Sổ tài sản & Cấp phát tài sản (Custody & Assets Management) ---
+    Future<List<AssetItem>> getAssets() async {
+    try {
+      final res = await _inventoryGet('/assets');
+      final list = res is List ? res : (res is Map && res['data'] is List ? res['data'] : null);
+      if (list is List) {
+        return list.map<AssetItem>((e) => AssetItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+Future<List<CustodyAssetItem>> getCustodyAssets() async {
+    try {
+      final res = await _inventoryGet('/custody/assets');
+      final list = res is List ? res : (res is Map && res['data'] is List ? res['data'] : null);
+      if (list is List) {
+        return list.map<CustodyAssetItem>((e) => CustodyAssetItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<bool> assignCustody(String materialCode, String? employeeId) async {
+    try {
+      final res = await _inventoryPost('/custody/assign', data: {
+        'materialCode': materialCode,
+        'employeeId': employeeId,
+      });
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> createAsset(Map<String, dynamic> input) async {
+    try {
+      final res = await _inventoryPost('/assets', data: input);
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAuditorCandidates() async {
+    final candidateEndpoints = [
+      '/auditor-candidates',
+      '/auditors',
+    ];
+    for (final p in candidateEndpoints) {
+      try {
+        final res = await _inventoryGet(p);
+        if (res is List && res.isNotEmpty) {
+          return res.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        if (res is Map && res['data'] is List && (res['data'] as List).isNotEmpty) {
+          return (res['data'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getTradeItems() async {
+    try {
+      final res = await _inventoryGet('/materials', queryParameters: {'all': 'true'});
+      if (res is List) {
+        return res.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      if (res is Map && res['materials'] is List) {
+        return (res['materials'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // --- Chứng từ kho (Stock Documents - T1-28 / T1-29 / T1-31) ---
+  Future<List<StockDocumentItem>> getStockDocuments({
+    String? docType,
+    String? docTypes,
+    String? status,
+    String? warehouseCode,
+    String? sourceType,
+    String? fromDate,
+    String? toDate,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    try {
+      final Map<String, dynamic> query = {
+        'limit': limit,
+        'offset': offset,
+      };
+      if (docType != null && docType.isNotEmpty) query['docType'] = docType;
+      if (docTypes != null && docTypes.isNotEmpty) query['docTypes'] = docTypes;
+      if (status != null && status.isNotEmpty) query['status'] = status;
+      if (warehouseCode != null && warehouseCode.isNotEmpty) query['warehouseCode'] = warehouseCode;
+      if (sourceType != null && sourceType.isNotEmpty) query['sourceType'] = sourceType;
+      if (fromDate != null && fromDate.isNotEmpty) query['fromDate'] = fromDate;
+      if (toDate != null && toDate.isNotEmpty) query['toDate'] = toDate;
+
+      final res = await _inventoryGet('/stock-documents', queryParameters: query);
+      final list = res is List
+          ? res
+          : (res is Map && res['items'] is List
+              ? res['items']
+              : (res is Map && res['data'] is List ? res['data'] : null));
+      if (list is List) {
+        return list
+            .map<StockDocumentItem>((e) => StockDocumentItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<StockDocumentItem?> getStockDocumentDetail(String id) async {
+    try {
+      final res = await _inventoryGet('/stock-documents/' + Uri.encodeComponent(id));
+      if (res is Map<String, dynamic>) {
+        return StockDocumentItem.fromJson(res);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> approveStockDocument(String id) async {
+    try {
+      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/approve');
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> rejectStockDocument(String id, {String? reason}) async {
+    try {
+      final res = await _inventoryPost(
+        '/stock-documents/' + Uri.encodeComponent(id) + '/reject',
+        data: reason != null ? {'reason': reason} : null,
+      );
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> postStockDocument(String id) async {
+    try {
+      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/post');
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> reverseStockDocument(String id, {String? reason}) async {
+    try {
+      final res = await _inventoryPost(
+        '/stock-documents/' + Uri.encodeComponent(id) + '/reverse',
+        data: reason != null ? {'reason': reason} : null,
+      );
+      return res != null;
+    } catch (_) {
+      try {
+        final res2 = await _inventoryPost(
+          '/stock-documents/' + Uri.encodeComponent(id) + '/reversal',
+          data: reason != null ? {'reason': reason} : null,
+        );
+        return res2 != null;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
+  Future<bool> cancelStockDocument(String id) async {
+    try {
+      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/cancel');
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> submitStockDocument(String id) async {
+    try {
+      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/submit');
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<StockDocumentItem?> updateStockDocument(
+    String id, {
+    String? warehouseCode,
+    String? targetWarehouseCode,
+    String? documentDate,
+    String? note,
+    List<Map<String, dynamic>>? lines,
+  }) async {
+    try {
+      final payload = {
+        if (warehouseCode != null) 'warehouseCode': warehouseCode,
+        if (targetWarehouseCode != null) 'targetWarehouseCode': targetWarehouseCode,
+        if (documentDate != null) 'documentDate': documentDate,
+        if (note != null) 'note': note,
+        if (lines != null) 'lines': lines,
+      };
+      final res = await _inventoryPatch('/stock-documents/' + Uri.encodeComponent(id), data: payload);
+      if (res is Map<String, dynamic>) {
+        return StockDocumentItem.fromJson(res);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<StockDocumentItem?> createStockDocument({
+    required String docType,
+    required String warehouseCode,
+    String? targetWarehouseCode,
+    required String documentDate,
+    String? sourceType,
+    String? note,
+    bool postImmediately = false,
+    required List<Map<String, dynamic>> lines,
+  }) async {
+    try {
+      final payload = {
+        'docType': docType,
+        'warehouseCode': warehouseCode,
+        if (targetWarehouseCode != null && targetWarehouseCode.isNotEmpty) 'targetWarehouseCode': targetWarehouseCode,
+        'documentDate': documentDate,
+        if (sourceType != null && sourceType.isNotEmpty) 'sourceType': sourceType,
+        if (note != null && note.isNotEmpty) 'note': note,
+        'lines': lines,
+      };
+      final res = await _inventoryPost('/stock-documents', data: payload);
+      if (res is Map<String, dynamic>) {
+        final doc = StockDocumentItem.fromJson(res);
+        if (postImmediately && doc.status != 'POSTED') {
+          await postStockDocument(doc.id);
+        }
+        return doc;
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<Map<String, dynamic>?> getInventorySettings() async {
@@ -686,6 +1099,82 @@ class ModuleBusinessService {
   }
 
   // Maintenance Schedules & Incidents
+  Future<Map<String, dynamic>?> getMaintenanceWorkspace() async {
+    final endpoints = [
+      '/api/maintenance/v1/workspace',
+      '/maintenance/v1/workspace',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(ep);
+        if (response.statusCode == 200 && response.data != null) {
+          return response.data is Map<String, dynamic> ? response.data as Map<String, dynamic> : null;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getMaintenanceMatrix() async {
+    final endpoints = [
+      '/api/maintenance/v1/matrix',
+      '/maintenance/v1/matrix',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(ep);
+        if (response.statusCode == 200 && response.data != null) {
+          return response.data is Map<String, dynamic> ? response.data as Map<String, dynamic> : null;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<List<Map<String, dynamic>>> getMaintenanceOccurrences() async {
+    final endpoints = [
+      '/api/maintenance/v1/occurrences',
+      '/maintenance/v1/occurrences',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(ep);
+        if (response.statusCode == 200 && response.data != null) {
+          final raw = response.data is List
+              ? response.data
+              : (response.data is Map && response.data['occurrences'] is List ? response.data['occurrences'] : null);
+          if (raw is List) {
+            return raw.whereType<Map<String, dynamic>>().toList();
+          }
+        }
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getMaintenanceHistory() async {
+    final endpoints = [
+      '/api/maintenance/v1/occurrences/history',
+      '/maintenance/v1/occurrences/history',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final response = await _dio.get(ep);
+        if (response.statusCode == 200 && response.data != null) {
+          final raw = response.data is List
+              ? response.data
+              : (response.data is Map && response.data['items'] is List
+                  ? response.data['items']
+                  : (response.data is Map && response.data['history'] is List ? response.data['history'] : null));
+          if (raw is List) {
+            return raw.whereType<Map<String, dynamic>>().toList();
+          }
+        }
+      } catch (_) {}
+    }
+    return [];
+  }
+
   Future<List<MaintenanceSchedule>> getMaintenanceSchedules() async {
     try {
       final response = await _dio.get('/maintenance/v1/schedules');

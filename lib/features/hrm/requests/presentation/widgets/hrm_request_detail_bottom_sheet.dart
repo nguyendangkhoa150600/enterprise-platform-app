@@ -548,6 +548,101 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
               const Divider(color: Color(0xFFF1F5F9), height: 1),
               _buildDetailRow(quantityLabel, quantityValue),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
+              if (_request.projectName != null || _request.projectCode != null || _request.projectId != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Dự án liên quan:', style: TextStyle(fontSize: 12, color: Color(0xFF475569))),
+                          Flexible(
+                            child: Text(
+                              _request.projectName ?? _request.projectCode ?? _request.projectId!,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                              textAlign: TextAlign.right,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_request.projectCode != null && _request.projectCode!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Mã dự án:', style: TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
+                            Text(_request.projectCode!, style: const TextStyle(fontSize: 11.5, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                          ],
+                        ),
+                      ],
+                      if (_request.projectStatus != null && _request.projectStatus!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Trạng thái dự án:', style: TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
+                            Text(_request.projectStatus!, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                          ],
+                        ),
+                      ],
+                      if (_request.projectLinkStatus != null && _request.projectLinkStatus!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Ghi nhận ở Workspace:', style: TextStyle(fontSize: 11.5, color: Color(0xFF475569))),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _request.projectLinkStatus == 'REJECTED'
+                                    ? const Color(0xFFFEF2F2)
+                                    : const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _request.projectLinkStatus == 'LINKED' ? 'Đã liên kết' : (_request.projectLinkStatus == 'REJECTED' ? 'Từ chối' : _request.projectLinkStatus!),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _request.projectLinkStatus == 'REJECTED' ? const Color(0xFFB91C1C) : const Color(0xFF047857),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (_request.projectLinkStatus == 'REJECTED' && _request.projectLinkRejectionReason != null && _request.projectLinkRejectionReason!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Lý do từ chối:', style: TextStyle(fontSize: 11.5, color: Color(0xFFB91C1C))),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _request.projectLinkRejectionReason!,
+                                style: const TextStyle(fontSize: 11.5, color: Color(0xFFB91C1C)),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Section: Quy trình phê duyệt matching Web
@@ -609,7 +704,9 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                       const SizedBox(height: 2),
                       Text(
                         isPending
-                            ? 'hrm_requests.flow_waiting'.tr()
+                            ? (_request.currentAssigneeName != null && _request.currentAssigneeName!.isNotEmpty
+                                ? 'Chờ duyệt: '
+                                : 'hrm_requests.flow_waiting'.tr())
                             : (isApproved
                                 ? 'hrm_requests.flow_approved'.tr()
                                 : (_request.status == HrmRequestStatus.rejected ? 'hrm_requests.st_rejected_done'.tr() : 'hrm_requests.status_cancelled'.tr())),
