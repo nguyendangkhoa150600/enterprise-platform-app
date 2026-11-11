@@ -270,6 +270,7 @@ class StandaloneTaskItem {
   final int openChildCount;
   final bool isReversed;
   final String? reversalReason;
+  final String? blockedReason;
 
   const StandaloneTaskItem({
     required this.id,
@@ -293,6 +294,7 @@ class StandaloneTaskItem {
     this.openChildCount = 0,
     this.isReversed = false,
     this.reversalReason,
+    this.blockedReason,
   });
 
   factory StandaloneTaskItem.fromJson(Map<String, dynamic> json) {
@@ -376,6 +378,7 @@ class StandaloneTaskItem {
       openChildCount: CustomerItem.parseInt(task['openChildCount']),
       isReversed: task['reversal'] != null,
       reversalReason: task['reversal'] is Map ? task['reversal']['reason']?.toString() : null,
+      blockedReason: task['blockedReason']?.toString() ?? task['blocked_reason']?.toString(),
     );
   }
 
@@ -763,6 +766,7 @@ class ProjectChatMessage {
   final bool isEdited;
   final String? parentId;
   final String? attachmentDocumentId;
+  final List<String> attachmentDocumentIds;
 
   const ProjectChatMessage({
     required this.id,
@@ -773,9 +777,18 @@ class ProjectChatMessage {
     this.isEdited = false,
     this.parentId,
     this.attachmentDocumentId,
+    this.attachmentDocumentIds = const [],
   });
 
   factory ProjectChatMessage.fromJson(Map<String, dynamic> json) {
+    final list = (json['attachmentDocumentIds'] as List?)?.map((e) => e.toString()).toList() ??
+        (json['attachment_document_ids'] as List?)?.map((e) => e.toString()).toList() ??
+        [];
+    final singleId = json['attachmentDocumentId']?.toString() ?? json['attachment_document_id']?.toString();
+    if (list.isEmpty && singleId != null && singleId.isNotEmpty) {
+      list.add(singleId);
+    }
+
     return ProjectChatMessage(
       id: json['id']?.toString() ?? '',
       body: json['body']?.toString() ?? '',
@@ -784,7 +797,8 @@ class ProjectChatMessage {
       isDeleted: json['isDeleted'] == true,
       isEdited: json['isEdited'] == true,
       parentId: json['parentId']?.toString(),
-      attachmentDocumentId: json['attachmentDocumentId']?.toString(),
+      attachmentDocumentId: singleId,
+      attachmentDocumentIds: list,
     );
   }
 }

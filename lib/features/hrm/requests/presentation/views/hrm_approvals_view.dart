@@ -12,6 +12,9 @@ class HrmApprovalsView extends StatefulWidget {
   final String Function(double?)? formatCurrency;
   final String Function(DateTime?)? formatDate;
   final String Function(DateTime?)? formatTime;
+  final String? initialRequestId;
+  final String? initialEmployeeName;
+  final HrmRequestType? initialRequestType;
 
   const HrmApprovalsView({
     super.key,
@@ -21,6 +24,9 @@ class HrmApprovalsView extends StatefulWidget {
     this.formatCurrency,
     this.formatDate,
     this.formatTime,
+    this.initialRequestId,
+    this.initialEmployeeName,
+    this.initialRequestType,
   });
 
   @override
@@ -31,6 +37,70 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
   HrmService get _hrmService => widget.hrmService;
   List<HrmRequestItem> get _requests => widget.requests;
   Future<void> _loadAllHrmData() => widget.onRefreshData();
+
+  bool _hasOpenedInitialRequest = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndOpenInitialRequest();
+  }
+
+  @override
+  void didUpdateWidget(covariant HrmApprovalsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _checkAndOpenInitialRequest();
+  }
+
+  void _checkAndOpenInitialRequest() {
+    if (_hasOpenedInitialRequest) return;
+    if (_requests.isEmpty) return;
+
+    HrmRequestItem? target;
+
+    // 1. By ID
+    if (widget.initialRequestId != null && widget.initialRequestId!.isNotEmpty) {
+      target = _requests.cast<HrmRequestItem?>().firstWhere(
+        (r) => r?.id == widget.initialRequestId,
+        orElse: () => null,
+      );
+    }
+
+    // 2. By Employee Name + Type
+    if (target == null && widget.initialEmployeeName != null && widget.initialEmployeeName!.isNotEmpty) {
+      final nameLower = widget.initialEmployeeName!.toLowerCase();
+      final candidates = _requests.where((r) {
+        final rName = r.employeeName.toLowerCase();
+        return rName.contains(nameLower) || nameLower.contains(rName);
+      }).toList();
+
+      if (candidates.isNotEmpty) {
+        if (widget.initialRequestType != null) {
+          target = candidates.cast<HrmRequestItem?>().firstWhere(
+            (r) => r?.type == widget.initialRequestType && r?.status == HrmRequestStatus.pending,
+            orElse: () => candidates.firstWhere(
+              (r) => r.type == widget.initialRequestType,
+              orElse: () => candidates.first,
+            ),
+          );
+        } else {
+          target = candidates.firstWhere(
+            (r) => r.status == HrmRequestStatus.pending,
+            orElse: () => candidates.first,
+          );
+        }
+      }
+    }
+
+    if (target != null) {
+      _hasOpenedInitialRequest = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showRequestDetailModal(target!);
+        }
+      });
+    }
+  }
 
   String _formatDate(DateTime? dt) {
     if (widget.formatDate != null) return widget.formatDate!(dt);

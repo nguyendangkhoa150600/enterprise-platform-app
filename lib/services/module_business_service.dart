@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/procedure_models.dart';
 import '../models/inventory_models.dart';
@@ -297,6 +298,27 @@ class ModuleBusinessService {
     return res != null;
   }
 
+  Future<bool> reactivateMaterial(String code) async {
+    return await updateMaterial(code, {'isActive': true});
+  }
+
+  Future<MaterialItem?> getMaterial(String code) async {
+    try {
+      final res = await _inventoryGet('/materials/${Uri.encodeComponent(code)}');
+      if (res is Map<String, dynamic>) {
+        return MaterialItem.fromJson(res);
+      } else if (res is Map) {
+        return MaterialItem.fromJson(Map<String, dynamic>.from(res));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> deleteMaterialPermanently(String code) async {
+    final res = await _inventoryDelete('/materials/${Uri.encodeComponent(code)}/permanent');
+    return res != null;
+  }
+
   Future<List<StockTransaction>> getMaterialHistory(String code, {int limit = 50}) async {
     try {
       final res = await _inventoryGet('/materials/${Uri.encodeComponent(code)}/history', queryParameters: {'limit': limit});
@@ -348,6 +370,25 @@ class ModuleBusinessService {
     } catch (_) {
       return (data: null, hasError: true);
     }
+  }
+
+  Future<List<StocktakeSession>> getStocktakes() async {
+    try {
+      final res = await _inventoryGet('/stocktakes');
+      final list = res is List
+          ? res
+          : (res is Map && res['sessions'] is List
+              ? res['sessions']
+              : (res is Map && res['data'] is List ? res['data'] : null));
+      if (list is List) {
+        return list
+            .map((e) => StocktakeSession.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[ModuleBusinessService] getStocktakes error: $e');
+    }
+    return [];
   }
 
   Future<bool> updateMaterial(String code, Map<String, dynamic> patch) async {
@@ -879,6 +920,8 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
       } else if (rawAssets is Map && rawAssets['assets'] is List) {
         assets = (rawAssets['assets'] as List).map((e) => AssetItem.fromJson(e as Map<String, dynamic>)).toList();
       }
+      final assetById = {for (final a in assets) a.id: a};
+      final assetByCode = {for (final a in assets) a.code: a};
 
       // 4. Installations (Đang sử dụng)
       final Map<String, double> inUseByMaterialCode = {};
@@ -962,12 +1005,14 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
             available: m.onHand,
             minStock: m.minStock,
             maxStock: m.maxStock,
+            createdAt: m.createdAt,
           );
         }).toList();
       }
 
       final updatedItems = items.map<InventoryItem>((item) {
         final mat = materialByCode[item.code] ?? materialById[item.code];
+        final asset = assetByCode[item.code] ?? assetById[item.code];
         final isSerialized = mat?.isSerialized ?? item.isSerialized;
         final trackingType = isSerialized
             ? 'SERIAL'
@@ -1000,10 +1045,10 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
         }
 
         return item.copyWith(
-          name: (item.name.isNotEmpty) ? item.name : (mat?.name ?? ''),
-          type: (item.type != null && item.type!.isNotEmpty) ? item.type : mat?.type,
+          name: (item.name.isNotEmpty) ? item.name : (mat?.name ?? asset?.name ?? ''),
+          type: (item.type != null && item.type!.isNotEmpty) ? item.type : (mat?.type ?? asset?.type),
           usageState: (item.usageState != null && item.usageState!.isNotEmpty) ? item.usageState : mat?.usageState,
-          status: (item.status != null && item.status!.isNotEmpty) ? item.status : mat?.status,
+          status: (item.status != null && item.status!.isNotEmpty) ? item.status : (mat?.status ?? asset?.status),
           category: (item.category != null && item.category!.isNotEmpty) ? item.category : mat?.category,
           unit: item.unit.isNotEmpty ? item.unit : (mat?.unit ?? ''),
           minStock: item.minStock ?? mat?.minStock,
@@ -1017,8 +1062,28 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
           blocked: blocked,
           totalOwned: totalOwned,
           warehouseStocks: whStocks,
+          createdAt: item.createdAt ?? mat?.createdAt ?? asset?.createdAt,
         );
       }).toList();
+
+      // Sort items: mới nhất lên đầu, cũ nhất xuống dưới (từ trên xuống, mới xuống cũ)
+      final itemIndexMap = <InventoryItem, int>{};
+      for (int i = 0; i < updatedItems.length; i++) {
+        itemIndexMap[updatedItems[i]] = i;
+      }
+      updatedItems.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          final cmp = b.createdAt!.compareTo(a.createdAt!);
+          if (cmp != 0) return cmp;
+        } else if (a.createdAt != null) {
+          return -1;
+        } else if (b.createdAt != null) {
+          return 1;
+        }
+        final idxA = itemIndexMap[a] ?? 0;
+        final idxB = itemIndexMap[b] ?? 0;
+        return idxB.compareTo(idxA);
+      });
 
       // Update materials onHand and warehouseName
       final updatedMaterials = materials.map((m) {
@@ -1033,6 +1098,24 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
           warehouseName: whName,
         );
       }).toList();
+
+      final matIndexMap = <MaterialItem, int>{};
+      for (int i = 0; i < updatedMaterials.length; i++) {
+        matIndexMap[updatedMaterials[i]] = i;
+      }
+      updatedMaterials.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          final cmp = b.createdAt!.compareTo(a.createdAt!);
+          if (cmp != 0) return cmp;
+        } else if (a.createdAt != null) {
+          return -1;
+        } else if (b.createdAt != null) {
+          return 1;
+        }
+        final idxA = matIndexMap[a] ?? 0;
+        final idxB = matIndexMap[b] ?? 0;
+        return idxB.compareTo(idxA);
+      });
 
       // 6. Transactions
       List<StockTransaction> transactions = [];

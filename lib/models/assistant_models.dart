@@ -120,6 +120,41 @@ class AssistantMessage {
       mentions: mentions ?? this.mentions,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'sender': sender.name,
+    'text': text,
+    'timestamp': timestamp.toIso8601String(),
+    if (actionDraft != null) 'actionDraft': actionDraft!.toJson(),
+    if (mentions.isNotEmpty) 'mentions': mentions,
+  };
+
+  factory AssistantMessage.fromJson(Map<String, dynamic> json) {
+    MessageSender s = MessageSender.assistant;
+    final senderStr = json['sender']?.toString();
+    if (senderStr == 'user') {
+      s = MessageSender.user;
+    } else if (senderStr == 'system') {
+      s = MessageSender.system;
+    }
+
+    final rawMentions = json['mentions'];
+    final mentionsList = rawMentions is List ? rawMentions.map((e) => e.toString()).toList() : <String>[];
+
+    return AssistantMessage(
+      id: json['id']?.toString() ?? 'msg_${DateTime.now().millisecondsSinceEpoch}',
+      sender: s,
+      text: json['text']?.toString() ?? '',
+      timestamp: json['timestamp'] != null
+          ? (DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now())
+          : DateTime.now(),
+      actionDraft: json['actionDraft'] is Map<String, dynamic>
+          ? AssistantActionDraft.fromJson(json['actionDraft'])
+          : null,
+      mentions: mentionsList,
+    );
+  }
 }
 
 /// Nhân sự dùng để gợi ý khi gõ @mention

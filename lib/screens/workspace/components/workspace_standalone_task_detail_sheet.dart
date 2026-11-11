@@ -161,6 +161,125 @@ class _StandaloneTaskDetailContentState extends State<_StandaloneTaskDetailConte
     }
   }
 
+  Future<void> _showBlockedReasonDialog({bool isEditing = false}) async {
+    final noteCtrl = TextEditingController(text: isEditing ? (_task.blockedReason ?? '') : '');
+    final shouldSubmit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
+            const SizedBox(width: 8),
+            Text(
+              isEditing ? 'Sửa lý do vướng mắc' : 'Báo vướng mắc',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_task.code} · ${_task.title}',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteCtrl,
+              maxLines: 4,
+              maxLength: 1000,
+              autofocus: true,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                labelText: 'Lý do vướng mắc *',
+                hintText: 'Ghi rõ điều đang cản trở công việc để người giao và cả nhóm nắm được...',
+                hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huỷ', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (noteCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Xác nhận', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSubmit == true && noteCtrl.text.trim().isNotEmpty) {
+      _updateStatus('blocked', note: noteCtrl.text.trim());
+    }
+  }
+
+  Widget _buildBlockedReasonNotice() {
+    final text = _task.blockedReason?.trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 20, color: Color(0xFFDC2626)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Vướng mắc',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  (text != null && text.isNotEmpty) ? text : 'Chưa ghi lý do vướng mắc',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: (text != null && text.isNotEmpty) ? const Color(0xFFB91C1C) : const Color(0xFF94A3B8),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => _showBlockedReasonDialog(isEditing: true),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              (text != null && text.isNotEmpty) ? 'Sửa lý do' : 'Ghi lý do',
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -380,6 +499,12 @@ class _StandaloneTaskDetailContentState extends State<_StandaloneTaskDetailConte
                       _buildActionButtonsRow(),
                       const SizedBox(height: 18),
 
+                      // Blocked Reason Notice matching Web 1:1
+                      if (_task.status == 'blocked') ...[
+                        _buildBlockedReasonNotice(),
+                        const SizedBox(height: 18),
+                      ],
+
                       // 2. Information Table matching Web
                       _buildInfoTable(),
                       const SizedBox(height: 18),
@@ -502,7 +627,7 @@ class _StandaloneTaskDetailContentState extends State<_StandaloneTaskDetailConte
         // Nút: Báo vướng mắc
         if (_canTransitionTo('blocked')) ...[
           OutlinedButton(
-            onPressed: () => _updateStatus('blocked'),
+            onPressed: () => _showBlockedReasonDialog(isEditing: false),
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF0F172A),
               side: const BorderSide(color: Color(0xFFCBD5E1)),

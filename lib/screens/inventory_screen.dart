@@ -10,9 +10,9 @@ class InventoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (initialTab == 1) {
-      return const InventoryItemsScreen();
+      return const InventoryItemsScreen(initialTabIndex: 0);
     } else if (initialTab == 2) {
-      return const InventoryTransactionsScreen();
+      return const InventoryItemsScreen(initialTabIndex: 2);
     }
     return const InventoryOverviewScreen();
   }

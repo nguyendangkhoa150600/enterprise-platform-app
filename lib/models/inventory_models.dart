@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import '../core/i18n/app_i18n.dart';
 
 class WarehouseItem {
@@ -111,6 +112,7 @@ class AssetItem {
   final int? manufactureYear;
   final String? manufacturer;
   final String? supplier;
+  final DateTime? createdAt;
 
   AssetItem({
     required this.id,
@@ -129,6 +131,7 @@ class AssetItem {
     this.manufactureYear,
     this.manufacturer,
     this.supplier,
+    this.createdAt,
   });
 
   String get typeLabel => type == 'LOCATION' ? 'Vị trí' : 'Thiết bị';
@@ -176,6 +179,12 @@ class AssetItem {
       parsedSpecs = Map<String, dynamic>.from(json['specs'] as Map);
     }
 
+    DateTime? parsedCreatedAt;
+    final cRaw = json['createdAt'] ?? json['created_at'];
+    if (cRaw != null) {
+      parsedCreatedAt = DateTime.tryParse(cRaw.toString());
+    }
+
     return AssetItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
@@ -193,6 +202,7 @@ class AssetItem {
       manufactureYear: (json['manufactureYear'] as num?)?.toInt() ?? (json['manufacture_year'] as num?)?.toInt(),
       manufacturer: json['manufacturer']?.toString(),
       supplier: json['supplier']?.toString(),
+      createdAt: parsedCreatedAt,
     );
   }
 }
@@ -209,6 +219,11 @@ class MaterialItem {
   final String warehouseName;
   final String? status;
   final double? purchasePrice;
+  final double? salePrice;
+  final String? barcode;
+  final String? tradeCategory;
+  final String? tradeMode;
+  final String kind;
   final String? currency;
   final bool? _isActive;
   bool get isActive => _isActive ?? true;
@@ -216,6 +231,9 @@ class MaterialItem {
   bool get isSerialized => _isSerialized ?? false;
   final String? type;
   final String? usageState;
+  final String? description;
+  final DateTime? createdAt;
+  final String? createdBy;
 
   MaterialItem({
     this.id = '',
@@ -229,41 +247,76 @@ class MaterialItem {
     required this.warehouseName,
     this.status,
     this.purchasePrice,
+    this.salePrice,
+    this.barcode,
+    this.tradeCategory,
+    this.tradeMode,
+    this.kind = 'STOCK',
     this.currency,
     bool isActive = true,
     bool isSerialized = false,
     this.type,
     this.usageState,
+    this.description,
+    this.createdAt,
+    this.createdBy,
   })  : _isActive = isActive,
         _isSerialized = isSerialized;
 
   bool get isLowStock => onHand <= minStock;
+  bool get isService => kind.toUpperCase() == 'SERVICE';
+  String get groupLabel => isService ? 'Dịch vụ' : 'Hàng hóa';
+  String get statusLabel => isActive ? 'Đang dùng' : 'Ngừng dùng';
 
   MaterialItem copyWith({
+    String? name,
+    String? unit,
+    String? category,
+    String? description,
     double? onHand,
+    double? minStock,
+    double? maxStock,
     String? warehouseName,
     String? status,
+    bool? isActive,
     bool? isSerialized,
     String? type,
     String? usageState,
+    DateTime? createdAt,
+    String? createdBy,
+    double? purchasePrice,
+    double? salePrice,
+    String? barcode,
+    String? tradeCategory,
+    String? tradeMode,
+    String? kind,
+    String? currency,
   }) {
     return MaterialItem(
       id: id,
       code: code,
-      name: name,
-      unit: unit,
-      category: category,
+      name: name ?? this.name,
+      unit: unit ?? this.unit,
+      category: category ?? this.category,
       onHand: onHand ?? this.onHand,
-      minStock: minStock,
-      maxStock: maxStock,
+      minStock: minStock ?? this.minStock,
+      maxStock: maxStock ?? this.maxStock,
       warehouseName: warehouseName ?? this.warehouseName,
       status: status ?? this.status,
-      purchasePrice: purchasePrice,
-      currency: currency,
-      isActive: isActive,
+      purchasePrice: purchasePrice ?? this.purchasePrice,
+      salePrice: salePrice ?? this.salePrice,
+      barcode: barcode ?? this.barcode,
+      tradeCategory: tradeCategory ?? this.tradeCategory,
+      tradeMode: tradeMode ?? this.tradeMode,
+      kind: kind ?? this.kind,
+      currency: currency ?? this.currency,
+      isActive: isActive ?? this.isActive,
       isSerialized: isSerialized ?? this.isSerialized,
       type: type ?? this.type,
       usageState: usageState ?? this.usageState,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 
@@ -274,6 +327,13 @@ class MaterialItem {
         0.0;
     final minVal = (json['minStock'] as num?)?.toDouble() ?? 10.0;
     final maxVal = (json['maxStock'] as num?)?.toDouble() ?? 9999.0;
+
+    DateTime? parsedCreatedAt;
+    final cRaw = json['createdAt'] ?? json['created_at'];
+    if (cRaw != null) {
+      parsedCreatedAt = DateTime.tryParse(cRaw.toString());
+    }
+
     return MaterialItem(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
@@ -286,11 +346,19 @@ class MaterialItem {
       warehouseName: json['warehouseName']?.toString() ?? 'models.inventory.default_warehouse'.tr(),
       status: json['status']?.toString(),
       purchasePrice: (json['purchasePrice'] as num?)?.toDouble() ?? (json['unitPrice'] as num?)?.toDouble(),
+      salePrice: (json['salePrice'] as num?)?.toDouble() ?? (json['sale_price'] as num?)?.toDouble(),
+      barcode: json['barcode']?.toString(),
+      tradeCategory: json['tradeCategory']?.toString() ?? json['trade_category']?.toString(),
+      tradeMode: json['tradeMode']?.toString() ?? json['trade_mode']?.toString(),
+      kind: json['kind']?.toString() ?? 'STOCK',
       currency: json['currency']?.toString() ?? 'VND',
       isActive: json['isActive'] == null ? true : (json['isActive'] == true),
       isSerialized: json['isSerialized'] == true,
       type: json['type']?.toString(),
       usageState: json['usageState']?.toString() ?? json['usage_state']?.toString(),
+      description: json['description']?.toString(),
+      createdAt: parsedCreatedAt,
+      createdBy: json['createdBy']?.toString() ?? json['created_by']?.toString(),
     );
   }
 }
@@ -441,6 +509,7 @@ class InventoryItem {
   final List<ItemWarehouseStock> warehouseStocks;
   final double? minStock;
   final double? maxStock;
+  final DateTime? createdAt;
 
   InventoryItem({
     required this.code,
@@ -466,6 +535,7 @@ class InventoryItem {
     this.warehouseStocks = const [],
     this.minStock,
     this.maxStock,
+    this.createdAt,
   }) : _isSerialized = isSerialized;
 
   bool get isInStock => (kind ?? 'STOCK') == 'STOCK';
@@ -509,6 +579,7 @@ class InventoryItem {
     List<ItemWarehouseStock>? warehouseStocks,
     double? minStock,
     double? maxStock,
+    DateTime? createdAt,
   }) {
     return InventoryItem(
       code: code,
@@ -534,10 +605,17 @@ class InventoryItem {
       warehouseStocks: warehouseStocks ?? this.warehouseStocks,
       minStock: minStock ?? this.minStock,
       maxStock: maxStock ?? this.maxStock,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
   factory InventoryItem.fromJson(Map<String, dynamic> json) {
+    DateTime? parsedCreatedAt;
+    final cRaw = json['createdAt'] ?? json['created_at'];
+    if (cRaw != null) {
+      parsedCreatedAt = DateTime.tryParse(cRaw.toString());
+    }
+
     return InventoryItem(
       code: json['code']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
@@ -561,6 +639,7 @@ class InventoryItem {
       rootName: json['root_name']?.toString() ?? json['rootName']?.toString(),
       minStock: (json['minStock'] as num?)?.toDouble() ?? (json['min_stock'] as num?)?.toDouble(),
       maxStock: (json['maxStock'] as num?)?.toDouble() ?? (json['max_stock'] as num?)?.toDouble(),
+      createdAt: parsedCreatedAt,
     );
   }
 }
@@ -930,5 +1009,111 @@ class StockDocumentItem {
       createdAt: parsedCreatedAt,
       lines: parsedLines,
     );
+  }
+}
+
+class StocktakeSession {
+  final String id;
+  final String code; // KK-YYYY-xxxxx
+  final String title;
+  final String warehouseId;
+  final String warehouseCode;
+  final String? warehouseName;
+  final String status; // 'DRAFT', 'COUNTING', 'PENDING_APPROVAL', 'APPROVED', 'POSTED', 'CANCELLED'
+  final String scopeType; // 'ALL', 'CATEGORY', 'SPECIFIC_ITEMS'
+  final String? stocktakeDate;
+  final String? leadAuditor;
+  final int totalItems;
+  final int countedItems;
+  final int differenceItems;
+  final double totalVarianceValue;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  StocktakeSession({
+    required this.id,
+    required this.code,
+    required this.title,
+    required this.warehouseId,
+    required this.warehouseCode,
+    this.warehouseName,
+    required this.status,
+    this.scopeType = 'ALL',
+    this.stocktakeDate,
+    this.leadAuditor,
+    this.totalItems = 0,
+    this.countedItems = 0,
+    this.differenceItems = 0,
+    this.totalVarianceValue = 0.0,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory StocktakeSession.fromJson(Map<String, dynamic> json) {
+    DateTime parsedCreated = DateTime.now();
+    final cRaw = json['createdAt'] ?? json['created_at'];
+    if (cRaw != null) {
+      parsedCreated = DateTime.tryParse(cRaw.toString()) ?? DateTime.now();
+    }
+
+    DateTime parsedUpdated = DateTime.now();
+    final uRaw = json['updatedAt'] ?? json['updated_at'];
+    if (uRaw != null) {
+      parsedUpdated = DateTime.tryParse(uRaw.toString()) ?? DateTime.now();
+    }
+
+    return StocktakeSession(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Phiên kiểm kê',
+      warehouseId: json['warehouseId']?.toString() ?? json['warehouse_id']?.toString() ?? '',
+      warehouseCode: json['warehouseCode']?.toString() ?? json['warehouse_code']?.toString() ?? '',
+      warehouseName: json['warehouseName']?.toString() ?? json['warehouse_name']?.toString(),
+      status: json['status']?.toString() ?? 'DRAFT',
+      scopeType: json['scopeType']?.toString() ?? json['scope_type']?.toString() ?? 'ALL',
+      stocktakeDate: json['stocktakeDate']?.toString() ?? json['stocktake_date']?.toString(),
+      leadAuditor: json['leadAuditor']?.toString() ?? json['lead_auditor']?.toString(),
+      totalItems: (json['totalItems'] as num?)?.toInt() ?? (json['total_items'] as num?)?.toInt() ?? 0,
+      countedItems: (json['countedItems'] as num?)?.toInt() ?? (json['counted_items'] as num?)?.toInt() ?? 0,
+      differenceItems: (json['differenceItems'] as num?)?.toInt() ?? (json['difference_items'] as num?)?.toInt() ?? 0,
+      totalVarianceValue: (json['totalVarianceValue'] as num?)?.toDouble() ?? (json['total_variance_value'] as num?)?.toDouble() ?? 0.0,
+      createdAt: parsedCreated,
+      updatedAt: parsedUpdated,
+    );
+  }
+
+  String get statusLabel {
+    switch (status.toUpperCase()) {
+      case 'COUNTING':
+        return 'Đang đếm';
+      case 'PENDING_APPROVAL':
+        return 'Chờ duyệt';
+      case 'APPROVED':
+        return 'Đã duyệt';
+      case 'POSTED':
+        return 'Đã hoàn tất';
+      case 'CANCELLED':
+        return 'Đã hủy';
+      case 'DRAFT':
+      default:
+        return 'Dự thảo';
+    }
+  }
+
+  Color get statusColor {
+    switch (status.toUpperCase()) {
+      case 'COUNTING':
+        return const Color(0xFF2563EB); // Blue
+      case 'PENDING_APPROVAL':
+        return const Color(0xFFD97706); // Amber
+      case 'APPROVED':
+      case 'POSTED':
+        return const Color(0xFF059669); // Green
+      case 'CANCELLED':
+        return const Color(0xFFDC2626); // Red
+      case 'DRAFT':
+      default:
+        return const Color(0xFF64748B); // Slate
+    }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/i18n/app_i18n.dart';
 import 'package:flutter/material.dart';
 import '../models/assistant_models.dart';
@@ -6,10 +8,12 @@ import '../widgets/assistant_action_card.dart';
 
 class AssistantChatScreen extends StatefulWidget {
   final String? initialPrompt;
+  final bool isEmbeddedInTab;
 
   const AssistantChatScreen({
     super.key,
     this.initialPrompt,
+    this.isEmbeddedInTab = false,
   });
 
   @override
@@ -119,19 +123,93 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     super.initState();
     _loadDirectory();
     _loadShortcutCounts();
-
-    // Initial message from Assistant
-    _messages.add(AssistantMessage(
-      id: 'welcome',
-      sender: MessageSender.assistant,
-      text: 'assistant.chat.welcome'.tr(),
-      timestamp: DateTime.now(),
-    ));
+    _assistantService.initConversationId();
+    _loadPersistedChatHistory();
 
     if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _handleSendMessage(widget.initialPrompt!);
       });
+    }
+  }
+
+  Future<void> _loadPersistedChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('saved_assistant_messages');
+      if (raw != null && raw.isNotEmpty) {
+        final List<dynamic> list = jsonDecode(raw);
+        final loaded = list
+            .whereType<Map<String, dynamic>>()
+            .map((m) => AssistantMessage.fromJson(m))
+            .toList();
+        if (loaded.isNotEmpty && mounted) {
+          setState(() {
+            _messages.clear();
+            _messages.addAll(loaded);
+          });
+          _scrollToBottom();
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[AssistantChatScreen] Error loading saved history: $e');
+    }
+
+    if (_messages.isEmpty && mounted) {
+      setState(() {
+        _messages.add(AssistantMessage(
+          id: 'welcome',
+          sender: MessageSender.assistant,
+          text: 'assistant.chat.welcome'.tr(),
+          timestamp: DateTime.now(),
+        ));
+      });
+    }
+  }
+
+  Future<void> _savePersistedChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = _messages.map((m) => m.toJson()).toList();
+      await prefs.setString('saved_assistant_messages', jsonEncode(list));
+    } catch (e) {
+      debugPrint('[AssistantChatScreen] Error saving history: $e');
+    }
+  }
+
+  Future<void> _handleResetChat() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Làm mới cuộc trò chuyện'),
+        content: const Text('Bạn có muốn xóa lịch sử trò chuyện hiện tại và bắt đầu lại phiên làm việc mới với Trợ lý không?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Làm mới', style: TextStyle(color: Colors.blueAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _assistantService.resetConversation();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saved_assistant_messages');
+      await prefs.remove('saved_assistant_conversation_id');
+      if (mounted) {
+        setState(() {
+          _messages.clear();
+          _messages.add(AssistantMessage(
+            id: 'welcome_${DateTime.now().millisecondsSinceEpoch}',
+            sender: MessageSender.assistant,
+            text: 'assistant.chat.reset_welcome'.tr(),
+            timestamp: DateTime.now(),
+          ));
+        });
+      }
     }
   }
 
@@ -292,6 +370,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         _isTyping = false;
       });
       _scrollToBottom();
+      _savePersistedChatHistory();
     }
   }
 
@@ -309,6 +388,104 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final chatBody = Stack(
+      children: [
+        Column(
+          children: [
+            // If embedded in tab, show subtle subheader with reset button
+            if (widget.isEmbeddedInTab)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text(
+                        'Hướng dẫn và dữ liệu trong quyền của bạn',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: _handleResetChat,
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.refresh_rounded, size: 14, color: Color(0xFF64748B)),
+                            SizedBox(width: 3),
+                            Text(
+                              'Làm mới',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // 1. Message list
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                itemCount: _messages.length + (_isTyping ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == _messages.length && _isTyping) {
+                    return _buildTypingIndicator();
+                  }
+                  final msg = _messages[index];
+                  return _buildMessageItem(msg);
+                },
+              ),
+            ),
+
+            // 2. Quick Prompts Chips
+            if (_messages.length <= 3) _buildQuickPromptsBar(),
+
+            // 3. Input bar
+            _buildInputBar(),
+          ],
+        ),
+
+        // Floating Mention Popup when user types @
+        if (_showMentionPopup) _buildMentionOverlay(),
+      ],
+    );
+
+    if (widget.isEmbeddedInTab) {
+      return Container(
+        color: const Color(0xFFF8FAFC),
+        child: chatBody,
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -350,16 +527,16 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   children: [
                     Text(
                       'assistant.chat.title'.tr(),
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
-                    SizedBox(width: 5),
-                    Icon(Icons.verified, size: 13, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 5),
+                    const Icon(Icons.verified, size: 13, color: Color(0xFF2563EB)),
                   ],
                 ),
-                SizedBox(height: 1),
+                const SizedBox(height: 1),
                 Text(
                   'assistant.chat.subtitle'.tr(),
-                  style: TextStyle(fontSize: 10.5, color: Color(0xFF059669), fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF059669), fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -369,17 +546,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF64748B), size: 20),
             tooltip: 'assistant.chat.reset_tooltip'.tr(),
-            onPressed: () {
-              setState(() {
-                _messages.clear();
-                _messages.add(AssistantMessage(
-                  id: 'welcome',
-                  sender: MessageSender.assistant,
-                  text: 'assistant.chat.reset_welcome'.tr(),
-                  timestamp: DateTime.now(),
-                ));
-              });
-            },
+            onPressed: _handleResetChat,
           ),
         ],
         bottom: const PreferredSize(
@@ -387,38 +554,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           child: Divider(height: 1, color: Color(0xFFE2E8F0)),
         ),
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              // 1. Message list
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                  itemCount: _messages.length + (_isTyping ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _messages.length && _isTyping) {
-                      return _buildTypingIndicator();
-                    }
-                    final msg = _messages[index];
-                    return _buildMessageItem(msg);
-                  },
-                ),
-              ),
-
-              // 2. Quick Prompts Chips
-              if (_messages.length <= 3) _buildQuickPromptsBar(),
-
-              // 3. Input bar
-              _buildInputBar(),
-            ],
-          ),
-
-          // Floating Mention Popup when user types @
-          if (_showMentionPopup) _buildMentionOverlay(),
-        ],
-      ),
+      body: chatBody,
     );
   }
 

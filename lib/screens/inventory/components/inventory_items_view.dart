@@ -3,21 +3,24 @@ import '../../../models/inventory_models.dart';
 import '../../../services/module_business_service.dart';
 import '../inventory_item_detail_screen.dart';
 import 'inventory_item_edit_dialog.dart';
-import 'inventory_material_create_dialog.dart';
 import 'inventory_movement_dialog.dart';
 import 'inventory_overview_view.dart';
 
 class InventoryItemsView extends StatefulWidget {
   final List<InventoryItem> items;
+  final List<WarehouseItem>? warehouses;
   final String? selectedWarehouseFilter;
   final VoidCallback? onClearWarehouseFilter;
+  final ValueChanged<String?>? onSelectWarehouse;
   final Future<void> Function() onRefresh;
 
   const InventoryItemsView({
     super.key,
     required this.items,
+    this.warehouses,
     this.selectedWarehouseFilter,
     this.onClearWarehouseFilter,
+    this.onSelectWarehouse,
     required this.onRefresh,
   });
 
@@ -26,7 +29,6 @@ class InventoryItemsView extends StatefulWidget {
 }
 
 class _InventoryItemsViewState extends State<InventoryItemsView> {
-  final ModuleBusinessService _service = ModuleBusinessService();
   String _searchQuery = '';
   String _selectedKindFilter = 'ALL'; // 'ALL', 'STOCK', 'ASSET'
 
@@ -54,13 +56,36 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
     }
 
     // Filter by search query
-    if (_searchQuery.trim().isEmpty) return list;
-    final q = _searchQuery.trim().toLowerCase();
-    return list.where((i) =>
-        i.code.toLowerCase().contains(q) ||
-        i.name.toLowerCase().contains(q) ||
-        (i.installedAtName ?? '').toLowerCase().contains(q) ||
-        (i.category ?? '').toLowerCase().contains(q)).toList();
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      list = list.where((i) =>
+          i.code.toLowerCase().contains(q) ||
+          i.name.toLowerCase().contains(q) ||
+          (i.installedAtName ?? '').toLowerCase().contains(q) ||
+          (i.category ?? '').toLowerCase().contains(q)).toList();
+    }
+
+    // Sắp xếp từ trên xuống dưới: mới nhất xuống cũ nhất (createdAt giảm dần + tie-breaker)
+    final indexMap = <InventoryItem, int>{};
+    for (int i = 0; i < list.length; i++) {
+      indexMap[list[i]] = i;
+    }
+    final sorted = List<InventoryItem>.from(list);
+    sorted.sort((a, b) {
+      if (a.createdAt != null && b.createdAt != null) {
+        final cmp = b.createdAt!.compareTo(a.createdAt!);
+        if (cmp != 0) return cmp;
+      } else if (a.createdAt != null) {
+        return -1;
+      } else if (b.createdAt != null) {
+        return 1;
+      }
+      final idxA = indexMap[a] ?? 0;
+      final idxB = indexMap[b] ?? 0;
+      return idxB.compareTo(idxA);
+    });
+
+    return sorted;
   }
 
   @override
@@ -87,41 +112,51 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
             _buildFilterPills(),
             const SizedBox(height: 12),
 
-            // Action Buttons: + Xuất/nhập kho & + Thêm vật tư (Khớp 1:1 với Web)
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _openMovementDialog,
-                    icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                    label: const Text('+ Xuất/nhập kho', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
+            // Action Button: + Xuất/nhập kho (Quản lý tồn kho)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _openMovementDialog,
+                icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                label: const Text('+ Xuất/nhập kho', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _openAddMaterialDialog,
-                    icon: const Icon(Icons.add_rounded, size: 16),
-                    label: const Text('+ Thêm vật tư', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 14),
+
+            // Horizontal Warehouse Selector (nếu có danh sách kho)
+            if (widget.warehouses != null && widget.warehouses!.isNotEmpty) ...[
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildWarehouseChip(
+                      label: 'Tất cả kho',
+                      isSelected: widget.selectedWarehouseFilter == null || widget.selectedWarehouseFilter!.isEmpty,
+                      onTap: () => widget.onClearWarehouseFilter?.call(),
+                    ),
+                    const SizedBox(width: 6),
+                    ...widget.warehouses!.map((wh) => Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: _buildWarehouseChip(
+                            label: wh.name,
+                            isSelected: widget.selectedWarehouseFilter != null &&
+                                (widget.selectedWarehouseFilter == wh.code ||
+                                    widget.selectedWarehouseFilter == wh.name),
+                            onTap: () => widget.onSelectWarehouse?.call(wh.code),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // Active Warehouse Filter Chip (if selected)
             if (widget.selectedWarehouseFilter != null && widget.selectedWarehouseFilter!.isNotEmpty) ...[
@@ -369,6 +404,35 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
     );
   }
 
+  Widget _buildWarehouseChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Colors.white : const Color(0xFF475569),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openDetailScreen(InventoryItem item) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -590,13 +654,6 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
       context,
       items: widget.items,
       onSubmitted: widget.onRefresh,
-    );
-  }
-
-  void _openAddMaterialDialog() {
-    InventoryMaterialCreateDialog.show(
-      context,
-      onCreated: widget.onRefresh,
     );
   }
 

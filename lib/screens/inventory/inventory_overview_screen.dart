@@ -73,14 +73,17 @@ class _InventoryOverviewScreenState extends State<InventoryOverviewScreen> {
               onViewAllTransactions: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen()),
+                  MaterialPageRoute(builder: (_) => const InventoryItemsScreen(initialTabIndex: 2)),
                 );
               },
               onSelectWarehouse: (wh) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => InventoryItemsScreen(initialWarehouseFilter: wh.code),
+                    builder: (_) => InventoryItemsScreen(
+                      initialWarehouseFilter: wh.code,
+                      initialTabIndex: 1,
+                    ),
                   ),
                 );
               },
