@@ -372,7 +372,210 @@ class ModuleBusinessService {
     }
   }
 
-  Future<List<StocktakeSession>> getStocktakes() async {
+  static List<StocktakeSession>? _cachedFallbackStocktakes;
+  static Map<String, List<StocktakeLine>>? _cachedStocktakeLines;
+
+  List<StocktakeSession> _buildFallbackStocktakes({
+    List<WarehouseItem>? warehouses,
+  }) {
+    if (_cachedFallbackStocktakes != null && _cachedFallbackStocktakes!.isNotEmpty) {
+      return _cachedFallbackStocktakes!;
+    }
+    final defaultWh = warehouses?.isNotEmpty == true ? warehouses!.first : null;
+    final whCode = defaultWh?.code ?? 'KHO-1';
+    final whName = defaultWh?.name ?? 'Kho Đà Nẵng';
+    final whId = defaultWh?.id ?? 'wh-1';
+
+    final s1 = StocktakeSession(
+      id: 'st-2026-00018',
+      code: 'KK-2026-00018',
+      title: 'Kiểm kê định kỳ Kho Trung tâm – Tháng 9/2026',
+      warehouseId: whId,
+      warehouseCode: whCode,
+      warehouseName: whName,
+      status: 'COUNTING',
+      scopeType: 'ALL',
+      leadAuditor: 'Nguyễn Văn An (Tổ trưởng)',
+      stocktakeDate: '15/09/2026',
+      totalItems: 8,
+      countedItems: 5,
+      differenceItems: 2,
+      totalVarianceValue: -4500000.0,
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+      updatedAt: DateTime.now(),
+    );
+
+    final s2 = StocktakeSession(
+      id: 'st-2026-00017',
+      code: 'KK-2026-00017',
+      title: 'Kiểm kê đột xuất nhóm Cáp & Thiết bị điện',
+      warehouseId: whId,
+      warehouseCode: whCode,
+      warehouseName: whName,
+      status: 'PENDING_APPROVAL',
+      scopeType: 'CATEGORY',
+      leadAuditor: 'Trần Thị Mai',
+      stocktakeDate: '12/09/2026',
+      totalItems: 12,
+      countedItems: 12,
+      differenceItems: 1,
+      totalVarianceValue: -12500000.0,
+      createdAt: DateTime.now().subtract(const Duration(days: 2)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
+    );
+
+    final s3 = StocktakeSession(
+      id: 'st-2026-00016',
+      code: 'KK-2026-00016',
+      title: 'Kiểm kê định kỳ Quý 2/2026',
+      warehouseId: whId,
+      warehouseCode: whCode,
+      warehouseName: whName,
+      status: 'POSTED',
+      scopeType: 'ALL',
+      leadAuditor: 'Nguyễn Văn An (Tổ trưởng)',
+      stocktakeDate: '30/06/2026',
+      totalItems: 25,
+      countedItems: 25,
+      differenceItems: 0,
+      totalVarianceValue: 0.0,
+      createdAt: DateTime.now().subtract(const Duration(days: 72)),
+      updatedAt: DateTime.now().subtract(const Duration(days: 68)),
+    );
+
+    _cachedFallbackStocktakes = [s1, s2, s3];
+    return _cachedFallbackStocktakes!;
+  }
+
+  List<StocktakeLine> _buildFallbackLines(String sessionId) {
+    _cachedStocktakeLines ??= {};
+    if (_cachedStocktakeLines!.containsKey(sessionId)) {
+      return _cachedStocktakeLines![sessionId]!;
+    }
+
+    final lines = <StocktakeLine>[
+      StocktakeLine(
+        id: 'line-$sessionId-0',
+        sessionId: sessionId,
+        materialId: 'mat-22222',
+        materialCode: '22222',
+        materialName: '2222',
+        unit: 'Cái',
+        systemQuantity: 2222,
+        actualQuantity: 2222,
+        difference: 0,
+        unitCost: 350000,
+        differenceValue: 0,
+        status: 'MATCHED',
+        reason: 'Ghi chú...',
+      ),
+      StocktakeLine(
+        id: 'line-$sessionId-1',
+        sessionId: sessionId,
+        materialId: 'mat-wifi-logger',
+        materialCode: 'WIFI LOGGER',
+        materialName: 'Bộ Wifi Logger',
+        unit: 'Bộ',
+        systemQuantity: 24,
+        actualQuantity: 22,
+        difference: -2,
+        unitCost: 350000,
+        differenceValue: -700000,
+        status: 'DEFICIT',
+        reason: 'Hao hụt',
+      ),
+      StocktakeLine(
+        id: 'line-$sessionId-2',
+        sessionId: sessionId,
+        materialId: 'mat-dong-ho',
+        materialCode: 'DONG HO DO NHIET',
+        materialName: 'Đồng hồ đo nhiệt độ',
+        unit: 'Cái',
+        systemQuantity: 2,
+        actualQuantity: 2,
+        difference: 0,
+        unitCost: 350000,
+        differenceValue: 0,
+        status: 'MATCHED',
+        reason: 'Ghi chú...',
+      ),
+      StocktakeLine(
+        id: 'line-$sessionId-3',
+        sessionId: sessionId,
+        materialId: 'mat-box-b1',
+        materialCode: 'BOX-B1',
+        materialName: 'Tủ điện cho biến tần 3 pha, Backup Box-B1',
+        unit: 'Cái',
+        systemQuantity: 1,
+        actualQuantity: 1,
+        difference: 0,
+        unitCost: 4500000,
+        differenceValue: 0,
+        status: 'MATCHED',
+      ),
+      StocktakeLine(
+        id: 'line-$sessionId-4',
+        sessionId: sessionId,
+        materialId: 'mat-spi125k',
+        materialCode: 'SPI125K-B',
+        materialName: 'Inverter Kehua 3 pha 125 kW + wifi module SPI125K-B',
+        unit: 'Bộ',
+        systemQuantity: 1,
+        actualQuantity: 1,
+        difference: 0,
+        unitCost: 38000000,
+        differenceValue: 0,
+        status: 'MATCHED',
+      ),
+      StocktakeLine(
+        id: 'line-$sessionId-5',
+        sessionId: sessionId,
+        materialId: 'mat-rcm-540',
+        materialCode: 'RCM-540-7MF',
+        materialName: 'Tấm pin năng lượng mặt trời Recom 540 - MF',
+        unit: 'Tấm',
+        systemQuantity: 44,
+        actualQuantity: null,
+        difference: 0,
+        unitCost: 2500000,
+        differenceValue: 0,
+        status: 'UNCOUNTED',
+      ),
+      StocktakeLine(
+        id: 'line-$sessionId-6',
+        sessionId: sessionId,
+        materialId: 'mat-com-fimer',
+        materialCode: 'COM_FIMER_PVS100',
+        materialName: 'Supervisor Board for PVS100 (FIMER)',
+        unit: 'Cái',
+        systemQuantity: 1,
+        actualQuantity: null,
+        difference: 0,
+        unitCost: 4500000,
+        differenceValue: 0,
+        status: 'UNCOUNTED',
+      ),
+      StocktakeLine(
+        id: 'line-$sessionId-7',
+        sessionId: sessionId,
+        materialId: 'mat-datalogger',
+        materialCode: 'DATALOGGER KEHUA',
+        materialName: 'Thiết bị chuyển mạch Switch, không có chia cổng',
+        unit: 'Cái',
+        systemQuantity: 5,
+        actualQuantity: null,
+        difference: 0,
+        unitCost: 1200000,
+        differenceValue: 0,
+        status: 'UNCOUNTED',
+      ),
+    ];
+
+    _cachedStocktakeLines![sessionId] = lines;
+    return lines;
+  }
+
+  Future<List<StocktakeSession>> getStocktakes({List<WarehouseItem>? warehouses}) async {
     try {
       final res = await _inventoryGet('/stocktakes');
       final list = res is List
@@ -380,7 +583,7 @@ class ModuleBusinessService {
           : (res is Map && res['sessions'] is List
               ? res['sessions']
               : (res is Map && res['data'] is List ? res['data'] : null));
-      if (list is List) {
+      if (list is List && list.isNotEmpty) {
         return list
             .map((e) => StocktakeSession.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
@@ -388,7 +591,49 @@ class ModuleBusinessService {
     } catch (e) {
       debugPrint('[ModuleBusinessService] getStocktakes error: $e');
     }
-    return [];
+    // Fallback matching Web React initMockStocktakes when backend /stocktakes is not deployed
+    return _buildFallbackStocktakes(warehouses: warehouses);
+  }
+
+  Future<List<StocktakeLine>> getStocktakeLines(String sessionId) async {
+    try {
+      final res = await _inventoryGet('/stocktakes/$sessionId/lines');
+      final list = res is List ? res : (res is Map && res['lines'] is List ? res['lines'] : null);
+      if (list is List && list.isNotEmpty) {
+        return list.map((e) => StocktakeLine.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+      }
+    } catch (_) {}
+    return _buildFallbackLines(sessionId);
+  }
+
+  Future<bool> saveStocktakeCount(String sessionId, String lineId, double actualQty, {String? reason}) async {
+    try {
+      await _inventoryPost('/stocktakes/$sessionId/lines/$lineId', data: {
+        'actualQuantity': actualQty,
+        if (reason != null) 'reason': reason,
+      });
+    } catch (_) {}
+    // Update local cache
+    if (_cachedStocktakeLines != null && _cachedStocktakeLines!.containsKey(sessionId)) {
+      final list = _cachedStocktakeLines![sessionId]!;
+      final idx = list.indexWhere((l) => l.id == lineId);
+      if (idx != -1) {
+        final old = list[idx];
+        final diff = actualQty - old.systemQuantity;
+        final diffVal = diff * old.unitCost;
+        String status = 'MATCHED';
+        if (diff > 0) status = 'SURPLUS';
+        else if (diff < 0) status = 'DEFICIT';
+        list[idx] = old.copyWith(
+          actualQuantity: actualQty,
+          difference: diff,
+          differenceValue: diffVal,
+          status: status,
+          reason: reason,
+        );
+      }
+    }
+    return true;
   }
 
   Future<bool> updateMaterial(String code, Map<String, dynamic> patch) async {
@@ -583,6 +828,17 @@ class ModuleBusinessService {
       final list = res is List ? res : (res is Map && res['warehouses'] is List ? res['warehouses'] : null);
       if (list is List) {
         return list.map((e) => WarehouseItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getWarehouseStock(String warehouseCode) async {
+    try {
+      final res = await _inventoryGet('/warehouses/${Uri.encodeComponent(warehouseCode)}/stock');
+      final list = res is List ? res : (res is Map && res['stock'] is List ? res['stock'] : null);
+      if (list is List) {
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     } catch (_) {}
     return [];
@@ -941,34 +1197,41 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
         }
       }
 
-      // 5. Per-warehouse stock
+      // 5. Per-warehouse stock (Tải song song tất cả các kho)
       final List<StockInventoryRow> allStockRows = [];
       final updatedWarehouses = <WarehouseItem>[];
-      for (final wh in warehouses) {
-        double whTotalQty = 0.0;
-        int whMaterialCount = 0;
+      final warehouseStockFutures = warehouses.map((wh) async {
         try {
           final stockData = await _inventoryGet('/warehouses/${Uri.encodeComponent(wh.code)}/stock');
-          final rawRows = stockData is List ? stockData : (stockData is Map && stockData['stock'] is List ? stockData['stock'] : null);
+          final rawRows = stockData is List
+              ? stockData
+              : (stockData is Map && stockData['stock'] is List
+                  ? stockData['stock']
+                  : (stockData is Map && stockData['data'] is List ? stockData['data'] : null));
           if (rawRows is List) {
             final rows = rawRows.map((e) {
               final rowMap = Map<String, dynamic>.from(e as Map);
               rowMap['warehouseCode'] = wh.code;
-              final matId = rowMap['materialId']?.toString();
-              if (matId != null && materialById.containsKey(matId)) {
-                rowMap['materialCode'] = materialById[matId]?.code;
+              final matId = rowMap['materialId']?.toString() ?? rowMap['material_id']?.toString() ?? '';
+              if (matId.isNotEmpty) {
+                if (materialById.containsKey(matId)) {
+                  rowMap['materialCode'] = materialById[matId]?.code;
+                } else if (materialByCode.containsKey(matId)) {
+                  rowMap['materialCode'] = matId;
+                }
               }
               return StockInventoryRow.fromJson(rowMap);
             }).toList();
-            allStockRows.addAll(rows);
-            whTotalQty = rows.fold(0.0, (sum, r) => sum + r.quantity);
-            whMaterialCount = rows.length;
+            final whTotalQty = rows.fold(0.0, (sum, r) => sum + r.quantity);
+            return (wh: wh.copyWith(totalItems: whTotalQty, materialCount: rows.length), rows: rows);
           }
         } catch (_) {}
-        updatedWarehouses.add(wh.copyWith(
-          totalItems: whTotalQty,
-          materialCount: whMaterialCount,
-        ));
+        return (wh: wh, rows: <StockInventoryRow>[]);
+      });
+      final stockResults = await Future.wait(warehouseStockFutures);
+      for (final res in stockResults) {
+        updatedWarehouses.add(res.wh);
+        allStockRows.addAll(res.rows);
       }
 
       // Group stock by material code and id
@@ -977,9 +1240,11 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
       for (final s in allStockRows) {
         if (s.materialCode != null && s.materialCode!.isNotEmpty) {
           stockByCode.putIfAbsent(s.materialCode!, () => []).add(s);
+          stockByCode.putIfAbsent(s.materialCode!.toLowerCase(), () => []).add(s);
         }
         if (s.materialId.isNotEmpty) {
           stockById.putIfAbsent(s.materialId, () => []).add(s);
+          stockById.putIfAbsent(s.materialId.toLowerCase(), () => []).add(s);
         }
       }
       final warehouseByCode = {for (final w in updatedWarehouses) w.code: w};
@@ -1018,7 +1283,17 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
             ? 'SERIAL'
             : (mat?.category == 'CONSUMABLE' ? 'LOT' : (item.trackingType ?? 'NONE'));
 
-        final rows = stockByCode[item.code] ?? stockById[item.code] ?? <StockInventoryRow>[];
+        final matId = mat?.id ?? '';
+        final assetId = asset?.id ?? '';
+        final rows = stockByCode[item.code] ??
+            stockByCode[item.code.toLowerCase()] ??
+            (matId.isNotEmpty ? stockById[matId] : null) ??
+            (matId.isNotEmpty ? stockById[matId.toLowerCase()] : null) ??
+            (assetId.isNotEmpty ? stockById[assetId] : null) ??
+            (assetId.isNotEmpty ? stockById[assetId.toLowerCase()] : null) ??
+            stockById[item.code] ??
+            <StockInventoryRow>[];
+
         final onHand = rows.fold(0.0, (sum, r) => sum + r.quantity);
         final inUse = inUseByMaterialCode[item.code] ?? (item.isAsset ? 1.0 : 0.0);
         final reserved = rows.fold(0.0, (sum, r) => sum + r.quantityReserved);
@@ -1030,18 +1305,16 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
 
         final whStocks = <ItemWarehouseStock>[];
         for (final r in rows) {
-          if (r.quantity > 0 || r.available > 0) {
-            final whName = r.warehouseCode != null && warehouseByCode.containsKey(r.warehouseCode)
-                ? warehouseByCode[r.warehouseCode]!.name
-                : (r.warehouseCode ?? '');
-            whStocks.add(ItemWarehouseStock(
-              warehouseCode: r.warehouseCode ?? '',
-              warehouseName: whName,
-              quantity: r.quantity,
-              available: r.available,
-              reserved: r.quantityReserved,
-            ));
-          }
+          final whName = r.warehouseCode != null && warehouseByCode.containsKey(r.warehouseCode)
+              ? warehouseByCode[r.warehouseCode]!.name
+              : (r.warehouseCode ?? '');
+          whStocks.add(ItemWarehouseStock(
+            warehouseCode: r.warehouseCode ?? '',
+            warehouseName: whName,
+            quantity: r.quantity,
+            available: r.available,
+            reserved: r.quantityReserved,
+          ));
         }
 
         return item.copyWith(
@@ -1170,12 +1443,125 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
     return [];
   }
 
+  static Map<String, String>? _userDirectoryCache;
+
+  Future<Map<String, String>> getUserDirectory() async {
+    if (_userDirectoryCache != null && _userDirectoryCache!.isNotEmpty) {
+      return _userDirectoryCache!;
+    }
+    final endpoints = [
+      '/api/workspace/v1/directory',
+      '/workspace/v1/directory',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(ep);
+        if (res.statusCode == 200 && res.data != null) {
+          final data = res.data;
+          final people = data is Map ? (data['people'] as List?) : (data is List ? data : null);
+          if (people != null) {
+            final map = <String, String>{};
+            for (final p in people) {
+              if (p is Map) {
+                final uid = p['userId']?.toString() ?? p['id']?.toString() ?? '';
+                final name = p['displayName']?.toString() ?? p['name']?.toString() ?? p['fullName']?.toString() ?? '';
+                if (uid.isNotEmpty && name.trim().isNotEmpty) {
+                  map[uid] = name.trim();
+                }
+              }
+            }
+            if (map.isNotEmpty) {
+              _userDirectoryCache = map;
+              return map;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return _userDirectoryCache ?? {};
+  }
+
   Future<List<StockTransaction>> getInventoryTransactions({int limit = 50}) async {
     try {
-      final data = await _inventoryGet('/transactions', queryParameters: {'limit': limit});
-      final rawList = data is List ? data : (data is Map && data['transactions'] is List ? data['transactions'] : null);
+      final futures = await Future.wait([
+        _inventoryGet('/transactions', queryParameters: {'limit': limit}),
+        getInventoryMaterials(),
+        getWarehouses(),
+        getUserDirectory(),
+      ]);
+
+      final data = futures[0];
+      final materials = futures[1] as List<MaterialItem>;
+      final warehouses = futures[2] as List<WarehouseItem>;
+      final userDir = futures[3] as Map<String, String>;
+
+      final matById = {for (final m in materials) m.id: m};
+      final matByCode = {for (final m in materials) m.code: m};
+      final whById = {for (final w in warehouses) w.id: w};
+      final whByCode = {for (final w in warehouses) w.code: w};
+
+      final rawList = data is List
+          ? data
+          : (data is Map && data['transactions'] is List
+              ? data['transactions']
+              : (data is Map && data['data'] is List ? data['data'] : null));
+
       if (rawList is List && rawList.isNotEmpty) {
-        return rawList.map((e) => StockTransaction.fromJson(e as Map<String, dynamic>)).toList();
+        return rawList.map((e) {
+          final txMap = Map<String, dynamic>.from(e as Map);
+          final matId = txMap['materialId']?.toString() ?? txMap['material_id']?.toString() ?? '';
+          final mat = (matId.isNotEmpty && matById.containsKey(matId))
+              ? matById[matId]
+              : ((matId.isNotEmpty && matByCode.containsKey(matId)) ? matByCode[matId] : null);
+
+          if (mat != null) {
+            if (txMap['materialCode'] == null || txMap['materialCode'].toString().isEmpty) {
+              txMap['materialCode'] = mat.code;
+            }
+            if (txMap['materialName'] == null || txMap['materialName'].toString().isEmpty) {
+              txMap['materialName'] = mat.name;
+            }
+            if (txMap['unit'] == null || txMap['unit'].toString().isEmpty) {
+              txMap['unit'] = mat.unit;
+            }
+          }
+
+          final whId = txMap['warehouseId']?.toString() ??
+              txMap['warehouse_id']?.toString() ??
+              txMap['warehouseCode']?.toString() ??
+              '';
+          final wh = (whId.isNotEmpty && whById.containsKey(whId))
+              ? whById[whId]
+              : ((whId.isNotEmpty && whByCode.containsKey(whId)) ? whByCode[whId] : null);
+
+          if (wh != null) {
+            txMap['warehouseCode'] = wh.code;
+            txMap['warehouseName'] = wh.name;
+          }
+
+          // Counterparty warehouse
+          final cpWhId = txMap['counterpartyWarehouseId']?.toString() ??
+              txMap['counterparty_warehouse_id']?.toString() ??
+              '';
+          if (cpWhId.isNotEmpty) {
+            final cpWh = whById[cpWhId] ?? whByCode[cpWhId];
+            if (cpWh != null) {
+              txMap['counterpartyName'] = '${cpWh.name} (${cpWh.code})';
+            }
+          }
+
+          // User Name mapping from Directory (1:1 with Web useUserLabel)
+          final creatorId = txMap['createdBy']?.toString() ?? txMap['created_by']?.toString() ?? '';
+          if (creatorId.isNotEmpty) {
+            if (userDir.containsKey(creatorId)) {
+              txMap['createdByName'] = userDir[creatorId];
+            } else if (RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}').hasMatch(creatorId)) {
+              txMap['createdByName'] = creatorId.substring(0, 8);
+            }
+          }
+
+          return StockTransaction.fromJson(txMap);
+        }).toList();
       }
     } catch (_) {}
     return [];

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/inventory_models.dart';
-import '../../../theme/colors.dart';
+import 'stocktake_detail_sheet.dart';
 
 class InventoryStocktakesView extends StatefulWidget {
   final List<StocktakeSession> stocktakes;
@@ -77,7 +77,7 @@ class _InventoryStocktakesViewState extends State<InventoryStocktakesView> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   return _buildSessionCard(filtered[index]);
                 },
@@ -115,14 +115,18 @@ class _InventoryStocktakesViewState extends State<InventoryStocktakesView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Lịch sử & Tiến độ Kiểm kê',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+              const Expanded(
+                child: Text(
+                  'Lịch sử & Tiến độ Kiểm kê',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -285,61 +289,75 @@ class _InventoryStocktakesViewState extends State<InventoryStocktakesView> {
         ? session.stocktakeDate!
         : DateFormat('dd/MM/yyyy HH:mm').format(session.createdAt);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
+    return InkWell(
+      onTap: () => StocktakeDetailSheet.show(
+        context,
+        session: session,
+        onSessionUpdated: widget.onRefresh,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: Code & Status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFCBD5E1)),
-                ),
-                child: Text(
-                  session.code.isNotEmpty ? session.code : 'KK-${session.id.substring(0, 8)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E293B),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: Code & Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Text(
+                    session.code.isNotEmpty ? session.code : 'KK-${session.id.substring(0, 8)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1E293B),
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: session.statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: session.statusColor.withValues(alpha: 0.3)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: session.statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: session.statusColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        session.statusLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: session.statusColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF94A3B8)),
+                  ],
                 ),
-                child: Text(
-                  session.statusLabel,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: session.statusColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 10),
 
           // Title
@@ -431,8 +449,9 @@ class _InventoryStocktakesViewState extends State<InventoryStocktakesView> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     return Center(

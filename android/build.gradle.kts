@@ -37,4 +37,8 @@ subprojects {
             configureAndroid.execute(this)
         }
     }
+
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-Xlint:-options")
+    }
 }

@@ -78,15 +78,27 @@ class StockInventoryRow {
 
   factory StockInventoryRow.fromJson(Map<String, dynamic> json) {
     final qty = (json['quantity'] as num?)?.toDouble() ?? 0.0;
-    final rsv = (json['quantityReserved'] as num?)?.toDouble() ?? 0.0;
-    final blk = (json['quantityBlocked'] as num?)?.toDouble() ?? 0.0;
-    final avail = json['available'] != null ? (json['available'] as num).toDouble() : (qty - rsv - blk);
+    final rsv = (json['quantityReserved'] as num?)?.toDouble() ??
+        (json['quantity_reserved'] as num?)?.toDouble() ??
+        0.0;
+    final blk = (json['quantityBlocked'] as num?)?.toDouble() ??
+        (json['quantity_blocked'] as num?)?.toDouble() ??
+        0.0;
+    final avail = json['available'] != null
+        ? (json['available'] as num).toDouble()
+        : (qty - rsv - blk);
     return StockInventoryRow(
       id: json['id']?.toString() ?? '',
-      warehouseId: json['warehouseId']?.toString() ?? '',
-      warehouseCode: json['warehouseCode']?.toString(),
-      materialId: json['materialId']?.toString() ?? '',
-      materialCode: json['materialCode']?.toString(),
+      warehouseId: json['warehouseId']?.toString() ??
+          json['warehouse_id']?.toString() ??
+          '',
+      warehouseCode: json['warehouseCode']?.toString() ??
+          json['warehouse_code']?.toString(),
+      materialId: json['materialId']?.toString() ??
+          json['material_id']?.toString() ??
+          '',
+      materialCode: json['materialCode']?.toString() ??
+          json['material_code']?.toString(),
       quantity: qty,
       quantityReserved: rsv,
       quantityBlocked: blk,
@@ -374,10 +386,23 @@ class StockTransaction {
   final String unit;
   final String date;
   final String createdBy;
+  final String? createdByName;
   final String? note;
   final String? warehouseCode;
   final String? warehouseName;
   final String? referenceCode;
+  final double unitCost;
+  final String? locationId;
+  final String? serialNumber;
+  final String? workflowStatus;
+  final String? referenceType;
+  final String? referenceId;
+  final String? counterpartyType;
+  final String? counterpartyName;
+  final String? counterpartyAddress;
+  final String? counterpartyWarehouseId;
+  final String? documentNumber;
+  final DateTime? createdAtRaw;
 
   StockTransaction({
     required this.id,
@@ -390,10 +415,23 @@ class StockTransaction {
     this.unit = '',
     required this.date,
     required this.createdBy,
+    this.createdByName,
     this.note,
     this.warehouseCode,
     this.warehouseName,
     this.referenceCode,
+    this.unitCost = 0.0,
+    this.locationId,
+    this.serialNumber,
+    this.workflowStatus,
+    this.referenceType,
+    this.referenceId,
+    this.counterpartyType,
+    this.counterpartyName,
+    this.counterpartyAddress,
+    this.counterpartyWarehouseId,
+    this.documentNumber,
+    this.createdAtRaw,
   });
 
   String get description => note ?? '';
@@ -403,7 +441,14 @@ class StockTransaction {
       quantity > 0 ||
       type == 'RECEIPT' ||
       type == 'IMPORT' ||
-      type == 'TRANSFER_IN';
+      type == 'TRANSFER_IN' ||
+      type == 'RETURN';
+
+  bool get isAdjust => type.toUpperCase() == 'ADJUST';
+
+  String get movementKind => isAdjust ? 'adjust' : (isReceipt ? 'in' : 'out');
+
+  double get totalValue => unitCost > 0 ? quantity.abs() * unitCost : 0.0;
 
   String get typeLabel {
     switch (type.toUpperCase()) {
@@ -418,9 +463,9 @@ class StockTransaction {
       case 'TRANSFER':
         return 'Điều chuyển';
       case 'BORROW':
-        return 'Mượn';
+        return 'Xuất mượn';
       case 'RETURN':
-        return 'Trả';
+        return 'Nhập hoàn kho';
       case 'ADJUST':
         return 'Điều chỉnh';
       default:
@@ -428,42 +473,156 @@ class StockTransaction {
     }
   }
 
+  StockTransaction copyWith({
+    String? id,
+    String? code,
+    String? type,
+    String? materialId,
+    String? materialCode,
+    String? materialName,
+    double? quantity,
+    String? unit,
+    String? date,
+    String? createdBy,
+    String? createdByName,
+    String? note,
+    String? warehouseCode,
+    String? warehouseName,
+    String? referenceCode,
+    double? unitCost,
+    String? locationId,
+    String? serialNumber,
+    String? workflowStatus,
+    String? referenceType,
+    String? referenceId,
+    String? counterpartyType,
+    String? counterpartyName,
+    String? counterpartyAddress,
+    String? counterpartyWarehouseId,
+    String? documentNumber,
+    DateTime? createdAtRaw,
+  }) {
+    return StockTransaction(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      type: type ?? this.type,
+      materialId: materialId ?? this.materialId,
+      materialCode: materialCode ?? this.materialCode,
+      materialName: materialName ?? this.materialName,
+      quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
+      date: date ?? this.date,
+      createdBy: createdBy ?? this.createdBy,
+      createdByName: createdByName ?? this.createdByName,
+      note: note ?? this.note,
+      warehouseCode: warehouseCode ?? this.warehouseCode,
+      warehouseName: warehouseName ?? this.warehouseName,
+      referenceCode: referenceCode ?? this.referenceCode,
+      unitCost: unitCost ?? this.unitCost,
+      locationId: locationId ?? this.locationId,
+      serialNumber: serialNumber ?? this.serialNumber,
+      workflowStatus: workflowStatus ?? this.workflowStatus,
+      referenceType: referenceType ?? this.referenceType,
+      referenceId: referenceId ?? this.referenceId,
+      counterpartyType: counterpartyType ?? this.counterpartyType,
+      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyAddress: counterpartyAddress ?? this.counterpartyAddress,
+      counterpartyWarehouseId: counterpartyWarehouseId ?? this.counterpartyWarehouseId,
+      documentNumber: documentNumber ?? this.documentNumber,
+      createdAtRaw: createdAtRaw ?? this.createdAtRaw,
+    );
+  }
+
   factory StockTransaction.fromJson(Map<String, dynamic> json) {
     final rawQty = (json['quantity'] as num?)?.toDouble() ?? 0.0;
     final rawType = json['type']?.toString() ?? 'RECEIPT';
-    final rawCode = json['transactionCode']?.toString() ?? json['code']?.toString() ?? 'TRX-001';
-    final rawDate = json['createdAt']?.toString() ?? json['date']?.toString() ?? '';
+    final rawCode = json['transactionCode']?.toString() ??
+        json['transaction_code']?.toString() ??
+        json['code']?.toString() ??
+        'TRX-001';
+    final rawDate = json['createdAt']?.toString() ??
+        json['created_at']?.toString() ??
+        json['date']?.toString() ??
+        '';
 
+    DateTime? parsedDate;
     String formattedDate = rawDate;
     if (rawDate.isNotEmpty) {
       try {
-        final parsed = DateTime.parse(rawDate).toLocal();
-        final day = parsed.day.toString().padLeft(2, '0');
-        final month = parsed.month.toString().padLeft(2, '0');
-        final year = parsed.year;
-        final hour = parsed.hour.toString().padLeft(2, '0');
-        final minute = parsed.minute.toString().padLeft(2, '0');
+        parsedDate = DateTime.parse(rawDate).toLocal();
+        final day = parsedDate.day.toString().padLeft(2, '0');
+        final month = parsedDate.month.toString().padLeft(2, '0');
+        final year = parsedDate.year;
+        final hour = parsedDate.hour.toString().padLeft(2, '0');
+        final minute = parsedDate.minute.toString().padLeft(2, '0');
         formattedDate = '$day/$month/$year $hour:$minute';
       } catch (_) {
         formattedDate = rawDate;
       }
     }
 
+    final unitCostRaw = (json['unitCost'] as num?)?.toDouble() ??
+        (json['unit_cost'] as num?)?.toDouble() ??
+        0.0;
+
     return StockTransaction(
       id: json['id']?.toString() ?? '',
       code: rawCode,
       type: rawType,
-      materialId: json['materialId']?.toString() ?? '',
-      materialCode: json['materialCode']?.toString() ?? '',
-      materialName: json['materialName']?.toString() ?? '',
+      materialId: json['materialId']?.toString() ??
+          json['material_id']?.toString() ??
+          '',
+      materialCode: json['materialCode']?.toString() ??
+          json['material_code']?.toString() ??
+          '',
+      materialName: json['materialName']?.toString() ??
+          json['material_name']?.toString() ??
+          '',
       quantity: rawQty,
       unit: json['unit']?.toString() ?? '',
       date: formattedDate,
-      createdBy: json['createdBy']?.toString() ?? 'models.inventory.default_keeper'.tr(),
+      createdBy: json['createdBy']?.toString() ??
+          json['created_by']?.toString() ??
+          'models.inventory.default_keeper'.tr(),
+      createdByName: json['createdByName']?.toString() ??
+          json['created_by_name']?.toString(),
       note: json['note']?.toString(),
-      warehouseCode: json['warehouseCode']?.toString() ?? json['warehouse_code']?.toString() ?? json['warehouseId']?.toString(),
-      warehouseName: json['warehouseName']?.toString() ?? json['warehouse_name']?.toString(),
-      referenceCode: json['referenceCode']?.toString() ?? json['reference_code']?.toString() ?? json['documentCode']?.toString(),
+      warehouseCode: json['warehouseCode']?.toString() ??
+          json['warehouse_code']?.toString() ??
+          json['warehouseId']?.toString() ??
+          json['warehouse_id']?.toString(),
+      warehouseName: json['warehouseName']?.toString() ??
+          json['warehouse_name']?.toString(),
+      referenceCode: json['referenceCode']?.toString() ??
+          json['reference_code']?.toString() ??
+          json['referenceId']?.toString() ??
+          json['reference_id']?.toString() ??
+          json['documentCode']?.toString() ??
+          json['documentNumber']?.toString() ??
+          json['document_number']?.toString(),
+      unitCost: unitCostRaw,
+      locationId: json['locationId']?.toString() ??
+          json['location_id']?.toString(),
+      serialNumber: json['serialNumber']?.toString() ??
+          json['serial_number']?.toString(),
+      workflowStatus: json['workflowStatus']?.toString() ??
+          json['workflow_status']?.toString() ??
+          'APPROVED',
+      referenceType: json['referenceType']?.toString() ??
+          json['reference_type']?.toString(),
+      referenceId: json['referenceId']?.toString() ??
+          json['reference_id']?.toString(),
+      counterpartyType: json['counterpartyType']?.toString() ??
+          json['counterparty_type']?.toString(),
+      counterpartyName: json['counterpartyName']?.toString() ??
+          json['counterparty_name']?.toString(),
+      counterpartyAddress: json['counterpartyAddress']?.toString() ??
+          json['counterparty_address']?.toString(),
+      counterpartyWarehouseId: json['counterpartyWarehouseId']?.toString() ??
+          json['counterparty_warehouse_id']?.toString(),
+      documentNumber: json['documentNumber']?.toString() ??
+          json['document_number']?.toString(),
+      createdAtRaw: parsedDate,
     );
   }
 }
@@ -538,8 +697,8 @@ class InventoryItem {
     this.createdAt,
   }) : _isSerialized = isSerialized;
 
-  bool get isInStock => (kind ?? 'STOCK') == 'STOCK';
-  bool get isAsset => (kind ?? '') == 'ASSET';
+  bool get isInStock => kind == 'STOCK';
+  bool get isAsset => kind == 'ASSET';
 
   String get displayCategoryOrType {
     if (type != null && type!.trim().isNotEmpty) return type!;
@@ -1115,5 +1274,107 @@ class StocktakeSession {
       default:
         return const Color(0xFF64748B); // Slate
     }
+  }
+}
+
+class StocktakeLine {
+  final String id;
+  final String sessionId;
+  final String materialId;
+  final String materialCode;
+  final String materialName;
+  final String unit;
+  final String? binLocation;
+  final bool isSerialized;
+  final bool isLotTracked;
+  final double systemQuantity;
+  final double? countRound1;
+  final double? countRound2;
+  final double? actualQuantity;
+  final double difference;
+  final double unitCost;
+  final double differenceValue;
+  final String? reason;
+  final String status; // 'UNCOUNTED' | 'MATCHED' | 'SURPLUS' | 'DEFICIT'
+  final String? note;
+  final String? updatedAt;
+
+  StocktakeLine({
+    required this.id,
+    required this.sessionId,
+    required this.materialId,
+    required this.materialCode,
+    required this.materialName,
+    required this.unit,
+    this.binLocation,
+    this.isSerialized = false,
+    this.isLotTracked = false,
+    required this.systemQuantity,
+    this.countRound1,
+    this.countRound2,
+    this.actualQuantity,
+    required this.difference,
+    this.unitCost = 0.0,
+    this.differenceValue = 0.0,
+    this.reason,
+    required this.status,
+    this.note,
+    this.updatedAt,
+  });
+
+  StocktakeLine copyWith({
+    double? actualQuantity,
+    double? difference,
+    double? differenceValue,
+    String? status,
+    String? reason,
+  }) {
+    return StocktakeLine(
+      id: id,
+      sessionId: sessionId,
+      materialId: materialId,
+      materialCode: materialCode,
+      materialName: materialName,
+      unit: unit,
+      binLocation: binLocation,
+      isSerialized: isSerialized,
+      isLotTracked: isLotTracked,
+      systemQuantity: systemQuantity,
+      countRound1: countRound1,
+      countRound2: countRound2,
+      actualQuantity: actualQuantity ?? this.actualQuantity,
+      difference: difference ?? this.difference,
+      unitCost: unitCost,
+      differenceValue: differenceValue ?? this.differenceValue,
+      reason: reason ?? this.reason,
+      status: status ?? this.status,
+      note: note,
+      updatedAt: updatedAt,
+    );
+  }
+
+  factory StocktakeLine.fromJson(Map<String, dynamic> json) {
+    return StocktakeLine(
+      id: json['id']?.toString() ?? '',
+      sessionId: json['sessionId']?.toString() ?? json['session_id']?.toString() ?? '',
+      materialId: json['materialId']?.toString() ?? json['material_id']?.toString() ?? '',
+      materialCode: json['materialCode']?.toString() ?? json['material_code']?.toString() ?? '',
+      materialName: json['materialName']?.toString() ?? json['material_name']?.toString() ?? '',
+      unit: json['unit']?.toString() ?? 'Cái',
+      binLocation: json['binLocation']?.toString() ?? json['bin_location']?.toString(),
+      isSerialized: json['isSerialized'] == true || json['is_serialized'] == true,
+      isLotTracked: json['isLotTracked'] == true || json['is_lot_tracked'] == true,
+      systemQuantity: (json['systemQuantity'] as num?)?.toDouble() ?? (json['system_quantity'] as num?)?.toDouble() ?? 0.0,
+      countRound1: (json['countRound1'] as num?)?.toDouble() ?? (json['count_round_1'] as num?)?.toDouble(),
+      countRound2: (json['countRound2'] as num?)?.toDouble() ?? (json['count_round_2'] as num?)?.toDouble(),
+      actualQuantity: (json['actualQuantity'] as num?)?.toDouble() ?? (json['actual_quantity'] as num?)?.toDouble(),
+      difference: (json['difference'] as num?)?.toDouble() ?? 0.0,
+      unitCost: (json['unitCost'] as num?)?.toDouble() ?? (json['unit_cost'] as num?)?.toDouble() ?? 0.0,
+      differenceValue: (json['differenceValue'] as num?)?.toDouble() ?? (json['difference_value'] as num?)?.toDouble() ?? 0.0,
+      reason: json['reason']?.toString(),
+      status: json['status']?.toString() ?? 'UNCOUNTED',
+      note: json['note']?.toString(),
+      updatedAt: json['updatedAt']?.toString() ?? json['updated_at']?.toString(),
+    );
   }
 }

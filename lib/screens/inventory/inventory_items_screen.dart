@@ -112,7 +112,7 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
   Future<void> _loadStocktakes() async {
     setState(() => _isLoadingStocktakes = true);
     try {
-      final list = await _service.getStocktakes();
+      final list = await _service.getStocktakes(warehouses: _warehouses);
       if (mounted) {
         setState(() {
           _stocktakes = list;
@@ -238,6 +238,7 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
           InventoryHistoryView(
             transactions: _transactions,
             items: _items,
+            warehouses: _warehouses,
             isLoading: _isLoadingTransactions,
             onRefresh: _loadTransactions,
           ),
