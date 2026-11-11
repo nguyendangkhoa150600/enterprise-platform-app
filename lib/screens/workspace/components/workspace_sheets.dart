@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
+import 'workspace_project_detail_sheet.dart';
+import 'workspace_complete_work_item_dialog.dart';
+import 'workspace_cancel_work_item_dialog.dart';
+export 'workspace_project_detail_sheet.dart';
 
 void showWorkspaceProjectDetailSheet(
   BuildContext context, {
@@ -270,178 +274,6 @@ class _CustomerContractsSheetState extends State<CustomerContractsSheet> {
   }
 }
 
-class ProjectDetailSheet extends StatefulWidget {
-  final ProjectItem project;
-  final WorkspaceService service;
-
-  const ProjectDetailSheet({
-    super.key,
-    required this.project,
-    required this.service,
-  });
-
-  @override
-  State<ProjectDetailSheet> createState() => _ProjectDetailSheetState();
-}
-
-class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
-  bool _isLoadingMembers = true;
-  List<ProjectMemberItem> _members = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMembers();
-  }
-
-  Future<void> _loadMembers() async {
-    final list = await widget.service.getProjectMembers(widget.project.id);
-    if (mounted) {
-      setState(() {
-        _members = list;
-        _isLoadingMembers = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.project;
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 10, bottom: 6),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2)),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(p.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                      Text('${p.code} · ${p.typeLabel} · ${p.statusLabel}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
-                    ],
-                  ),
-                ),
-                IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(context)),
-              ],
-            ),
-          ),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-
-          // Overview Metrics
-          Container(
-            padding: const EdgeInsets.all(14),
-            color: const Color(0xFFF8FAFC),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMetric('workspace.project.progress'.tr(), '${p.progressPercent.toStringAsFixed(0)}%', const Color(0xFF059669)),
-                _buildMetric('workspace.metric.completed'.tr(), '${p.closedItems}/${p.totalItems}', const Color(0xFF0F172A)),
-                _buildMetric('workspace.project.overdue'.tr(), '${p.overdueItems}', const Color(0xFFDC2626)),
-              ],
-            ),
-          ),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-
-          // Project Members Section
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.people_outline, size: 16, color: Color(0xFF0F172A)),
-                const SizedBox(width: 6),
-                Text('workspace.project.members_roles'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                const Spacer(),
-                Text('workspace.project.member_count'.tr(args: {'count': _members.length}), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: _isLoadingMembers
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFFD9AB00)))
-                : _members.isEmpty
-                    ? Center(child: Text('workspace.project.no_members'.tr(), style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)))
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        itemCount: _members.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-                        itemBuilder: (ctx, idx) {
-                          final m = _members[idx];
-                          Color roleColor;
-                          Color roleBg;
-                          switch (m.role) {
-                            case 'manager':
-                              roleColor = const Color(0xFF1D4ED8);
-                              roleBg = const Color(0xFFEFF6FF);
-                              break;
-                            case 'technician':
-                              roleColor = const Color(0xFF047857);
-                              roleBg = const Color(0xFFECFDF5);
-                              break;
-                            default:
-                              roleColor = const Color(0xFF475569);
-                              roleBg = const Color(0xFFF1F5F9);
-                              break;
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: const Color(0xFF0F172A),
-                                  child: Text(m.fullName != null && m.fullName!.isNotEmpty ? m.fullName![0] : 'U', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(m.fullName ?? 'workspace.project.default_member'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                                      if (m.email != null) Text(m.email!, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                  decoration: BoxDecoration(color: roleBg, borderRadius: BorderRadius.circular(4)),
-                                  child: Text(m.roleLabel, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: roleColor)),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetric(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-        const SizedBox(height: 2),
-        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
-      ],
-    );
-  }
-}
-
 class TaskStatusSheet extends StatelessWidget {
   final StandaloneTaskItem task;
   final WorkspaceService service;
@@ -481,76 +313,127 @@ class TaskStatusSheet extends StatelessWidget {
             Text(task.description!, style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
           ],
           const SizedBox(height: 16),
-          Text('workspace.task.update_status'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-          const SizedBox(height: 8),
+          Text('workspace.task.update_status'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+          const SizedBox(height: 10),
 
-          Row(
+          // Primary Actions
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               if (task.status == 'todo')
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'in_progress');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.task.start'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.play_arrow, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'in_progress'),
+                  label: Text('workspace.task.start'.tr()),
                 ),
               if (task.status == 'in_progress') ...[
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD97706), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'review');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.task.submit_review'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.rate_review_outlined, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD97706), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'review'),
+                  label: Text('workspace.task.submit_review'.tr()),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'done');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.status.done'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
+                  onPressed: () async {
+                    final completed = await showCompleteWorkItemDialog(
+                      context,
+                      workItemId: task.id,
+                      workItemCode: task.code,
+                      workItemTitle: task.title,
+                      service: service,
+                    );
+                    if (completed && context.mounted) {
+                      Navigator.pop(context);
+                      onStatusChanged();
+                    }
+                  },
+                  label: Text('workspace.status.done'.tr()),
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFDC2626)),
+                  style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+                  onPressed: () => _updateStatus(context, 'blocked'),
+                  label: const Text('Báo vướng mắc'),
+                ),
+              ],
+              if (task.status == 'blocked') ...[
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.play_arrow, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'in_progress'),
+                  label: const Text('Tiếp tục thực hiện'),
                 ),
               ],
               if (task.status == 'review')
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
-                    onPressed: () async {
-                      await service.changeStandaloneTaskStatus(task.id, 'done');
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        onStatusChanged();
-                      }
-                    },
-                    child: Text('workspace.task.approve_done'.tr()),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
+                  onPressed: () async {
+                    final completed = await showCompleteWorkItemDialog(
+                      context,
+                      workItemId: task.id,
+                      workItemCode: task.code,
+                      workItemTitle: task.title,
+                      service: service,
+                    );
+                    if (completed && context.mounted) {
+                      Navigator.pop(context);
+                      onStatusChanged();
+                    }
+                  },
+                  label: Text('workspace.task.approve_done'.tr()),
                 ),
               if (task.status == 'done')
-                Expanded(
-                  child: Center(child: Text('workspace.task.already_done'.tr(), style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold))),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.replay, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF475569), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'in_progress'),
+                  label: const Text('Mở lại công việc'),
+                ),
+              if (task.status == 'cancelled' || task.status == 'canceled' || task.status == 'da_huy')
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.replay, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+                  onPressed: () => _updateStatus(context, 'todo'),
+                  label: const Text('Khôi phục công việc'),
+                ),
+              if (task.status != 'cancelled' && task.status != 'canceled' && task.status != 'da_huy' && task.status != 'done')
+                TextButton.icon(
+                  icon: const Icon(Icons.cancel_outlined, size: 15, color: Color(0xFF64748B)),
+                  label: const Text('Huỷ công việc', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                  onPressed: () async {
+                    final cancelled = await showCancelWorkItemDialog(
+                      context,
+                      workItemId: task.id,
+                      workItemCode: task.code,
+                      workItemTitle: task.title,
+                      service: service,
+                    );
+                    if (cancelled && context.mounted) {
+                      Navigator.pop(context);
+                      onStatusChanged();
+                    }
+                  },
                 ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _updateStatus(BuildContext context, String newStatus) async {
+    bool ok = await service.updateWorkItemStatus(task.id, newStatus);
+    if (!ok) {
+      ok = await service.changeStandaloneTaskStatus(task.id, newStatus);
+    }
+    if (context.mounted) {
+      Navigator.pop(context);
+      onStatusChanged();
+    }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'hrm_employee_custody_section.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/hrm_models.dart';
@@ -711,6 +712,13 @@ class HrmProfileModals {
                               ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Section 9: VẬT TƯ & TÀI SẢN CẤP PHÁT (Đồng bộ 1:1 Web HrmCustodyPanel)
+                      HrmEmployeeCustodySection(
+                        employeeId: emp.id,
+                        employeeName: emp.fullName,
                       ),
                       const SizedBox(height: 20),
                     ],

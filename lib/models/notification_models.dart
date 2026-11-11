@@ -166,6 +166,47 @@ class NotificationRecord {
   });
 
   factory NotificationRecord.fromJson(Map<String, dynamic> json) {
+    String extractedSourceId = json['source_id']?.toString() ??
+        json['sourceId']?.toString() ??
+        json['target_id']?.toString() ??
+        json['targetId']?.toString() ??
+        json['resource_id']?.toString() ??
+        json['resourceId']?.toString() ??
+        json['entity_id']?.toString() ??
+        json['entityId']?.toString() ??
+        json['record_id']?.toString() ??
+        json['recordId']?.toString() ??
+        json['request_id']?.toString() ??
+        json['requestId']?.toString() ??
+        '';
+
+    final dLink = json['deep_link']?.toString() ?? json['deepLink']?.toString();
+
+    if (extractedSourceId.isEmpty) {
+      final meta = json['metadata'] ?? json['payload'] ?? json['data'];
+      if (meta is Map) {
+        extractedSourceId = (meta['id'] ??
+            meta['source_id'] ??
+            meta['sourceId'] ??
+            meta['target_id'] ??
+            meta['targetId'] ??
+            meta['request_id'] ??
+            meta['requestId'] ??
+            meta['record_id'] ??
+            meta['recordId'])?.toString() ?? '';
+      }
+    }
+
+    if (extractedSourceId.isEmpty && dLink != null && dLink.isNotEmpty) {
+      final segments = dLink.split('/').where((s) => s.isNotEmpty).toList();
+      if (segments.isNotEmpty) {
+        final last = segments.last;
+        if (!['requests', 'approvals', 'hrm', 'overview', 'details'].contains(last.toLowerCase())) {
+          extractedSourceId = last;
+        }
+      }
+    }
+
     return NotificationRecord(
       id: json['id']?.toString() ?? '',
       module: NotificationModule.fromString(json['module']?.toString()),
@@ -173,9 +214,9 @@ class NotificationRecord {
       priority: NotificationPriority.fromString(json['priority']?.toString()),
       title: json['title']?.toString() ?? 'models.notif.default_title'.tr(),
       body: json['body']?.toString() ?? '',
-      deepLink: json['deep_link']?.toString() ?? json['deepLink']?.toString(),
+      deepLink: dLink,
       sourceType: json['source_type']?.toString() ?? json['sourceType']?.toString() ?? 'system',
-      sourceId: json['source_id']?.toString() ?? json['sourceId']?.toString() ?? '',
+      sourceId: extractedSourceId,
       aggregateCount: (json['aggregate_count'] ?? json['aggregateCount'] as num?)?.toInt() ?? 1,
       readAt: json['read_at']?.toString() ?? json['readAt']?.toString(),
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
@@ -188,10 +229,16 @@ class NotificationRecord {
     switch (category) {
       case 'hrm_approval_required':
       case 'leave_request_submitted':
+      case 'request_submitted':
         return 'models.notif.type_leave_pending'.tr();
       case 'leave_request_approved':
+      case 'request_approved':
+      case 'hrm_request_approved':
+      case 'request_status_changed':
         return 'models.notif.type_leave_approved'.tr();
       case 'leave_request_rejected':
+      case 'request_rejected':
+      case 'hrm_request_rejected':
         return 'models.notif.type_leave_rejected'.tr();
       case 'attendance_abnormal':
         return 'models.notif.type_attendance'.tr();

@@ -7,17 +7,20 @@ import 'org_chart/components/org_tree_list_view.dart';
 
 class OrgChartWorkspaceScreen extends StatefulWidget {
   final OrganizationSnapshot snapshot;
+  /// Tree to show; defaults to the primary tree of the snapshot.
+  final String? treeId;
   final String? treeName;
-  final String treeCode;
-  final bool isPrimary;
+  final String? treeCode;
+  final bool? isPrimary;
   final VoidCallback? onDataChanged;
 
   const OrgChartWorkspaceScreen({
     super.key,
     required this.snapshot,
+    this.treeId,
     this.treeName,
-    this.treeCode = 'SAVINA-MAIN',
-    this.isPrimary = true,
+    this.treeCode,
+    this.isPrimary,
     this.onDataChanged,
   });
 
@@ -43,10 +46,30 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
   // Selected Node for Detail Inspector
   OrgNode? _selectedNode;
 
+  String? _treeId;
+
+  OrgTree? get _tree => _snapshot.trees.where((t) => t.id == _treeId).firstOrNull;
+
+  /// Keeps only the nodes of the shown tree (all trees share one snapshot).
+  OrganizationSnapshot _scoped(OrganizationSnapshot s) {
+    if (_treeId == null) return s;
+    return OrganizationSnapshot(
+      trees: s.trees,
+      nodes: s.nodes.where((n) => n.treeId == _treeId).toList(),
+      nodeTypes: s.nodeTypes,
+      assignments: s.assignments,
+      users: s.users,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    _snapshot = widget.snapshot;
+    final trees = widget.snapshot.trees;
+    _treeId = widget.treeId ??
+        trees.where((t) => t.isPrimary).firstOrNull?.id ??
+        trees.firstOrNull?.id;
+    _snapshot = _scoped(widget.snapshot);
     _transformController.value = Matrix4.identity()
       ..translate(-220.0, 30.0)
       ..scale(0.48, 0.48);
@@ -63,12 +86,10 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
     final updated = await _platformService.getOrganizationSnapshot();
     if (updated != null && mounted) {
       setState(() {
-        _snapshot = updated;
+        _snapshot = _scoped(updated);
         if (_selectedNode != null) {
-          _selectedNode = _snapshot.nodes.firstWhere(
-            (n) => n.id == _selectedNode!.id,
-            orElse: () => _snapshot.nodes.first,
-          );
+          _selectedNode = _snapshot.nodes.where((n) => n.id == _selectedNode!.id).firstOrNull ??
+              _snapshot.nodes.firstOrNull;
         }
       });
       widget.onDataChanged?.call();
@@ -142,7 +163,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
             children: [
               Flexible(
                 child: Text(
-                  widget.treeName ?? 'org_chart.savina_chart'.tr(),
+                  _tree?.name ?? widget.treeName ?? '',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 14.5,
@@ -152,7 +173,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
                 ),
               ),
               const SizedBox(width: 6),
-              if (widget.isPrimary)
+              if (widget.isPrimary ?? _tree?.isPrimary ?? false)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                   decoration: BoxDecoration(
@@ -177,7 +198,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  widget.treeCode,
+                  _tree?.code ?? widget.treeCode ?? '',
                   style: const TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
@@ -816,6 +837,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
       existingNode: existingNode,
       parentNodeId: parentNodeId,
       defaultCategory: defaultCategory,
+      treeId: _treeId,
       snapshot: _snapshot,
       platformService: _platformService,
       onRefreshSnapshot: _refreshSnapshot,

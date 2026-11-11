@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/platform_models.dart';
+import '../models/hrm_models.dart';
+import '../services/hrm_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
 import '../services/module_business_service.dart';
@@ -20,6 +22,9 @@ import './user_management_screen.dart';
 import './my_requests_screen.dart';
 import './workspace_screen.dart';
 import './assistant_chat_screen.dart';
+import './communication_hub_screen.dart';
+import '../providers/chat_provider.dart';
+import '../features/crm/presentation/screens/crm_hub_screen.dart';
 import './home/components/home_mobile_profile_view.dart';
 import './home/components/home_mobile_modules_view.dart';
 import './home/components/home_organization_view.dart';
@@ -48,9 +53,12 @@ class _HomeScreenState extends State<HomeScreen> {
   OrganizationSnapshot? _orgSnapshot;
   bool _isLoadingData = false;
   HomeModuleStats? _moduleStats;
+  List<HrmRequestItem> _pendingHrmRequests = [];
   final ModuleBusinessService _businessService = ModuleBusinessService();
+  final HrmService _hrmService = HrmService();
 
   final ScrollController _attentionScrollController = ScrollController();
+  final ScrollController _requestsScrollController = ScrollController();
   final ScrollController _homeOrgScrollController = ScrollController();
 
   @override
@@ -62,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _attentionScrollController.dispose();
+    _requestsScrollController.dispose();
     _homeOrgScrollController.dispose();
     super.dispose();
   }
@@ -80,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _platformService.getOrganizationSnapshot(),
       HomeModuleStats.load(_businessService),
       HrmCapabilities.instance.load(force: true),
+      _hrmService.getRequests(status: 'pending').catchError((_) => <HrmRequestItem>[]),
     ]);
 
     if (mounted) {
@@ -88,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _modules = results[1] as List<ModuleCatalogItem>;
         _orgSnapshot = results[2] as OrganizationSnapshot;
         _moduleStats = results[3] as HomeModuleStats;
+        _pendingHrmRequests = (results[5] as List<HrmRequestItem>?) ?? [];
         _isLoadingData = false;
       });
     }
@@ -127,8 +138,10 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 4)));
     } else if (key == 'workspace-reports' || key == 'bao-cao-cong-viec') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 5)));
+    } else if (key == 'crm' || key == 'sales' || key == 'ban-hang' || key == 'khach-hang-crm') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CrmHubScreen()));
     } else if (key == 'assistant' || key == 'savina-agent' || key == 'ai' || key == 'tro-ly') {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen()));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationHubScreen(initialIndex: 1)));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('home_shell.module_preparing'.tr(args: {'key': key}))),
@@ -162,26 +175,64 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
       ),
       bottomNavigationBar: _buildMobileBottomBar(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AssistantChatScreen()),
-        ),
-        elevation: 4,
-        shape: const CircleBorder(),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [Color(0xFF6366F1), Color(0xFF2563EB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      floatingActionButton: Builder(
+        builder: (context) {
+          final unreadCount = context.watch<ChatProvider>().unreadTotal;
+
+          return SizedBox(
+            width: 58,
+            height: 58,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                FloatingActionButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CommunicationHubScreen(initialIndex: 0)),
+                  ),
+                  elevation: 4,
+                  backgroundColor: const Color(0xFFFBBF24), // Vibrant Yellow/Amber matching Web
+                  shape: const CircleBorder(),
+                  child: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 26,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626), // Crisp Red
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : '$unreadCount',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ),
-          child: const Icon(Icons.auto_awesome, size: 24, color: Colors.white),
-        ),
+          );
+        },
       ),
     );
   }
@@ -198,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -290,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           border: Border.all(color: Colors.white, width: 3.5),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2563EB).withOpacity(0.35),
+                              color: const Color(0xFF2563EB).withValues(alpha: 0.35),
                               blurRadius: 12,
                               offset: const Offset(0, 5),
                             ),
@@ -387,10 +438,13 @@ class _HomeScreenState extends State<HomeScreen> {
       orgSnapshot: _orgSnapshot,
       isLoadingData: _isLoadingData,
       moduleStats: _moduleStats,
+      pendingRequests: _pendingHrmRequests,
       attentionScrollController: _attentionScrollController,
+      requestsScrollController: _requestsScrollController,
       homeOrgScrollController: _homeOrgScrollController,
       onOpenModule: _openModule,
       onNavigateTab: (idx) => setState(() => _mobileNavIndex = idx),
+      onRefreshRequests: _loadAllPlatformData,
     );
   }
 
@@ -865,7 +919,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         selected: isActive,
-        selectedTileColor: Colors.white.withOpacity(0.08),
+        selectedTileColor: Colors.white.withValues(alpha: 0.08),
         onTap: () => setState(() => _desktopTab = title),
       ),
     );

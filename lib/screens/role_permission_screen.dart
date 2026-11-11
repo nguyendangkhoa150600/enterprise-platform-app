@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/i18n/app_i18n.dart';
@@ -6,6 +6,12 @@ import '../shared/widgets/no_access_view.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
+import '../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
+
+part 'role_permission/components/role_detail_sheet.dart';
+part 'role_permission/components/permission_detail_sheet.dart';
+part 'role_permission/components/permission_form_sheets.dart';
+part 'role_permission/components/role_form_sheets.dart';
 
 class RolePermissionScreen extends StatefulWidget {
   const RolePermissionScreen({super.key});
@@ -17,6 +23,7 @@ class RolePermissionScreen extends StatefulWidget {
 class _RolePermissionScreenState extends State<RolePermissionScreen> with SingleTickerProviderStateMixin {
   final PlatformService _platformService = PlatformService();
   late TabController _tabController;
+  final ScrollController _rolesScrollController = ScrollController();
 
   bool _isLoading = true;
   List<TenantRole> _roles = [];
@@ -26,12 +33,25 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
 
   TenantRole? _selectedRole;
   String _searchQuery = '';
-  String _roleFilter = 'all'; // 'all' | 'system' | 'custom'
+  String _permissionSearchQuery = '';
+  String _roleFilter = 'system'; // 'system' | 'custom'
+  final Map<String, String> _roleDetailTabMap = {};
+  String? _selectedMemberUserIdToAdd;
+  bool _isAssigningMember = false;
 
-  /// Modules offered for role access: the tenant's real module catalog (GET /platform/v1/modules/catalog).
-  /// Icons/colors are only presentation hints keyed by module key.
+  /// The role detail bottom sheet is built once by showModalBottomSheet, so it must be told to rebuild
+  /// whenever this screen's state changes (picked user, assigning flag, reloaded roles...).
+  final ValueNotifier<int> _sheetTick = ValueNotifier<int>(0);
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _sheetTick.value++;
+  }
+
+  // ignore: unused_element
   List<Map<String, dynamic>> get _moduleDefs {
-    if (_modules.isEmpty) return _presentationModuleDefs;
+    if (_modules.isEmpty) return const [];
     final known = {for (final d in _presentationModuleDefs) d['key']: d};
     return _modules.map((m) {
       final k = known[m.key];
@@ -51,35 +71,35 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
       'name': 'roles.module_hrm_name'.tr(),
       'desc': 'roles.module_hrm_desc'.tr(),
       'icon': Icons.layers_outlined,
-      'color': Color(0xFF2563EB),
+      'color': const Color(0xFF2563EB),
     },
     {
       'key': 'inventory',
       'name': 'Inventory',
       'desc': 'roles.module_inventory_desc'.tr(),
       'icon': Icons.inventory_2_outlined,
-      'color': Color(0xFF4F46E5),
+      'color': const Color(0xFF4F46E5),
     },
     {
       'key': 'maintenance',
       'name': 'Maintenance',
       'desc': 'roles.module_maintenance_desc'.tr(),
       'icon': Icons.build_outlined,
-      'color': Color(0xFF2563EB),
+      'color': const Color(0xFF2563EB),
     },
     {
       'key': 'procedure-engine',
       'name': 'Procedure Engine',
       'desc': 'roles.module_procedure_desc'.tr(),
       'icon': Icons.account_tree_outlined,
-      'color': Color(0xFF4F46E5),
+      'color': const Color(0xFF4F46E5),
     },
     {
       'key': 'workspace',
       'name': 'Workspace',
       'desc': 'roles.module_workspace_desc'.tr(),
       'icon': Icons.dashboard_outlined,
-      'color': Color(0xFF2563EB),
+      'color': const Color(0xFF2563EB),
     },
   ];
 
@@ -92,7 +112,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
 
   @override
   void dispose() {
+    _sheetTick.dispose();
     _tabController.dispose();
+    _rolesScrollController.dispose();
     super.dispose();
   }
 
@@ -139,13 +161,6 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
     }).toList();
   }
 
-  int get _totalAssignedUsers {
-    final userSet = <String>{};
-    for (var r in _roles) {
-      userSet.addAll(r.userIds);
-    }
-    return userSet.isEmpty ? 45 : userSet.length;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -200,103 +215,176 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
           if (canManage)
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: ElevatedButton.icon(
-                onPressed: () => _showCreateRoleSheet(context),
-                icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                label: Text('roles.create_role'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+              child: AnimatedBuilder(
+                animation: _tabController,
+                builder: (context, _) {
+                  final isPermTab = _tabController.index == 1;
+                  return ElevatedButton.icon(
+                    onPressed: () => isPermTab
+                        ? _showCreatePermissionSheet(context)
+                        : _showCreateRoleSheet(context),
+                    icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                    label: Text(
+                      isPermTab ? 'Táº¡o permission' : 'roles.create_role'.tr(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isPermTab ? const Color(0xFFD97706) : const Color(0xFF2563EB),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  );
+                },
               ),
             ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              color: const Color(0xFF2563EB),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Subtitle Banner
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEFF6FF),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.verified_user_outlined, color: Color(0xFF2563EB), size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'roles.intro'.tr(),
-                              style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.35),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+          : Column(
+              children: [
+                // Top Fixed 2 Tab Lá»›n (Cá»‘ Ä‘á»‹nh á»Ÿ Ä‘á»‰nh, luÃ´n luÃ´n nhÃ¬n tháº¥y)
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: AnimatedBuilder(
+                    animation: _tabController,
+                    builder: (context, _) => _buildLargeTabs(),
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-                    // 4 Stat Cards Grid (2x2)
-                    _buildStatCards(systemRoleCount, customRoleCount),
-                    const SizedBox(height: 16),
+                // 2 MÃ n hÃ¬nh Ä‘á»™c láº­p (Chuyá»ƒn Ä‘á»•i qua láº¡i khi switch tab)
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // MÃ n hÃ¬nh 1: Quáº£n trá»‹ Vai trÃ² (Full Screen)
+                      _buildRolesScreen(canManage, systemRoleCount, customRoleCount),
 
-                    // Tab bar for Vai trò vs Permission
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        labelColor: const Color(0xFF2563EB),
-                        unselectedLabelColor: const Color(0xFF64748B),
-                        indicatorColor: const Color(0xFF2563EB),
-                        indicatorWeight: 3,
-                        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-                        tabs: [
-                          Tab(text: 'roles.tab_roles'.tr(args: {'count': _roles.length})),
-                          Tab(text: 'roles.tab_permissions'.tr(args: {'count': _permissions.length})),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                      // MÃ n hÃ¬nh 2: Quáº£n trá»‹ Permission (Full Screen)
+                      _buildPermissionsScreen(canManage),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
 
-                    // Tab Views
-                    AnimatedBuilder(
-                      animation: _tabController,
-                      builder: (context, _) {
-                        if (_tabController.index == 0) {
-                          return _buildRolesTab(canManage);
-                        } else {
-                          return _buildPermissionsTab();
-                        }
-                      },
-                    ),
-                  ],
+  Widget _buildLargeTabs() {
+    final selectedIndex = _tabController.index;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9), // Slate 100
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          // Tab 1: Vai trÃ²
+          Expanded(
+            child: _buildLargeTabItem(
+              icon: Icons.shield_outlined,
+              label: 'Vai trÃ²',
+              count: _roles.length,
+              isSelected: selectedIndex == 0,
+              badgeBg: selectedIndex == 0 ? const Color(0xFFFEF08A) : const Color(0xFFE2E8F0),
+              badgeFg: selectedIndex == 0 ? const Color(0xFF854D0E) : const Color(0xFF64748B),
+              onTap: () {
+                _tabController.animateTo(0);
+                setState(() {});
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Tab 2: Permission
+          Expanded(
+            child: _buildLargeTabItem(
+              icon: Icons.vpn_key_outlined,
+              label: 'Permission',
+              count: _permissions.length,
+              isSelected: selectedIndex == 1,
+              badgeBg: selectedIndex == 1 ? const Color(0xFFF3E8FF) : const Color(0xFFE2E8F0),
+              badgeFg: selectedIndex == 1 ? const Color(0xFF6B21A8) : const Color(0xFF64748B),
+              onTap: () {
+                _tabController.animateTo(1);
+                setState(() {});
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLargeTabItem({
+    required IconData icon,
+    required String label,
+    required int count,
+    required bool isSelected,
+    required Color badgeBg,
+    required Color badgeFg,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(9),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1.5),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.bold,
+                  color: badgeFg,
                 ),
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -339,8 +427,8 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     iconColor: const Color(0xFF059669),
                     iconBg: const Color(0xFFECFDF5),
                     title: 'roles.stat_modules'.tr(),
-                    value: '5 / 5',
-                    subtext: 'roles.stat_modules_sub'.tr(),
+                    value: '${_modules.where((m) => m.isActive).length} / ${_modules.length}',
+                    subtext: 'kÃ­ch hoáº¡t',
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -350,8 +438,8 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     iconColor: const Color(0xFF7C3AED),
                     iconBg: const Color(0xFFF5F3FF),
                     title: 'roles.stat_users'.tr(),
-                    value: '$_totalAssignedUsers',
-                    subtext: 'roles.stat_users_sub'.tr(),
+                    value: '${_users.length}',
+                    subtext: 'ngÆ°á»i dÃ¹ng',
                   ),
                 ),
               ],
@@ -378,7 +466,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -403,23 +491,35 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                 Text(
                   title,
                   style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Colors.grey.shade500, letterSpacing: 0.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      value,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
+                    Flexible(
                       child: Text(
-                        subtext,
-                        style: TextStyle(fontSize: 10, color: Colors.grey.shade600, overflow: TextOverflow.ellipsis),
+                        value,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (subtext.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 1.5),
+                          child: Text(
+                            subtext,
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -430,92 +530,53 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
     );
   }
 
-  Widget _buildRolesTab(bool canManage) {
+  Widget _buildRolesScreen(bool canManage, int systemRoleCount, int customRoleCount) {
     final filtered = _filteredRoles;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Search & Filter Box
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            children: [
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'roles.search_hint'.tr(),
-                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-                  prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade400),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  isDense: true,
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: const Color(0xFF2563EB),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          // Banner giá»›i thiá»‡u
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                  child: const Icon(Icons.verified_user_outlined, color: Color(0xFF2563EB), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'roles.intro'.tr(),
+                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.35),
                   ),
                 ),
-                onChanged: (val) => setState(() => _searchQuery = val),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _roleFilter,
-                          isExpanded: true,
-                          icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF64748B)),
-                          style: TextStyle(fontSize: 13, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
-                          items: [
-                            DropdownMenuItem(value: 'all', child: Text('roles.filter_all'.tr())),
-                            DropdownMenuItem(value: 'system', child: Text('roles.system'.tr())),
-                            DropdownMenuItem(value: 'custom', child: Text('roles.custom'.tr())),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) setState(() => _roleFilter = val);
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'roles.results_count'.tr(args: {'count': filtered.length}),
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-        // Roles List Cards
-        if (filtered.isEmpty)
+          // 4 Stat Cards Grid (2x2)
+          _buildStatCards(systemRoleCount, customRoleCount),
+          const SizedBox(height: 16),
+
+          // Search & Filter Box
           Container(
-            padding: const EdgeInsets.all(32),
-            alignment: Alignment.center,
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -523,460 +584,520 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
             ),
             child: Column(
               children: [
-                Icon(Icons.shield_outlined, size: 40, color: Colors.grey.shade300),
-                const SizedBox(height: 8),
-                Text('roles.not_found'.tr(), style: TextStyle(color: Colors.grey.shade600, fontSize: 13.5)),
-              ],
-            ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filtered.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final role = filtered[index];
-              final isSelected = _selectedRole?.id == role.id;
-
-              return InkWell(
-                onTap: () => setState(() => _selectedRole = role),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-                      width: isSelected ? 2 : 1,
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'roles.search_hint'.tr(),
+                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                    prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade400),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    isDense: true,
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isSelected ? const Color(0xFF2563EB).withOpacity(0.08) : Colors.black.withOpacity(0.02),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                ),
+                const SizedBox(height: 10),
+
+                // 2 Tab nhá» trong tab Vai trÃ²: Vai trÃ² há»‡ thá»‘ng & Vai trÃ² tÃ¹y chá»‰nh
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.shield_outlined,
-                            size: 18,
-                            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              role.name,
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
-                              ),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _roleFilter = 'system');
+                            if (_rolesScrollController.hasClients) {
+                              _rolesScrollController.jumpTo(0);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _roleFilter == 'system' ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: _roleFilter == 'system'
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.verified_user_outlined,
+                                  size: 15,
+                                  color: _roleFilter == 'system' ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Vai trÃ² há»‡ thá»‘ng',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: _roleFilter == 'system' ? FontWeight.w700 : FontWeight.w500,
+                                    color: _roleFilter == 'system' ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: _roleFilter == 'system' ? const Color(0xFFEFF6FF) : const Color(0xFFE2E8F0),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '$systemRoleCount',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: _roleFilter == 'system' ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          _buildSystemBadge(role.isSystem),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        role.description?.isNotEmpty == true ? role.description! : 'roles.no_description'.tr(),
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          _buildTagChip(
-                            icon: Icons.person_outline,
-                            text: 'roles.users_count'.tr(args: {'count': role.userIds.length}),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _roleFilter = 'custom');
+                            if (_rolesScrollController.hasClients) {
+                              _rolesScrollController.jumpTo(0);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _roleFilter == 'custom' ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: _roleFilter == 'custom'
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.tune_rounded,
+                                  size: 15,
+                                  color: _roleFilter == 'custom' ? const Color(0xFFD97706) : const Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Vai trÃ² tÃ¹y chá»‰nh',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: _roleFilter == 'custom' ? FontWeight.w700 : FontWeight.w500,
+                                    color: _roleFilter == 'custom' ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: _roleFilter == 'custom' ? const Color(0xFFFEF3C7) : const Color(0xFFE2E8F0),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '$customRoleCount',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: _roleFilter == 'custom' ? const Color(0xFFB45309) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          _buildTagChip(
-                            icon: Icons.widgets_outlined,
-                            text: role.moduleKeys.contains('*') ? 'roles.all_modules'.tr() : 'roles.modules_count'.tr(args: {'count': role.moduleKeys.length}),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
+          const SizedBox(height: 14),
 
-        const SizedBox(height: 16),
-
-        // Role Detail / Inspector view for Selected Role
-        if (_selectedRole != null) _buildRoleDetailInspector(_selectedRole!, canManage),
-      ],
+          // Danh sÃ¡ch cÃ¡c vai trÃ² (Cuá»™n tá»± do, khÃ´ng bá»‹ bÃ³ cá»©ng)
+          if (filtered.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.shield_outlined, size: 40, color: Colors.grey.shade300),
+                  const SizedBox(height: 8),
+                  Text('roles.not_found'.tr(), style: TextStyle(color: Colors.grey.shade600, fontSize: 13.5)),
+                ],
+              ),
+            )
+          else
+            ...filtered.map((role) {
+              final isSelected = _selectedRole?.id == role.id;
+              return _buildRoleCardItem(role, isSelected, canManage);
+            }),
+        ],
+      ),
     );
   }
 
-  Widget _buildRoleDetailInspector(TenantRole role, bool canManage) {
-    final isWildcard = role.moduleKeys.contains('*');
-
+  Widget _buildRoleCardItem(TenantRole role, bool isSelected, bool canManage) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFCBD5E1)),
+        color: isSelected ? const Color(0xFFF8FAFC) : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+          width: isSelected ? 1.5 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: isSelected
+                ? const Color(0xFF2563EB).withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Detail Header
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.shield_outlined, color: Color(0xFF2563EB), size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: () {
+            setState(() => _selectedRole = role);
+            _showRoleDetailModal(role, canManage);
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            role.name,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                          ),
-                        ),
-                        _buildSystemBadge(role.isSystem),
-                      ],
+                    Icon(
+                      role.isSystem ? Icons.verified_user_outlined : Icons.shield_outlined,
+                      size: 16,
+                      color: isSelected
+                          ? const Color(0xFF2563EB)
+                          : (role.isSystem ? const Color(0xFF3B82F6) : const Color(0xFF64748B)),
                     ),
-                    const SizedBox(height: 4),
-                    InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: role.key));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('roles.key_copied'.tr()), duration: Duration(seconds: 1)),
-                        );
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Key: ', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500)),
-                          Text(
-                            role.key,
-                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155), fontFamily: 'monospace'),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.copy_outlined, size: 12, color: Colors.grey.shade400),
-                        ],
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        role.name,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildSystemBadge(role.isSystem),
+                  ],
+                ),
+                if (role.description?.isNotEmpty == true &&
+                    role.description != 'roles.no_description'.tr() &&
+                    role.description != 'KhÃ´ng cÃ³ mÃ´ táº£ chi tiáº¿t.') ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    role.description!,
+                    style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    _buildTagChip(
+                      icon: Icons.person_outline,
+                      text: 'roles.users_count'.tr(args: {'count': role.userIds.length}),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildTagChip(
+                      icon: Icons.widgets_outlined,
+                      text: role.moduleKeys.contains('*')
+                          ? 'roles.all_modules'.tr()
+                          : 'roles.modules_count'.tr(args: {'count': role.moduleKeys.length}),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Chi tiáº¿t',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(width: 1),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 15,
+                      color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-          Text(
-            role.description?.isNotEmpty == true ? role.description! : 'roles.no_description_set'.tr(),
-            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.4),
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 16),
-
-          // Module Scope Section
-          Row(
-            children: [
-              const Icon(Icons.layers_outlined, size: 18, color: Color(0xFF2563EB)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'roles.module_scope_title'.tr(),
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  isWildcard ? 'roles.full_module_access'.tr() : 'roles.module_count_badge'.tr(args: {'count': role.moduleKeys.length}),
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Green Wildcard Banner (matching Web screenshot)
-          if (isWildcard)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'roles.wildcard_notice'.tr(),
-                      style: TextStyle(fontSize: 11.5, color: Colors.green.shade900, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Module Cards Grid
-          ..._moduleDefs.map((mod) {
-            final isGranted = isWildcard || role.moduleKeys.contains(mod['key']);
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (mod['color'] as Color).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(mod['icon'] as IconData, color: mod['color'] as Color, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                mod['name'] as String,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFDCFCE7),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text('roles.in_package'.tr(), style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF15803D))),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          mod['desc'] as String,
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.3),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              mod['key'] as String,
-                              style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontFamily: 'monospace'),
-                            ),
-                            const Spacer(),
-                            Text(
-                              isGranted ? 'roles.granted'.tr() : 'roles.not_granted'.tr(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isGranted ? const Color(0xFF2563EB) : Colors.grey.shade400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 12),
-
-          // Actions & Permissions Section
-          Row(
-            children: [
-              const Icon(Icons.flash_on_outlined, size: 18, color: Color(0xFF2563EB)),
-              const SizedBox(width: 8),
-              Text(
-                'roles.actions_title'.tr(args: {'count': role.actionKeys.length}),
-                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (role.actionKeys.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text('roles.no_actions'.tr(), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-            )
-          else
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: role.actionKeys.map((action) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Text(
-                    action,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontFamily: 'monospace', fontWeight: FontWeight.w500),
-                  ),
-                );
-              }).toList(),
-            ),
-
-          const SizedBox(height: 16),
-
-          // Edit / Delete Buttons
-          if (canManage)
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showEditRoleSheet(context, role),
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: Text('common.edit'.tr()),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF2563EB),
-                      side: const BorderSide(color: Color(0xFF2563EB)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                  ),
-                ),
-                if (!role.isSystem) ...[
-                  const SizedBox(width: 10),
-                  IconButton(
-                    onPressed: () => _confirmDeleteRole(role),
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
-                    tooltip: 'roles.delete_role'.tr(),
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFFEE2E2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ],
               ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildPermissionsTab() {
-    return Column(
-      children: _permissions.map((perm) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+
+
+  Widget _buildPermissionsScreen(bool canManage) {
+    final filtered = _permissions.where((p) {
+      if (_permissionSearchQuery.isEmpty) return true;
+      final q = _permissionSearchQuery.toLowerCase();
+      final matchName = p.name.toLowerCase().contains(q);
+      final matchKey = p.key?.toLowerCase().contains(q) ?? false;
+      final matchDesc = p.description?.toLowerCase().contains(q) ?? false;
+      final matchAction = p.actionKeys.any((a) => a.toLowerCase().contains(q));
+      return matchName || matchKey || matchDesc || matchAction;
+    }).toList();
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: const Color(0xFF2563EB),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          // Banner Permission Info
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF5FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.vpn_key_outlined, color: Color(0xFF9333EA), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Danh má»¥c Permission TiÃªu chuáº©n',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Há»‡ thá»‘ng gá»“m ${_permissions.length} quyá»n tiÃªu chuáº©n quáº£n lÃ½ cÃ¡c hÃ nh Ä‘á»™ng cá»‘t lÃµi vÃ  module.',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          const SizedBox(height: 12),
+
+          // Search Box Permission
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'TÃ¬m theo tÃªn quyá»n, mÃ£ permission, hÃ nh Ä‘á»™ng...',
+                hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade400),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                isDense: true,
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF9333EA)),
+                ),
+              ),
+              onChanged: (val) => setState(() => _permissionSearchQuery = val.trim()),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Danh sÃ¡ch Permission Cards
+          if (filtered.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFAF5FF),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.vpn_key_outlined, color: Color(0xFF9333EA), size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          perm.name,
-                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                        ),
-                        if (perm.key != null)
-                          Text(
-                            perm.key!,
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontFamily: 'monospace'),
-                          ),
-                      ],
-                    ),
-                  ),
-                  _buildSystemBadge(perm.isSystem),
+                  Icon(Icons.vpn_key_outlined, size: 40, color: Colors.grey.shade300),
+                  const SizedBox(height: 8),
+                  const Text('KhÃ´ng tÃ¬m tháº¥y permission phÃ¹ há»£p', style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5)),
                 ],
               ),
-              if (perm.description != null) ...[
-                const SizedBox(height: 8),
-                Text(perm.description!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-              ],
-              const SizedBox(height: 12),
-              Text('roles.granted_actions'.tr(), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: perm.actionKeys.map((k) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3E8FF),
-                      borderRadius: BorderRadius.circular(4),
+            )
+          else
+            ...filtered.map((perm) {
+              final usedRoles = _roles.where((r) {
+                return r.permissionIds.contains(perm.id) ||
+                    perm.roleIds.contains(r.id) ||
+                    (r.key.isNotEmpty && perm.roleIds.contains(r.key)) ||
+                    (perm.actionKeys.isNotEmpty && r.actionKeys.any((a) => perm.actionKeys.contains(a))) ||
+                    (perm.key != null && perm.key!.isNotEmpty && r.actionKeys.contains(perm.key));
+              }).toList();
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     ),
-                    child: Text(k, style: const TextStyle(fontSize: 10.5, color: Color(0xFF7E22CE), fontFamily: 'monospace')),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _showPermissionDetailModal(perm, canManage),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFAF5FF),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.vpn_key_outlined, color: Color(0xFF9333EA), size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      perm.name,
+                                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${usedRoles.length} vai trÃ²   â€¢   ${perm.actionKeys.length} hÃ nh Ä‘á»™ng',
+                                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildSystemBadge(perm.isSystem),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.chevron_right, size: 18, color: Color(0xFF94A3B8)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          if (perm.description != null && perm.description!.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              perm.description!,
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
@@ -1021,356 +1142,18 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
     );
   }
 
-  // Create Role Sheet
-  void _showCreateRoleSheet(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final keyCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final selectedModules = <String>{'hrm', 'inventory', 'maintenance', 'procedure-engine', 'workspace'};
-    bool allModules = true;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Container(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                top: 20,
-                left: 20,
-                right: 20,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'roles.create_title'.tr(),
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 20),
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'roles.field_name'.tr(),
-                        hintText: 'roles.field_name_hint'.tr(),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (val) {
-                        if (keyCtrl.text.isEmpty || keyCtrl.text == _slugify(val.substring(0, val.length > 1 ? val.length - 1 : 0))) {
-                          keyCtrl.text = _slugify(val);
-                          setSheetState(() {});
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: keyCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'roles.field_key'.tr(),
-                        hintText: 'VD: sales-manager',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descCtrl,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'roles.field_description'.tr(),
-                        hintText: 'roles.field_description_hint'.tr(),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('roles.module_scope_label'.tr(), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    CheckboxListTile(
-                      value: allModules,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('roles.all_modules_wildcard'.tr(), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      onChanged: (val) {
-                        setSheetState(() {
-                          allModules = val ?? true;
-                          if (allModules) {
-                            selectedModules.addAll(['hrm', 'inventory', 'maintenance', 'procedure-engine', 'workspace']);
-                          }
-                        });
-                      },
-                    ),
-                    if (!allModules)
-                      ..._moduleDefs.map((m) {
-                        final k = m['key'] as String;
-                        final isChecked = selectedModules.contains(k);
-                        return CheckboxListTile(
-                          value: isChecked,
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(m['name'] as String, style: const TextStyle(fontSize: 12.5)),
-                          onChanged: (val) {
-                            setSheetState(() {
-                              if (val == true) {
-                                selectedModules.add(k);
-                              } else {
-                                selectedModules.remove(k);
-                              }
-                            });
-                          },
-                        );
-                      }),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (nameCtrl.text.trim().isEmpty || keyCtrl.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('roles.err_name_key'.tr())),
-                            );
-                            return;
-                          }
-                          Navigator.pop(ctx);
-                          final success = await _platformService.createRole(
-                            name: nameCtrl.text.trim(),
-                            key: keyCtrl.text.trim(),
-                            description: descCtrl.text.trim(),
-                            moduleKeys: allModules ? ['*'] : selectedModules.toList(),
-                          );
-                          if (success) {
-                            _loadData();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('roles.created'.tr())),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        child: Text('roles.confirm_create'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // Edit Role Sheet
-  void _showEditRoleSheet(BuildContext context, TenantRole role) {
-    final nameCtrl = TextEditingController(text: role.name);
-    final keyCtrl = TextEditingController(text: role.key);
-    final descCtrl = TextEditingController(text: role.description ?? '');
-    final selectedModules = Set<String>.from(role.moduleKeys.contains('*') ? ['hrm', 'inventory', 'maintenance', 'procedure-engine', 'workspace'] : role.moduleKeys);
-    bool allModules = role.moduleKeys.contains('*');
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Container(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                top: 20,
-                left: 20,
-                right: 20,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'roles.edit_title'.tr(),
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 20),
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'roles.field_name'.tr(),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: keyCtrl,
-                      enabled: !role.isSystem,
-                      decoration: InputDecoration(
-                        labelText: 'roles.field_key'.tr(),
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        helperText: role.isSystem ? 'roles.system_key_locked'.tr() : null,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descCtrl,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'roles.field_description'.tr(),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('roles.module_scope_label'.tr(), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    CheckboxListTile(
-                      value: allModules,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('roles.all_modules_wildcard'.tr(), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      onChanged: (val) {
-                        setSheetState(() {
-                          allModules = val ?? true;
-                        });
-                      },
-                    ),
-                    if (!allModules)
-                      ..._moduleDefs.map((m) {
-                        final k = m['key'] as String;
-                        final isChecked = selectedModules.contains(k);
-                        return CheckboxListTile(
-                          value: isChecked,
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(m['name'] as String, style: const TextStyle(fontSize: 12.5)),
-                          onChanged: (val) {
-                            setSheetState(() {
-                              if (val == true) {
-                                selectedModules.add(k);
-                              } else {
-                                selectedModules.remove(k);
-                              }
-                            });
-                          },
-                        );
-                      }),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (nameCtrl.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('roles.err_name'.tr())),
-                            );
-                            return;
-                          }
-                          Navigator.pop(ctx);
-                          final success = await _platformService.updateRole(
-                            role.id,
-                            name: nameCtrl.text.trim(),
-                            key: keyCtrl.text.trim(),
-                            description: descCtrl.text.trim(),
-                            moduleKeys: allModules ? ['*'] : selectedModules.toList(),
-                          );
-                          if (success) {
-                            _loadData();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('roles.updated'.tr())),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        child: Text('roles.save_changes'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _confirmDeleteRole(TenantRole role) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('roles.delete_title'.tr()),
-        content: Text('roles.delete_confirm'.tr(args: {'name': role.name})),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = await _platformService.deleteRole(role.id);
-              if (success) {
-                _loadData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('roles.deleted'.tr())),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
-            child: Text('common.delete'.tr(), style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _slugify(String text) {
     return text
         .toLowerCase()
-        .replaceAll(RegExp(r'[àáạảãâầấậẩẫăằắặẳẵ]'), 'a')
-        .replaceAll(RegExp(r'[èéẹẻẽêềếệểễ]'), 'e')
-        .replaceAll(RegExp(r'[ìíịỉĩ]'), 'i')
-        .replaceAll(RegExp(r'[òóọỏõôồốộổỗơờớợởỡ]'), 'o')
-        .replaceAll(RegExp(r'[ùúụủũưừứựửữ]'), 'u')
-        .replaceAll(RegExp(r'[ỳýỵỷỹ]'), 'y')
-        .replaceAll(RegExp(r'[đ]'), 'd')
+        .replaceAll(RegExp(r'[Ã Ã¡áº¡áº£Ã£Ã¢áº§áº¥áº­áº©áº«Äƒáº±áº¯áº·áº³áºµ]'), 'a')
+        .replaceAll(RegExp(r'[Ã¨Ã©áº¹áº»áº½Ãªá»áº¿á»‡á»ƒá»…]'), 'e')
+        .replaceAll(RegExp(r'[Ã¬Ã­á»‹á»‰Ä©]'), 'i')
+        .replaceAll(RegExp(r'[Ã²Ã³á»á»ÃµÃ´á»“á»‘á»™á»•á»—Æ¡á»á»›á»£á»Ÿá»¡]'), 'o')
+        .replaceAll(RegExp(r'[Ã¹Ãºá»¥á»§Å©Æ°á»«á»©á»±á»­á»¯]'), 'u')
+        .replaceAll(RegExp(r'[á»³Ã½á»µá»·á»¹]'), 'y')
+        .replaceAll(RegExp(r'[Ä‘]'), 'd')
         .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
         .trim()
         .replaceAll(RegExp(r'\s+'), '-');

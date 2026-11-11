@@ -853,7 +853,7 @@ void showOrgNodeAddOrEditDialog(
                         );
                       } else {
                         success = await platformService.createNode(
-                          treeId: treeId ?? 't-1',
+                          treeId: treeId ?? snapshot.nodes.firstOrNull?.treeId ?? '',
                           name: nameCtrl.text.trim(),
                           code: codeCtrl.text.trim(),
                           description: descCtrl.text.trim(),

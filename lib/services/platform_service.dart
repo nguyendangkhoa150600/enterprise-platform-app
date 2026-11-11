@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:dio/dio.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../utils/error_handler.dart';
 import 'api_client_helper.dart';
+import '../utils/user_resolver.dart';
 
 class PlatformService {
   final Dio _dio = Dio(BaseOptions(
@@ -28,7 +30,11 @@ class PlatformService {
           rawList = response.data['users'] ?? response.data['data'] ?? response.data['items'];
         }
         if (rawList is List) {
-          return rawList.map((e) => TenantUser.fromJson(e as Map<String, dynamic>)).toList();
+          final list = rawList.map((e) => TenantUser.fromJson(e as Map<String, dynamic>)).toList();
+          for (final u in list) {
+            UserResolver.registerUser(u.id, u.fullName, email: u.email, username: u.username);
+          }
+          return list;
         }
       }
     } catch (_) {}
@@ -312,6 +318,77 @@ class PlatformService {
     return [];
   }
 
+  // Create Permission
+  Future<bool> createPermission({
+    required String name,
+    required String key,
+    String? description,
+    List<String> actionKeys = const [],
+    List<String> roleIds = const [],
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/platform/v1/tenant-permissions',
+        data: {
+          'name': name,
+          'key': key,
+          if (description != null) 'description': description,
+          'actionKeys': actionKeys,
+          'roleIds': roleIds,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('createPermission error: $e');
+      return false;
+    }
+  }
+
+  // Update Permission
+  Future<bool> updatePermission(
+    String id, {
+    String? name,
+    String? key,
+    String? description,
+    List<String>? actionKeys,
+    List<String>? roleIds,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (name != null) data['name'] = name;
+      if (key != null) data['key'] = key;
+      if (description != null) data['description'] = description;
+      if (actionKeys != null) data['actionKeys'] = actionKeys;
+      if (roleIds != null) data['roleIds'] = roleIds;
+
+      try {
+        final response = await _dio.patch('/platform/v1/tenant-permissions/$id', data: data);
+        return response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300;
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404 || dioErr.response?.statusCode == 405) {
+          final putRes = await _dio.put('/platform/v1/tenant-permissions/$id', data: data);
+          return putRes.statusCode != null && putRes.statusCode! >= 200 && putRes.statusCode! < 300;
+        }
+        debugPrint('updatePermission dio error: ${dioErr.response?.statusCode} -> ${dioErr.response?.data}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('updatePermission general error: $e');
+      return false;
+    }
+  }
+
+  // Delete Permission
+  Future<bool> deletePermission(String id) async {
+    try {
+      final response = await _dio.delete('/platform/v1/tenant-permissions/$id');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint('deletePermission error: $e');
+      return false;
+    }
+  }
+
   // Create Role
   Future<bool> createRole({
     required String name,
@@ -362,9 +439,19 @@ class PlatformService {
       if (permissionIds != null) data['permissionIds'] = permissionIds;
       if (userIds != null) data['userIds'] = userIds;
 
-      final response = await _dio.patch('/platform/v1/tenant-roles/$id', data: data);
-      return response.statusCode == 200;
-    } catch (_) {
+      try {
+        final response = await _dio.patch('/platform/v1/tenant-roles/$id', data: data);
+        return response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300;
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404 || dioErr.response?.statusCode == 405) {
+          final putRes = await _dio.put('/platform/v1/tenant-roles/$id', data: data);
+          return putRes.statusCode != null && putRes.statusCode! >= 200 && putRes.statusCode! < 300;
+        }
+        debugPrint('updateRole dio error: ${dioErr.response?.statusCode} -> ${dioErr.response?.data}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('updateRole general error: $e');
       return false;
     }
   }
@@ -379,10 +466,35 @@ class PlatformService {
     }
   }
 
+  // Get User Roles (roles assigned to a specific user)
+  Future<List<String>> getUserRoleIds(String userId) async {
+    try {
+      final response = await _dio.get('/platform/v1/tenant-users/$userId/roles');
+      if (response.statusCode == 200 && response.data != null) {
+        final list = response.data['roleIds'] as List<dynamic>? ?? [];
+        return list.map((e) => e.toString()).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // Set User Roles (PUT /platform/v1/tenant-users/:id/roles)
+  Future<bool> setUserRoleIds(String userId, List<String> roleIds) async {
+    try {
+      final response = await _dio.put(
+        '/platform/v1/tenant-users/$userId/roles',
+        data: {'roleIds': roleIds},
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Assign Roles to User
   Future<({bool success, String? error})> assignUserRoles(String userId, List<String> roleIds) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.put(
         '/platform/v1/tenant-users/$userId/roles',
         data: {'roleIds': roleIds},
       );
@@ -392,9 +504,9 @@ class PlatformService {
     } catch (_) {}
 
     try {
-      final response = await _dio.put(
-        '/platform/v1/tenant-users/$userId',
-        data: {'roleIds': roleIds, 'roles': roleIds},
+      final response = await _dio.post(
+        '/platform/v1/tenant-users/$userId/roles',
+        data: {'roleIds': roleIds},
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
         return (success: true, error: null);

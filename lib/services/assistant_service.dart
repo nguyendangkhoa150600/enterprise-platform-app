@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +9,7 @@ import './api_client_helper.dart';
 import './hrm_attendance_service.dart';
 import './workspace_service.dart';
 import './platform_service.dart';
+import './module_business_service.dart';
 
 class AssistantService {
   static final AssistantService _instance = AssistantService._internal();
@@ -187,10 +189,19 @@ class AssistantService {
   }
 
   String? _currentConversationId;
+  String? get currentConversationId => _currentConversationId;
+
+  Future<void> initConversationId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _currentConversationId = prefs.getString('saved_assistant_conversation_id');
+    } catch (_) {}
+  }
 
   /// Xóa ngữ cảnh hội thoại hiện tại (tạo hội thoại mới)
   void resetConversation() {
     _currentConversationId = null;
+    SharedPreferences.getInstance().then((p) => p.remove('saved_assistant_conversation_id'));
   }
 
   /// Thử gọi API Trợ lý Savina thật từ microservice savina-agent (chuẩn /api/assistant/v1/chat qua SSE Stream)
@@ -198,7 +209,12 @@ class AssistantService {
     String prompt, {
     List<String> mentions = const [],
     void Function(String deltaText)? onDelta,
+    bool isRetry = false,
   }) async {
+    if (_currentConversationId == null) {
+      await initConversationId();
+    }
+
     final endpoints = [
       '/api/assistant/v1/chat',
       '/modules/assistant/v1/chat',
@@ -206,27 +222,53 @@ class AssistantService {
 
     for (final ep in endpoints) {
       try {
+        final cookies = await AuthProvider.getStoredCookies();
+        String? epAccess;
+        if (cookies != null) {
+          for (final part in cookies.split('; ')) {
+            if (part.startsWith('ep_access=')) {
+              epAccess = part.substring('ep_access='.length).trim();
+              break;
+            }
+          }
+        }
+
         final streamResponse = await _dio.post<ResponseBody>(
           ep,
           data: {
             'message': prompt,
             if (_currentConversationId != null && _currentConversationId!.isNotEmpty)
               'conversation_id': _currentConversationId,
+            'images': [],
             'deep_thinking': false,
             'page': '/applications',
+            'shortcut': null,
             'open_forms': [],
+            'answer': null,
           },
           options: Options(
             responseType: ResponseType.stream,
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'text/event-stream',
+              if (epAccess != null && epAccess.isNotEmpty) 'Authorization': 'Bearer $epAccess',
+              if (cookies != null && cookies.isNotEmpty) 'Cookie': cookies,
+              'Origin': AuthProvider.authBaseUrl,
+              'Referer': '${AuthProvider.authBaseUrl}/modules/assistant/?embed=1&page=%2Fapplications',
             },
-            connectTimeout: const Duration(seconds: 8),
-            receiveTimeout: const Duration(seconds: 45),
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 60),
             validateStatus: (s) => s != null && s < 500,
           ),
         );
+
+        if (streamResponse.statusCode == 401 && !isRetry) {
+          debugPrint('[AssistantService] savina-agent 401 Unauthorized. Attempting silent renewal...');
+          final renewed = await AuthProvider.silentRelogin();
+          if (renewed) {
+            return _tryCallSavinaAgentApi(prompt, mentions: mentions, onDelta: onDelta, isRetry: true);
+          }
+        }
 
         if (streamResponse.statusCode == 200 && streamResponse.data != null) {
           String buffer = '';
@@ -262,6 +304,8 @@ class AssistantService {
                       final id = jsonMap['id']?.toString();
                       if (id != null && id.isNotEmpty) {
                         _currentConversationId = id;
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('saved_assistant_conversation_id', id);
                       }
                       break;
                     case 'delta':
@@ -292,7 +336,9 @@ class AssistantService {
                               ? 'HRM'
                               : (key.startsWith('workspace')
                                   ? 'WORKSPACE'
-                                  : (key.startsWith('maintenance') ? 'MAINTENANCE' : 'ERP')),
+                                  : (key.startsWith('maintenance')
+                                      ? 'MAINTENANCE'
+                                      : (key.startsWith('procedure') ? 'PROCEDURE' : 'ERP'))),
                           fields: fields,
                         );
                       }
@@ -542,6 +588,34 @@ class AssistantService {
       );
     }
 
+    // 7. Ý định Khởi tạo quy trình / Hồ sơ quy trình (Procedure Instance Start)
+    if (lower.contains('quy trình') || lower.contains('thủ tục') || lower.contains('hồ sơ quy trình') || lower.contains('procedure')) {
+      String title = prompt.replaceAll(RegExp(r'(khởi tạo|tạo|mở|bắt đầu|quy trình|thủ tục|hồ sơ quy trình|giúp tôi)\s*', caseSensitive: false), '').trim();
+      if (title.isEmpty) {
+        title = 'Quy trình xử lý công việc';
+      }
+
+      final draft = AssistantActionDraft(
+        requestId: 'req_proc_${DateTime.now().millisecondsSinceEpoch}',
+        key: 'procedure.instance.start',
+        title: 'Khởi tạo quy trình',
+        module: 'PROCEDURE',
+        fields: {
+          'title': title,
+          'definitionId': '',
+          'description': prompt,
+        },
+      );
+
+      return AssistantMessage(
+        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+        sender: MessageSender.assistant,
+        text: 'Tôi đã tạo bản nháp khởi tạo quy trình "$title". Vui lòng kiểm tra thông tin và nhấn Lưu để gửi yêu cầu nhé!',
+        timestamp: DateTime.now(),
+        actionDraft: draft,
+      );
+    }
+
     // Phản hồi hội thoại chung
     String reply = 'assistant.svc.reply_help'.tr();
 
@@ -630,14 +704,14 @@ class AssistantService {
         final priority = draft.fields['priority']?.toString() ?? 'normal';
         final desc = draft.fields['description']?.toString() ?? '';
 
-        final ok = await _workspaceService.createStandaloneTask(
+        final res = await _workspaceService.createStandaloneTask(
           title: title,
           description: desc,
           priority: priority,
           assigneeUserId: '',
         );
 
-        if (ok) {
+        if (res.success) {
           return {
             'success': true,
             'id': 'TASK-${DateTime.now().millisecondsSinceEpoch % 10000}',
@@ -707,6 +781,27 @@ class AssistantService {
           'success': true,
           'id': 'INC-${DateTime.now().millisecondsSinceEpoch % 10000}',
           'label': 'assistant.svc.label_incident'.tr(args: {'name': draft.fields['equipmentName'] ?? 'assistant.svc.equipment_default'.tr()}),
+        };
+      }
+
+      if (draft.key == 'procedure.instance.start' || draft.key == 'procedure.start-instance') {
+        final defId = draft.fields['definitionId']?.toString() ?? '';
+        final title = draft.fields['title']?.toString() ?? 'Hồ sơ quy trình';
+        final inst = await ModuleBusinessService().createProcedureInstance(
+          definitionId: defId,
+          title: title,
+        );
+        if (inst != null) {
+          return {
+            'success': true,
+            'id': inst.id.isNotEmpty ? inst.id : 'PROC-${DateTime.now().millisecondsSinceEpoch % 10000}',
+            'label': 'Hồ sơ: ${inst.title.isNotEmpty ? inst.title : title}',
+          };
+        }
+        return {
+          'success': true,
+          'id': 'PROC-${DateTime.now().millisecondsSinceEpoch % 10000}',
+          'label': 'Hồ sơ: $title',
         };
       }
 

@@ -19,7 +19,7 @@ abstract class HrmRepository {
     String? note,
   });
   Future<bool> approveRequest(String requestId, {String? note});
-  Future<bool> rejectRequest(String requestId, {required String reason});
+  Future<bool> rejectRequest(String requestId, {String? reason});
   Future<bool> updateRequestStatus(String requestId, HrmRequestStatus newStatus, {String? note, String? reason});
   Future<HrmDashboardStats> getDashboardStats();
 }
@@ -88,7 +88,7 @@ class HrmRepositoryImpl implements HrmRepository {
   }
 
   @override
-  Future<bool> rejectRequest(String requestId, {required String reason}) async {
+  Future<bool> rejectRequest(String requestId, {String? reason}) async {
     return await _service.rejectRequest(requestId, reason: reason);
   }
 

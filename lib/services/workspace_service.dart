@@ -1,6 +1,8 @@
+import 'package:intl/intl.dart';
 import '../features/workspace/data/repositories/workspace_repository_impl.dart';
 import '../features/workspace/domain/repositories/i_workspace_repository.dart';
 import '../models/workspace_models.dart';
+import '../features/workspace/domain/models/workspace_report_models.dart';
 
 /// Facade Service giữ nguyên 100% contract cho các widget hiện hành
 /// Nhưng phân phối toàn bộ logic sang IWorkspaceRepository (Clean Architecture)
@@ -100,12 +102,14 @@ class WorkspaceService {
     String? status,
     String? projectType,
     String? customerId,
+    String? archived = 'exclude',
     Map<String, String>? customerMap,
   }) =>
       _repository.getProjects(
         customerMap: customerMap,
         status: status,
         projectType: projectType,
+        archived: archived,
       );
 
   Future<ProjectItem?> getProjectDetail(String id, {Map<String, String>? customerMap}) =>
@@ -147,34 +151,72 @@ class WorkspaceService {
   Future<bool> deleteProject(String id) =>
       _repository.deleteProject(id);
 
+  Future<List<StandaloneTaskItem>> getProjectWorkItems(String projectId) =>
+      _repository.getProjectWorkItems(projectId);
+
   Future<List<ProjectMemberItem>> getProjectMembers(String projectId) =>
       _repository.getProjectMembers(projectId);
 
-  Future<bool> setProjectMembers(String projectId, List<Map<String, String>> members) async {
-    return true;
-  }
+  Future<bool> addProjectMember(String projectId, {required String userId, required String role}) =>
+      _repository.addProjectMember(projectId, userId: userId, role: role);
+
+  Future<bool> updateProjectMemberRole(String projectId, {required String memberId, required String role}) =>
+      _repository.updateProjectMemberRole(projectId, memberId: memberId, role: role);
+
+  Future<bool> removeProjectMember(String projectId, String memberId) =>
+      _repository.removeProjectMember(projectId, memberId);
+
+  Future<WorkspaceDirectoryResponse?> getDirectory() =>
+      _repository.getDirectory();
+
+  Future<bool> setProjectMembers(String projectId, List<Map<String, String>> members) =>
+      _repository.setProjectMembers(projectId, members);
+
+  Future<({bool success, String? errorMessage})> setProjectMembersWithResult(
+    String projectId,
+    List<Map<String, String>> members,
+  ) =>
+      _repository.setProjectMembersWithResult(projectId, members);
 
   // 4. Tasks & Work Items
   Future<List<StandaloneTaskItem>> getStandaloneTasks({String scope = 'assigned_to_me'}) =>
       _repository.getStandaloneTasks(scope: scope);
 
-  Future<bool> createStandaloneTask({
+  Future<({bool success, String? error})> createStandaloneTask({
     required String title,
     String? description,
     String priority = 'normal',
     required String assigneeUserId,
     DateTime? dueDate,
+    DateTime? plannedStart,
+    List<String>? participantUserIds,
+    List<String>? followerUserIds,
+    String? executionType,
+    String? procedureDefinitionId,
+    String? parentId,
   }) =>
       _repository.createStandaloneTask(
         title: title,
         description: description,
         priority: priority,
         assigneeUserId: assigneeUserId,
-        dueDate: dueDate?.toIso8601String().substring(0, 10),
+        dueDate: dueDate != null ? DateFormat('yyyy-MM-dd').format(dueDate) : null,
+        plannedStart: plannedStart != null ? DateFormat('yyyy-MM-dd').format(plannedStart) : null,
+        participantUserIds: participantUserIds,
+        followerUserIds: followerUserIds,
+        executionType: executionType,
+        procedureDefinitionId: procedureDefinitionId,
+        parentId: parentId,
       );
 
+  Future<Map<String, dynamic>?> getStandaloneTaskDetail(String taskId) =>
+      _repository.getStandaloneTaskDetail(taskId);
+
   Future<bool> changeStandaloneTaskStatus(String id, String status, {String? note}) =>
-      _repository.updateStandaloneTaskStatus(id, status);
+      _repository.updateStandaloneTaskStatus(id, status, note: note);
+
+  Future<bool> deleteStandaloneTask(String taskId) =>
+      _repository.deleteStandaloneTask(taskId);
 
   Future<bool> createWorkItem({
     required String projectId,
@@ -202,11 +244,93 @@ class WorkspaceService {
         parentId: parentTaskId,
       );
 
-  Future<bool> updateWorkItemStatus(String workItemId, String status) =>
-      _repository.updateWorkItemStatus(workItemId, status);
+  Future<bool> updateWorkItemStatus(
+    String workItemId,
+    String status, {
+    String? note,
+    List<String>? confirmedConditionIds,
+  }) =>
+      _repository.updateWorkItemStatus(
+        workItemId,
+        status,
+        note: note,
+        confirmedConditionIds: confirmedConditionIds,
+      );
+
+  Future<WorkItemCompletionPolicy?> getWorkItemCompletionPolicy(String workItemId) =>
+      _repository.getWorkItemCompletionPolicy(workItemId);
 
   // 5. Metadata: Project Groups & Departments
   Future<List<String>> getProjectGroups() => _repository.getProjectGroups();
+  Future<bool> createProjectGroup(String name, String code) => _repository.createProjectGroup(name, code);
   Future<List<DepartmentItem>> getDepartments() => _repository.getDepartments();
   Future<String?> getProjectCodePreview(String group) => _repository.getProjectCodePreview(group);
+
+  // 6. Trao đổi công việc (Chat Feed)
+  Future<ProjectChatFeedPage> getProjectChatFeed(
+    String projectId, {
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    bool? onlyWithChat,
+  }) =>
+      _repository.getProjectChatFeed(
+        projectId,
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        onlyWithChat: onlyWithChat,
+      );
+
+  Future<ProjectChatThread> getProjectChatFeedThread(
+    String projectId,
+    String workItemId, {
+    String? before,
+  }) =>
+      _repository.getProjectChatFeedThread(projectId, workItemId, before: before);
+
+  // 7. Báo cáo & Phân tích (Reports)
+  Future<ReportBundle?> getWorkspaceReports({
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+  }) =>
+      _repository.getWorkspaceReports(
+        from: from,
+        to: to,
+        projectIds: projectIds,
+        groups: groups,
+        tagIds: tagIds,
+        userId: userId,
+      );
+
+  Future<ReportItemList?> getWorkspaceReportItems({
+    required String kind,
+    String? from,
+    String? to,
+    List<String>? projectIds,
+    List<String>? groups,
+    List<String>? tagIds,
+    String? userId,
+    String? assigneeUserId,
+    String? status,
+    String? priority,
+  }) =>
+      _repository.getWorkspaceReportItems(
+        kind: kind,
+        from: from,
+        to: to,
+        projectIds: projectIds,
+        groups: groups,
+        tagIds: tagIds,
+        userId: userId,
+        assigneeUserId: assigneeUserId,
+        status: status,
+        priority: priority,
+      );
+
+  Future<List<TagItem>> getWorkspaceTags() => _repository.getWorkspaceTags();
 }

@@ -38,6 +38,13 @@ class HrmRequestItem {
   final String? rejectionReason;
   final String? note;
   final String? rawStatus;
+  final String? currentAssigneeName;
+  final String? projectId;
+  final String? projectCode;
+  final String? projectName;
+  final String? projectStatus;
+  final String? projectLinkStatus;
+  final String? projectLinkRejectionReason;
 
   const HrmRequestItem({
     required this.id,
@@ -60,7 +67,51 @@ class HrmRequestItem {
     this.rejectionReason,
     this.note,
     this.rawStatus,
+    this.currentAssigneeName,
+    this.projectId,
+    this.projectCode,
+    this.projectName,
+    this.projectStatus,
+    this.projectLinkStatus,
+    this.projectLinkRejectionReason,
   });
+
+  HrmRequestItem copyWith({
+    String? currentAssigneeName,
+    String? approverName,
+    DateTime? approvedAt,
+    HrmRequestStatus? status,
+  }) {
+    return HrmRequestItem(
+      id: id,
+      type: type,
+      title: title,
+      employeeId: employeeId,
+      employeeName: employeeName,
+      employeeCode: employeeCode,
+      department: department,
+      requestDate: requestDate,
+      startDate: startDate,
+      endDate: endDate,
+      durationHours: durationHours,
+      durationDays: durationDays,
+      amount: amount,
+      reason: reason,
+      status: status ?? this.status,
+      approverName: approverName ?? this.approverName,
+      approvedAt: approvedAt ?? this.approvedAt,
+      rejectionReason: rejectionReason,
+      note: note,
+      rawStatus: rawStatus,
+      currentAssigneeName: currentAssigneeName ?? this.currentAssigneeName,
+      projectId: projectId,
+      projectCode: projectCode,
+      projectName: projectName,
+      projectStatus: projectStatus,
+      projectLinkStatus: projectLinkStatus,
+      projectLinkRejectionReason: projectLinkRejectionReason,
+    );
+  }
 
   String get typeLabel {
     switch (type) {
@@ -272,6 +323,13 @@ class HrmRequestItem {
       rejectionReason: json['rejection_reason'] ?? json['rejectionReason'],
       note: json['note']?.toString(),
       rawStatus: rawStat,
+      currentAssigneeName: json['currentAssigneeName']?.toString() ?? json['assigneeName']?.toString(),
+      projectId: (json['projectLink'] is Map ? (json['projectLink'] as Map)['projectId']?.toString() : null) ?? json['projectId']?.toString() ?? (json['attributes'] is Map ? (json['attributes'] as Map)['projectId']?.toString() : null),
+      projectCode: (json['projectLink'] is Map ? (json['projectLink'] as Map)['projectCode']?.toString() : null) ?? json['projectCode']?.toString() ?? (json['attributes'] is Map ? (json['attributes'] as Map)['projectCode']?.toString() : null),
+      projectName: (json['projectLink'] is Map ? (json['projectLink'] as Map)['projectName']?.toString() : null) ?? json['projectName']?.toString() ?? (json['attributes'] is Map ? (json['attributes'] as Map)['projectName']?.toString() : null),
+      projectStatus: (json['projectLink'] is Map ? (json['projectLink'] as Map)['projectStatus']?.toString() : null) ?? json['projectStatus']?.toString(),
+      projectLinkStatus: json['projectLink'] is Map ? (json['projectLink'] as Map)['status']?.toString() : null,
+      projectLinkRejectionReason: json['projectLink'] is Map ? (json['projectLink'] as Map)['rejectionReason']?.toString() : null,
     );
   }
 }

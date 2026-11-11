@@ -898,7 +898,7 @@ class HrmAttendanceService {
       '/hrm/v1/requests',
     ];
 
-    for (final ep in endpoints) {
+    await Future.wait(endpoints.map((ep) async {
       try {
         final res = await _dio.get(
           ep,
@@ -938,7 +938,7 @@ class HrmAttendanceService {
       } catch (e) {
         debugPrint('[HrmAttendanceService] get $ep error: $e');
       }
-    }
+    }));
 
     if (status != null && status != 'ALL') {
       return remoteCorrections.where((c) => c.status == status).toList();

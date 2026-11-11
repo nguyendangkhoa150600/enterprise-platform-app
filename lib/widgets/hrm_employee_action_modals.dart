@@ -364,6 +364,7 @@ class HrmEmployeeActionModals {
     final reasonController = TextEditingController();
     final hoursController = TextEditingController();
     final amountController = TextEditingController();
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -411,24 +412,49 @@ class HrmEmployeeActionModals {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () async {
-                    if (reasonController.text.trim().isEmpty) return;
-                    Navigator.pop(ctx);
-                    await _hrmService.createRequest(
-                      type: selectedType,
-                      title: titleController.text.trim().isNotEmpty ? titleController.text.trim() : 'hrm_modals.employee_action.don_name'.tr(args: {'name': selectedType.name}),
-                      reason: reasonController.text.trim(),
-                      durationHours: double.tryParse(hoursController.text),
-                      amount: double.tryParse(amountController.text),
-                    );
-                    if (onSubmitted != null) onSubmitted();
-                  },
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final reason = reasonController.text.trim();
+                          if (reason.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Vui lòng nhập chi tiết lý do và thông tin giải trình liên quan.'),
+                                backgroundColor: Color(0xFFDC2626),
+                              ),
+                            );
+                            return;
+                          }
+                          setModalState(() => isSubmitting = true);
+                          try {
+                            await _hrmService.createRequest(
+                              type: selectedType,
+                              title: titleController.text.trim().isNotEmpty
+                                  ? titleController.text.trim()
+                                  : 'hrm_modals.employee_action.don_name'.tr(args: {'name': selectedType.name}),
+                              reason: reason,
+                              durationHours: double.tryParse(hoursController.text),
+                              amount: double.tryParse(amountController.text),
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (onSubmitted != null) onSubmitted();
+                          } catch (e) {
+                            setModalState(() => isSubmitting = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Lỗi gửi đơn: '), backgroundColor: const Color(0xFFDC2626)),
+                              );
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0F172A),
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 44),
                   ),
-                  child: Text('hrm_modals.employee_action.gui_don_phe_duyet'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: isSubmitting
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text('hrm_modals.employee_action.gui_don_phe_duyet'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),

@@ -1,12 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../models/notification_models.dart';
+import '../models/hrm_models.dart';
+import '../models/hrm_attendance_models.dart';
 import '../providers/notification_provider.dart';
+import '../services/hrm_service.dart';
+import '../services/hrm_attendance_service.dart';
+import '../features/hrm/requests/presentation/widgets/hrm_request_detail_bottom_sheet.dart';
+import './requests/components/request_detail_dialog.dart';
 import './attendance_screen.dart';
 import './hrm_hub_screen.dart';
+import './my_requests_screen.dart';
+import './leave_balances_screen.dart';
+import './profile_income_screen.dart';
 import './procedure_screen.dart';
 import './maintenance_screen.dart';
 import './inventory_screen.dart';
+import './inventory/inventory_documents_screen.dart';
+import './inventory/inventory_assets_screen.dart';
+import './workspace_screen.dart';
+import './fleet_schedule_screen.dart';
 import '../core/i18n/app_i18n.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
@@ -28,34 +42,305 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   void _handleDeepLink(BuildContext context, NotificationRecord notification) {
-    // Mark as read on tap
+    // Đánh dấu đã đọc khi người dùng bấm vào
     context.read<NotificationProvider>().markAsRead(notification.id);
 
-    final link = notification.deepLink?.toLowerCase() ?? '';
-    final cat = notification.category.toLowerCase();
+    final link = (notification.deepLink ?? '').trim().toLowerCase();
+    final cat = notification.category.trim().toLowerCase();
+    final srcType = notification.sourceType.trim().toLowerCase();
     final module = notification.module;
 
-    if (link.contains('hrm') || link.contains('leave') || link.contains('attendance') || cat.contains('leave') || cat.contains('hrm') || module == NotificationModule.hrm) {
+    // 1. Đơn từ & Yêu cầu HRM (Phê duyệt của Quản lý HOẶC Kết quả đơn từ Nhân viên)
+    final isHrmRequestOrApproval = cat.startsWith('hrm_approval') ||
+        cat.startsWith('hrm_request') ||
+        cat.contains('approval') ||
+        cat.contains('request') ||
+        srcType == 'approval' ||
+        srcType == 'request' ||
+        srcType == 'leave' ||
+        srcType == 'overtime' ||
+        srcType == 'business_trip' ||
+        srcType == 'trip' ||
+        srcType == 'attendance_correction' ||
+        srcType == 'shift_change' ||
+        srcType == 'advance' ||
+        link.contains('/hrm/requests') ||
+        link.contains('/hrm/approvals') ||
+        link.contains('/requests') ||
+        link.contains('/approvals');
+
+    if (isHrmRequestOrApproval) {
+      _openSpecificRequestDetail(context, notification);
+      return;
+    }
+
+    // 2. Lương / Phiếu lương / Thu nhập (HRM Payroll)
+    final isPayroll = cat.startsWith('payroll') ||
+        cat.startsWith('payslip') ||
+        cat == 'payroll_payslip_issued' ||
+        srcType == 'payroll' ||
+        srcType == 'payslip' ||
+        srcType == 'salary' ||
+        link.contains('/payroll') ||
+        link.contains('/payslip') ||
+        link.contains('/income');
+
+    if (isPayroll) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileIncomeScreen()),
+      );
+      return;
+    }
+
+    // 3. Quỹ phép / Nghỉ phép (HRM Leave Balances)
+    final isLeaveBalance = cat.startsWith('leave_balance') ||
+        cat == 'hrm_leave_balance' ||
+        srcType == 'leave_balance' ||
+        srcType == 'annual_leave' ||
+        link.contains('/leave-balances') ||
+        link.contains('/leave_balance');
+
+    if (isLeaveBalance) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LeaveBalancesScreen()),
+      );
+      return;
+    }
+
+    // 4. Chấm công (Điểm danh, vào ca, tan ca, bất thường chấm công)
+    final isAttendance = cat.startsWith('attendance') ||
+        cat == 'attendance_abnormal' ||
+        cat.startsWith('checkin') ||
+        cat.startsWith('checkout') ||
+        srcType == 'attendance' ||
+        srcType == 'timesheet' ||
+        link.contains('/attendance') ||
+        link.contains('/timesheet');
+
+    if (isAttendance) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AttendanceScreen()),
       );
-    } else if (link.contains('procedure') || module == NotificationModule.procedure) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ProcedureScreen()),
-      );
-    } else if (link.contains('maintenance') || module == NotificationModule.maintenance) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const MaintenanceScreen()),
-      );
-    } else if (link.contains('inventory') || module == NotificationModule.inventory) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const InventoryScreen()),
-      );
+      return;
     }
+
+    // 5. Quy trình động (Procedure Engine)
+    final isProcedure = module == NotificationModule.procedure ||
+        cat.startsWith('procedure') ||
+        srcType.startsWith('procedure') ||
+        link.contains('/procedure');
+
+    if (isProcedure) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 1)),
+      );
+      return;
+    }
+
+    // 6. Bảo trì thiết bị (Maintenance)
+    final isMaintenance = module == NotificationModule.maintenance ||
+        cat.startsWith('maintenance') ||
+        srcType.startsWith('maintenance') ||
+        link.contains('/maintenance');
+
+    if (isMaintenance) {
+      final view = (cat.contains('incident') ||
+              cat.contains('occurrence') ||
+              srcType.contains('incident') ||
+              link.contains('/occurrences') ||
+              link.contains('/incidents'))
+          ? 'occurrences'
+          : (cat.contains('schedule') ||
+                  srcType.contains('schedule') ||
+                  link.contains('/schedules'))
+              ? 'schedules'
+              : 'dashboard';
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => MaintenanceScreen(view: view)),
+      );
+      return;
+    }
+
+    // 7. Kho & Quản lý Tài sản, Vật tư (Inventory)
+    final isInventory = module == NotificationModule.inventory ||
+        cat.startsWith('inventory') ||
+        srcType.startsWith('inventory') ||
+        link.contains('/inventory');
+
+    if (isInventory) {
+      if (cat.contains('document') ||
+          cat.contains('voucher') ||
+          srcType.contains('document') ||
+          link.contains('/documents') ||
+          link.contains('/vouchers')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen()),
+        );
+      } else if (cat.contains('asset') ||
+          srcType.contains('asset') ||
+          link.contains('/assets')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const InventoryAssetsScreen()),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const InventoryScreen()),
+        );
+      }
+      return;
+    }
+
+    // 8. Quản lý Đội xe & Phương tiện (Fleet)
+    final isFleet = cat.startsWith('fleet') ||
+        srcType == 'fleet' ||
+        srcType == 'vehicle' ||
+        link.contains('/fleet') ||
+        link.contains('/vehicles');
+
+    if (isFleet) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const FleetScheduleScreen()),
+      );
+      return;
+    }
+
+    // 9. Không gian làm việc, Mạng xã hội, Bài viết, Bình luận (Workspace & Social)
+    final isWorkspace = module == NotificationModule.workspace ||
+        cat.startsWith('workspace') ||
+        cat.startsWith('social') ||
+        cat.startsWith('post') ||
+        cat.startsWith('comment') ||
+        cat.startsWith('mention') ||
+        srcType == 'post' ||
+        srcType == 'comment' ||
+        srcType == 'feed' ||
+        srcType == 'task' ||
+        link.contains('/workspace') ||
+        link.contains('/social') ||
+        link.contains('/posts');
+
+    if (isWorkspace) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 0)),
+      );
+      return;
+    }
+
+    // 10. Fallback an toàn theo Enum Module định danh
+    switch (module) {
+      case NotificationModule.hrm:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'dashboard')),
+        );
+        break;
+      case NotificationModule.procedure:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 1)),
+        );
+        break;
+      case NotificationModule.maintenance:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'dashboard')),
+        );
+        break;
+      case NotificationModule.inventory:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const InventoryScreen()),
+        );
+        break;
+      case NotificationModule.workspace:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 0)),
+        );
+        break;
+      case NotificationModule.identity:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfileIncomeScreen()),
+        );
+        break;
+    }
+  }
+
+  void _openSpecificRequestDetail(BuildContext context, NotificationRecord notification) {
+    final targetId = notification.sourceId.trim();
+    final link = (notification.deepLink ?? '').trim().toLowerCase();
+    final cat = notification.category.trim().toLowerCase();
+    final srcType = notification.sourceType.trim().toLowerCase();
+
+    // 1. Phê duyệt của Quản lý / Người duyệt (Manager Approvals)
+    final isManagerApproval = cat.contains('approval') ||
+        cat == 'hrm_approval_required' ||
+        srcType == 'approval' ||
+        link.contains('/approvals');
+
+    if (isManagerApproval) {
+      final match = RegExp(r'của\s+(.*?)\s+đang chờ', caseSensitive: false).firstMatch(notification.body);
+      final empName = match?.group(1)?.trim();
+
+      HrmRequestType? reqType;
+      if (cat.contains('trip') || srcType == 'business_trip' || srcType == 'trip' || link.contains('trip')) {
+        reqType = HrmRequestType.businessTrip;
+      } else if (cat.contains('leave') || srcType == 'leave' || link.contains('leave')) {
+        reqType = HrmRequestType.leave;
+      } else if (cat.contains('overtime') || cat.contains('ot') || srcType == 'overtime' || link.contains('overtime') || link.contains('ot')) {
+        reqType = HrmRequestType.overtime;
+      } else if (cat.contains('attendance') || srcType == 'attendance_correction' || link.contains('attendance')) {
+        reqType = HrmRequestType.attendanceCorrection;
+      } else if (cat.contains('shift') || srcType == 'shift_change' || link.contains('shift')) {
+        reqType = HrmRequestType.shiftChange;
+      } else if (cat.contains('advance') || srcType == 'advance' || link.contains('advance')) {
+        reqType = HrmRequestType.advance;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HrmHubScreen(
+            initialView: 'approvals',
+            initialRequestId: targetId.isNotEmpty ? targetId : null,
+            initialEmployeeName: empName,
+            initialRequestType: reqType,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // 2. Trạng thái kết quả đơn từ của Nhân viên (Employee Requests)
+    // Tự động mở modal chi tiết đơn tương ứng trên MyRequestsScreen
+    final isApproved = cat.contains('approved') || srcType.contains('approved');
+    final isRejected = cat.contains('rejected') || srcType.contains('rejected');
+    final targetStatus = isApproved ? 'APPROVED' : (isRejected ? 'REJECTED' : null);
+    final subTab = (targetStatus == 'PENDING') ? 2 : 3;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MyRequestsScreen(
+          initialSubTab: subTab,
+          initialRequestId: targetId.isNotEmpty ? targetId : null,
+          initialStatus: targetStatus,
+          autoOpenDetail: true,
+        ),
+      ),
+    );
   }
 
   void _showPreferencesDialog(BuildContext context) {
