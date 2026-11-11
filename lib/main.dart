@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'providers/auth_provider.dart';
 import 'providers/analysis_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/chat_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -19,6 +20,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AnalysisProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider<AppI18n>.value(value: AppI18n.instance),
         ChangeNotifierProvider<HrmCapabilities>.value(value: HrmCapabilities.instance),
       ],

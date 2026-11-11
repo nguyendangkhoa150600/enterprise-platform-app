@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_i18n.dart';
 import 'package:provider/provider.dart';
 import '../../../models/platform_models.dart';
+import '../../../models/hrm_models.dart';
+import '../../../services/hrm_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/permissions/hrm_permissions.dart';
 import '../../../models/procedure_models.dart';
@@ -10,10 +12,13 @@ import '../../../theme/colors.dart';
 import '../../assistant_chat_screen.dart';
 import '../../notification_center_screen.dart';
 import '../../attendance_screen.dart';
+import '../../hrm_hub_screen.dart';
 import '../../my_requests_screen.dart';
 import '../../user_management_screen.dart';
 import '../../role_permission_screen.dart';
-import 'org_tree_components.dart';
+import '../../../features/hrm/requests/presentation/widgets/hrm_request_detail_bottom_sheet.dart';
+import '../../../services/module_business_service.dart';
+import '../../procedure/components/procedure_modals.dart';
 import 'home_module_stats.dart';
 
 class HomeMobileDashboardView extends StatelessWidget {
@@ -25,10 +30,13 @@ class HomeMobileDashboardView extends StatelessWidget {
   final OrganizationSnapshot? orgSnapshot;
   final bool isLoadingData;
   final HomeModuleStats? moduleStats;
+  final List<HrmRequestItem> pendingRequests;
   final ScrollController attentionScrollController;
+  final ScrollController? requestsScrollController;
   final ScrollController homeOrgScrollController;
   final Function(String key) onOpenModule;
   final Function(int index) onNavigateTab;
+  final VoidCallback? onRefreshRequests;
 
   const HomeMobileDashboardView({
     super.key,
@@ -40,16 +48,19 @@ class HomeMobileDashboardView extends StatelessWidget {
     required this.orgSnapshot,
     required this.isLoadingData,
     this.moduleStats,
+    this.pendingRequests = const [],
     required this.attentionScrollController,
+    this.requestsScrollController,
     required this.homeOrgScrollController,
     required this.onOpenModule,
     required this.onNavigateTab,
+    this.onRefreshRequests,
   });
 
   bool _has(String key) => modules.any((m) => m.key == key && m.isActive);
   bool get _hasProcedure => _has('procedure-engine') || _has('procedure');
   bool get _hasMaintenance => _has('maintenance');
-  bool get _hasInventory => _has('inventory');
+  bool get _hasHrm => _has('hrm') || _has('human-resource');
 
   int get _activeUsersCount => users.where((u) => u.isActive).length;
   int get _activeModulesCount => modules.where((m) => m.isActive).length;
@@ -76,26 +87,14 @@ class HomeMobileDashboardView extends StatelessWidget {
 
           // 4. Attention Items (Điểm cần chú ý)
           if (_hasProcedure) ...[
-            _buildMobileAttentionSection(),
+            _buildMobileAttentionSection(context),
             const SizedBox(height: 20),
           ],
 
-          // 5. Module Summaries (Quy trình, Bảo trì, Kho vật tư)
-          if (_hasProcedure || _hasMaintenance || _hasInventory) ...[
-            _buildMobileModuleSummariesSection(),
+          // 5. Đơn từ cần xử lý (HRM Pending Requests)
+          if (_hasHrm) ...[
+            _buildMobilePendingRequestsSection(context),
             const SizedBox(height: 20),
-          ],
-
-          // 6. Enterprise Applications (Ứng dụng doanh nghiệp)
-          if (_hasProcedure || _hasMaintenance || _hasInventory) ...[
-            _buildMobileEnterpriseAppsSection(),
-            const SizedBox(height: 20),
-          ],
-
-          // 7. Sơ đồ tổ chức (Organization Structure)
-          if (context.watch<AuthProvider>().canViewOrganization) ...[
-            _buildMobileOrgChartSection(),
-            const SizedBox(height: 24),
           ],
         ],
       ),
@@ -442,7 +441,7 @@ class HomeMobileDashboardView extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -496,17 +495,8 @@ class HomeMobileDashboardView extends StatelessWidget {
   }
 
   // 4. Điểm cần chú ý (Attention Section)
-  Widget _buildMobileAttentionSection() {
-    final items = <Map<String, String>>[
-      for (final inst in (moduleStats?.needAction ?? const <ProcedureInstance>[]).take(20))
-        {
-          'title': inst.title,
-          'code': inst.code,
-          'def': inst.definitionName,
-          'step': inst.currentStep?.name ?? '',
-          'module': 'procedure',
-        },
-    ];
+  Widget _buildMobileAttentionSection(BuildContext context) {
+    final instances = (moduleStats?.needAction ?? const <ProcedureInstance>[]).take(20).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -515,7 +505,7 @@ class HomeMobileDashboardView extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -536,7 +526,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                         children: [
                           Text(
                             'home.mobile.attention_points'.tr(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF0F172A),
@@ -550,7 +540,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              '${items.length}',
+                              '${instances.length}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -563,7 +553,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         'home.mobile.attention_desc'.tr(),
-                        style: TextStyle(fontSize: 11.5, color: AppColors.slate500),
+                        style: const TextStyle(fontSize: 11.5, color: AppColors.slate500),
                       ),
                     ],
                   ),
@@ -574,7 +564,7 @@ class HomeMobileDashboardView extends StatelessWidget {
           ),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
-          if (items.isEmpty)
+          if (instances.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               child: Center(
@@ -585,33 +575,42 @@ class HomeMobileDashboardView extends StatelessWidget {
               ),
             )
           else
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 255),
-            child: Scrollbar(
-              controller: attentionScrollController,
-              thumbVisibility: items.length > 2,
-              child: ListView.separated(
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 255),
+              child: Scrollbar(
                 controller: attentionScrollController,
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                physics: const BouncingScrollPhysics(),
-                itemCount: items.length,
-                separatorBuilder: (context, idx) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                itemBuilder: (context, index) {
-                  final it = items[index];
-                  return _buildAttentionItem(it);
-                },
+                thumbVisibility: instances.length > 2,
+                child: ListView.separated(
+                  controller: attentionScrollController,
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: instances.length,
+                  separatorBuilder: (context, idx) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, index) {
+                    final inst = instances[index];
+                    return _buildAttentionItem(context, inst);
+                  },
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildAttentionItem(Map<String, String> it) {
+  Widget _buildAttentionItem(BuildContext context, ProcedureInstance inst) {
     return InkWell(
-      onTap: () => onOpenModule(it['module']!),
+      onTap: () {
+        showProcedureDetailSheet(
+          context: context,
+          initialItem: inst,
+          service: ModuleBusinessService(),
+          onDataChanged: () {
+            onRefreshRequests?.call();
+          },
+        );
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
@@ -633,7 +632,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    it['title']!,
+                    inst.title,
                     style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
@@ -646,9 +645,11 @@ class HomeMobileDashboardView extends StatelessWidget {
                     runSpacing: 4,
                     children: [
                       _buildChipTag('home.mobile.procedure'.tr(), const Color(0xFFEFF6FF), const Color(0xFF1D4ED8)),
-                      _buildChipTag(it['code']!, const Color(0xFFF1F5F9), AppColors.slate700),
-                      if (it['def']!.isNotEmpty) _buildChipTag(it['def']!, const Color(0xFFF8FAFC), AppColors.slate600),
-                      if (it['step']!.isNotEmpty) _buildChipTag('home.mobile.step_label'.tr(args: {'step': it['step']!}), const Color(0xFFF8FAFC), AppColors.slate600),
+                      _buildChipTag(inst.code, const Color(0xFFF1F5F9), AppColors.slate700),
+                      if (inst.definitionName.isNotEmpty)
+                        _buildChipTag(inst.definitionName, const Color(0xFFF8FAFC), AppColors.slate600),
+                      if (inst.currentStep?.name != null && inst.currentStep!.name.isNotEmpty)
+                        _buildChipTag('home.mobile.step_label'.tr(args: {'step': inst.currentStep!.name}), const Color(0xFFF8FAFC), AppColors.slate600),
                     ],
                   ),
                 ],
@@ -663,7 +664,7 @@ class HomeMobileDashboardView extends StatelessWidget {
               ),
               child: Text(
                 'home.mobile.need_action'.tr(),
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
               ),
             ),
           ],
@@ -687,72 +688,17 @@ class HomeMobileDashboardView extends StatelessWidget {
     );
   }
 
-  // 5. Module Summaries Section (Quy trình, Bảo trì, Kho vật tư)
-  Widget _buildMobileModuleSummariesSection() {
-    final st = moduleStats;
-    String n(int? v) => v == null || st == null ? '—' : '$v';
-    return Column(
-      children: [
-        if (_hasProcedure)
-        _buildModuleSummaryCard(
-          title: 'home.mobile.procedure'.tr(),
-          icon: Icons.account_tree_outlined,
-          onOpen: () => onOpenModule('procedure'),
-          stats: [
-            {'label': 'home.mobile.running'.tr(), 'value': n(st?.running.length)},
-            {'label': 'home.mobile.pending'.tr(), 'value': n(st?.needAction.length)},
-            {'label': 'home.mobile.published'.tr(), 'value': n(st?.publishedDefinitions)},
-          ],
-          customContent: _buildProcedureMiniChart(),
-        ),
-        const SizedBox(height: 12),
-        if (_hasMaintenance)
-        _buildModuleSummaryCard(
-          title: 'home.mobile.maintenance'.tr(),
-          icon: Icons.build_outlined,
-          onOpen: () => onOpenModule('maintenance'),
-          stats: [
-            {'label': 'home.mobile.schedules_running'.tr(), 'value': n(st?.activeSchedules)},
-            {'label': 'home.mobile.due_soon'.tr(), 'value': n(st?.dueSchedules)},
-            {'label': 'home.mobile.open_incidents'.tr(), 'value': n(st?.openIncidents)},
-          ],
-          emptyNote: st != null && st.openIncidents == 0 ? 'home.mobile.no_open_incidents'.tr() : null,
-        ),
-        const SizedBox(height: 12),
-        if (_hasInventory)
-        _buildModuleSummaryCard(
-          title: 'home.mobile.inventory'.tr(),
-          icon: Icons.inventory_2_outlined,
-          onOpen: () => onOpenModule('inventory'),
-          stats: [
-            {'label': 'home.mobile.active_warehouses'.tr(), 'value': n(st?.warehouseCount)},
-            {'label': 'home.mobile.item_codes'.tr(), 'value': n(st?.materials.length)},
-            {'label': 'home.mobile.low_stock'.tr(), 'value': n(st?.lowStockCount)},
-          ],
-          emptyNote: st != null && st.materials.isEmpty ? 'home.mobile.no_items'.tr() : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModuleSummaryCard({
-    required String title,
-    required IconData icon,
-    required VoidCallback onOpen,
-    required List<Map<String, String>> stats,
-    Widget? customContent,
-    String? emptyNote,
-  }) {
+  // 5. Đơn từ cần xử lý (HRM Pending Requests - Pixel-perfect match with Web & Attention Section)
+  Widget _buildMobilePendingRequestsSection(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 6,
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -760,339 +706,84 @@ class HomeMobileDashboardView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: const Color(0xFF2563EB)),
-                  const SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                  ),
-                ],
-              ),
-              InkWell(
-                onTap: onOpen,
-                child: Text(
-                  'home.mobile.open_module'.tr(),
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: stats.map((st) {
-              return Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      st['label']!,
-                      style: const TextStyle(fontSize: 11, color: AppColors.slate500),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      st['value']!,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-          if (customContent != null) ...[
-            const SizedBox(height: 12),
-            customContent,
-          ] else if (emptyNote != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  emptyNote,
-                  style: const TextStyle(fontSize: 12, color: AppColors.slate400),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProcedureMiniChart() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF2563EB), width: 6),
-            ),
-            child: Center(
-              child: Text(
-                moduleStats == null ? '—' : '${moduleStats!.running.length}',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                _buildMiniLegend(const Color(0xFF8B5CF6), 'home.mobile.legend_initiate'.tr(args: {'count': moduleStats?.runningByStage['S'] ?? 0})),
-                _buildMiniLegend(const Color(0xFF2563EB), 'home.mobile.legend_review'.tr(args: {'count': moduleStats?.runningByStage['R'] ?? 0})),
-                _buildMiniLegend(const Color(0xFFF97316), 'home.mobile.legend_execute'.tr(args: {'count': moduleStats?.runningByStage['E'] ?? 0})),
-                _buildMiniLegend(const Color(0xFFA855F7), 'home.mobile.legend_control'.tr(args: {'count': moduleStats?.runningByStage['C'] ?? 0})),
-                _buildMiniLegend(const Color(0xFFEAB308), 'home.mobile.legend_approve'.tr(args: {'count': moduleStats?.runningByStage['A'] ?? 0})),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniLegend(Color col, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(color: col, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: AppColors.slate600, fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
-  }
-
-  // 6. Enterprise Applications Section
-  Widget _buildMobileEnterpriseAppsSection() {
-    final allApps = <Map<String, Object>>[
-      {
-        'key': 'inventory',
-        'name': 'Inventory',
-        'desc': 'home.mobile.app_inventory_desc'.tr(),
-        'icon': Icons.inventory_2_outlined,
-        'color': AppColors.emerald,
-      },
-      {
-        'key': 'maintenance',
-        'name': 'Maintenance',
-        'desc': 'home.mobile.app_maintenance_desc'.tr(),
-        'icon': Icons.build_outlined,
-        'color': const Color(0xFFF97316),
-      },
-      {
-        'key': 'procedure',
-        'name': 'Procedure Engine',
-        'desc': 'home.mobile.app_procedure_desc'.tr(),
-        'icon': Icons.account_tree_outlined,
-        'color': const Color(0xFF6366F1),
-      },
-    ];
-    final apps = allApps.where((a) {
-      final k = a['key'] as String;
-      return k == 'procedure' ? _hasProcedure : _has(k);
-    }).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'home.mobile.enterprise_apps'.tr(),
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                Container(
+                  width: 36,
+                  height: 36,
+                  margin: const EdgeInsets.only(top: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: const Icon(Icons.assignment_turned_in_outlined, color: Color(0xFF059669), size: 20),
                 ),
-                SizedBox(height: 2),
-                Text(
-                  'home.mobile.enterprise_apps_desc'.tr(),
-                  style: TextStyle(fontSize: 11.5, color: AppColors.slate500),
-                ),
-              ],
-            ),
-            TextButton(
-              onPressed: () => onNavigateTab(1),
-              child: Row(
-                children: [
-                  Text('home.view_all'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
-                  SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_ios, size: 10, color: Color(0xFF2563EB)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: apps.map((app) {
-            return Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                child: InkWell(
-                  onTap: () => onOpenModule(app['key'] as String),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.01),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: (app['color'] as Color).withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Icon(app['icon'] as IconData, size: 15, color: app['color'] as Color),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Đơn từ cần xử lý',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
                             ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                app['name'] as String,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: Text(
-                            app['desc'] as String,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10, color: AppColors.slate500, height: 1.3),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${pendingRequests.length}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF15803D),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Duyệt, từ chối và trao đổi đơn nghỉ phép, tăng ca, công tác, giải trình công... trong module Nhân sự.',
+                        style: TextStyle(fontSize: 11.5, color: AppColors.slate500, height: 1.35),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  // 7. SƠ ĐỒ TỔ CHỨC (Hierarchical Organization Tree matching Web)
-  Widget _buildMobileOrgChartSection() {
-    final snapshot = orgSnapshot;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.account_tree_outlined, size: 16, color: Color(0xFF0284C7)),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'home.mobile.org_chart_caps'.tr(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
-                        color: AppColors.slate700,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'home.mobile.org_chart_desc'.tr(),
-                      style: TextStyle(fontSize: 11, color: AppColors.slate500),
-                    ),
-                  ],
-                ),
-              ),
-              if (snapshot != null)
+                const SizedBox(width: 8),
                 InkWell(
-                  onTap: () => onNavigateTab(2),
-                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HrmHubScreen(initialTabIndex: 2)),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(12),
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
+                      children: const [
                         Text(
-                          'common.view_detail'.tr(),
+                          'Xem tất cả',
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0284C7)),
                         ),
                         SizedBox(width: 2),
@@ -1101,42 +792,215 @@ class HomeMobileDashboardView extends StatelessWidget {
                     ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
-          if (snapshot == null)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('home.mobile.org_loading'.tr(), style: TextStyle(fontSize: 12, color: AppColors.slate500)),
-              ),
-            )
-          else if (snapshot.nodes.isEmpty)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('home.mobile.no_dept_info'.tr(), style: TextStyle(fontSize: 12, color: AppColors.slate500)),
+          if (pendingRequests.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.check_circle_outline, size: 28, color: const Color(0xFF10B981).withValues(alpha: 0.7)),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Không có đơn từ nào cần xử lý',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.slate500, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
               ),
             )
           else
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 380),
+              constraints: const BoxConstraints(maxHeight: 280),
               child: Scrollbar(
-                controller: homeOrgScrollController,
-                thumbVisibility: snapshot.nodes.length > 2,
-                child: SingleChildScrollView(
-                  controller: homeOrgScrollController,
+                controller: requestsScrollController,
+                thumbVisibility: pendingRequests.length > 2,
+                child: ListView.separated(
+                  controller: requestsScrollController,
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
                   physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: buildOrgTreeList(snapshot),
-                  ),
+                  itemCount: pendingRequests.length,
+                  separatorBuilder: (context, idx) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, index) {
+                    final req = pendingRequests[index];
+                    return _buildPendingRequestItem(context, req);
+                  },
                 ),
               ),
             ),
         ],
       ),
     );
+  }
+
+  Widget _buildPendingRequestItem(BuildContext context, HrmRequestItem req) {
+    final typeName = req.typeLabel;
+    Color typeBg = const Color(0xFFEFF6FF);
+    Color typeFg = const Color(0xFF1D4ED8);
+    switch (req.type) {
+      case HrmRequestType.leave:
+        typeBg = const Color(0xFFEFF6FF);
+        typeFg = const Color(0xFF1D4ED8);
+        break;
+      case HrmRequestType.overtime:
+        typeBg = const Color(0xFFFEF3C7);
+        typeFg = const Color(0xFFB45309);
+        break;
+      case HrmRequestType.businessTrip:
+        typeBg = const Color(0xFFF3E8FF);
+        typeFg = const Color(0xFF7E22CE);
+        break;
+      case HrmRequestType.attendanceCorrection:
+        typeBg = const Color(0xFFECFDF5);
+        typeFg = const Color(0xFF047857);
+        break;
+      case HrmRequestType.advance:
+        typeBg = const Color(0xFFFFF1F2);
+        typeFg = const Color(0xFFBE123C);
+        break;
+      case HrmRequestType.shiftChange:
+        typeBg = const Color(0xFFF0FDF4);
+        typeFg = const Color(0xFF15803D);
+        break;
+    }
+
+    final empName = req.employeeName.isNotEmpty ? req.employeeName : 'Nhân sự';
+    final initials = _getInitials(empName);
+    final dateStr = _formatDate(req.startDate ?? req.requestDate);
+    final reasonText = req.reason.isNotEmpty ? req.reason : req.title;
+
+    return InkWell(
+      onTap: () => _openRequestDetailModal(context, req),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 2),
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Center(
+                child: Text(
+                  initials,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          empName,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (req.department.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '· ${req.department}',
+                          style: const TextStyle(fontSize: 11.5, color: AppColors.slate500),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    reasonText,
+                    style: const TextStyle(fontSize: 12, color: AppColors.slate600, height: 1.3),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      _buildChipTag(typeName, typeBg, typeFg),
+                      if (dateStr.isNotEmpty)
+                        _buildChipTag(dateStr, const Color(0xFFF8FAFC), AppColors.slate600),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFFEDD5)),
+              ),
+              child: const Text(
+                'Chờ duyệt',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFEA580C)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openRequestDetailModal(BuildContext context, HrmRequestItem req) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => HrmRequestDetailBottomSheet(
+        request: req,
+        hrmService: HrmService(),
+        onRefreshData: () {
+          onRefreshRequests?.call();
+        },
+        formatDate: (dt) => '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}',
+        formatTime: (dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
+        formatCurrency: (val) {
+          if (val == null) return '0 ₫';
+          final s = val.toStringAsFixed(0);
+          final reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+          return '${s.replaceAllMapped(reg, (Match m) => '${m[1]}.')} ₫';
+        },
+        getEmployeeInitials: (name) => _getInitials(name),
+      ),
+    );
+  }
+
+  String _getInitials(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 'NV';
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return parts[0].substring(0, parts[0].length.clamp(1, 2)).toUpperCase();
+    }
+    return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
+  }
+
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '';
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   }
 }

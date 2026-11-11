@@ -4,6 +4,8 @@ import '../../../core/i18n/app_i18n.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
 import '../../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
+import '../../../utils/app_toast.dart';
+import 'workspace_create_project_group_dialog.dart';
 
 void showWorkspaceCreateCustomerDialog(
   BuildContext context, {
@@ -54,7 +56,7 @@ void showWorkspaceCreateCustomerDialog(
               if (ctx.mounted) Navigator.pop(ctx);
               onCustomerCreated();
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('workspace.dialog.customer_added'.tr())));
+                AppToast.success(context, 'workspace.dialog.customer_added'.tr());
               }
             }
           },
@@ -371,9 +373,7 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
   Future<void> _submitTask() async {
     final title = _taskTitleCtrl.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên công việc')),
-      );
+      AppToast.error(context, 'Vui lòng nhập tên công việc');
       return;
     }
 
@@ -401,15 +401,11 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
       if (mounted) Navigator.pop(context);
       widget.onCreated();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tạo công việc thành công!')),
-        );
+        AppToast.success(context, 'Tạo công việc thành công!');
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể tạo công việc, vui lòng thử lại!')),
-        );
+        AppToast.error(context, 'Không thể tạo công việc, vui lòng thử lại!');
       }
     }
   }
@@ -417,9 +413,7 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
   Future<void> _submitProject() async {
     final name = _projectNameCtrl.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên dự án')),
-      );
+      AppToast.error(context, 'Vui lòng nhập tên dự án');
       return;
     }
 
@@ -451,15 +445,11 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
       if (mounted) Navigator.pop(context);
       widget.onCreated();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tạo dự án thành công!')),
-        );
+        AppToast.success(context, 'Tạo dự án thành công!');
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể tạo dự án, vui lòng thử lại!')),
-        );
+        AppToast.error(context, 'Không thể tạo dự án, vui lòng thử lại!');
       }
     }
   }
@@ -598,9 +588,7 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
                       TextButton.icon(
                         onPressed: () {
                           _taskTitleCtrl.text = '';
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Đã sẵn sàng thêm công việc tiếp theo')),
-                          );
+                          AppToast.show(context, 'Đã sẵn sàng thêm công việc tiếp theo');
                         },
                         icon: const Icon(Icons.add, size: 16, color: Color(0xFF334155)),
                         label: const Text(
@@ -986,7 +974,42 @@ class _WorkspaceCreateModalSheetState extends State<_WorkspaceCreateModalSheet> 
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 1. Nhóm dự án (Web Screenshot 1)
-        _buildSectionLabel('Nhóm dự án'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionLabel('Nhóm dự án'),
+            InkWell(
+              onTap: () async {
+                final newGroupName = await showCreateProjectGroupDialog(context, service: widget.service);
+                if (newGroupName != null && newGroupName.isNotEmpty) {
+                  if (!_projectGroups.contains(newGroupName)) {
+                    setState(() => _projectGroups.add(newGroupName));
+                  }
+                  _updateProjectCode(newGroupName);
+                }
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, size: 14, color: Color(0xFF2563EB)),
+                    SizedBox(width: 2),
+                    Text(
+                      'Thêm nhóm',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
         SearchableDropdownField<String>(
           value: _projectGroup,

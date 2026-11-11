@@ -1,4 +1,4 @@
-﻿import 'package:provider/provider.dart';
+import 'package:provider/provider.dart';
 import '../core/permissions/hrm_permissions.dart';
 import '../shared/widgets/no_access_view.dart';
 import 'dart:async';
@@ -34,12 +34,18 @@ class HrmHubScreen extends StatefulWidget {
   final int initialTabIndex;
   final int initialWorkforceSubTab;
   final String? initialView;
+  final String? initialRequestId;
+  final String? initialEmployeeName;
+  final HrmRequestType? initialRequestType;
 
   const HrmHubScreen({
     super.key,
     this.initialTabIndex = 0,
     this.initialWorkforceSubTab = 0,
     this.initialView,
+    this.initialRequestId,
+    this.initialEmployeeName,
+    this.initialRequestType,
   });
 
   @override
@@ -1276,6 +1282,9 @@ class _HrmHubScreenState extends State<HrmHubScreen> with SingleTickerProviderSt
       formatCurrency: _formatCurrency,
       formatDate: _formatDate,
       formatTime: _formatTime,
+      initialRequestId: widget.initialRequestId,
+      initialEmployeeName: widget.initialEmployeeName,
+      initialRequestType: widget.initialRequestType,
     );
   }
 

@@ -150,20 +150,55 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  // Perform unified login (portal: 'tenant' or 'platform')
+  // Perform unified login with automatic portal discovery and fallback
   Future<bool> login({
     required String email,
     required String password,
-    String portal = 'tenant',
+    String? portal,
     String? tenantSlug,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
+    final cleanEmail = email.trim();
+    // Intelligent auto-detection of initial portal if not explicitly provided
+    final String initialPortal = portal ?? (cleanEmail.toLowerCase().endsWith('@platform.local') ? 'platform' : 'tenant');
+
+    bool success = await _executeLoginAttempt(
+      email: cleanEmail,
+      password: password,
+      portal: initialPortal,
+      tenantSlug: tenantSlug,
+    );
+
+    // If failed on tenant with bad credentials, transparently attempt platform portal as fallback
+    if (!success && initialPortal == 'tenant') {
+      final platformSuccess = await _executeLoginAttempt(
+        email: cleanEmail,
+        password: password,
+        portal: 'platform',
+        tenantSlug: tenantSlug,
+      );
+      if (platformSuccess) {
+        success = true;
+      }
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return success;
+  }
+
+  Future<bool> _executeLoginAttempt({
+    required String email,
+    required String password,
+    required String portal,
+    String? tenantSlug,
+  }) async {
     try {
       final Map<String, dynamic> requestBody = {
-        'email': email.trim(),
+        'email': email,
         'password': password,
         'portal': portal,
       };
@@ -190,7 +225,7 @@ class AuthProvider extends ChangeNotifier {
         _kind = principal['kind']?.toString() ?? (portal == 'platform' ? 'platform-admin' : 'tenant-user');
         _userId = principal['userId']?.toString() ?? principal['id']?.toString() ?? principal['sub']?.toString();
         _fullName = principal['displayName']?.toString() ?? principal['fullName']?.toString() ?? (portal == 'platform' ? 'Platform Super Admin' : 'Người dùng');
-        _email = principal['email']?.toString() ?? email.trim();
+        _email = principal['email']?.toString() ?? email;
         _tenantId = principal['tenantId']?.toString();
         _tenantSlug = principal['tenantSlug']?.toString() ?? (portal == 'platform' ? 'PLATFORM' : 'SVN');
         _isLoggedIn = true;
@@ -223,23 +258,15 @@ class AuthProvider extends ChangeNotifier {
         }
         
         // Save login credentials for seamless silent background renewal
-        await prefs.setString('saved_login_email', email.trim());
+        await prefs.setString('saved_login_email', email);
         await prefs.setString('saved_login_password', password);
         await prefs.setString('saved_login_portal', portal);
 
-        _isLoading = false;
-        notifyListeners();
         return true;
-      } else {
-        throw Exception('core_misc.auth.login_failed'.tr());
       }
+      return false;
     } on DioException catch (e) {
-      _isLoading = false;
-      debugPrint("DioException: ${e.toString()}");
-      if (e.response != null) {
-        debugPrint("DioException Response Data: ${e.response!.data}");
-        debugPrint("DioException Response Status: ${e.response!.statusCode}");
-      }
+      debugPrint("DioException ($portal): ${e.toString()}");
       if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
         _errorMessage = 'core_misc.auth.timeout'.tr();
       } else if (e.type == DioExceptionType.connectionError) {
@@ -249,13 +276,10 @@ class AuthProvider extends ChangeNotifier {
       } else {
         _errorMessage = 'core_misc.auth.bad_credentials'.tr();
       }
-      notifyListeners();
       return false;
     } catch (e) {
-      _isLoading = false;
-      debugPrint("General Error: ${e.toString()}");
+      debugPrint("Login General Error ($portal): ${e.toString()}");
       _errorMessage = e.toString().replaceAll('Exception:', '').trim();
-      notifyListeners();
       return false;
     }
   }

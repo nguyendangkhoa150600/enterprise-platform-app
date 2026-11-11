@@ -817,8 +817,6 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                             MaterialPageRoute(
                               builder: (_) => OrgChartWorkspaceScreen(
                                 snapshot: snapshot.data!,
-                                treeName: 'home.users.savina_tree'.tr(),
-                                treeCode: 'SAVINA-MAIN',
                                 onDataChanged: widget.onRefresh,
                               ),
                             ),

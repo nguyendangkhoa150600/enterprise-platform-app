@@ -34,6 +34,26 @@ class ApiClientHelper {
             if (csrf.isNotEmpty) {
               options.headers['x-csrf-token'] = csrf;
             }
+
+            // Extract ep_access token for services requiring Bearer auth (FastAPI / savina-agent / microservices)
+            for (final part in cookies.split('; ')) {
+              final trimmed = part.trim();
+              if (trimmed.startsWith('ep_access=')) {
+                final token = trimmed.substring('ep_access='.length).trim();
+                if (token.isNotEmpty && !options.headers.containsKey('Authorization') && !options.headers.containsKey('authorization')) {
+                  options.headers['Authorization'] = 'Bearer $token';
+                }
+                break;
+              }
+            }
+          }
+
+          // Always set standard browser-like origin and referer for gateway/microservices routing
+          if (!options.headers.containsKey('Origin')) {
+            options.headers['Origin'] = AuthProvider.authBaseUrl;
+          }
+          if (!options.headers.containsKey('Referer')) {
+            options.headers['Referer'] = '${AuthProvider.authBaseUrl}/applications';
           }
           return handler.next(options);
         },

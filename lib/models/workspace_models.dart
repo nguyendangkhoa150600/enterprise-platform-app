@@ -1,3 +1,4 @@
+import '../utils/user_resolver.dart';
 import '../core/i18n/app_i18n.dart';
 // Workspace Models: Customers, Contracts, Projects, Roles, and Standalone Tasks (1:1 Web Parity)
 
@@ -180,8 +181,14 @@ class ProjectItem {
   String get statusLabel {
     switch (status) {
       case 'active':
+      case 'deploying':
+      case 'in_progress':
         return 'models.workspace.deploying'.tr();
+      case 'paused':
+      case 'blocked':
+        return 'Tạm dừng';
       case 'completed':
+      case 'done':
         return 'models.workspace.completed'.tr();
       case 'cancelled':
         return 'models.workspace.cancelled'.tr();
@@ -225,14 +232,18 @@ class ProjectMemberItem {
   }
 
   String get roleLabel {
-    switch (role) {
+    switch (role.toLowerCase()) {
+      case 'owner':
+        return 'Chủ nhiệm';
       case 'manager':
-        return 'models.workspace.project_manager'.tr();
+      case 'pm':
+        return 'Quản lý';
+      case 'member':
       case 'technician':
-        return 'models.maintenance.technician'.tr();
+        return 'Thành viên';
       case 'viewer':
       default:
-        return 'models.workspace.viewer'.tr();
+        return 'Người xem';
     }
   }
 }
@@ -242,16 +253,24 @@ class StandaloneTaskItem {
   final String code;
   final String title;
   final String? description;
-  final String status; // 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled'
+  final String status; // 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled' | 'blocked'
   final String priority; // 'urgent' | 'high' | 'normal' | 'low'
   final String assigneeUserId;
   final String? assigneeName;
+  final String createdBy;
+  final String? creatorName;
   final double progressPercent;
+  final DateTime? plannedStart;
   final DateTime? dueDate;
+  final DateTime? createdAt;
+  final List<String> participantUserIds;
+  final List<String> followerUserIds;
   final String myRole; // 'assigner' | 'assignee' | 'participant' | 'follower'
   final int childCount;
   final int openChildCount;
   final bool isReversed;
+  final String? reversalReason;
+  final String? blockedReason;
 
   const StandaloneTaskItem({
     required this.id,
@@ -262,12 +281,20 @@ class StandaloneTaskItem {
     required this.priority,
     required this.assigneeUserId,
     this.assigneeName,
+    this.createdBy = '',
+    this.creatorName,
     this.progressPercent = 0.0,
+    this.plannedStart,
     this.dueDate,
+    this.createdAt,
+    this.participantUserIds = const [],
+    this.followerUserIds = const [],
     this.myRole = 'assignee',
     this.childCount = 0,
     this.openChildCount = 0,
     this.isReversed = false,
+    this.reversalReason,
+    this.blockedReason,
   });
 
   factory StandaloneTaskItem.fromJson(Map<String, dynamic> json) {
@@ -282,6 +309,53 @@ class StandaloneTaskItem {
       }
     }
 
+    DateTime? parsedStart;
+    for (final key in ['plannedStart', 'startDate', 'start_date']) {
+      if (task[key] != null) {
+        parsedStart = DateTime.tryParse(task[key].toString());
+        if (parsedStart != null) break;
+      }
+    }
+
+    DateTime? parsedCreated;
+    if (task['createdAt'] != null) {
+      parsedCreated = DateTime.tryParse(task['createdAt'].toString());
+    }
+
+    final assigneeId = task['assigneeUserId']?.toString() ?? '';
+    final creatorId = task['createdBy']?.toString() ?? '';
+
+    final pUsers = (task['participantUserIds'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    final fUsers = (task['followerUserIds'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+    String? resolvedAssignee = task['assigneeName']?.toString() ??
+        task['assignee']?['name']?.toString() ??
+        task['assignee']?['fullName']?.toString() ??
+        task['assigneeUserName']?.toString();
+    if (resolvedAssignee != null && (UserResolver.isUuid(resolvedAssignee) || resolvedAssignee == assigneeId)) {
+      resolvedAssignee = null;
+    }
+    if (resolvedAssignee == null && assigneeId.isNotEmpty) {
+      final name = UserResolver.resolveName(assigneeId);
+      if (name != '—' && !UserResolver.isUuid(name)) {
+        resolvedAssignee = name;
+      }
+    }
+
+    String? resolvedCreator = task['creatorName']?.toString() ??
+        task['creator']?['name']?.toString() ??
+        task['creator']?['fullName']?.toString() ??
+        task['creatorUserName']?.toString();
+    if (resolvedCreator != null && (UserResolver.isUuid(resolvedCreator) || resolvedCreator == creatorId)) {
+      resolvedCreator = null;
+    }
+    if (resolvedCreator == null && creatorId.isNotEmpty) {
+      final name = UserResolver.resolveName(creatorId);
+      if (name != '—' && !UserResolver.isUuid(name)) {
+        resolvedCreator = name;
+      }
+    }
+
     return StandaloneTaskItem(
       id: task['id']?.toString() ?? '',
       code: task['code']?.toString() ?? '',
@@ -289,15 +363,38 @@ class StandaloneTaskItem {
       description: task['description']?.toString(),
       status: task['status']?.toString() ?? 'todo',
       priority: task['priority']?.toString() ?? 'normal',
-      assigneeUserId: task['assigneeUserId']?.toString() ?? '',
-      assigneeName: task['assigneeName']?.toString() ?? task['assignee']?['name']?.toString(),
+      assigneeUserId: assigneeId,
+      assigneeName: resolvedAssignee,
+      createdBy: creatorId,
+      creatorName: resolvedCreator,
       progressPercent: task['progressPercent'] != null ? (double.tryParse(task['progressPercent'].toString()) ?? 0.0) : 0.0,
+      plannedStart: parsedStart,
       dueDate: parsedDue,
+      createdAt: parsedCreated,
+      participantUserIds: pUsers,
+      followerUserIds: fUsers,
       myRole: role,
       childCount: CustomerItem.parseInt(task['childCount']),
       openChildCount: CustomerItem.parseInt(task['openChildCount']),
       isReversed: task['reversal'] != null,
+      reversalReason: task['reversal'] is Map ? task['reversal']['reason']?.toString() : null,
+      blockedReason: task['blockedReason']?.toString() ?? task['blocked_reason']?.toString(),
     );
+  }
+
+  String get myRoleLabel {
+    switch (myRole) {
+      case 'assigner':
+        return 'Người giao';
+      case 'assignee':
+        return 'Người phụ trách';
+      case 'participant':
+        return 'Người cùng thực hiện';
+      case 'follower':
+        return 'Người theo dõi';
+      default:
+        return 'Người giao';
+    }
   }
 
   String get statusLabel {
@@ -332,6 +429,54 @@ class StandaloneTaskItem {
         return 'Bình thường';
     }
   }
+
+  StandaloneTaskItem copyWith({
+    String? id,
+    String? code,
+    String? title,
+    String? description,
+    String? status,
+    String? priority,
+    String? assigneeUserId,
+    String? assigneeName,
+    String? createdBy,
+    String? creatorName,
+    double? progressPercent,
+    DateTime? plannedStart,
+    DateTime? dueDate,
+    DateTime? createdAt,
+    List<String>? participantUserIds,
+    List<String>? followerUserIds,
+    String? myRole,
+    int? childCount,
+    int? openChildCount,
+    bool? isReversed,
+    String? reversalReason,
+  }) {
+    return StandaloneTaskItem(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      assigneeUserId: assigneeUserId ?? this.assigneeUserId,
+      assigneeName: assigneeName ?? this.assigneeName,
+      createdBy: createdBy ?? this.createdBy,
+      creatorName: creatorName ?? this.creatorName,
+      progressPercent: progressPercent ?? this.progressPercent,
+      plannedStart: plannedStart ?? this.plannedStart,
+      dueDate: dueDate ?? this.dueDate,
+      createdAt: createdAt ?? this.createdAt,
+      participantUserIds: participantUserIds ?? this.participantUserIds,
+      followerUserIds: followerUserIds ?? this.followerUserIds,
+      myRole: myRole ?? this.myRole,
+      childCount: childCount ?? this.childCount,
+      openChildCount: openChildCount ?? this.openChildCount,
+      isReversed: isReversed ?? this.isReversed,
+      reversalReason: reversalReason ?? this.reversalReason,
+    );
+  }
 }
 
 class DepartmentItem {
@@ -355,6 +500,46 @@ class DepartmentItem {
   @override
   int get hashCode => id.hashCode;
 }
+/// Thư mục tài liệu Workspace: GET /api/workspace/v1/folders
+class WorkspaceFolderItem {
+  final String id;
+  final String name;
+  final String? parentId;
+  final String? projectId;
+  final String? color;
+  final String? icon;
+  final bool isActive;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const WorkspaceFolderItem({
+    required this.id,
+    required this.name,
+    this.parentId,
+    this.projectId,
+    this.color,
+    this.icon,
+    this.isActive = true,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory WorkspaceFolderItem.fromJson(Map<String, dynamic> json) {
+    return WorkspaceFolderItem(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      parentId: json['parentId']?.toString(),
+      projectId: json['projectId']?.toString(),
+      color: json['color']?.toString(),
+      icon: json['icon']?.toString(),
+      isActive: json['isActive'] != false,
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal(),
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '')?.toLocal(),
+    );
+  }
+
+  bool get isProjectFolder => projectId != null && projectId!.isNotEmpty;
+}
 
 /// A document of the workspace (GET /workspace/v1/documents), flattened with its current version.
 class WorkspaceDocumentItem {
@@ -362,11 +547,14 @@ class WorkspaceDocumentItem {
   final String name;
   final String? description;
   final String? projectId;
+  final String? folderId;
+  final List<String> refFolderIds;
   final String status;
   final String fileName;
   final String contentType;
   final int? sizeBytes;
   final int versionCount;
+  final String? uploadedBy;
   final DateTime? updatedAt;
 
   const WorkspaceDocumentItem({
@@ -374,38 +562,54 @@ class WorkspaceDocumentItem {
     required this.name,
     this.description,
     this.projectId,
+    this.folderId,
+    this.refFolderIds = const [],
     this.status = 'active',
     this.fileName = '',
     this.contentType = '',
     this.sizeBytes,
     this.versionCount = 0,
+    this.uploadedBy,
     this.updatedAt,
   });
 
   factory WorkspaceDocumentItem.fromJson(Map<String, dynamic> json) {
     final v = json['currentVersion'];
     final ver = v is Map<String, dynamic> ? v : const <String, dynamic>{};
+    final refs = <String>[];
+    if (json['refFolderIds'] is List) {
+      for (final r in json['refFolderIds']) {
+        if (r != null && r.toString().isNotEmpty) refs.add(r.toString());
+      }
+    }
     return WorkspaceDocumentItem(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       description: json['description']?.toString(),
       projectId: json['projectId']?.toString(),
+      folderId: json['folderId']?.toString(),
+      refFolderIds: refs,
       status: json['status']?.toString() ?? 'active',
       fileName: ver['fileName']?.toString() ?? '',
       contentType: ver['contentType']?.toString() ?? '',
       sizeBytes: (ver['sizeBytes'] as num?)?.toInt(),
-      versionCount: (json['versionCount'] as num?)?.toInt() ?? 0,
+      versionCount: (json['versionCount'] as num?)?.toInt() ?? 1,
+      uploadedBy: ver['uploadedBy']?.toString() ?? json['createdBy']?.toString(),
       updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '')?.toLocal(),
     );
   }
 
-  /// 'PDF' | 'WORD' | 'EXCEL' | 'OTHER'
+  String get versionName => 'v${versionCount > 0 ? versionCount : 1}';
+
+  /// 'PDF' | 'WORD' | 'EXCEL' | 'IMAGE' | 'ARCHIVE' | 'OTHER'
   String get kind {
     final n = (fileName.isNotEmpty ? fileName : name).toLowerCase();
     final t = contentType.toLowerCase();
     if (t.contains('pdf') || n.endsWith('.pdf')) return 'PDF';
     if (t.contains('word') || n.endsWith('.doc') || n.endsWith('.docx')) return 'WORD';
     if (t.contains('sheet') || t.contains('excel') || n.endsWith('.xls') || n.endsWith('.xlsx') || n.endsWith('.csv')) return 'EXCEL';
+    if (t.startsWith('image/') || n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.webp')) return 'IMAGE';
+    if (t.contains('zip') || t.contains('rar') || t.contains('tar') || t.contains('7z') || n.endsWith('.zip') || n.endsWith('.rar')) return 'ARCHIVE';
     return 'OTHER';
   }
 
@@ -417,3 +621,280 @@ class WorkspaceDocumentItem {
     return '$b B';
   }
 }
+
+/// Người trong danh bạ Workspace: GET /api/workspace/v1/directory
+class WorkspaceDirectoryPerson {
+  final String userId;
+  final String displayName;
+  final String? email;
+  final List<String> unitNames;
+  final String? positionName;
+
+  const WorkspaceDirectoryPerson({
+    required this.userId,
+    required this.displayName,
+    this.email,
+    this.unitNames = const [],
+    this.positionName,
+  });
+
+  factory WorkspaceDirectoryPerson.fromJson(Map<String, dynamic> json) {
+    final units = <String>[];
+    if (json['unitNames'] is List) {
+      for (final u in json['unitNames']) {
+        if (u != null && u.toString().isNotEmpty) {
+          units.add(u.toString());
+        }
+      }
+    }
+    return WorkspaceDirectoryPerson(
+      userId: json['userId']?.toString() ?? '',
+      displayName: json['displayName']?.toString() ?? '',
+      email: json['email']?.toString(),
+      unitNames: units,
+      positionName: json['positionName']?.toString(),
+    );
+  }
+
+  String get subtitle {
+    final parts = <String>[displayName];
+    if (positionName != null && positionName!.trim().isNotEmpty) {
+      parts.add(positionName!.trim());
+    }
+    if (unitNames.isNotEmpty) {
+      parts.add(unitNames.join(', '));
+    } else if (email != null && email!.trim().isNotEmpty) {
+      parts.add(email!.trim());
+    }
+    return parts.join(' · ');
+  }
+}
+
+class WorkspaceDirectoryResponse {
+  final List<WorkspaceDirectoryPerson> people;
+  final bool degraded;
+
+  const WorkspaceDirectoryResponse({
+    this.people = const [],
+    this.degraded = false,
+  });
+
+  factory WorkspaceDirectoryResponse.fromJson(Map<String, dynamic> json) {
+    final rawPeople = json['people'];
+    final list = <WorkspaceDirectoryPerson>[];
+    if (rawPeople is List) {
+      for (final p in rawPeople) {
+        if (p is Map<String, dynamic>) {
+          list.add(WorkspaceDirectoryPerson.fromJson(p));
+        }
+      }
+    }
+    return WorkspaceDirectoryResponse(
+      people: list,
+      degraded: json['degraded'] == true,
+    );
+  }
+}
+
+/// Một công việc trong danh sách của màn "Trao đổi công việc" (Chat Feed)
+class ProjectChatFeedItem {
+  final String workItemId;
+  final String? latestAt;
+  final String? latestBy;
+  final String? latestBody;
+  final int messageCount;
+
+  const ProjectChatFeedItem({
+    required this.workItemId,
+    this.latestAt,
+    this.latestBy,
+    this.latestBody,
+    this.messageCount = 0,
+  });
+
+  factory ProjectChatFeedItem.fromJson(Map<String, dynamic> json) {
+    return ProjectChatFeedItem(
+      workItemId: json['workItemId']?.toString() ?? '',
+      latestAt: json['latestAt']?.toString(),
+      latestBy: json['latestBy']?.toString(),
+      latestBody: json['latestBody']?.toString(),
+      messageCount: CustomerItem.parseInt(json['messageCount']),
+    );
+  }
+}
+
+/// Một trang danh sách công việc của dự án cho màn Trao đổi công việc
+class ProjectChatFeedPage {
+  final List<ProjectChatFeedItem> items;
+  final int total;
+  final int page;
+  final int pageSize;
+
+  const ProjectChatFeedPage({
+    this.items = const [],
+    this.total = 0,
+    this.page = 1,
+    this.pageSize = 20,
+  });
+
+  factory ProjectChatFeedPage.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    final list = <ProjectChatFeedItem>[];
+    if (rawItems is List) {
+      for (final item in rawItems) {
+        if (item is Map<String, dynamic>) {
+          list.add(ProjectChatFeedItem.fromJson(item));
+        }
+      }
+    }
+    return ProjectChatFeedPage(
+      items: list,
+      total: CustomerItem.parseInt(json['total']),
+      page: CustomerItem.parseInt(json['page']) == 0 ? 1 : CustomerItem.parseInt(json['page']),
+      pageSize: CustomerItem.parseInt(json['pageSize']) == 0 ? 20 : CustomerItem.parseInt(json['pageSize']),
+    );
+  }
+}
+
+/// Tin nhắn trao đổi công việc
+class ProjectChatMessage {
+  final String id;
+  final String body;
+  final String createdBy;
+  final String createdAt;
+  final bool isDeleted;
+  final bool isEdited;
+  final String? parentId;
+  final String? attachmentDocumentId;
+  final List<String> attachmentDocumentIds;
+
+  const ProjectChatMessage({
+    required this.id,
+    required this.body,
+    required this.createdBy,
+    required this.createdAt,
+    this.isDeleted = false,
+    this.isEdited = false,
+    this.parentId,
+    this.attachmentDocumentId,
+    this.attachmentDocumentIds = const [],
+  });
+
+  factory ProjectChatMessage.fromJson(Map<String, dynamic> json) {
+    final list = (json['attachmentDocumentIds'] as List?)?.map((e) => e.toString()).toList() ??
+        (json['attachment_document_ids'] as List?)?.map((e) => e.toString()).toList() ??
+        [];
+    final singleId = json['attachmentDocumentId']?.toString() ?? json['attachment_document_id']?.toString();
+    if (list.isEmpty && singleId != null && singleId.isNotEmpty) {
+      list.add(singleId);
+    }
+
+    return ProjectChatMessage(
+      id: json['id']?.toString() ?? '',
+      body: json['body']?.toString() ?? '',
+      createdBy: json['createdBy']?.toString() ?? '',
+      createdAt: json['createdAt']?.toString() ?? '',
+      isDeleted: json['isDeleted'] == true,
+      isEdited: json['isEdited'] == true,
+      parentId: json['parentId']?.toString(),
+      attachmentDocumentId: singleId,
+      attachmentDocumentIds: list,
+    );
+  }
+}
+
+/// Luồng trao đổi của một công việc
+class ProjectChatThread {
+  final List<ProjectChatMessage> messages;
+  final bool hasMore;
+
+  const ProjectChatThread({
+    this.messages = const [],
+    this.hasMore = false,
+  });
+
+  factory ProjectChatThread.fromJson(Map<String, dynamic> json) {
+    final rawMessages = json['messages'];
+    final list = <ProjectChatMessage>[];
+    if (rawMessages is List) {
+      for (final m in rawMessages) {
+        if (m is Map<String, dynamic>) {
+          list.add(ProjectChatMessage.fromJson(m));
+        }
+      }
+    }
+    return ProjectChatThread(
+      messages: list,
+      hasMore: json['hasMore'] == true,
+    );
+  }
+}
+
+/// Điều kiện hoàn thành công việc
+class WorkItemCompletionCondition {
+  final String id;
+  final String label;
+
+  const WorkItemCompletionCondition({
+    required this.id,
+    required this.label,
+  });
+
+  factory WorkItemCompletionCondition.fromJson(Map<String, dynamic> json) {
+    return WorkItemCompletionCondition(
+      id: json['id']?.toString() ?? '',
+      label: json['label']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'label': label,
+  };
+}
+
+/// Cấu hình điều kiện hoàn thành công việc
+class WorkItemCompletionPolicy {
+  final String rule; // 'all' | 'at_least' | 'none'
+  final int? minRequired;
+  final List<WorkItemCompletionCondition> conditions;
+
+  const WorkItemCompletionPolicy({
+    this.rule = 'all',
+    this.minRequired,
+    this.conditions = const [],
+  });
+
+  factory WorkItemCompletionPolicy.fromJson(Map<String, dynamic> json) {
+    final rawConds = json['conditions'];
+    final condList = <WorkItemCompletionCondition>[];
+    if (rawConds is List) {
+      for (final c in rawConds) {
+        if (c is Map<String, dynamic>) {
+          condList.add(WorkItemCompletionCondition.fromJson(c));
+        }
+      }
+    }
+    return WorkItemCompletionPolicy(
+      rule: json['rule']?.toString() ?? 'all',
+      minRequired: json['minRequired'] != null ? CustomerItem.parseInt(json['minRequired']) : null,
+      conditions: condList,
+    );
+  }
+
+  int get requiredCount {
+    if (conditions.isEmpty) return 0;
+    if (rule == 'all') return conditions.length;
+    if (rule == 'at_least') return (minRequired ?? 1).clamp(1, conditions.length);
+    return 0; // 'none'
+  }
+
+  bool isSatisfied(Set<String> confirmedIds) {
+    if (conditions.isEmpty) return true;
+    final confirmedCount = conditions.where((c) => confirmedIds.contains(c.id)).length;
+    if (rule == 'all') return confirmedCount >= conditions.length;
+    if (rule == 'at_least') return confirmedCount >= (minRequired ?? 1);
+    return true; // 'none'
+  }
+}
+

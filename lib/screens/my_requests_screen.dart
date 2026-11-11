@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import '../core/i18n/app_i18n.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +16,17 @@ import 'requests/components/request_form_dialog.dart';
 class MyRequestsScreen extends StatefulWidget {
   final int initialSubTab; // 0: Bản nháp, 1: Tạo đơn mới (Catalog), 2: Chờ duyệt, 3: Lịch sử
   final String? initialRequestType;
+  final String? initialRequestId;
+  final String? initialStatus;
+  final bool autoOpenDetail;
 
   const MyRequestsScreen({
     super.key,
     this.initialSubTab = 1,
     this.initialRequestType,
+    this.initialRequestId,
+    this.initialStatus,
+    this.autoOpenDetail = false,
   });
 
   @override
@@ -38,6 +44,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
 
   bool _isLoading = true;
   late int _requestsSubTab;
+  bool _hasAutoOpenedDetail = false;
 
   // Search & Filter State
   String _requestSearchKeyword = '';
@@ -139,6 +146,36 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         _drafts = uniqueDrafts.values.toList();
         _isLoading = false;
       });
+
+      if (!_hasAutoOpenedDetail && (widget.autoOpenDetail || widget.initialRequestId != null || widget.initialStatus != null)) {
+        AttendanceCorrection? target;
+        final targetId = widget.initialRequestId?.trim();
+        if (targetId != null && targetId.isNotEmpty) {
+          target = _corrections.cast<AttendanceCorrection?>().firstWhere(
+            (c) => c != null && (c.id == targetId || c.id.endsWith(targetId) || targetId.contains(c.id)),
+            orElse: () => null,
+          );
+        }
+        if (target == null && widget.initialStatus != null && widget.initialStatus!.isNotEmpty) {
+          final s = widget.initialStatus!.toUpperCase();
+          target = _corrections.cast<AttendanceCorrection?>().firstWhere(
+            (c) => c != null && c.status == s,
+            orElse: () => null,
+          );
+        }
+        if (target == null && widget.autoOpenDetail && _corrections.isNotEmpty) {
+          target = _corrections.first;
+        }
+
+        if (target != null) {
+          _hasAutoOpenedDetail = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showCorrectionDetailDialog(target!);
+            }
+          });
+        }
+      }
     }
   }
 

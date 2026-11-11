@@ -7,7 +7,7 @@ import './home_screen.dart';
 import '../core/i18n/app_i18n.dart';
 
 class LoginScreen extends StatefulWidget {
-  final String initialPortal; // 'tenant' or 'platform'
+  final String initialPortal; // retained for backwards compatibility
 
   const LoginScreen({
     super.key,
@@ -19,7 +19,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  late String _portal; // 'tenant' or 'platform'
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -29,7 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _portal = widget.initialPortal;
     _loadSavedCredentials();
   }
 
@@ -39,15 +37,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final rememberMe = prefs.getBool('saved_remember_me') ?? true;
       final savedEmail = prefs.getString('saved_login_email') ?? '';
       final savedPassword = prefs.getString('saved_login_password') ?? '';
-      final savedPortal = prefs.getString('saved_login_portal');
 
       if (mounted) {
         setState(() {
           _rememberMe = rememberMe;
           if (_rememberMe) {
-            if (savedPortal != null && (savedPortal == 'tenant' || savedPortal == 'platform')) {
-              _portal = savedPortal;
-            }
             if (savedEmail.isNotEmpty) {
               _emailController.text = savedEmail;
             }
@@ -67,23 +61,12 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleSwitchPortal(String newPortal) {
-    if (_portal == newPortal) return;
-    setState(() {
-      _portal = newPortal;
-      _emailController.clear();
-      _passwordController.clear();
-    });
-    context.read<AuthProvider>().clearError();
-  }
-
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
       final success = await authProvider.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        portal: _portal,
       );
       if (success) {
         try {
@@ -92,7 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
           if (_rememberMe) {
             await prefs.setString('saved_login_email', _emailController.text.trim());
             await prefs.setString('saved_login_password', _passwordController.text);
-            await prefs.setString('saved_login_portal', _portal);
           } else {
             await prefs.remove('saved_login_email');
             await prefs.remove('saved_login_password');
@@ -116,74 +98,195 @@ class _LoginScreenState extends State<LoginScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 900;
     final authProvider = context.watch<AuthProvider>();
-    final isPlatform = _portal == 'platform';
 
     return Scaffold(
-      backgroundColor: AppColors.slate900,
+      backgroundColor: const Color(0xFF0B1120), // Deep rich slate navy
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isDesktop ? 960 : 440),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(alignment: Alignment.centerRight, child: _buildLanguageToggle()),
-                  const SizedBox(height: 10),
-                  Container(
-              constraints: BoxConstraints(
-                maxWidth: isDesktop ? 960 : 440,
-                minHeight: isDesktop ? 580 : 0,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B).withOpacity(0.85),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: isPlatform
-                      ? const Color(0xFF6366F1).withOpacity(0.3)
-                      : AppColors.emerald.withOpacity(0.3),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isPlatform
-                        ? const Color(0xFF4F46E5).withOpacity(0.18)
-                        : AppColors.emerald.withOpacity(0.12),
-                    blurRadius: 40,
-                    offset: const Offset(0, 16),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: isDesktop
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(child: _buildHeroPanel(isDesktop: true)),
-                          Expanded(child: _buildFormPanel(authProvider)),
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildHeroPanel(isDesktop: false),
-                          _buildFormPanel(authProvider),
-                        ],
+        child: isDesktop
+            ? _buildDesktopLayout(authProvider)
+            : _buildMobileLayout(authProvider),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(AuthProvider authProvider) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Top bar: Language Toggle right-aligned
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _buildLanguageToggle(),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // 2. Brand Identity & Header
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF34D399), Color(0xFF047857)],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.emerald.withOpacity(0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
-              ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.apartment_rounded,
+                    color: Colors.white,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'SAVINA ENTERPRISE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Hệ thống Quản trị & Vận hành Doanh nghiệp',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
+          ),
+
+          const SizedBox(height: 26),
+
+          // 3. Login Form Card
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B).withOpacity(0.85),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: AppColors.emerald.withOpacity(0.28),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.emerald.withOpacity(0.12),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: _buildFormPanel(authProvider),
+            ),
+          ),
+
+          const SizedBox(height: 26),
+
+          // 4. Balanced Security Footer
+          Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.shield_outlined, size: 14, color: AppColors.slate500),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Bảo mật kết nối SSL/TLS 256-bit',
+                    style: TextStyle(color: AppColors.slate500, fontSize: 11.5, fontWeight: FontWeight.w500),
+                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 6),
+              Text(
+                '© 2026 SVN Technology · Phiên bản 2.4.0',
+                style: TextStyle(color: AppColors.slate600, fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(AuthProvider authProvider) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(alignment: Alignment.centerRight, child: _buildLanguageToggle()),
+              const SizedBox(height: 12),
+              Container(
+                constraints: const BoxConstraints(
+                  maxWidth: 960,
+                  minHeight: 560,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: AppColors.emerald.withOpacity(0.3),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.emerald.withOpacity(0.12),
+                      blurRadius: 40,
+                      offset: const Offset(0, 16),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: _buildHeroPanel()),
+                      Expanded(child: _buildFormPanel(authProvider)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -236,62 +339,73 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildHeroPanel({required bool isDesktop}) {
-    final isPlatform = _portal == 'platform';
-
+  Widget _buildHeroPanel() {
     return Container(
-      padding: EdgeInsets.all(isDesktop ? 44 : 24),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.all(44),
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isPlatform
-              ? const [
-                  Color(0xFF0F172A),
-                  Color(0xFF1E1B4B),
-                  Color(0xFF312E81),
-                ]
-              : const [
-                  Color(0xFF0F172A),
-                  Color(0xFF064E3B),
-                  Color(0xFF047857),
-                ],
+          colors: [
+            Color(0xFF0F172A),
+            Color(0xFF064E3B),
+            Color(0xFF047857),
+          ],
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Portal Switcher Pill
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.35),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildPortalPillOption(
-                  id: 'tenant',
-                  label: 'login.portal.tenant'.tr(),
-                  icon: Icons.business_outlined,
-                  isSelected: !isPlatform,
-                  activeColor: AppColors.emerald,
+          // Brand Logo Badge
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF34D399), Color(0xFF047857)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.emerald.withOpacity(0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                _buildPortalPillOption(
-                  id: 'platform',
-                  label: 'login.portal.platform'.tr(),
-                  icon: Icons.admin_panel_settings_outlined,
-                  isSelected: isPlatform,
-                  activeColor: const Color(0xFF6366F1),
-                ),
-              ],
-            ),
+                child: const Icon(Icons.apartment_rounded, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 14),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SAVINA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  Text(
+                    'ENTERPRISE PLATFORM',
+                    style: TextStyle(
+                      color: Color(0xFF6EE7B7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
 
-          SizedBox(height: isDesktop ? 60 : 24),
+          const SizedBox(height: 40),
 
           // Main Hero Title & Description
           Column(
@@ -300,106 +414,83 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (isPlatform ? const Color(0xFF818CF8) : AppColors.emeraldAccent)
-                      .withOpacity(0.15),
+                  color: AppColors.emeraldAccent.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: (isPlatform ? const Color(0xFF818CF8) : AppColors.emeraldAccent)
-                        .withOpacity(0.3),
+                    color: AppColors.emeraldAccent.withOpacity(0.3),
                   ),
                 ),
                 child: Text(
-                  isPlatform ? 'login.badge.platform'.tr() : 'login.badge.tenant'.tr(),
-                  style: TextStyle(
-                    color: isPlatform ? const Color(0xFFA5B4FC) : AppColors.emeraldAccent,
+                  'login.badge.tenant'.tr(),
+                  style: const TextStyle(
+                    color: AppColors.emeraldAccent,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.1,
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               Text(
-                isPlatform ? 'login.hero.platform_title'.tr() : 'login.hero.tenant_title'.tr(),
-                style: TextStyle(
+                'login.hero.tenant_title'.tr(),
+                style: const TextStyle(
                   color: Colors.white,
-                  fontSize: isDesktop ? 30 : 22,
+                  fontSize: 30,
                   fontWeight: FontWeight.bold,
                   letterSpacing: -0.5,
                   height: 1.2,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
-                isPlatform
-                    ? 'login.hero.platform_desc'.tr()
-                    : 'login.hero.tenant_desc'.tr(),
+                'login.hero.tenant_desc'.tr(),
                 style: TextStyle(
                   color: AppColors.slate300.withOpacity(0.85),
-                  fontSize: isDesktop ? 13.5 : 12.5,
+                  fontSize: 13.5,
                   height: 1.5,
                 ),
               ),
             ],
           ),
 
-          if (isDesktop) const SizedBox(height: 20),
+          const SizedBox(height: 30),
+
+          // Security & Compliance tags
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildFeatureTag('Multi-Tenant'),
+              _buildFeatureTag('ISO 27001'),
+              _buildFeatureTag('Zero-Trust'),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPortalPillOption({
-    required String id,
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required Color activeColor,
-  }) {
-    return GestureDetector(
-      onTap: () => _handleSwitchPortal(id),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: activeColor.withOpacity(0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected ? Colors.white : AppColors.slate400,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : AppColors.slate300,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ],
+  Widget _buildFeatureTag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white70,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
   Widget _buildFormPanel(AuthProvider authProvider) {
-    final isPlatform = _portal == 'platform';
-    final activeAccent = isPlatform ? const Color(0xFF6366F1) : AppColors.emerald;
+    const activeAccent = AppColors.emerald;
 
     return Container(
       padding: const EdgeInsets.all(28),
@@ -411,30 +502,28 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Header Info
-            Text(
-              isPlatform ? 'login.form.platform_label'.tr() : 'login.form.tenant_label'.tr(),
+            const Text(
+              'ĐĂNG NHẬP',
               style: TextStyle(
                 color: activeAccent,
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
+                letterSpacing: 1.2,
               ),
             ),
             const SizedBox(height: 6),
-            Text(
-              isPlatform ? 'login.form.platform_title'.tr() : 'login.form.tenant_title'.tr(),
-              style: const TextStyle(
+            const Text(
+              'Không gian làm việc',
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 21,
                 fontWeight: FontWeight.bold,
                 letterSpacing: -0.3,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              isPlatform
-                  ? 'login.form.platform_hint'.tr()
-                  : 'login.form.tenant_hint'.tr(),
+              'login.form.tenant_hint'.tr(),
               style: const TextStyle(
                 color: AppColors.slate400,
                 fontSize: 12.5,
@@ -458,7 +547,7 @@ class _LoginScreenState extends State<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
-                hintText: isPlatform ? 'superadmin@platform.local' : 'admin@svn.com',
+                hintText: 'admin@svn.com',
                 hintStyle: TextStyle(color: AppColors.slate500.withOpacity(0.7), fontSize: 13),
                 fillColor: AppColors.slate900.withOpacity(0.7),
                 filled: true,
@@ -470,7 +559,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: activeAccent, width: 1.5),
+                  borderSide: const BorderSide(color: activeAccent, width: 1.5),
                 ),
                 errorBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -496,7 +585,7 @@ class _LoginScreenState extends State<LoginScreen> {
             // Password Field
             Text(
               'login.form.password'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.slate300,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -531,7 +620,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: activeAccent, width: 1.5),
+                  borderSide: const BorderSide(color: activeAccent, width: 1.5),
                 ),
                 errorBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -591,7 +680,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(width: 8),
                     Text(
                       'login.form.remember_me'.tr(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.slate300,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -628,7 +717,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
 
             // Submit Button
             SizedBox(
@@ -649,7 +738,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(
+                          const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
@@ -657,16 +746,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               strokeWidth: 2,
                             ),
                           ),
-                          SizedBox(width: 10),
+                          const SizedBox(width: 10),
                           Text(
                             'login.form.verifying'.tr(),
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ],
                       )
                     : Text(
                         'login.form.submit'.tr(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -677,16 +766,16 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 20),
 
             // Footer note
-            Text(
-              isPlatform
-                  ? 'login.footer.platform'.tr()
-                  : 'login.footer.tenant'.tr(),
-              style: TextStyle(
-                color: AppColors.slate500,
-                fontSize: 11.5,
-                height: 1.4,
+            Center(
+              child: Text(
+                'login.footer.tenant'.tr(),
+                style: const TextStyle(
+                  color: AppColors.slate500,
+                  fontSize: 11.5,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),

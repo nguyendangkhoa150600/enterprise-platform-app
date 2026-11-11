@@ -238,13 +238,45 @@ class OrgAssignment {
   }
 }
 
+/// An organization chart ("sơ đồ") of the tenant, from core-snapshot `trees`.
+class OrgTree {
+  final String id;
+  final String code;
+  final String name;
+  final String? description;
+  final bool isPrimary;
+  final String status;
+
+  const OrgTree({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.description,
+    this.isPrimary = false,
+    this.status = 'active',
+  });
+
+  factory OrgTree.fromJson(Map<String, dynamic> json) {
+    return OrgTree(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      isPrimary: json['isPrimary'] == true,
+      status: json['status']?.toString() ?? 'active',
+    );
+  }
+}
+
 class OrganizationSnapshot {
+  final List<OrgTree> trees;
   final List<OrgNode> nodes;
   final List<OrgNodeType> nodeTypes;
   final List<OrgAssignment> assignments;
   final List<TenantUser> users;
 
   OrganizationSnapshot({
+    this.trees = const [],
     required this.nodes,
     required this.nodeTypes,
     required this.assignments,
@@ -255,12 +287,14 @@ class OrganizationSnapshot {
     final Map<String, dynamic> map = json['data'] is Map<String, dynamic>
         ? json['data'] as Map<String, dynamic>
         : (json['snapshot'] is Map<String, dynamic> ? json['snapshot'] as Map<String, dynamic> : json);
+    final rawTrees = (map['trees'] ?? json['trees']) as List<dynamic>? ?? [];
     final rawNodes = (map['nodes'] ?? json['nodes']) as List<dynamic>? ?? [];
     final rawTypes = (map['nodeTypes'] ?? json['nodeTypes']) as List<dynamic>? ?? [];
     final rawAssignments = (map['assignments'] ?? json['assignments']) as List<dynamic>? ?? [];
     final rawUsers = (map['users'] ?? json['users']) as List<dynamic>? ?? [];
 
     return OrganizationSnapshot(
+      trees: rawTrees.whereType<Map<String, dynamic>>().map(OrgTree.fromJson).toList(),
       nodes: rawNodes.map((e) => OrgNode.fromJson(e as Map<String, dynamic>)).toList(),
       nodeTypes: rawTypes.map((e) => OrgNodeType.fromJson(e as Map<String, dynamic>)).toList(),
       assignments: rawAssignments.map((e) => OrgAssignment.fromJson(e as Map<String, dynamic>)).toList(),

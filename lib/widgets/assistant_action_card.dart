@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/i18n/app_i18n.dart';
 import '../models/assistant_models.dart';
 import '../services/assistant_service.dart';
+import '../utils/app_toast.dart';
 
 class AssistantActionCard extends StatefulWidget {
   final AssistantActionDraft draft;
@@ -44,14 +45,28 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
   }
 
   Future<void> _submitDraft() async {
+    final reasonText = _reasonCtrl.text.trim();
+    // Đồng bộ React commit a3dd0134: Mô tả bắt buộc với làm thêm giờ và công tác
+    final isOt = widget.draft.key.contains('ot-request') || widget.draft.key.contains('overtime');
+    final isTrip = widget.draft.key.contains('business-trip') || widget.draft.key.contains('trip');
+    if ((isOt || isTrip) && reasonText.isEmpty) {
+      const err = 'Vui lòng nhập lý do / mô tả chi tiết cho yêu cầu này.';
+      setState(() {
+        widget.draft.status = ActionDraftStatus.error;
+        widget.draft.errorMessage = err;
+      });
+      if (mounted) AppToast.error(context, err);
+      return;
+    }
+
     setState(() {
       widget.draft.status = ActionDraftStatus.submitting;
     });
 
     // Cập nhật giá trị đã chỉnh sửa vào fields
     if (widget.draft.fields.containsKey('title')) widget.draft.fields['title'] = _titleCtrl.text.trim();
-    if (widget.draft.fields.containsKey('reason')) widget.draft.fields['reason'] = _reasonCtrl.text.trim();
-    if (widget.draft.fields.containsKey('description')) widget.draft.fields['description'] = _reasonCtrl.text.trim();
+    widget.draft.fields['reason'] = reasonText;
+    widget.draft.fields['description'] = reasonText;
     if (widget.draft.fields.containsKey('destination')) widget.draft.fields['destination'] = _destCtrl.text.trim();
     if (widget.draft.fields.containsKey('location')) widget.draft.fields['location'] = _locationCtrl.text.trim();
 
@@ -64,9 +79,12 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
           widget.draft.resultId = res['id']?.toString();
           widget.draft.resultLabel = res['label']?.toString();
           widget.onSubmitted?.call();
+          AppToast.success(context, 'Thực hiện thao tác thành công!');
         } else {
+          final err = res['error']?.toString() ?? 'widgets.action_card.save_unknown_error'.tr();
           widget.draft.status = ActionDraftStatus.error;
-          widget.draft.errorMessage = res['error']?.toString() ?? 'widgets.action_card.save_unknown_error'.tr();
+          widget.draft.errorMessage = err;
+          AppToast.error(context, err);
         }
       });
     }
@@ -100,7 +118,7 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
     Color iconColor;
     IconData icon;
 
-    switch (d.module) {
+    switch (d.module.toUpperCase()) {
       case 'HRM':
         headerBg = const Color(0xFFECFDF5);
         iconColor = const Color(0xFF059669);
@@ -115,6 +133,12 @@ class _AssistantActionCardState extends State<AssistantActionCard> {
         headerBg = const Color(0xFFFFF1F2);
         iconColor = const Color(0xFFE11D48);
         icon = Icons.warning_amber_rounded;
+        break;
+      case 'PROCEDURE':
+      case 'PROCEDURE-ENGINE':
+        headerBg = const Color(0xFFFAF5FF);
+        iconColor = const Color(0xFF9333EA);
+        icon = Icons.account_tree_outlined;
         break;
       default:
         headerBg = const Color(0xFFF1F5F9);

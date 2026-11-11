@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../theme/colors.dart';
 import '../../org_chart_workspace_screen.dart';
+import 'home_org_appointment_dialog.dart';
 
 class HomeOrganizationView extends StatefulWidget {
   final OrganizationSnapshot? snapshot;
@@ -165,25 +166,19 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
 
   // TAB 1: CÂY TỔ CHỨC (Matching Web Table / List view)
   Widget _buildOrgTreesTab(OrganizationSnapshot snapshot) {
+    // Real organization trees (core-snapshot `trees`); node counts come from the nodes of each tree.
     final orgTrees = [
-      {
-        'code': 'SAVINA-MAIN',
-        'name': 'home.org.savina_chart'.tr(),
-        'isPrimary': true,
-        'description': 'home.org.main_tree_desc'.tr(),
-        'type': 'home.org.type_main'.tr(),
-        'nodeCount': '${snapshot.nodes.length}',
-        'status': 'home.org.status_active'.tr(),
-      },
-      {
-        'code': '123',
-        'name': 'CBC_IT',
-        'isPrimary': false,
-        'description': 'TEST',
-        'type': 'home.org.type_secondary'.tr(),
-        'nodeCount': '0',
-        'status': 'home.org.status_active'.tr(),
-      },
+      for (final t in snapshot.trees)
+        {
+          'id': t.id,
+          'code': t.code,
+          'name': t.name,
+          'isPrimary': t.isPrimary,
+          'description': t.description ?? '',
+          'type': (t.isPrimary ? 'home.org.type_main' : 'home.org.type_secondary').tr(),
+          'nodeCount': '${snapshot.nodes.where((n) => n.treeId == t.id).length}',
+          'status': t.status == 'active' ? 'home.org.status_active'.tr() : t.status,
+        },
     ];
 
     final filteredTrees = orgTrees.where((t) {
@@ -338,11 +333,13 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                     const SizedBox(height: 6),
 
                     // Description
-                    Text(
-                      item['description'] as String,
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.slate500),
-                    ),
-                    const SizedBox(height: 10),
+                    if ((item['description'] as String).isNotEmpty) ...[
+                      Text(
+                        item['description'] as String,
+                        style: const TextStyle(fontSize: 11.5, color: AppColors.slate500),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
 
                     // Metadata badges (Loại sơ đồ, Số node, Trạng thái)
                     Wrap(
@@ -422,6 +419,7 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
                               MaterialPageRoute(
                                 builder: (_) => OrgChartWorkspaceScreen(
                                   snapshot: snapshot,
+                                  treeId: item['id'] as String,
                                   treeName: item['name'] as String,
                                   treeCode: item['code'] as String,
                                   isPrimary: isPrimary,
@@ -1030,487 +1028,24 @@ class _HomeOrganizationViewState extends State<HomeOrganizationView> {
 
   // MODAL: BỔ NHIỆM NGƯỜI DÙNG VÀO TỔ CHỨC
   void _showCreateAppointmentDialog(OrganizationSnapshot snapshot, [OrgAssignment? existing]) {
-    final isEditing = existing != null;
-    String selectedUserId = existing?.userId ?? (snapshot.users.isNotEmpty ? snapshot.users.first.id : '');
-    String selectedNodeId = existing?.nodeId ?? (snapshot.nodes.isNotEmpty ? snapshot.nodes.first.id : '');
-    bool isPrimary = existing?.isPrimary ?? false;
-    String status = existing?.status ?? 'active';
-    if (status == 'disabled') {
-      status = 'inactive';
-    } else if (status != 'active' && status != 'inactive' && status != 'ended') {
-      status = 'active';
-    }
-    final noteCtrl = TextEditingController(text: existing?.note ?? '');
-
-    DateTime? startDate = existing?.startDate != null ? DateTime.tryParse(existing!.startDate!) : null;
-    DateTime? endDate = existing?.endDate != null ? DateTime.tryParse(existing!.endDate!) : null;
-
-    showModalBottomSheet(
+    showOrgAppointmentDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Container(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: GestureDetector(
-            onTap: () => FocusScope.of(ctx).unfocus(),
-            behavior: HitTestBehavior.translucent,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle bar
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFCBD5E1),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Header matching Web
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isEditing ? 'home.org.edit_assignment_title'.tr() : 'home.org.create_assignment_title'.tr(),
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              'home.org.saved_to_db'.tr(),
-                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 1. Chức danh (Org Node / Position)
-                  Text(
-                    'home.org.job_title'.tr(),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedNodeId.isNotEmpty ? selectedNodeId : null,
-                        isExpanded: true,
-                        hint: Text('home.org.select_job_title'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
-                        items: snapshot.nodes.map((n) {
-                          return DropdownMenuItem(
-                            value: n.id,
-                            child: Text(
-                              '${n.name} (${n.code})',
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => selectedNodeId = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 2. Người dùng
-                  Text(
-                    'home.org.user'.tr(),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedUserId.isNotEmpty ? selectedUserId : null,
-                        isExpanded: true,
-                        hint: Text('home.org.select_user'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
-                        items: snapshot.users.map((u) {
-                          return DropdownMenuItem(
-                            value: u.id,
-                            child: Text(
-                              u.fullName,
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: isEditing
-                            ? null
-                            : (val) {
-                                if (val != null) setDialogState(() => selectedUserId = val);
-                              },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 3. Row: Từ ngày & Đến ngày
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('common.from_date'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
-                            const SizedBox(height: 6),
-                            InkWell(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: ctx,
-                                  initialDate: startDate ?? DateTime.now(),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (picked != null) {
-                                  setDialogState(() => startDate = picked);
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                height: 42,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFFCBD5E1)),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      startDate != null
-                                          ? '${startDate!.day.toString().padLeft(2, '0')}/${startDate!.month.toString().padLeft(2, '0')}/${startDate!.year}'
-                                          : 'dd/mm/yyyy',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: startDate != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                    const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF64748B)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('common.to_date'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
-                            const SizedBox(height: 6),
-                            InkWell(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: ctx,
-                                  initialDate: endDate ?? (startDate ?? DateTime.now()),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (picked != null) {
-                                  setDialogState(() => endDate = picked);
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                height: 42,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFFCBD5E1)),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      endDate != null
-                                          ? '${endDate!.day.toString().padLeft(2, '0')}/${endDate!.month.toString().padLeft(2, '0')}/${endDate!.year}'
-                                          : 'dd/mm/yyyy',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: endDate != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                    const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF64748B)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 4. Ghi chú
-                  Text(
-                    'common.note'.tr(),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: noteCtrl,
-                    maxLines: 3,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'home.org.note_hint'.tr(),
-                      hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF2563EB)),
-                      ),
-                      contentPadding: const EdgeInsets.all(12),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 5. Vị trí chính (Checkbox)
-                  InkWell(
-                    onTap: () => setDialogState(() => isPrimary = !isPrimary),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: Checkbox(
-                              value: isPrimary,
-                              onChanged: (val) => setDialogState(() => isPrimary = val ?? false),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                              activeColor: const Color(0xFF0F172A),
-                              side: const BorderSide(color: Color(0xFF94A3B8)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'home.org.primary_position'.tr(),
-                            style: TextStyle(fontSize: 13, color: Color(0xFF334155), fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 6. Trạng thái
-                  Text(
-                    'common.status'.tr(),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: status,
-                        isExpanded: true,
-                        items: [
-                          DropdownMenuItem(
-                            value: 'active',
-                            child: Text('home.org.status_active'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
-                          ),
-                          DropdownMenuItem(
-                            value: 'inactive',
-                            child: Text('home.org.status_inactive'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
-                          ),
-                          DropdownMenuItem(
-                            value: 'ended',
-                            child: Text('home.org.status_ended'.tr(), style: TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
-                          ),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => status = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Footer Actions matching Web (Hủy & Lưu thay đổi)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          foregroundColor: const Color(0xFF334155),
-                        ),
-                        child: Text('common.cancel'.tr(), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: () async {
-                          if (selectedUserId.isEmpty || selectedNodeId.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('home.org.err_select_user_title'.tr())),
-                            );
-                            return;
-                          }
-
-                          Navigator.pop(ctx);
-                          final sDateStr = startDate?.toIso8601String();
-                          final eDateStr = endDate?.toIso8601String();
-
-                          bool success = false;
-                          if (isEditing) {
-                            success = await widget.platformService.updateAssignment(
-                              existing.id,
-                              nodeId: selectedNodeId,
-                              isPrimary: isPrimary,
-                              startDate: sDateStr,
-                              endDate: eDateStr,
-                              status: status,
-                              note: noteCtrl.text.trim(),
-                            );
-                          } else {
-                            success = await widget.platformService.createAssignment(
-                              userId: selectedUserId,
-                              nodeId: selectedNodeId,
-                              isPrimary: isPrimary,
-                              startDate: sDateStr,
-                              endDate: eDateStr,
-                              status: status,
-                              note: noteCtrl.text.trim(),
-                            );
-                          }
-
-                          if (success && mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(isEditing ? 'home.org.updated'.tr() : 'home.org.created'.tr()),
-                                backgroundColor: const Color(0xFF059669),
-                              ),
-                            );
-                            widget.onRefresh();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F172A),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          'home.org.save_changes'.tr(),
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      platformService: widget.platformService,
+      onRefresh: widget.onRefresh,
+      snapshot: snapshot,
+      existing: existing,
     );
   }
 
   // DELETE ASSIGNMENT CONFIRMATION
   void _confirmDeleteAssignment(OrgAssignment assignment, String userName, String nodeName) {
-    showDialog(
+    confirmDeleteOrgAssignment(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('home.org.revoke_title'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Text(
-          'home.org.revoke_confirm'.tr(args: {'user': userName, 'node': nodeName}),
-          style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('common.cancel'.tr(), style: TextStyle(color: Color(0xFF64748B))),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = await widget.platformService.deleteAssignment(assignment.id);
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('home.org.revoked'.tr()), backgroundColor: Color(0xFFEF4444)),
-                );
-                widget.onRefresh();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-            ),
-            child: Text('home.org.delete_assignment'.tr()),
-          ),
-        ],
-      ),
+      platformService: widget.platformService,
+      onRefresh: widget.onRefresh,
+      assignment: assignment,
+      userName: userName,
+      nodeName: nodeName,
     );
   }
-
 }
