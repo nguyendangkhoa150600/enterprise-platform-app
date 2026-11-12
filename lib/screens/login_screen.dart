@@ -131,42 +131,39 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF34D399), Color(0xFF047857)],
-                    ),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.emerald.withOpacity(0.35),
+                        color: const Color(0xFF2563EB).withOpacity(0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.apartment_rounded,
-                    color: Colors.white,
-                    size: 34,
+                  clipBehavior: Clip.antiAlias,
+                  padding: const EdgeInsets.all(6),
+                  child: Image.asset(
+                    'assets/images/svn_logo.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'SAVINA ENTERPRISE',
+                  'SVN ERP',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
+                    fontSize: 24,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.2,
                   ),
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Hệ thống Quản trị & Vận hành Doanh nghiệp',
+                  'SVN Digital Transformation Solution',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Color(0xFF94A3B8),
@@ -364,26 +361,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF34D399), Color(0xFF047857)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.emerald.withOpacity(0.4),
+                      color: const Color(0xFF2563EB).withOpacity(0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.apartment_rounded, color: Colors.white, size: 26),
+                clipBehavior: Clip.antiAlias,
+                padding: const EdgeInsets.all(4),
+                child: Image.asset(
+                  'assets/images/svn_logo.png',
+                  fit: BoxFit.contain,
+                ),
               ),
               const SizedBox(width: 14),
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'SAVINA',
+                    'SVN ERP',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -392,7 +392,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   Text(
-                    'ENTERPRISE PLATFORM',
+                    'DIGITAL TRANSFORMATION',
                     style: TextStyle(
                       color: Color(0xFF6EE7B7),
                       fontSize: 10,

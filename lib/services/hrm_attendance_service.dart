@@ -459,6 +459,9 @@ class HrmAttendanceService {
 
     // 1. Try multiple possible leave types endpoints
     final candidateEndpoints = [
+      '/api/hrm/v1/leave-types?active=true',
+      '/hrm/v1/leave-types?active=true',
+      '/api/hrm/v1/leave-types',
       '/hrm/v1/leave-types',
       '/hrm/v1/leaves/types',
       '/hrm/v1/leave-policies',
@@ -601,8 +604,9 @@ class HrmAttendanceService {
     required String reason,
     double duration = 1.0,
     bool isNegativeLeave = false,
+    String? requestKind,
   }) async {
-    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration, draftId: $draftId');
+    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration, draftId: $draftId, requestKind: $requestKind');
 
     final cleanReason = reason.contains('] ') ? reason.substring(reason.indexOf('] ') + 2) : reason;
     final lowerReason = reason.toLowerCase();
@@ -611,9 +615,6 @@ class HrmAttendanceService {
     final inTimeClean = newCheckInAt.contains('T')
         ? newCheckInAt
         : (newCheckInAt.length >= 10 ? '${newCheckInAt.substring(0, 10)}T08:00:00' : '${requestDate}T08:00:00');
-    final outTimeClean = newCheckOutAt.contains('T')
-        ? newCheckOutAt
-        : (newCheckOutAt.length >= 10 ? '${newCheckOutAt.substring(0, 10)}T17:30:00' : '${requestDate}T17:30:00');
 
     final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
     String? validUuidLeaveTypeId = (leaveTypeId != null && uuidRegex.hasMatch(leaveTypeId)) ? leaveTypeId : null;
@@ -632,27 +633,28 @@ class HrmAttendanceService {
     }
 
     // Determine ESS Request Category
-    String requestType = 'LEAVE';
-    String requestTitle = 'svc_hrm.title_leave'.tr();
-    if (lowerReason.contains('công tác') || lowerReason.contains('business')) {
-      requestType = 'BUSINESS_TRIP';
-      requestTitle = 'svc_hrm.title_business_trip'.tr();
-    } else if (lowerReason.contains('thêm giờ') || lowerReason.contains('overtime') || lowerReason.contains('ot')) {
-      requestType = 'OVERTIME';
-      requestTitle = 'svc_hrm.title_ot'.tr();
-    } else if (lowerReason.contains('tạm ứng') || lowerReason.contains('advance')) {
-      requestType = 'SALARY_ADVANCE';
-      requestTitle = 'svc_hrm.title_advance'.tr();
-    } else if (lowerReason.contains('đổi ca') || lowerReason.contains('shift')) {
-      requestType = 'SHIFT_CHANGE';
-      requestTitle = 'svc_hrm.title_shift_change'.tr();
-    } else if ((attendanceId != null && attendanceId.isNotEmpty) ||
-        lowerReason.contains('giải trình') ||
-        lowerReason.contains('điều chỉnh công') ||
-        lowerReason.contains('quên') ||
-        lowerReason.contains('bổ sung công')) {
-      requestType = 'ATTENDANCE_CORRECTION';
-      requestTitle = 'svc_hrm.title_correction'.tr();
+    String requestType = requestKind ?? 'LEAVE';
+    if (requestKind == null) {
+      if (lowerReason.startsWith('[nghỉ') ||
+          lowerReason.contains('nghỉ') ||
+          lowerReason.contains('phép') ||
+          validUuidLeaveTypeId != null) {
+        requestType = 'LEAVE';
+      } else if (lowerReason.contains('công tác') || lowerReason.contains('business')) {
+        requestType = 'BUSINESS_TRIP';
+      } else if (lowerReason.contains('thêm giờ') || lowerReason.contains('overtime') || lowerReason.contains('ot') || lowerReason.contains('tăng ca')) {
+        requestType = 'OVERTIME';
+      } else if (lowerReason.contains('tạm ứng') || lowerReason.contains('advance')) {
+        requestType = 'SALARY_ADVANCE';
+      } else if (lowerReason.contains('đổi ca') || lowerReason.contains('shift')) {
+        requestType = 'SHIFT_CHANGE';
+      } else if ((attendanceId != null && attendanceId.isNotEmpty) ||
+          lowerReason.contains('giải trình') ||
+          lowerReason.contains('điều chỉnh công') ||
+          lowerReason.contains('quên') ||
+          lowerReason.contains('bổ sung công')) {
+        requestType = 'ATTENDANCE_CORRECTION';
+      }
     }
 
     final isEmpUuid = employeeId != null && uuidRegex.hasMatch(employeeId);
@@ -763,15 +765,32 @@ class HrmAttendanceService {
     if (requestType == 'OVERTIME') {
       try {
         final reasonId = await _resolveReasonIdForKind('OVERTIME');
+        final otStartTime = newCheckInAt.contains('T')
+            ? newCheckInAt.split('T').last.substring(0, 5)
+            : '18:00';
+        final otEndTime = newCheckOutAt.contains('T')
+            ? newCheckOutAt.split('T').last.substring(0, 5)
+            : '21:00';
+
+        int plannedMinutes = (duration * 60).round();
+        if (plannedMinutes <= 0) {
+          try {
+            final sParts = otStartTime.split(':').map(int.parse).toList();
+            final eParts = otEndTime.split(':').map(int.parse).toList();
+            plannedMinutes = (eParts[0] * 60 + eParts[1]) - (sParts[0] * 60 + sParts[1]);
+          } catch (_) {}
+        }
+        if (plannedMinutes <= 0) plannedMinutes = 180;
+
         final otRes = await _dio.post(
           '/hrm/v1/ot-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
             if (reasonId != null) 'reasonId': reasonId,
             'workDate': fromDateClean,
-            'startTime': '18:00',
-            'endTime': '21:00',
-            'plannedMinutes': (duration * 60).toInt() > 0 ? (duration * 60).toInt() : 180,
+            'startTime': otStartTime,
+            'endTime': otEndTime,
+            'plannedMinutes': plannedMinutes,
             'otType': 'REGULAR',
             'isNightOt': false,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,

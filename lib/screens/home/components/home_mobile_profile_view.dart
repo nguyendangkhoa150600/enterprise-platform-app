@@ -164,7 +164,7 @@ class HomeMobileProfileView extends StatelessWidget {
               children: [
                 Text('home.profile.sec_app'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.slate400)),
                 const SizedBox(height: 12),
-                _buildProfileItem(Icons.info_outline, 'home.profile.version'.tr(), 'Savina Enterprise Mobile 2.0.0'),
+                _buildProfileItem(Icons.info_outline, 'home.profile.version'.tr(), 'SVN ERP Mobile 2.0.0'),
                 const Divider(height: 1, color: AppColors.slate100),
                 _buildProfileItem(Icons.support_agent, 'home.profile.tech_support'.tr(), 'support@savina.vn'),
               ],

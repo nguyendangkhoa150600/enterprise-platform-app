@@ -531,12 +531,12 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
           // 4. Sub-tab Content
           if (_requestsSubTab == 1) ...[
             // ====================================================
-            // SUB-TAB 1: 7 REQUEST CATALOG CARDS (100% MATCHING WEB)
+            // SUB-TAB 1: 4 REQUEST CATALOG CARDS (100% MATCHING WEB)
             // ====================================================
             _buildCatalogCard(
-              icon: Icons.description_outlined,
-              iconBgColor: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF2563EB),
+              icon: Icons.calendar_today_outlined,
+              iconBgColor: const Color(0xFFECFDF5),
+              iconColor: const Color(0xFF059669),
               badgeText: 'my_requests.leave_badge'.tr(),
               badgeBgColor: const Color(0xFFECFDF5),
               badgeTextColor: const Color(0xFF059669),
@@ -544,14 +544,14 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.leave_desc'.tr(),
               infoBoxText: 'my_requests.leave_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Phép năm (Hưởng nguyên lương)'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn xin nghỉ'),
             ),
             const SizedBox(height: 12),
 
             _buildCatalogCard(
               icon: Icons.access_time_filled_rounded,
-              iconBgColor: const Color(0xFFFEF3C7),
-              iconColor: const Color(0xFFD97706),
+              iconBgColor: const Color(0xFFF5F3FF),
+              iconColor: const Color(0xFF7C3AED),
               badgeText: 'my_requests.ot_badge'.tr(),
               badgeBgColor: const Color(0xFFFEF3C7),
               badgeTextColor: const Color(0xFFD97706),
@@ -559,14 +559,14 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.ot_desc'.tr(),
               infoBoxText: 'my_requests.ot_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Làm thêm giờ (Overtime)'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn tăng ca'),
             ),
             const SizedBox(height: 12),
 
             _buildCatalogCard(
-              icon: Icons.flight_takeoff_rounded,
-              iconBgColor: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF2563EB),
+              icon: Icons.business_center_outlined,
+              iconBgColor: const Color(0xFFFFF7ED),
+              iconColor: const Color(0xFFEA580C),
               badgeText: 'my_requests.trip_badge'.tr(),
               badgeBgColor: const Color(0xFFEFF6FF),
               badgeTextColor: const Color(0xFF2563EB),
@@ -574,28 +574,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.trip_desc'.tr(),
               infoBoxText: 'my_requests.trip_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đi công tác / Giải trình công'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn công tác'),
             ),
             const SizedBox(height: 12),
 
             _buildCatalogCard(
-              icon: Icons.swap_horiz_rounded,
-              iconBgColor: const Color(0xFFECFDF5),
-              iconColor: const Color(0xFF059669),
-              badgeText: 'my_requests.shift_badge'.tr(),
-              badgeBgColor: const Color(0xFFECFDF5),
-              badgeTextColor: const Color(0xFF059669),
-              title: 'requests.type.shift_change'.tr(),
-              description: 'my_requests.shift_desc'.tr(),
-              infoBoxText: 'my_requests.shift_info'.tr(),
-              buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn đổi ca làm việc'),
-            ),
-            const SizedBox(height: 12),
-
-            _buildCatalogCard(
-              icon: Icons.edit_calendar_rounded,
-              iconBgColor: const Color(0xFFFFE4E6),
+              icon: Icons.article_outlined,
+              iconBgColor: const Color(0xFFFFF1F2),
               iconColor: const Color(0xFFE11D48),
               badgeText: 'my_requests.explain_badge'.tr(),
               badgeBgColor: const Color(0xFFFFE4E6),
@@ -604,37 +589,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.explain_desc'.tr(),
               infoBoxText: 'my_requests.explain_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đi công tác / Giải trình công'),
-            ),
-            const SizedBox(height: 12),
-
-            _buildCatalogCard(
-              icon: Icons.payments_outlined,
-              iconBgColor: const Color(0xFFF3E8FF),
-              iconColor: const Color(0xFF7C3AED),
-              badgeText: 'my_requests.advance_badge'.tr(),
-              badgeBgColor: const Color(0xFFF3E8FF),
-              badgeTextColor: const Color(0xFF7C3AED),
-              title: 'my_requests.advance_title'.tr(),
-              description: 'my_requests.advance_desc'.tr(),
-              infoBoxText: 'my_requests.advance_info'.tr(),
-              buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn xin tạm ứng lương'),
-            ),
-            const SizedBox(height: 12),
-
-            _buildCatalogCard(
-              icon: Icons.badge_outlined,
-              iconBgColor: const Color(0xFFEEF2FF),
-              iconColor: const Color(0xFF4F46E5),
-              badgeText: 'my_requests.info_badge'.tr(),
-              badgeBgColor: const Color(0xFFEEF2FF),
-              badgeTextColor: const Color(0xFF4F46E5),
-              title: 'my_requests.info_title'.tr(),
-              description: 'my_requests.info_desc'.tr(),
-              infoBoxText: 'my_requests.info_info'.tr(),
-              buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn điều chỉnh thông tin nhân sự'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn giải trình chấm công'),
             ),
           ] else if (_requestsSubTab == 2) ...[
             // ====================================================

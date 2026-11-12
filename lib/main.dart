@@ -52,7 +52,7 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          title: 'Savina Enterprise Platform',
+          title: 'SVN ERP',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,
