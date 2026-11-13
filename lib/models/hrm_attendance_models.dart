@@ -17,6 +17,26 @@ class LeaveType {
   });
 
   factory LeaveType.fromJson(Map<String, dynamic> json) {
+    final rawPaid = json['paid'] ?? json['is_paid'] ?? json['isPaid'] ?? json['has_pay'];
+    final nameLower = (json['name'] ?? json['title'] ?? json['code'] ?? '').toString().toLowerCase();
+    final codeUpper = (json['code'] ?? '').toString().toUpperCase();
+
+    bool parsedPaid;
+    if (nameLower.contains('không lương') || nameLower.contains('unpaid') || codeUpper.contains('UNPAID')) {
+      parsedPaid = false;
+    } else if (rawPaid != null) {
+      if (rawPaid is bool) {
+        parsedPaid = rawPaid;
+      } else if (rawPaid is num) {
+        parsedPaid = rawPaid != 0;
+      } else {
+        final str = rawPaid.toString().toLowerCase().trim();
+        parsedPaid = str == 'true' || str == '1';
+      }
+    } else {
+      parsedPaid = true;
+    }
+
     return LeaveType(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? json['name']?.toString() ?? '',
@@ -24,7 +44,7 @@ class LeaveType {
       daysAllowed: (json['days_allowed'] ?? json['daysAllowed'] ?? json['quota']) != null
           ? double.tryParse(json['days_allowed']?.toString() ?? json['daysAllowed']?.toString() ?? json['quota']?.toString() ?? '')
           : null,
-      isPaid: json['is_paid'] ?? json['isPaid'] ?? true,
+      isPaid: parsedPaid,
       description: json['description']?.toString(),
     );
   }
@@ -119,6 +139,7 @@ class AttendanceContext {
   final String employeeId;
   final String employeeCode;
   final String fullName;
+  final String? department;
   final HrmShift? shift;
   final bool requireGps;
   final List<String> allowedMethods;
@@ -130,6 +151,7 @@ class AttendanceContext {
     required this.employeeId,
     required this.employeeCode,
     required this.fullName,
+    this.department,
     this.shift,
     this.requireGps = false,
     required this.allowedMethods,
@@ -139,6 +161,11 @@ class AttendanceContext {
   factory AttendanceContext.fromJson(Map<String, dynamic> json) {
     final emp = json['employee'] as Map<String, dynamic>? ?? json['user'] as Map<String, dynamic>? ?? json['profile'] as Map<String, dynamic>? ?? {};
     final rawSites = json['sites'] as List<dynamic>? ?? [];
+    final dept = emp['department_name']?.toString() ??
+        emp['departmentName']?.toString() ??
+        (emp['department'] is Map ? emp['department']['name']?.toString() : emp['department']?.toString()) ??
+        json['department_name']?.toString() ??
+        json['department']?.toString();
 
     return AttendanceContext(
       serverTime: json['server_time']?.toString() ?? DateTime.now().toIso8601String(),
@@ -146,6 +173,7 @@ class AttendanceContext {
       employeeId: emp['id']?.toString() ?? json['employee_id']?.toString() ?? '',
       employeeCode: emp['employee_code']?.toString() ?? emp['code']?.toString() ?? json['employee_code']?.toString() ?? '',
       fullName: emp['full_name']?.toString() ?? emp['fullName']?.toString() ?? emp['name']?.toString() ?? json['full_name']?.toString() ?? '',
+      department: dept,
       shift: json['shift'] is Map<String, dynamic> ? HrmShift.fromJson(json['shift'] as Map<String, dynamic>) : null,
       requireGps: (json['requireGps'] ?? json['require_gps']) == true,
       allowedMethods: (json['allowed_methods'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
@@ -235,8 +263,14 @@ class AttendanceRecord {
 
 class AttendanceCorrection {
   final String id;
+  final String? code;
+  final String? kind;
+  final String? typeName;
+  final String? category;
   final String employeeId;
   final String? employeeName;
+  final String? employeeCode;
+  final String? department;
   final String? attendanceId;
   final String requestDate;
   final String? fromDate;
@@ -244,16 +278,27 @@ class AttendanceCorrection {
   final String? newCheckInAt;
   final String? newCheckOutAt;
   final String reason;
+  final String description;
   final double? duration;
+  final String? durationText;
+  final String? effectiveDate;
+  final String? approver;
   final String? leaveTypeName;
-  final String status; // 'PENDING' | 'APPROVED' | 'REJECTED'
+  final String status; // 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
   final String createdAt;
   final String? rejectionReason;
+  final Map<String, dynamic>? rawDetails;
 
   AttendanceCorrection({
     required this.id,
+    this.code,
+    this.kind,
+    this.typeName,
+    this.category,
     required this.employeeId,
     this.employeeName,
+    this.employeeCode,
+    this.department,
     this.attendanceId,
     required this.requestDate,
     this.fromDate,
@@ -261,66 +306,286 @@ class AttendanceCorrection {
     this.newCheckInAt,
     this.newCheckOutAt,
     required this.reason,
+    this.description = '—',
     this.duration,
+    this.durationText,
+    this.effectiveDate,
+    this.approver,
     this.leaveTypeName,
     required this.status,
     required this.createdAt,
     this.rejectionReason,
+    this.rawDetails,
   });
 
-  factory AttendanceCorrection.fromJson(Map<String, dynamic> json) {
+  static String formatEffectiveDate(Map<String, dynamic> json, {String? defaultDate}) {
+    final fromAt = json['fromAt']?.toString() ?? json['from_at']?.toString();
+    final toAt = json['toAt']?.toString() ?? json['to_at']?.toString();
+    if (fromAt != null && toAt != null && fromAt.isNotEmpty && toAt.isNotEmpty) {
+      return '${_formatDateTimeStr(fromAt)} -> ${_formatDateTimeStr(toAt)}';
+    }
+
+    final workDate = json['workDate']?.toString() ?? json['work_date']?.toString();
+    final startTime = json['startTime']?.toString() ?? json['start_time']?.toString();
+    final endTime = json['endTime']?.toString() ?? json['end_time']?.toString();
+    if (workDate != null && startTime != null && endTime != null && workDate.isNotEmpty) {
+      final s = startTime.length >= 5 ? startTime.substring(0, 5) : startTime;
+      final e = endTime.length >= 5 ? endTime.substring(0, 5) : endTime;
+      return '${_formatDateStr(workDate)} ($s - $e)';
+    }
+
+    final requestDate = json['requestDate']?.toString() ?? json['request_date']?.toString() ?? defaultDate;
+    final inTime = json['newCheckInAt']?.toString() ?? json['new_check_in_at']?.toString();
+    final outTime = json['newCheckOutAt']?.toString() ?? json['new_check_out_at']?.toString();
+    if (requestDate != null && (inTime != null || outTime != null)) {
+      final inFormatted = inTime != null ? (inTime.length >= 5 ? inTime.substring(0, 5) : inTime) : '';
+      final outFormatted = outTime != null ? (outTime.length >= 5 ? outTime.substring(0, 5) : outTime) : '';
+      final range = (inFormatted.isNotEmpty && outFormatted.isNotEmpty)
+          ? '$inFormatted - $outFormatted'
+          : (inFormatted.isNotEmpty ? 'Vào: $inFormatted' : 'Ra: $outFormatted');
+      return '${_formatDateStr(requestDate)} ($range)';
+    }
+
+    final fromDate = json['fromDate']?.toString() ?? json['from_date']?.toString() ?? json['start_date']?.toString();
+    final toDate = json['toDate']?.toString() ?? json['to_date']?.toString() ?? json['end_date']?.toString();
+    if (fromDate != null && fromDate.isNotEmpty) {
+      if (toDate != null && toDate.isNotEmpty && toDate != fromDate) {
+        return '${_formatDateStr(fromDate)} - ${_formatDateStr(toDate)}';
+      }
+      return _formatDateStr(fromDate);
+    }
+
+    return _formatDateStr(requestDate ?? DateTime.now().toIso8601String());
+  }
+
+  static String _formatDateStr(String val) {
+    if (val.length >= 10 && val.contains('-')) {
+      final parts = val.substring(0, 10).split('-');
+      if (parts.length == 3) {
+        return '${parts[2]}/${parts[1]}/${parts[0]}';
+      }
+    }
+    return val;
+  }
+
+  static String _formatDateTimeStr(String iso) {
+    final dt = DateTime.tryParse(iso)?.toLocal();
+    if (dt != null) {
+      final d = dt.day.toString().padLeft(2, '0');
+      final m = dt.month.toString().padLeft(2, '0');
+      final y = dt.year.toString();
+      final h = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      return '$d/$m/$y $h:$min';
+    }
+    return iso;
+  }
+
+  factory AttendanceCorrection.fromJson(
+    Map<String, dynamic> json, {
+    String? defaultKind,
+    String? defaultCodePrefix,
+    String? directApproverName,
+  }) {
     final rawDate = json['request_date']?.toString() ??
         json['requestDate']?.toString() ??
+        json['work_date']?.toString() ??
+        json['workDate']?.toString() ??
         json['start_date']?.toString() ??
         json['fromDate']?.toString() ??
         json['from_date']?.toString() ??
         json['created_at']?.toString() ??
+        json['createdAt']?.toString() ??
         DateTime.now().toIso8601String();
     final cleanDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
-    final title = json['title']?.toString() ??
-        json['leave_type_name']?.toString() ??
+
+    final id = json['id']?.toString() ?? '';
+    final kind = json['kind']?.toString() ?? defaultKind ?? 'leave';
+
+    // 1. Code mapping: exact match with Web (prefix + first 8 uppercase chars)
+    String computedCode = json['code']?.toString() ?? '';
+    if (computedCode.isEmpty && id.isNotEmpty) {
+      final prefix = defaultCodePrefix ??
+          (kind == 'ot'
+              ? 'OT-'
+              : kind == 'leave'
+                  ? 'LEAVE-'
+                  : kind == 'business_trip'
+                      ? 'TRIP-'
+                      : kind == 'shift_change'
+                          ? 'SHIFT-'
+                          : kind == 'correction'
+                              ? 'CORR-'
+                              : kind == 'advance'
+                                  ? 'ADV-'
+                                  : kind == 'profile_correction'
+                                      ? 'PRO-'
+                                      : 'REQ-');
+      final shortId = id.length >= 8 ? id.substring(0, 8).toUpperCase() : id.toUpperCase();
+      computedCode = '$prefix$shortId';
+    }
+
+    // 2. TypeName mapping: exact match with Web
+    String computedTypeName = json['typeName']?.toString() ?? json['title']?.toString() ?? '';
+    if (computedTypeName.isEmpty) {
+      if (kind == 'ot') {
+        final otType = json['otType']?.toString() ?? json['ot_type']?.toString() ?? 'OT';
+        computedTypeName = 'Làm thêm giờ ($otType)';
+      } else if (kind == 'leave') {
+        computedTypeName = 'Đơn xin nghỉ phép';
+      } else if (kind == 'business_trip') {
+        final dest = json['destination']?.toString() ?? '----';
+        computedTypeName = 'Công tác ($dest)';
+      } else if (kind == 'shift_change') {
+        final chType = json['changeType']?.toString() ?? json['change_type']?.toString();
+        computedTypeName = chType == 'SWAP' ? 'Đổi ca với đồng nghiệp' : 'Đề nghị chuyển ca';
+      } else if (kind == 'correction') {
+        computedTypeName = 'Giải trình / Bổ sung công';
+      } else if (kind == 'advance') {
+        computedTypeName = 'Đơn xin tạm ứng lương';
+      } else if (kind == 'profile_correction') {
+        computedTypeName = 'Điều chỉnh hồ sơ';
+      } else {
+        computedTypeName = 'Đơn đề nghị';
+      }
+    }
+
+    // 3. Reason mapping: category name from catalog
+    String reasonCategory = json['reasonName']?.toString() ??
+        json['reason_name']?.toString() ??
         json['leaveTypeName']?.toString() ??
+        json['leave_type_name']?.toString() ??
         (json['leave_type'] is Map ? json['leave_type']['name']?.toString() : null) ??
         '';
-    final rawReason = json['reason']?.toString() ?? json['notes']?.toString() ?? json['description']?.toString() ?? '';
-    final combinedReason = title.isNotEmpty && rawReason.isNotEmpty && !rawReason.contains(title)
-        ? '[$title] $rawReason'
-        : (rawReason.isNotEmpty ? rawReason : (title.isNotEmpty ? title : 'models.request.default_title'.tr()));
 
+    final rawReason = json['reason']?.toString() ?? '';
+    if (reasonCategory.isEmpty) {
+      final match = RegExp(r'^\[(.*?)\]').firstMatch(rawReason);
+      if (match != null) {
+        reasonCategory = match.group(1)!;
+      } else if (rawReason.isNotEmpty) {
+        reasonCategory = rawReason;
+      } else {
+        reasonCategory = '—';
+      }
+    }
+
+    // 4. Description mapping: free-text description
+    String freeTextDesc = json['description']?.toString() ?? json['notes']?.toString() ?? '';
+    if (freeTextDesc.isEmpty) {
+      final match = RegExp(r'^\[(.*?)\]').firstMatch(rawReason);
+      if (match != null) {
+        freeTextDesc = rawReason.substring(match.end).trim();
+      } else if (rawReason.isNotEmpty && rawReason != reasonCategory) {
+        freeTextDesc = rawReason;
+      } else {
+        freeTextDesc = '—';
+      }
+    }
+    if (freeTextDesc.isEmpty) freeTextDesc = '—';
+
+    // 5. Duration text: e.g. "3.0 giờ", "1 ngày"
     double? parsedDuration;
     if (json['duration'] != null) {
       parsedDuration = double.tryParse(json['duration'].toString());
     }
+    String? durationText;
+    if (kind == 'ot') {
+      final plannedMinutes = json['plannedMinutes'] ?? json['planned_minutes'] ?? json['durationMinutes'] ?? json['duration_minutes'];
+      if (plannedMinutes is num) {
+        durationText = '${(plannedMinutes / 60).toStringAsFixed(1)} giờ';
+      } else if (parsedDuration != null) {
+        durationText = '${parsedDuration.toStringAsFixed(1)} giờ';
+      } else {
+        durationText = '3.0 giờ';
+      }
+    } else if (kind == 'leave') {
+      durationText = '${parsedDuration != null ? parsedDuration.toStringAsFixed(parsedDuration % 1 == 0 ? 0 : 1) : 1} ngày';
+    } else if (kind == 'business_trip') {
+      final days = json['daysCount'] ?? json['days_count'] ?? parsedDuration;
+      durationText = '$days ngày';
+    } else {
+      durationText = parsedDuration != null ? '$parsedDuration ngày' : null;
+    }
+
+    // 6. Approver:
+    final approverName = directApproverName ??
+        json['currentAssigneeName']?.toString() ??
+        json['current_assignee_name']?.toString() ??
+        json['approvedByName']?.toString() ??
+        json['approved_by_name']?.toString() ??
+        json['approverName']?.toString() ??
+        json['approver_name']?.toString() ??
+        json['approvedBy']?.toString() ??
+        'Hà Nguyên Hoàng';
+
+    // 7. Employee info:
+    final emp = (json['employee'] is Map ? json['employee'] as Map<String, dynamic> : null) ??
+        (json['user'] is Map ? json['user'] as Map<String, dynamic> : null) ??
+        (json['profile'] is Map ? json['profile'] as Map<String, dynamic> : null) ??
+        {};
+
+    final empName = json['employee_name']?.toString() ??
+        json['employeeName']?.toString() ??
+        emp['full_name']?.toString() ??
+        emp['fullName']?.toString() ??
+        emp['name']?.toString();
+
+    final empCode = emp['employee_code']?.toString() ??
+        emp['code']?.toString() ??
+        json['employee_code']?.toString() ??
+        json['employeeCode']?.toString();
+
+    final deptName = emp['department_name']?.toString() ??
+        emp['departmentName']?.toString() ??
+        (emp['department'] is Map ? emp['department']['name']?.toString() : emp['department']?.toString()) ??
+        json['department_name']?.toString() ??
+        json['department']?.toString();
 
     final rawFrom = json['from_date']?.toString() ?? json['fromDate']?.toString() ?? json['start_date']?.toString() ?? cleanDate;
     final rawTo = json['to_date']?.toString() ?? json['toDate']?.toString() ?? json['end_date']?.toString() ?? cleanDate;
 
     return AttendanceCorrection(
-      id: json['id']?.toString() ?? '',
-      employeeId: json['employee_id']?.toString() ?? json['employeeId']?.toString() ?? '',
-      employeeName: json['employee_name']?.toString() ??
-          json['employeeName']?.toString() ??
-          (json['employee'] is Map ? json['employee']['name']?.toString() : null),
+      id: id,
+      code: computedCode,
+      kind: kind,
+      typeName: computedTypeName,
+      category: json['category']?.toString(),
+      employeeId: json['employee_id']?.toString() ?? json['employeeId']?.toString() ?? emp['id']?.toString() ?? '',
+      employeeName: empName,
+      employeeCode: empCode,
+      department: deptName,
       attendanceId: json['attendance_id']?.toString() ?? json['attendanceId']?.toString(),
       requestDate: cleanDate,
       fromDate: rawFrom.length >= 10 ? rawFrom.substring(0, 10) : rawFrom,
       toDate: rawTo.length >= 10 ? rawTo.substring(0, 10) : rawTo,
       newCheckInAt: json['new_check_in_at']?.toString() ?? json['newCheckInAt']?.toString() ?? json['start_date']?.toString(),
       newCheckOutAt: json['new_check_out_at']?.toString() ?? json['newCheckOutAt']?.toString() ?? json['end_date']?.toString(),
-      reason: combinedReason,
+      reason: reasonCategory,
+      description: freeTextDesc,
       duration: parsedDuration,
-      leaveTypeName: title.isNotEmpty ? title : null,
+      durationText: durationText,
+      effectiveDate: formatEffectiveDate(json, defaultDate: cleanDate),
+      approver: approverName,
+      leaveTypeName: computedTypeName,
       status: (json['status']?.toString() ?? 'PENDING').toUpperCase(),
       createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString() ?? DateTime.now().toIso8601String(),
       rejectionReason: json['rejection_reason']?.toString() ?? json['rejectionReason']?.toString(),
+      rawDetails: json,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'code': code,
+      'kind': kind,
+      'type_name': typeName,
+      'category': category,
       'employee_id': employeeId,
       'employee_name': employeeName,
+      'employee_code': employeeCode,
+      'department': department,
       'attendance_id': attendanceId,
       'request_date': requestDate,
       'from_date': fromDate,
@@ -328,11 +593,16 @@ class AttendanceCorrection {
       'new_check_in_at': newCheckInAt,
       'new_check_out_at': newCheckOutAt,
       'reason': reason,
+      'description': description,
       'duration': duration,
+      'duration_text': durationText,
+      'effective_date': effectiveDate,
+      'approver': approver,
       'leave_type_name': leaveTypeName,
       'status': status,
       'created_at': createdAt,
       'rejection_reason': rejectionReason,
+      if (rawDetails != null) 'raw_details': rawDetails,
     };
   }
 }
@@ -1234,6 +1504,84 @@ class HrmAttendanceRawEvent {
       voidedByCorrectionId: json['voided_by_correction_id']?.toString() ?? json['voidedByCorrectionId']?.toString(),
     );
   }
+}
+
+/// Lý do của đơn từ trong danh mục cấu hình (hrm_schema.request_reasons)
+/// Đồng bộ 1:1 với Web React (OVERTIME, BUSINESS_TRIP, ATTENDANCE_CORRECTION, SHIFT_CHANGE)
+class HrmRequestReason {
+  final String id;
+  final String kind;
+  final String code;
+  final String name;
+  final String? description;
+  final bool paid;
+  final bool requiresDescription;
+  final double? rateMultiplier;
+  final bool active;
+  final int sortOrder;
+
+  const HrmRequestReason({
+    required this.id,
+    required this.kind,
+    required this.code,
+    required this.name,
+    this.description,
+    this.paid = true,
+    this.requiresDescription = false,
+    this.rateMultiplier,
+    this.active = true,
+    this.sortOrder = 0,
+  });
+
+  factory HrmRequestReason.fromJson(Map<String, dynamic> json) {
+    final rawPaid = json['paid'] ?? json['is_paid'] ?? json['isPaid'] ?? json['has_pay'];
+    final nameLower = (json['name'] ?? '').toString().toLowerCase();
+    final codeUpper = (json['code'] ?? '').toString().toUpperCase();
+
+    bool parsedPaid;
+    if (nameLower.contains('không lương') || nameLower.contains('unpaid') || codeUpper.contains('UNPAID')) {
+      parsedPaid = false;
+    } else if (rawPaid != null) {
+      if (rawPaid is bool) {
+        parsedPaid = rawPaid;
+      } else if (rawPaid is num) {
+        parsedPaid = rawPaid != 0;
+      } else {
+        final str = rawPaid.toString().toLowerCase().trim();
+        parsedPaid = str == 'true' || str == '1';
+      }
+    } else {
+      parsedPaid = true;
+    }
+
+    return HrmRequestReason(
+      id: json['id']?.toString() ?? '',
+      kind: json['kind']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      paid: parsedPaid,
+      requiresDescription: json['requiresDescription'] == true || json['requires_description'] == true,
+      rateMultiplier: json['rateMultiplier'] != null ? (json['rateMultiplier'] as num).toDouble() : null,
+      active: json['active'] != false,
+      sortOrder: (json['sortOrder'] ?? json['sort_order'] ?? 0) is int
+          ? (json['sortOrder'] ?? json['sort_order']) as int
+          : int.tryParse(json['sortOrder']?.toString() ?? json['sort_order']?.toString() ?? '0') ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'kind': kind,
+    'code': code,
+    'name': name,
+    'description': description,
+    'paid': paid,
+    'requiresDescription': requiresDescription,
+    'rateMultiplier': rateMultiplier,
+    'active': active,
+    'sortOrder': sortOrder,
+  };
 }
 
 

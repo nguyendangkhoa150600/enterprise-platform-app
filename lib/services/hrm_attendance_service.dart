@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/hrm_attendance_models.dart';
+import '../models/workspace_models.dart';
 import '../providers/auth_provider.dart';
 import '../utils/error_handler.dart';
 import 'api_client_helper.dart';
+import 'workspace_service.dart';
 import '../core/i18n/app_i18n.dart';
 
 class HrmAttendanceService {
@@ -459,6 +461,9 @@ class HrmAttendanceService {
 
     // 1. Try multiple possible leave types endpoints
     final candidateEndpoints = [
+      '/api/hrm/v1/leave-types?active=true',
+      '/hrm/v1/leave-types?active=true',
+      '/api/hrm/v1/leave-types',
       '/hrm/v1/leave-types',
       '/hrm/v1/leaves/types',
       '/hrm/v1/leave-policies',
@@ -547,19 +552,6 @@ class HrmAttendanceService {
     return _cachedLeaveTypes;
   }
 
-  String _mapLeaveType(String raw) {
-    final upper = raw.toUpperCase();
-    if (upper.contains('PHÉP NĂM') || upper.contains('ANNUAL')) return 'ANNUAL_LEAVE';
-    if (upper.contains('ỐM') || upper.contains('SICK')) return 'SICK_LEAVE';
-    if (upper.contains('VIỆC RIÊNG') || upper.contains('SPECIAL')) return 'PAID_LEAVE';
-    if (upper.contains('KHÔNG LƯƠNG') || upper.contains('UNPAID')) return 'UNPAID_LEAVE';
-    if (upper.contains('THÊM GIỜ') || upper.contains('OVERTIME') || upper.contains('OT')) return 'OVERTIME';
-    if (upper.contains('CÔNG TÁC') || upper.contains('BUSINESS')) return 'BUSINESS_TRIP';
-    if (upper.contains('ĐỔI CA') || upper.contains('SHIFT')) return 'SHIFT_SWAP';
-    if (upper.contains('TẠM ỨNG') || upper.contains('ADVANCE')) return 'SALARY_ADVANCE';
-    return 'ANNUAL_LEAVE';
-  }
-
   // 6.6. Resolve Request Reason ID by Kind (BUSINESS_TRIP, ATTENDANCE_CORRECTION, OVERTIME, SHIFT_CHANGE)
   Future<String?> _resolveReasonIdForKind(String kind) async {
     try {
@@ -586,11 +578,101 @@ class HrmAttendanceService {
     return null;
   }
 
+  // 6.7. Get Request Reasons by Kind from backend (OVERTIME, BUSINESS_TRIP, ATTENDANCE_CORRECTION, SHIFT_CHANGE)
+  Future<List<HrmRequestReason>> getRequestReasons(String kind) async {
+    try {
+      final res = await _dio.get('/hrm/v1/request-reasons', queryParameters: {'kind': kind, 'active': 'true'});
+      final list = (res.data is Map ? res.data['data'] : res.data) as List?;
+      if (list != null && list.isNotEmpty) {
+        return list.map((json) => HrmRequestReason.fromJson(json as Map<String, dynamic>)).toList();
+      }
+      try {
+        await _dio.post('/hrm/v1/request-reasons/defaults');
+        final retryRes = await _dio.get('/hrm/v1/request-reasons', queryParameters: {'kind': kind, 'active': 'true'});
+        final retryList = (retryRes.data is Map ? retryRes.data['data'] : retryRes.data) as List?;
+        if (retryList != null && retryList.isNotEmpty) {
+          return retryList.map((json) => HrmRequestReason.fromJson(json as Map<String, dynamic>)).toList();
+        }
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getRequestReasons($kind) error: $e');
+    }
+    return [];
+  }
+
+  // 6.8. Get Linkable Projects from Workspace (Dự án liên quan - Đồng bộ 1:1 với Web ESS loadLinkableProjects)
+  Future<List<ProjectItem>> getLinkableProjects() async {
+    final List<ProjectItem> allProjects = [];
+    const maxPages = 20;
+    const pageSize = 60;
+
+    for (final baseEndpoint in ['/api/workspace/v1/projects', '/workspace/v1/projects']) {
+      try {
+        allProjects.clear();
+        for (int page = 1; page <= maxPages; page++) {
+          final res = await _dio.get(
+            baseEndpoint,
+            queryParameters: {
+              'page': page,
+              'pageSize': pageSize,
+              'archived': 'exclude',
+            },
+          );
+          final raw = res.data;
+          final list = (raw is Map ? (raw['items'] ?? raw['data']) : raw) as List?;
+          if (list == null || list.isEmpty) break;
+
+          final items = list.map((e) => ProjectItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+          allProjects.addAll(items);
+
+          final total = raw is Map ? (raw['total'] is num ? (raw['total'] as num).toInt() : 0) : 0;
+          if (items.isEmpty || (total > 0 && allProjects.length >= total)) break;
+        }
+
+        if (allProjects.isNotEmpty) {
+          break;
+        }
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] getLinkableProjects $baseEndpoint error: $e');
+      }
+    }
+
+    // Fallback via WorkspaceService if needed
+    if (allProjects.isEmpty) {
+      try {
+        final ws = WorkspaceService();
+        final list = await ws.getProjects(archived: 'exclude');
+        allProjects.addAll(list);
+      } catch (e) {
+        debugPrint('[HrmAttendanceService] WorkspaceService fallback error: $e');
+      }
+    }
+
+    if (allProjects.isEmpty) return [];
+
+    // Filter matching Web canSubmit:
+    // Only projects where user participates (owner, manager, member) or has project update permission
+    final canSubmitList = allProjects.where((p) => p.canSubmit).toList();
+    final candidateList = canSubmitList.isNotEmpty ? canSubmitList : allProjects;
+
+    // Filter out completed and cancelled projects
+    final filtered = candidateList.where((p) => p.status != 'completed' && p.status != 'cancelled').toList();
+
+    // Sort alphabetically by code (matching Web left.code.localeCompare(right.code))
+    filtered.sort((a, b) => a.code.compareTo(b.code));
+
+    return filtered;
+  }
+
   // 7. Create Attendance Correction / ESS Request (Làm đơn & đồng bộ lên hệ thống)
   Future<AttendanceCorrection> createCorrection({
     String? employeeId,
     String? attendanceId,
     String? leaveTypeId,
+    String? reasonId,
+    String? projectId,
+    String? projectCode,
+    String? projectName,
     String? draftId,
     String? expectedUpdatedAt,
     required String requestDate,
@@ -601,8 +683,13 @@ class HrmAttendanceService {
     required String reason,
     double duration = 1.0,
     bool isNegativeLeave = false,
+    String? requestKind,
+    String? businessTripType,
+    String? destination,
+    String? workDepartment,
+    String? vehicle,
   }) async {
-    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration, draftId: $draftId');
+    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration, draftId: $draftId, requestKind: $requestKind');
 
     final cleanReason = reason.contains('] ') ? reason.substring(reason.indexOf('] ') + 2) : reason;
     final lowerReason = reason.toLowerCase();
@@ -611,9 +698,6 @@ class HrmAttendanceService {
     final inTimeClean = newCheckInAt.contains('T')
         ? newCheckInAt
         : (newCheckInAt.length >= 10 ? '${newCheckInAt.substring(0, 10)}T08:00:00' : '${requestDate}T08:00:00');
-    final outTimeClean = newCheckOutAt.contains('T')
-        ? newCheckOutAt
-        : (newCheckOutAt.length >= 10 ? '${newCheckOutAt.substring(0, 10)}T17:30:00' : '${requestDate}T17:30:00');
 
     final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
     String? validUuidLeaveTypeId = (leaveTypeId != null && uuidRegex.hasMatch(leaveTypeId)) ? leaveTypeId : null;
@@ -632,27 +716,28 @@ class HrmAttendanceService {
     }
 
     // Determine ESS Request Category
-    String requestType = 'LEAVE';
-    String requestTitle = 'svc_hrm.title_leave'.tr();
-    if (lowerReason.contains('công tác') || lowerReason.contains('business')) {
-      requestType = 'BUSINESS_TRIP';
-      requestTitle = 'svc_hrm.title_business_trip'.tr();
-    } else if (lowerReason.contains('thêm giờ') || lowerReason.contains('overtime') || lowerReason.contains('ot')) {
-      requestType = 'OVERTIME';
-      requestTitle = 'svc_hrm.title_ot'.tr();
-    } else if (lowerReason.contains('tạm ứng') || lowerReason.contains('advance')) {
-      requestType = 'SALARY_ADVANCE';
-      requestTitle = 'svc_hrm.title_advance'.tr();
-    } else if (lowerReason.contains('đổi ca') || lowerReason.contains('shift')) {
-      requestType = 'SHIFT_CHANGE';
-      requestTitle = 'svc_hrm.title_shift_change'.tr();
-    } else if ((attendanceId != null && attendanceId.isNotEmpty) ||
-        lowerReason.contains('giải trình') ||
-        lowerReason.contains('điều chỉnh công') ||
-        lowerReason.contains('quên') ||
-        lowerReason.contains('bổ sung công')) {
-      requestType = 'ATTENDANCE_CORRECTION';
-      requestTitle = 'svc_hrm.title_correction'.tr();
+    String requestType = requestKind ?? 'LEAVE';
+    if (requestKind == null) {
+      if (lowerReason.startsWith('[nghỉ') ||
+          lowerReason.contains('nghỉ') ||
+          lowerReason.contains('phép') ||
+          validUuidLeaveTypeId != null) {
+        requestType = 'LEAVE';
+      } else if (lowerReason.contains('công tác') || lowerReason.contains('business')) {
+        requestType = 'BUSINESS_TRIP';
+      } else if (lowerReason.contains('thêm giờ') || lowerReason.contains('overtime') || lowerReason.contains('ot') || lowerReason.contains('tăng ca')) {
+        requestType = 'OVERTIME';
+      } else if (lowerReason.contains('tạm ứng') || lowerReason.contains('advance')) {
+        requestType = 'SALARY_ADVANCE';
+      } else if (lowerReason.contains('đổi ca') || lowerReason.contains('shift')) {
+        requestType = 'SHIFT_CHANGE';
+      } else if ((attendanceId != null && attendanceId.isNotEmpty) ||
+          lowerReason.contains('giải trình') ||
+          lowerReason.contains('điều chỉnh công') ||
+          lowerReason.contains('quên') ||
+          lowerReason.contains('bổ sung công')) {
+        requestType = 'ATTENDANCE_CORRECTION';
+      }
     }
 
     final isEmpUuid = employeeId != null && uuidRegex.hasMatch(employeeId);
@@ -729,7 +814,7 @@ class HrmAttendanceService {
     // 2. ATTENDANCE CORRECTION (Giải trình công)
     if (requestType == 'ATTENDANCE_CORRECTION') {
       try {
-        final reasonId = await _resolveReasonIdForKind('ATTENDANCE_CORRECTION');
+        final actualReasonId = reasonId ?? await _resolveReasonIdForKind('ATTENDANCE_CORRECTION');
         final punchAt = inTimeClean.contains('T') ? inTimeClean : '${requestDate}T08:00:00';
         final punchIso = DateTime.tryParse(punchAt)?.toUtc().toIso8601String() ?? DateTime.now().toUtc().toIso8601String();
         final response = await _dio.post(
@@ -737,7 +822,7 @@ class HrmAttendanceService {
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
             if (attendanceId != null && attendanceId.isNotEmpty) 'attendanceId': attendanceId,
-            if (reasonId != null) 'reasonId': reasonId,
+            if (actualReasonId != null) 'reasonId': actualReasonId,
             'requestDate': requestDate,
             'punches': [
               {'kind': 'IN', 'at': punchIso}
@@ -762,16 +847,36 @@ class HrmAttendanceService {
     // 3. OVERTIME (Làm thêm giờ)
     if (requestType == 'OVERTIME') {
       try {
-        final reasonId = await _resolveReasonIdForKind('OVERTIME');
+        final actualReasonId = reasonId ?? await _resolveReasonIdForKind('OVERTIME');
+        final otStartTime = newCheckInAt.contains('T')
+            ? newCheckInAt.split('T').last.substring(0, 5)
+            : '18:00';
+        final otEndTime = newCheckOutAt.contains('T')
+            ? newCheckOutAt.split('T').last.substring(0, 5)
+            : '21:00';
+
+        int plannedMinutes = (duration * 60).round();
+        if (plannedMinutes <= 0) {
+          try {
+            final sParts = otStartTime.split(':').map(int.parse).toList();
+            final eParts = otEndTime.split(':').map(int.parse).toList();
+            plannedMinutes = (eParts[0] * 60 + eParts[1]) - (sParts[0] * 60 + sParts[1]);
+          } catch (_) {}
+        }
+        if (plannedMinutes <= 0) plannedMinutes = 180;
+
         final otRes = await _dio.post(
           '/hrm/v1/ot-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
-            if (reasonId != null) 'reasonId': reasonId,
+            if (actualReasonId != null) 'reasonId': actualReasonId,
+            if (projectId != null && projectId.isNotEmpty) 'projectId': projectId,
+            if (projectCode != null && projectCode.isNotEmpty) 'projectCode': projectCode,
+            if (projectName != null && projectName.isNotEmpty) 'projectName': projectName,
             'workDate': fromDateClean,
-            'startTime': '18:00',
-            'endTime': '21:00',
-            'plannedMinutes': (duration * 60).toInt() > 0 ? (duration * 60).toInt() : 180,
+            'startTime': otStartTime,
+            'endTime': otEndTime,
+            'plannedMinutes': plannedMinutes,
             'otType': 'REGULAR',
             'isNightOt': false,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
@@ -794,20 +899,36 @@ class HrmAttendanceService {
     // 4. BUSINESS TRIP (Công tác)
     if (requestType == 'BUSINESS_TRIP') {
       try {
-        final reasonId = await _resolveReasonIdForKind('BUSINESS_TRIP');
+        final actualReasonId = reasonId ?? await _resolveReasonIdForKind('BUSINESS_TRIP');
+        final bType = (businessTripType != null && businessTripType.isNotEmpty) ? businessTripType : 'DOMESTIC';
+        final dest = (destination != null && destination.trim().isNotEmpty)
+            ? destination.trim()
+            : (cleanReason.isNotEmpty ? cleanReason : 'Công tác theo kế hoạch');
+
         final tripRes = await _dio.post(
           '/hrm/v1/business-trip-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
-            if (reasonId != null) 'reasonId': reasonId,
-            'businessTripType': 'DOMESTIC',
-            'destination': 'svc_hrm.trip_dest_default'.tr(),
+            if (actualReasonId != null) 'reasonId': actualReasonId,
+            if (projectId != null && projectId.isNotEmpty) 'projectId': projectId,
+            if (projectCode != null && projectCode.isNotEmpty) 'projectCode': projectCode,
+            if (projectName != null && projectName.isNotEmpty) 'projectName': projectName,
+            'businessTripType': bType,
+            'destination': dest,
             'fromDate': fromDateClean,
             'toDate': toDateClean,
+            'fromAt': '${fromDateClean}T07:30:00.000Z',
+            'toAt': '${toDateClean}T17:30:00.000Z',
             'daysCount': duration.ceil() > 0 ? duration.ceil() : 1,
             'allowOt': false,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
             'description': cleanReason.isNotEmpty ? cleanReason : reason,
+            'attributes': {
+              if (workDepartment != null && workDepartment.trim().isNotEmpty)
+                'workDepartment': workDepartment.trim(),
+              if (vehicle != null && vehicle.trim().isNotEmpty && vehicle != 'Không cần phương tiện')
+                'vehicle': vehicle.trim(),
+            },
           },
         );
         if (tripRes.statusCode == 200 || tripRes.statusCode == 201) {
@@ -887,18 +1008,41 @@ class HrmAttendanceService {
     final List<AttendanceCorrection> remoteCorrections = [];
     debugPrint('[HrmAttendanceService] getCorrections START with status: $status');
 
-    final endpoints = [
-      '/hrm/v1/shift-change-requests',
-      '/hrm/v1/leave-requests',
-      '/hrm/v1/ot-requests',
-      '/hrm/v1/business-trip-requests',
-      '/hrm/v1/attendance-corrections',
-      '/hrm/v1/salary-advance-requests',
-      '/hrm/v1/profile-corrections',
-      '/hrm/v1/requests',
+    // 8.1 Fetch direct approvers index (matching Web)
+    final Map<String, String> directApprovers = {};
+    try {
+      final daRes = await _dio.get('/hrm/v1/request-direct-approvers');
+      if (daRes.statusCode == 200 && daRes.data != null) {
+        final list = (daRes.data['data'] as List<dynamic>?) ?? [];
+        for (final item in list) {
+          if (item is Map<String, dynamic>) {
+            final rId = item['requestId']?.toString() ?? '';
+            final aName = item['assigneeName']?.toString() ?? '';
+            if (rId.isNotEmpty && aName.isNotEmpty) {
+              directApprovers[rId] = aName;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] get request-direct-approvers error: $e');
+    }
+
+    final endpointConfigs = [
+      {'ep': '/hrm/v1/ot-requests', 'kind': 'ot', 'prefix': 'OT-'},
+      {'ep': '/hrm/v1/leave-requests', 'kind': 'leave', 'prefix': 'LEAVE-'},
+      {'ep': '/hrm/v1/business-trip-requests', 'kind': 'business_trip', 'prefix': 'TRIP-'},
+      {'ep': '/hrm/v1/shift-change-requests', 'kind': 'shift_change', 'prefix': 'SHIFT-'},
+      {'ep': '/hrm/v1/attendance-corrections', 'kind': 'correction', 'prefix': 'CORR-'},
+      {'ep': '/hrm/v1/salary-advance-requests', 'kind': 'advance', 'prefix': 'ADV-'},
+      {'ep': '/hrm/v1/profile-corrections', 'kind': 'profile_correction', 'prefix': 'PRO-'},
+      {'ep': '/hrm/v1/requests', 'kind': 'custom', 'prefix': 'REQ-'},
     ];
 
-    await Future.wait(endpoints.map((ep) async {
+    await Future.wait(endpointConfigs.map((cfg) async {
+      final ep = cfg['ep']!;
+      final kind = cfg['kind']!;
+      final prefix = cfg['prefix']!;
       try {
         final res = await _dio.get(
           ep,
@@ -913,22 +1057,13 @@ class HrmAttendanceService {
               if (item is Map<String, dynamic>) {
                 final id = item['id']?.toString() ?? item['code']?.toString() ?? '';
                 if (id.isNotEmpty && !remoteCorrections.any((c) => c.id == id)) {
-                  // If it's a shift change request without a title
-                  if (ep.contains('shift-change') && (item['title'] == null && item['leaveTypeName'] == null)) {
-                    item['title'] = 'svc_hrm.title_shift_swap'.tr();
-                    item['leave_type_name'] = 'svc_hrm.title_shift_swap'.tr();
-                  } else if (ep.contains('ot-requests') && (item['title'] == null && item['leaveTypeName'] == null)) {
-                    item['title'] = 'svc_hrm.title_ot_short'.tr();
-                    item['leave_type_name'] = 'svc_hrm.title_ot_short'.tr();
-                  } else if (ep.contains('business-trip') && (item['title'] == null && item['leaveTypeName'] == null)) {
-                    item['title'] = 'svc_hrm.title_trip_short'.tr();
-                    item['leave_type_name'] = 'svc_hrm.title_trip_short'.tr();
-                  } else if (ep.contains('salary-advance') && (item['title'] == null && item['leaveTypeName'] == null)) {
-                    item['title'] = 'svc_hrm.kind_advance'.tr();
-                    item['leave_type_name'] = 'svc_hrm.kind_advance'.tr();
-                  }
-
-                  final parsed = AttendanceCorrection.fromJson(item);
+                  final approver = directApprovers[id];
+                  final parsed = AttendanceCorrection.fromJson(
+                    item,
+                    defaultKind: kind,
+                    defaultCodePrefix: prefix,
+                    directApproverName: approver,
+                  );
                   remoteCorrections.add(parsed);
                 }
               }
@@ -939,6 +1074,13 @@ class HrmAttendanceService {
         debugPrint('[HrmAttendanceService] get $ep error: $e');
       }
     }));
+
+    // 8.2 Sort newest first (createdAt descending) - matching Web 1:1
+    remoteCorrections.sort((a, b) {
+      final timeA = DateTime.tryParse(a.createdAt)?.millisecondsSinceEpoch ?? 0;
+      final timeB = DateTime.tryParse(b.createdAt)?.millisecondsSinceEpoch ?? 0;
+      return timeB.compareTo(timeA);
+    });
 
     if (status != null && status != 'ALL') {
       return remoteCorrections.where((c) => c.status == status).toList();
@@ -1150,35 +1292,63 @@ class HrmAttendanceService {
     return false;
   }
 
-  Future<bool> cancelCorrection(String id) async {
-    debugPrint('[HrmAttendanceService] cancelCorrection START for id: $id');
-    final attempts = <Future<Response<dynamic>> Function()>[
-      () => _dio.post('/hrm/v1/leave-requests/$id/cancel'),
-      () => _dio.patch('/hrm/v1/leave-requests/$id/cancel'),
-      () => _dio.delete('/hrm/v1/leave-requests/$id'),
-      () => _dio.post('/hrm/v1/attendance-corrections/$id/cancel'),
-      () => _dio.patch('/hrm/v1/attendance-corrections/$id/cancel'),
-      () => _dio.delete('/hrm/v1/attendance-corrections/$id'),
-      () => _dio.post('/hrm/v1/requests/$id/cancel'),
-      () => _dio.patch('/hrm/v1/requests/$id/cancel'),
-      () => _dio.delete('/hrm/v1/requests/$id'),
-      () => _dio.post('/hrm/v1/leave-requests/$id/withdraw'),
-      () => _dio.patch('/hrm/v1/leave-requests/$id', data: {'status': 'CANCELLED'}),
+  Future<bool> cancelCorrection(String id, {String? kind}) async {
+    debugPrint('[HrmAttendanceService] cancelCorrection START for id: $id, kind: $kind');
+
+    // 1. Primary canonical endpoint matching Web 1:1: POST /hrm/v1/requests/:kind/:id/withdraw
+    final kindsToTry = [
+      if (kind != null && kind.isNotEmpty) kind,
+      'ot',
+      'leave',
+      'business_trip',
+      'shift_change',
+      'correction',
+      'advance',
+      'profile_correction',
+      'custom',
     ];
 
-    for (int i = 0; i < attempts.length; i++) {
+    final Set<String> uniqueKinds = {};
+    for (final k in kindsToTry) {
+      if (uniqueKinds.contains(k)) continue;
+      uniqueKinds.add(k);
+
       try {
-        final res = await attempts[i]();
+        final res = await _dio.post('/hrm/v1/requests/$k/$id/withdraw');
         if (res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300) {
-          debugPrint('[HrmAttendanceService] cancelCorrection SUCCESS on attempt $i, status: ${res.statusCode}');
+          debugPrint('[HrmAttendanceService] cancelCorrection SUCCESS via /hrm/v1/requests/$k/$id/withdraw');
           return true;
         }
       } catch (e) {
         if (e is DioException) {
-          debugPrint('[HrmAttendanceService] cancelCorrection attempt $i failed: ${e.response?.statusCode} ${e.response?.data}');
+          debugPrint('[HrmAttendanceService] /hrm/v1/requests/$k/$id/withdraw attempt failed: ${e.response?.statusCode} ${e.response?.data}');
+          if (e.response?.statusCode == 400 || e.response?.statusCode == 409) {
+            final msg = ApiErrorHandler.parse(e);
+            throw Exception(msg);
+          }
         }
       }
     }
+
+    // 2. Fallback endpoints for older APIs
+    final fallbackEndpoints = [
+      '/hrm/v1/leave-requests/$id/cancel',
+      '/hrm/v1/ot-requests/$id/cancel',
+      '/hrm/v1/attendance-corrections/$id/cancel',
+      '/hrm/v1/requests/$id/cancel',
+      '/hrm/v1/leave-requests/$id/withdraw',
+      '/hrm/v1/ot-requests/$id/withdraw',
+    ];
+
+    for (final ep in fallbackEndpoints) {
+      try {
+        final res = await _dio.post(ep);
+        if (res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300) {
+          return true;
+        }
+      } catch (_) {}
+    }
+
     return false;
   }
 
@@ -1319,10 +1489,15 @@ class HrmAttendanceService {
       final bytes = await file.readAsBytes();
       final ext = fileName.split('.').last.toLowerCase();
       String contentType = 'application/octet-stream';
-      if (ext == 'jpg' || ext == 'jpeg') contentType = 'image/jpeg';
-      else if (ext == 'png') contentType = 'image/png';
-      else if (ext == 'webp') contentType = 'image/webp';
-      else if (ext == 'pdf') contentType = 'application/pdf';
+      if (ext == 'jpg' || ext == 'jpeg') {
+        contentType = 'image/jpeg';
+      } else if (ext == 'png') {
+        contentType = 'image/png';
+      } else if (ext == 'webp') {
+        contentType = 'image/webp';
+      } else if (ext == 'pdf') {
+        contentType = 'application/pdf';
+      }
 
       // Step 1: Create attachment record
       final createRes = await _dio.post(

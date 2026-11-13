@@ -701,7 +701,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
                 // Shift Details Pill
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(12),
@@ -710,11 +710,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.schedule, size: 15, color: Color(0xFFFDE047)),
+                      const Icon(Icons.schedule, size: 14, color: Color(0xFFFDE047)),
                       const SizedBox(width: 6),
-                      Text(
-                        _shiftLabel(shift),
-                        style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                      Flexible(
+                        child: Text(
+                          _shiftLabel(shift),
+                          style: const TextStyle(fontSize: 11.5, color: Colors.white, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

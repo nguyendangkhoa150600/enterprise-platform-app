@@ -10,7 +10,6 @@ import '../../account_screen.dart';
 import '../../leave_balances_screen.dart';
 import '../../fleet_schedule_screen.dart';
 import '../../maintenance_screen.dart';
-import '../../inventory_screen.dart';
 import '../../inventory/inventory_overview_screen.dart';
 import '../../inventory/inventory_items_screen.dart';
 import '../../inventory/inventory_transactions_screen.dart';
@@ -25,6 +24,7 @@ import '../../user_management_screen.dart';
 import '../../assistant_chat_screen.dart';
 import '../../enterprise_applications_screen.dart';
 import 'package:provider/provider.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/permissions/hrm_permissions.dart';
 import '../../../models/platform_models.dart';
 import '../../../providers/auth_provider.dart';
@@ -53,7 +53,7 @@ class HomeMobileModulesView extends StatefulWidget {
 class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   String _moduleSearchQuery = '';
   final TextEditingController _moduleSearchController = TextEditingController();
-  String _selectedCategory = 'ALL'; // 'ALL', 'APPS', 'ORG', 'ADMIN'
+  String _selectedCategory = 'APPS'; // 'APPS' (Grid), 'LIST'
 
   @override
   void dispose() {
@@ -85,7 +85,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
     final auth = context.watch<AuthProvider>();
     context.watch<HrmCapabilities>();
     final canShowInventory = (auth.isTenantAdmin == true) || (auth.isPlatformAdmin == true) || _modInventory;
-    final showApps = _selectedCategory == 'ALL' || _selectedCategory == 'APPS';
+    final showApps = true;
     // The ORG and ADMIN major categories are hidden from the mobile menu.
     const showOrg = false;
     const showAdmin = false;
@@ -185,35 +185,35 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
             ),
           ),
 
-          // Category Pills Filter: [Tất cả] [Ứng dụng] [Tổ chức & Bộ máy] [Quản trị]
+          // View Mode Switcher: [Ứng dụng] [Danh sách]
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(bottom: 14),
             child: Row(
               children: [
                 _buildCategoryPill(
-                  id: 'ALL',
-                  label: 'Tất cả',
-                  icon: Icons.apps_rounded,
+                  id: 'APPS',
+                  label: 'modules_menu.apps'.tr(),
+                  icon: Icons.grid_view_rounded,
                 ),
                 const SizedBox(width: 8),
                 _buildCategoryPill(
-                  id: 'APPS',
-                  label: 'Ứng dụng',
-                  icon: Icons.grid_view_rounded,
+                  id: 'LIST',
+                  label: 'modules_menu.list'.tr(),
+                  icon: Icons.view_list_rounded,
                 ),
               ],
             ),
           ),
 
           // ==========================================
-          // MỤC LỚN 1: ỨNG DỤNG
+          // MỤC LỚN 1: ỨNG DỤNG / DANH SÁCH
           // ==========================================
           if (showApps) ...[
             _buildMajorCategoryHeader(
-              title: 'MỤC LỚN: ỨNG DỤNG',
+              title: _selectedCategory == 'LIST' ? 'MỤC LỚN: DANH SÁCH' : 'MỤC LỚN: ỨNG DỤNG',
               subtitle: 'Các phân hệ vận hành, dự án, quy trình & sản xuất kinh doanh',
-              icon: Icons.grid_view_rounded,
+              icon: _selectedCategory == 'LIST' ? Icons.view_list_rounded : Icons.grid_view_rounded,
               color: const Color(0xFF2563EB),
             ),
 
@@ -941,9 +941,13 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
       return const SizedBox.shrink();
     }
 
+    final isListView = _selectedCategory == 'LIST';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      padding: isListView
+          ? const EdgeInsets.fromLTRB(16, 16, 16, 8)
+          : const EdgeInsets.fromLTRB(16, 18, 16, 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -959,70 +963,150 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.6,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredItems.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 18,
-              crossAxisSpacing: 10,
-              childAspectRatio: 0.92,
-            ),
-            itemBuilder: (context, index) {
-              final item = filteredItems[index];
-              final label = item['title'] as String;
-              final icon = item['icon'] as IconData;
-              final bg = item['bg'] as Color;
-              final iconColor = item['iconColor'] as Color;
-              final onTap = item['onTap'] as VoidCallback;
-
-              return InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: bg,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(
-                        child: Icon(icon, color: iconColor, size: 26),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF334155),
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                  color: Color(0xFF0F172A),
                 ),
-              );
-            },
+              ),
+              if (isListView)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${filteredItems.length}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+            ],
           ),
+          const SizedBox(height: 14),
+          if (!isListView)
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filteredItems.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 18,
+                crossAxisSpacing: 10,
+                childAspectRatio: 0.92,
+              ),
+              itemBuilder: (context, index) {
+                final item = filteredItems[index];
+                final label = item['title'] as String;
+                final icon = item['icon'] as IconData;
+                final bg = item['bg'] as Color;
+                final iconColor = item['iconColor'] as Color;
+                final onTap = item['onTap'] as VoidCallback;
+
+                return InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Icon(icon, color: iconColor, size: 26),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF334155),
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filteredItems.length,
+              separatorBuilder: (_, index) => const Divider(
+                height: 1,
+                thickness: 1,
+                color: Color(0xFFF1F5F9),
+              ),
+              itemBuilder: (context, index) {
+                final item = filteredItems[index];
+                final label = item['title'] as String;
+                final icon = item['icon'] as IconData;
+                final bg = item['bg'] as Color;
+                final iconColor = item['iconColor'] as Color;
+                final onTap = item['onTap'] as VoidCallback;
+
+                return InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: bg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Icon(icon, color: iconColor, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

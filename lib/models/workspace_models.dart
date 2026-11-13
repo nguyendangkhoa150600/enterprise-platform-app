@@ -127,6 +127,7 @@ class ProjectItem {
   final int closedItems;
   final int overdueItems;
   final String? myRole;
+  final List<String> myPermissions;
   final DateTime? startDate;
   final DateTime? endDate;
   final List<StandaloneTaskItem> tasks;
@@ -145,6 +146,7 @@ class ProjectItem {
     this.closedItems = 0,
     this.overdueItems = 0,
     this.myRole,
+    this.myPermissions = const [],
     this.startDate,
     this.endDate,
     this.tasks = const [],
@@ -156,6 +158,12 @@ class ProjectItem {
     List<StandaloneTaskItem> taskList = [];
     if (rawTasks is List) {
       taskList = rawTasks.map((t) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(t as Map))).toList();
+    }
+
+    final rawPerms = json['myPermissions'];
+    List<String> perms = [];
+    if (rawPerms is List) {
+      perms = rawPerms.map((e) => e.toString()).toList();
     }
 
     return ProjectItem(
@@ -172,10 +180,21 @@ class ProjectItem {
       closedItems: CustomerItem.parseInt(json['closedItems']),
       overdueItems: CustomerItem.parseInt(json['overdueItems']),
       myRole: json['myRole']?.toString(),
+      myPermissions: perms,
       startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
       endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
       tasks: taskList,
     );
+  }
+
+  bool get canSubmit {
+    if (myRole == null || myRole!.isEmpty) return false;
+    const submitterRoles = {'owner', 'manager', 'member'};
+    if (myPermissions.isEmpty) {
+      return submitterRoles.contains(myRole);
+    }
+    return myPermissions.contains('project.update_all') ||
+        myPermissions.contains('project.update_related');
   }
 
   String get statusLabel {
@@ -183,9 +202,12 @@ class ProjectItem {
       case 'active':
       case 'deploying':
       case 'in_progress':
-        return 'models.workspace.deploying'.tr();
+        return 'Đang triển khai';
+      case 'planning':
+        return 'Đang lập kế hoạch';
       case 'paused':
       case 'blocked':
+      case 'on_hold':
         return 'Tạm dừng';
       case 'completed':
       case 'done':

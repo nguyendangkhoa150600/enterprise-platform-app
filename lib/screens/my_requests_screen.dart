@@ -14,7 +14,7 @@ import 'requests/components/request_detail_dialog.dart';
 import 'requests/components/request_form_dialog.dart';
 
 class MyRequestsScreen extends StatefulWidget {
-  final int initialSubTab; // 0: Bản nháp, 1: Tạo đơn mới (Catalog), 2: Chờ duyệt, 3: Lịch sử
+  final int initialSubTab; // 0: Tạo đơn mới (Catalog), 1: Tất cả, 2: Chờ duyệt, 3: Đã duyệt, 4: Từ chối
   final String? initialRequestType;
   final String? initialRequestId;
   final String? initialStatus;
@@ -22,7 +22,7 @@ class MyRequestsScreen extends StatefulWidget {
 
   const MyRequestsScreen({
     super.key,
-    this.initialSubTab = 1,
+    this.initialSubTab = 2,
     this.initialRequestType,
     this.initialRequestId,
     this.initialStatus,
@@ -139,9 +139,16 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         uniqueDrafts[d.id] = d;
       }
 
+      final nonDrafts = allRemote.where((c) => c.status != 'DRAFT').toList();
+      nonDrafts.sort((a, b) {
+        final timeA = DateTime.tryParse(a.createdAt)?.millisecondsSinceEpoch ?? 0;
+        final timeB = DateTime.tryParse(b.createdAt)?.millisecondsSinceEpoch ?? 0;
+        return timeB.compareTo(timeA);
+      });
+
       setState(() {
         _context = results[0] as AttendanceContext?;
-        _corrections = allRemote.where((c) => c.status != 'DRAFT').toList();
+        _corrections = nonDrafts;
         _leaveTypes = results[2] as List<LeaveType>? ?? [];
         _drafts = uniqueDrafts.values.toList();
         _isLoading = false;
@@ -184,9 +191,11 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
       if (_requestSearchKeyword.isNotEmpty) {
         final kw = _requestSearchKeyword.toLowerCase();
         final matchReason = c.reason.toLowerCase().contains(kw);
-        final matchType = (c.leaveTypeName ?? '').toLowerCase().contains(kw);
+        final matchType = (c.typeName ?? c.leaveTypeName ?? '').toLowerCase().contains(kw);
         final matchId = c.id.toLowerCase().contains(kw);
-        if (!matchReason && !matchType && !matchId) return false;
+        final matchCode = (c.code ?? '').toLowerCase().contains(kw);
+        final matchDesc = c.description.toLowerCase().contains(kw);
+        if (!matchReason && !matchType && !matchId && !matchCode && !matchDesc) return false;
       }
 
       if (_requestTypeFilter != 'ALL') {
@@ -253,7 +262,9 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
 
   Widget _buildRequestsContent() {
     final pendingCount = _corrections.where((c) => c.status == 'PENDING').length;
-    final historyCount = _corrections.where((c) => c.status != 'PENDING').length;
+    final approvedCount = _corrections.where((c) => c.status == 'APPROVED').length;
+    final rejectedCount = _corrections.where((c) => c.status == 'REJECTED' || c.status == 'CANCELLED').length;
+    final allCount = _corrections.length;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -357,7 +368,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -495,33 +506,39 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 3. Sub-Navigation Tabs Bar (Bản nháp | Tạo đơn mới 7 loại đơn | Chờ duyệt | Lịch sử)
+          // 3. Sub-Navigation Tabs Bar (Tạo đơn nhanh | Tất cả | Chờ duyệt | Đã duyệt | Từ chối)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
                 _buildRequestSubTabButton(
                   index: 0,
-                  label: 'my_requests.tab_drafts'.tr(),
-                  count: _drafts.isNotEmpty ? _drafts.length : null,
-                ),
-                const SizedBox(width: 6),
-                _buildRequestSubTabButton(
-                  index: 1,
                   label: 'my_requests.tab_catalog'.tr(),
                   badge: 'my_requests.tab_catalog_badge'.tr(),
                 ),
                 const SizedBox(width: 6),
                 _buildRequestSubTabButton(
+                  index: 1,
+                  label: 'my_requests.tab_all'.tr(),
+                  count: allCount,
+                ),
+                const SizedBox(width: 6),
+                _buildRequestSubTabButton(
                   index: 2,
-                  label: 'my_requests.tab_pending'.tr(),
+                  label: 'my_requests.tab_pending_short'.tr(),
                   count: pendingCount,
                 ),
                 const SizedBox(width: 6),
                 _buildRequestSubTabButton(
                   index: 3,
-                  label: 'my_requests.tab_history'.tr(),
-                  count: historyCount,
+                  label: 'my_requests.tab_approved'.tr(),
+                  count: approvedCount,
+                ),
+                const SizedBox(width: 6),
+                _buildRequestSubTabButton(
+                  index: 4,
+                  label: 'my_requests.tab_rejected'.tr(),
+                  count: rejectedCount,
                 ),
               ],
             ),
@@ -529,14 +546,14 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
           const SizedBox(height: 14),
 
           // 4. Sub-tab Content
-          if (_requestsSubTab == 1) ...[
+          if (_requestsSubTab == 0) ...[
             // ====================================================
-            // SUB-TAB 1: 7 REQUEST CATALOG CARDS (100% MATCHING WEB)
+            // SUB-TAB 0: 4 REQUEST CATALOG CARDS (100% MATCHING WEB)
             // ====================================================
             _buildCatalogCard(
-              icon: Icons.description_outlined,
-              iconBgColor: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF2563EB),
+              icon: Icons.calendar_today_outlined,
+              iconBgColor: const Color(0xFFECFDF5),
+              iconColor: const Color(0xFF059669),
               badgeText: 'my_requests.leave_badge'.tr(),
               badgeBgColor: const Color(0xFFECFDF5),
               badgeTextColor: const Color(0xFF059669),
@@ -544,14 +561,14 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.leave_desc'.tr(),
               infoBoxText: 'my_requests.leave_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Phép năm (Hưởng nguyên lương)'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn xin nghỉ'),
             ),
             const SizedBox(height: 12),
 
             _buildCatalogCard(
               icon: Icons.access_time_filled_rounded,
-              iconBgColor: const Color(0xFFFEF3C7),
-              iconColor: const Color(0xFFD97706),
+              iconBgColor: const Color(0xFFF5F3FF),
+              iconColor: const Color(0xFF7C3AED),
               badgeText: 'my_requests.ot_badge'.tr(),
               badgeBgColor: const Color(0xFFFEF3C7),
               badgeTextColor: const Color(0xFFD97706),
@@ -559,14 +576,14 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.ot_desc'.tr(),
               infoBoxText: 'my_requests.ot_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Làm thêm giờ (Overtime)'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn tăng ca'),
             ),
             const SizedBox(height: 12),
 
             _buildCatalogCard(
-              icon: Icons.flight_takeoff_rounded,
-              iconBgColor: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF2563EB),
+              icon: Icons.business_center_outlined,
+              iconBgColor: const Color(0xFFFFF7ED),
+              iconColor: const Color(0xFFEA580C),
               badgeText: 'my_requests.trip_badge'.tr(),
               badgeBgColor: const Color(0xFFEFF6FF),
               badgeTextColor: const Color(0xFF2563EB),
@@ -574,28 +591,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.trip_desc'.tr(),
               infoBoxText: 'my_requests.trip_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đi công tác / Giải trình công'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn công tác'),
             ),
             const SizedBox(height: 12),
 
             _buildCatalogCard(
-              icon: Icons.swap_horiz_rounded,
-              iconBgColor: const Color(0xFFECFDF5),
-              iconColor: const Color(0xFF059669),
-              badgeText: 'my_requests.shift_badge'.tr(),
-              badgeBgColor: const Color(0xFFECFDF5),
-              badgeTextColor: const Color(0xFF059669),
-              title: 'requests.type.shift_change'.tr(),
-              description: 'my_requests.shift_desc'.tr(),
-              infoBoxText: 'my_requests.shift_info'.tr(),
-              buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn đổi ca làm việc'),
-            ),
-            const SizedBox(height: 12),
-
-            _buildCatalogCard(
-              icon: Icons.edit_calendar_rounded,
-              iconBgColor: const Color(0xFFFFE4E6),
+              icon: Icons.article_outlined,
+              iconBgColor: const Color(0xFFFFF1F2),
               iconColor: const Color(0xFFE11D48),
               badgeText: 'my_requests.explain_badge'.tr(),
               badgeBgColor: const Color(0xFFFFE4E6),
@@ -604,41 +606,35 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
               description: 'my_requests.explain_desc'.tr(),
               infoBoxText: 'my_requests.explain_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đi công tác / Giải trình công'),
+              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn giải trình chấm công'),
             ),
-            const SizedBox(height: 12),
+          ] else if (_requestsSubTab == 1) ...[
+            // ====================================================
+            // SUB-TAB 1: TẤT CẢ (ALL REQUESTS)
+            // ====================================================
+            () {
+              final allList = _corrections;
+              final filtered = _filterCorrectionsList(allList);
 
-            _buildCatalogCard(
-              icon: Icons.payments_outlined,
-              iconBgColor: const Color(0xFFF3E8FF),
-              iconColor: const Color(0xFF7C3AED),
-              badgeText: 'my_requests.advance_badge'.tr(),
-              badgeBgColor: const Color(0xFFF3E8FF),
-              badgeTextColor: const Color(0xFF7C3AED),
-              title: 'my_requests.advance_title'.tr(),
-              description: 'my_requests.advance_desc'.tr(),
-              infoBoxText: 'my_requests.advance_info'.tr(),
-              buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn xin tạm ứng lương'),
-            ),
-            const SizedBox(height: 12),
-
-            _buildCatalogCard(
-              icon: Icons.badge_outlined,
-              iconBgColor: const Color(0xFFEEF2FF),
-              iconColor: const Color(0xFF4F46E5),
-              badgeText: 'my_requests.info_badge'.tr(),
-              badgeBgColor: const Color(0xFFEEF2FF),
-              badgeTextColor: const Color(0xFF4F46E5),
-              title: 'my_requests.info_title'.tr(),
-              description: 'my_requests.info_desc'.tr(),
-              infoBoxText: 'my_requests.info_info'.tr(),
-              buttonText: 'my_requests.start_request'.tr(),
-              onTap: () => _showCorrectionDialog(null, initialType: 'Đơn điều chỉnh thông tin nhân sự'),
-            ),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildRequestFilterBar(allList.length, filtered.length),
+                  const SizedBox(height: 12),
+                  if (filtered.isEmpty)
+                    _buildEmptyState(
+                      icon: Icons.folder_open_outlined,
+                      title: 'my_requests.all_empty_title'.tr(),
+                      desc: 'my_requests.all_empty_desc'.tr(),
+                    )
+                  else
+                    ...filtered.map((c) => _buildCorrectionCard(c)),
+                ],
+              );
+            }(),
           ] else if (_requestsSubTab == 2) ...[
             // ====================================================
-            // SUB-TAB 2: PENDING REQUESTS (WITH SEARCH & FILTERS)
+            // SUB-TAB 2: CHỜ DUYỆT (PENDING REQUESTS)
             // ====================================================
             () {
               final pendingList = _corrections.where((c) => c.status == 'PENDING').toList();
@@ -650,38 +646,10 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                   _buildRequestFilterBar(pendingList.length, filtered.length),
                   const SizedBox(height: 12),
                   if (filtered.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFF1F5F9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.inbox_outlined, size: 36, color: Color(0xFF94A3B8)),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'my_requests.pending_empty_title'.tr(),
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'my_requests.pending_empty_desc'.tr(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                          ),
-                        ],
-                      ),
+                    _buildEmptyState(
+                      icon: Icons.inbox_outlined,
+                      title: 'my_requests.pending_empty_title'.tr(),
+                      desc: 'my_requests.pending_empty_desc'.tr(),
                     )
                   else
                     ...filtered.map((c) => _buildCorrectionCard(c)),
@@ -690,159 +658,94 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
             }(),
           ] else if (_requestsSubTab == 3) ...[
             // ====================================================
-            // SUB-TAB 3: HISTORY REQUESTS (APPROVED / REJECTED / CANCELLED)
+            // SUB-TAB 3: ĐÃ DUYỆT (APPROVED REQUESTS)
             // ====================================================
             () {
-              final historyList = _corrections.where((c) => c.status != 'PENDING').toList();
-              final filtered = _filterCorrectionsList(historyList);
+              final approvedList = _corrections.where((c) => c.status == 'APPROVED').toList();
+              final filtered = _filterCorrectionsList(approvedList);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildRequestFilterBar(historyList.length, filtered.length),
+                  _buildRequestFilterBar(approvedList.length, filtered.length),
                   const SizedBox(height: 12),
                   if (filtered.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFF1F5F9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.history_rounded, size: 36, color: Color(0xFF94A3B8)),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'my_requests.history_empty_title'.tr(),
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'my_requests.history_empty_desc'.tr(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                          ),
-                        ],
-                      ),
+                    _buildEmptyState(
+                      icon: Icons.check_circle_outline_rounded,
+                      title: 'my_requests.approved_empty_title'.tr(),
+                      desc: 'my_requests.approved_empty_desc'.tr(),
                     )
                   else
                     ...filtered.map((c) => _buildCorrectionCard(c)),
                 ],
               );
             }(),
-          ] else if (_requestsSubTab == 0) ...[
+          ] else if (_requestsSubTab == 4) ...[
             // ====================================================
-            // SUB-TAB 0: DRAFTS (BẢN NHÁP)
+            // SUB-TAB 4: TỪ CHỐI / HỦY (REJECTED / CANCELLED REQUESTS)
             // ====================================================
             () {
-              if (_drafts.isEmpty) {
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF1F5F9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.drafts_outlined, size: 36, color: Color(0xFF94A3B8)),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'my_requests.drafts_empty_title'.tr(),
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'my_requests.drafts_empty_desc'.tr(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() => _requestsSubTab = 1);
-                        },
-                        icon: const Icon(Icons.add, size: 16),
-                        label: Text('my_requests.view_catalog'.tr()),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F172A),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
+              final rejectedList = _corrections.where((c) => c.status == 'REJECTED' || c.status == 'CANCELLED').toList();
+              final filtered = _filterCorrectionsList(rejectedList);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'my_requests.drafts_list'.tr(args: {'count': _drafts.length}),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                      ),
-                      TextButton.icon(
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text('my_requests.delete_all_title'.tr()),
-                              content: Text('my_requests.delete_all_desc'.tr()),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: Text('my_requests.delete_all_confirm'.tr(), style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            for (final d in _drafts) {
-                              if (!d.id.startsWith('DFT-')) {
-                                _service.deleteDraft(d.id, expectedUpdatedAt: d.createdAt);
-                              }
-                            }
-                            setState(() => _drafts.clear());
-                            _saveLocalDrafts();
-                          }
-                        },
-                        icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Color(0xFFEF4444)),
-                        label: Text('my_requests.delete_all'.tr(), style: TextStyle(fontSize: 12, color: Color(0xFFEF4444))),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ..._drafts.map((d) => _buildDraftCard(d)),
+                  _buildRequestFilterBar(rejectedList.length, filtered.length),
+                  const SizedBox(height: 12),
+                  if (filtered.isEmpty)
+                    _buildEmptyState(
+                      icon: Icons.cancel_outlined,
+                      title: 'my_requests.rejected_empty_title'.tr(),
+                      desc: 'my_requests.rejected_empty_desc'.tr(),
+                    )
+                  else
+                    ...filtered.map((c) => _buildCorrectionCard(c)),
                 ],
               );
             }(),
           ],
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 36, color: const Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            desc,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
         ],
       ),
     );
@@ -890,7 +793,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
       },
       totalCount: totalCount,
       filteredCount: filteredCount,
-      showStatusDropdown: _requestsSubTab == 3,
+      showStatusDropdown: _requestsSubTab == 1,
     );
   }
 
@@ -963,16 +866,21 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
     showCorrectionDetailDialog(
       context: context,
       c: c,
+      attendanceContext: _context,
       onCancelRequest: _handleCancelRequest,
     );
   }
 
   Future<void> _handleCancelRequest(AttendanceCorrection c) async {
+    final displayCode = (c.code != null && c.code!.isNotEmpty)
+        ? c.code!
+        : (c.id.length >= 8 ? c.id.substring(0, 8).toUpperCase() : c.id.toUpperCase());
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('my_requests.cancel_confirm_title'.tr()),
-        content: Text('my_requests.cancel_confirm_msg'.tr(args: {'code': c.id.substring(c.id.length >= 8 ? c.id.length - 8 : 0).toUpperCase()})),
+        content: Text('my_requests.cancel_confirm_msg'.tr(args: {'code': displayCode})),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.no'.tr())),
           TextButton(
@@ -985,7 +893,10 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
 
     if (confirm == true) {
       try {
-        await _service.cancelCorrection(c.id);
+        final ok = await _service.cancelCorrection(c.id, kind: c.kind);
+        if (!ok) {
+          throw Exception('Thu hồi đơn không thành công. Vui lòng kiểm tra lại quyền hạn.');
+        }
         setState(() {
           _cancelledRequestIds.add(c.id);
           _corrections.removeWhere((item) => item.id == c.id);
@@ -1004,50 +915,6 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         }
       }
     }
-  }
-
-  // ==========================================
-  // DRAFT CARD WIDGET
-  // ==========================================
-  Widget _buildDraftCard(AttendanceCorrection draft) {
-    return RequestDraftCard(
-      draft: draft,
-      onDelete: () async {
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text('my_requests.delete_draft_title'.tr()),
-            content: Text('my_requests.delete_draft_desc'.tr()),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text('common.delete'.tr(), style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-        );
-        if (confirm == true) {
-          if (!draft.id.startsWith('DFT-')) {
-            _service.deleteDraft(draft.id, expectedUpdatedAt: draft.createdAt);
-          }
-          setState(() {
-            _drafts.removeWhere((d) => d.id == draft.id);
-          });
-          await _saveLocalDrafts();
-        }
-      },
-      onEdit: () {
-        String draftType = 'Nghỉ phép';
-        final match = RegExp(r'^\[(.*?)\]').firstMatch(draft.reason);
-        if (match != null) {
-          draftType = match.group(1)!;
-        } else if (draft.leaveTypeName != null && draft.leaveTypeName!.isNotEmpty) {
-          draftType = draft.leaveTypeName!;
-        }
-        _showCorrectionDialog(null, initialType: draftType, draftItem: draft);
-      },
-    );
   }
 
   void _showCorrectionDialog(AttendanceRecord? item, {String? initialType, AttendanceCorrection? draftItem}) {
