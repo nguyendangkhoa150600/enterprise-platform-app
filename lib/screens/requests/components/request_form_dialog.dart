@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../models/hrm_attendance_models.dart';
+import '../../../models/workspace_models.dart';
 import '../../../services/hrm_attendance_service.dart';
 import '../../../utils/error_handler.dart';
 
@@ -70,6 +71,88 @@ const List<LeaveReasonItem> kDefaultLeaveReasons = [
   LeaveReasonItem(
     name: 'Nghỉ ốm',
     isPaid: false,
+  ),
+];
+
+/// Danh mục lý do mặc định cho Làm thêm giờ (Đồng bộ 1:1 với Web ESS & DEFAULT_REQUEST_REASONS)
+const List<HrmRequestReason> kDefaultOtReasons = [
+  HrmRequestReason(
+    id: 'ot_work',
+    kind: 'OVERTIME',
+    code: 'OT_WORK',
+    name: 'Theo yêu cầu công việc',
+    description: 'Làm thêm để hoàn thành công việc được giao',
+    paid: true,
+    requiresDescription: false,
+    sortOrder: 10,
+  ),
+  HrmRequestReason(
+    id: 'ot_other',
+    kind: 'OVERTIME',
+    code: 'OT_OTHER',
+    name: 'Khác',
+    description: 'Lý do khác, cần mô tả cụ thể',
+    paid: true,
+    requiresDescription: true,
+    sortOrder: 90,
+  ),
+];
+
+/// Danh mục lý do mặc định cho Công tác (Đồng bộ 1:1 với Web ESS)
+const List<HrmRequestReason> kDefaultTripReasons = [
+  HrmRequestReason(
+    id: 'trip_plan',
+    kind: 'BUSINESS_TRIP',
+    code: 'TRIP_PLAN',
+    name: 'Công tác theo kế hoạch',
+    description: 'Công tác theo kế hoạch đã được giao',
+    paid: true,
+    requiresDescription: false,
+    sortOrder: 10,
+  ),
+  HrmRequestReason(
+    id: 'trip_other',
+    kind: 'BUSINESS_TRIP',
+    code: 'TRIP_OTHER',
+    name: 'Khác',
+    description: 'Lý do khác, cần mô tả cụ thể',
+    paid: true,
+    requiresDescription: true,
+    sortOrder: 90,
+  ),
+];
+
+/// Danh mục lý do mặc định cho Giải trình công (Đồng bộ 1:1 với Web ESS)
+const List<HrmRequestReason> kDefaultCorrectionReasons = [
+  HrmRequestReason(
+    id: 'cor_forgot',
+    kind: 'ATTENDANCE_CORRECTION',
+    code: 'COR_FORGOT',
+    name: 'Quên chấm công',
+    description: 'Quên chấm vào hoặc chấm ra',
+    paid: true,
+    requiresDescription: false,
+    sortOrder: 10,
+  ),
+  HrmRequestReason(
+    id: 'cor_device',
+    kind: 'ATTENDANCE_CORRECTION',
+    code: 'COR_DEVICE',
+    name: 'Lỗi thiết bị hoặc mạng',
+    description: 'Không chấm được do lỗi thiết bị hoặc mạng',
+    paid: true,
+    requiresDescription: false,
+    sortOrder: 20,
+  ),
+  HrmRequestReason(
+    id: 'cor_other',
+    kind: 'ATTENDANCE_CORRECTION',
+    code: 'COR_OTHER',
+    name: 'Khác',
+    description: 'Lý do khác, cần mô tả cụ thể',
+    paid: true,
+    requiresDescription: true,
+    sortOrder: 90,
   ),
 ];
 
@@ -194,10 +277,16 @@ void showCorrectionFormDialog({
   ];
 
   // Form specific state
-  String? selectedLeaveReason;
-  String? selectedOtReason;
-  String? selectedTripReason;
-  String? selectedCorrectionReason;
+  HrmRequestReason? selectedLeaveReason;
+  HrmRequestReason? selectedOtReason;
+  HrmRequestReason? selectedTripReason;
+  HrmRequestReason? selectedCorrectionReason;
+
+  List<HrmRequestReason> otReasons = List.from(kDefaultOtReasons);
+  List<HrmRequestReason> tripReasons = List.from(kDefaultTripReasons);
+  List<HrmRequestReason> correctionReasons = List.from(kDefaultCorrectionReasons);
+  bool didFetchServerReasons = false;
+
   final descController = TextEditingController(text: initialReason);
 
   // Specific fields for Business Trip
@@ -205,10 +294,12 @@ void showCorrectionFormDialog({
   final tripLocationCtrl = TextEditingController();
   final tripDeptCtrl = TextEditingController(text: 'Phòng Hành chính - Tổng hợp');
   String tripTransport = 'Không cần phương tiện';
-  String? tripWorkspace;
+  String tripExternalVehicle = 'Taxi hoặc xe ngoài';
+  ProjectItem? selectedTripProject;
 
   // Specific fields for OT
-  String? otWorkspace;
+  ProjectItem? selectedOtProject;
+  List<ProjectItem> linkableProjects = [];
 
   // Specific fields for Attendance Correction
   DateTime correctionDate = DateTime(now.year, now.month, now.day);
@@ -235,7 +326,7 @@ void showCorrectionFormDialog({
           );
 
           // Priority 1: Map from real availableLeaveTypes from server (Zero-Mock Policy)
-          final leaveReasonsList = <LeaveReasonItem>[];
+          final leaveReasonsList = <HrmRequestReason>[];
           if (availableLeaveTypes.isNotEmpty) {
             for (final lt in availableLeaveTypes) {
               if (lt.code.toUpperCase().contains('SENIOR') || lt.name.toLowerCase().contains('thâm niên')) {
@@ -244,11 +335,19 @@ void showCorrectionFormDialog({
               final isAnnual = lt.name.toLowerCase().contains('phép năm') ||
                   lt.code.toUpperCase().contains('ANNUAL') ||
                   lt.code.toUpperCase().contains('AL');
+              final isUnpaid = lt.name.toLowerCase().contains('không lương') ||
+                  lt.code.toUpperCase().contains('UNPAID') ||
+                  lt.name.toLowerCase().contains('unpaid');
               leaveReasonsList.add(
-                LeaveReasonItem(
+                HrmRequestReason(
+                  id: lt.id,
+                  kind: 'LEAVE',
+                  code: lt.code,
                   name: lt.name,
-                  isPaid: lt.isPaid,
-                  isAnnualLeave: isAnnual,
+                  description: isAnnual ? 'Trừ trực tiếp vào quỹ phép năm hiện có' : (lt.description ?? ''),
+                  paid: isUnpaid ? false : lt.isPaid,
+                  requiresDescription: false,
+                  sortOrder: 10,
                 ),
               );
             }
@@ -256,10 +355,54 @@ void showCorrectionFormDialog({
 
           // Priority 2: Fallback to exact 4 items matching Web ESS
           if (leaveReasonsList.isEmpty) {
-            leaveReasonsList.addAll(kDefaultLeaveReasons);
+            leaveReasonsList.addAll(kDefaultLeaveReasons.map((r) => HrmRequestReason(
+              id: r.name,
+              kind: 'LEAVE',
+              code: r.isAnnualLeave ? 'ANNUAL' : 'OTHER',
+              name: r.name,
+              description: r.isAnnualLeave ? 'Trừ trực tiếp vào quỹ phép năm hiện có' : null,
+              paid: r.isPaid,
+              requiresDescription: false,
+              sortOrder: 10,
+            )));
           }
 
-          selectedLeaveReason ??= leaveReasonsList.first.name;
+          selectedLeaveReason ??= leaveReasonsList.first;
+
+          // Fetch dynamic reasons and linkable projects from backend (Zero-Mock Policy)
+          if (!didFetchServerReasons) {
+            didFetchServerReasons = true;
+            Future.wait([
+              service.getRequestReasons('OVERTIME'),
+              service.getRequestReasons('BUSINESS_TRIP'),
+              service.getRequestReasons('ATTENDANCE_CORRECTION'),
+              service.getLinkableProjects(),
+            ]).then((results) {
+              if (results[0].isNotEmpty) otReasons = results[0] as List<HrmRequestReason>;
+              if (results[1].isNotEmpty) tripReasons = results[1] as List<HrmRequestReason>;
+              if (results[2].isNotEmpty) correctionReasons = results[2] as List<HrmRequestReason>;
+              if (results[3].isNotEmpty) linkableProjects = results[3] as List<ProjectItem>;
+              selectedOtReason = otReasons.firstWhere((r) => r.id == selectedOtReason?.id, orElse: () => otReasons.first);
+              selectedTripReason = tripReasons.firstWhere((r) => r.id == selectedTripReason?.id, orElse: () => tripReasons.first);
+              selectedCorrectionReason = correctionReasons.firstWhere((r) => r.id == selectedCorrectionReason?.id, orElse: () => correctionReasons.first);
+              setModalState(() {});
+            }).catchError((e) {
+              debugPrint('[request_form_dialog] fetch request reasons error: $e');
+            });
+          }
+
+          selectedOtReason ??= otReasons.first;
+          selectedTripReason ??= tripReasons.first;
+          selectedCorrectionReason ??= correctionReasons.first;
+
+          if (draftItem != null) {
+            final otMatch = otReasons.where((r) => draftItem.reason.contains(r.name) || (r.code.isNotEmpty && draftItem.reason.contains(r.code))).firstOrNull;
+            if (otMatch != null) selectedOtReason = otMatch;
+            final tripMatch = tripReasons.where((r) => draftItem.reason.contains(r.name) || (r.code.isNotEmpty && draftItem.reason.contains(r.code))).firstOrNull;
+            if (tripMatch != null) selectedTripReason = tripMatch;
+            final corMatch = correctionReasons.where((r) => draftItem.reason.contains(r.name) || (r.code.isNotEmpty && draftItem.reason.contains(r.code))).firstOrNull;
+            if (corMatch != null) selectedCorrectionReason = corMatch;
+          }
 
           return Container(
             height: MediaQuery.of(modalContext).size.height * 0.94,
@@ -414,18 +557,21 @@ void showCorrectionFormDialog({
                           _buildOvertimeForm(
                             context: modalContext,
                             setModalState: setModalState,
-                            selectedReason: selectedOtReason,
+                            reasons: otReasons,
+                            selectedReason: selectedOtReason!,
                             onReasonChanged: (r) => setModalState(() => selectedOtReason = r),
                             descController: descController,
                             intervals: otIntervals,
-                            workspace: otWorkspace,
-                            onWorkspaceChanged: (w) => setModalState(() => otWorkspace = w),
+                            projects: linkableProjects,
+                            selectedProject: selectedOtProject,
+                            onProjectChanged: (p) => setModalState(() => selectedOtProject = p),
                           ),
                         ] else if (selectedCategoryKey == 'business_trip') ...[
                           _buildBusinessTripForm(
                             context: modalContext,
                             setModalState: setModalState,
-                            selectedReason: selectedTripReason,
+                            reasons: tripReasons,
+                            selectedReason: selectedTripReason!,
                             onReasonChanged: (r) => setModalState(() => selectedTripReason = r),
                             descController: descController,
                             intervals: tripIntervals,
@@ -435,14 +581,18 @@ void showCorrectionFormDialog({
                             deptCtrl: tripDeptCtrl,
                             transport: tripTransport,
                             onTransportChanged: (tr) => setModalState(() => tripTransport = tr),
-                            workspace: tripWorkspace,
-                            onWorkspaceChanged: (w) => setModalState(() => tripWorkspace = w),
+                            externalVehicle: tripExternalVehicle,
+                            onExternalVehicleChanged: (v) => setModalState(() => tripExternalVehicle = v),
+                            projects: linkableProjects,
+                            selectedProject: selectedTripProject,
+                            onProjectChanged: (p) => setModalState(() => selectedTripProject = p),
                           ),
                         ] else if (selectedCategoryKey == 'correction') ...[
                           _buildCorrectionForm(
                             context: modalContext,
                             setModalState: setModalState,
-                            selectedReason: selectedCorrectionReason,
+                            reasons: correctionReasons,
+                            selectedReason: selectedCorrectionReason!,
                             onReasonChanged: (r) => setModalState(() => selectedCorrectionReason = r),
                             descController: descController,
                             workDate: correctionDate,
@@ -482,6 +632,43 @@ void showCorrectionFormDialog({
                   ),
                 ),
 
+                // Pinned Error Banner above footer actions (always visible when scrolled)
+                if (modalErrorMessage != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFEF2F2),
+                      border: Border(
+                        top: BorderSide(color: Color(0xFFFECDD3)),
+                        bottom: BorderSide(color: Color(0xFFFECDD3)),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            modalErrorMessage!,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFDC2626),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () => setModalState(() => modalErrorMessage = null),
+                          child: const Icon(Icons.close, color: Color(0xFF991B1B), size: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 // Modal Actions (Matching Web: Hủy | Gửi duyệt đơn)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -517,13 +704,26 @@ void showCorrectionFormDialog({
                             ? null
                             : () async {
                                 // Validation
-                                if (selectedCategoryKey == 'ot' && descController.text.trim().isEmpty) {
-                                  setModalState(() => modalErrorMessage = 'Vui lòng nhập mô tả chi tiết công việc làm thêm.');
-                                  return;
+                                if (selectedCategoryKey == 'ot') {
+                                  final reqDesc = selectedOtReason?.requiresDescription ?? false;
+                                  if (reqDesc && descController.text.trim().isEmpty) {
+                                    setModalState(() => modalErrorMessage = 'Vui lòng nhập mô tả chi tiết cho lý do này.');
+                                    return;
+                                  }
                                 }
-                                if (selectedCategoryKey == 'business_trip' && descController.text.trim().isEmpty) {
-                                  setModalState(() => modalErrorMessage = 'Vui lòng nhập nội dung công việc công tác.');
-                                  return;
+                                if (selectedCategoryKey == 'business_trip') {
+                                  final reqDesc = selectedTripReason?.requiresDescription ?? false;
+                                  if (reqDesc && descController.text.trim().isEmpty) {
+                                    setModalState(() => modalErrorMessage = 'Vui lòng nhập nội dung công việc công tác.');
+                                    return;
+                                  }
+                                }
+                                if (selectedCategoryKey == 'correction') {
+                                  final reqDesc = selectedCorrectionReason?.requiresDescription ?? false;
+                                  if (reqDesc && descController.text.trim().isEmpty) {
+                                    setModalState(() => modalErrorMessage = 'Vui lòng nhập mô tả chi tiết cho lý do này.');
+                                    return;
+                                  }
                                 }
 
                                 setModalState(() {
@@ -533,11 +733,13 @@ void showCorrectionFormDialog({
 
                                 try {
                                   if (selectedCategoryKey == 'leave') {
-                                    final reasonTag = selectedLeaveReason ?? 'Nghỉ phép năm';
+                                    final reasonTag = selectedLeaveReason?.name ?? 'Nghỉ phép năm';
                                     final fullReason = '[$reasonTag] ${descController.text.trim()}'.trim();
 
                                     String? targetLeaveTypeId;
-                                    if (availableLeaveTypes.isNotEmpty) {
+                                    if (selectedLeaveReason != null && selectedLeaveReason!.id.length > 20) {
+                                      targetLeaveTypeId = selectedLeaveReason!.id;
+                                    } else if (availableLeaveTypes.isNotEmpty) {
                                       for (final lt in availableLeaveTypes) {
                                         if (fullReason.toLowerCase().contains(lt.name.toLowerCase()) ||
                                             lt.name.toLowerCase().contains(fullReason.toLowerCase())) {
@@ -573,8 +775,11 @@ void showCorrectionFormDialog({
                                       );
                                     }
                                   } else if (selectedCategoryKey == 'ot') {
-                                    final reasonTag = selectedOtReason ?? 'Làm thêm giờ (Overtime)';
+                                    final reasonTag = selectedOtReason?.name ?? 'Làm thêm giờ (Overtime)';
                                     final fullReason = '[$reasonTag] ${descController.text.trim()}'.trim();
+                                    final actualReasonId = (selectedOtReason != null && !selectedOtReason!.id.startsWith('ot_'))
+                                        ? selectedOtReason!.id
+                                        : null;
 
                                     for (int i = 0; i < otIntervals.length; i++) {
                                       final interval = otIntervals[i];
@@ -586,6 +791,10 @@ void showCorrectionFormDialog({
                                       await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
                                         attendanceId: item?.id,
+                                        reasonId: actualReasonId,
+                                        projectId: selectedOtProject?.id,
+                                        projectCode: selectedOtProject?.code,
+                                        projectName: selectedOtProject?.name,
                                         draftId: (i == 0) ? draftItem?.id : null,
                                         expectedUpdatedAt: (i == 0) ? draftItem?.createdAt : null,
                                         requestDate: fDate,
@@ -599,9 +808,26 @@ void showCorrectionFormDialog({
                                       );
                                     }
                                   } else if (selectedCategoryKey == 'business_trip') {
-                                    final reasonTag = selectedTripReason ?? 'Đi công tác';
+                                    final reasonTag = selectedTripReason?.name ?? 'Đi công tác';
                                     final loc = tripLocationCtrl.text.trim().isNotEmpty ? ' tại ${tripLocationCtrl.text.trim()}' : '';
                                     final fullReason = '[$reasonTag$loc] Địa điểm: ${tripLocationCtrl.text.trim()}. Hình thức: $tripScope. Nhiệm vụ: ${descController.text.trim()}'.trim();
+                                    final actualReasonId = (selectedTripReason != null && !selectedTripReason!.id.startsWith('trip_'))
+                                        ? selectedTripReason!.id
+                                        : null;
+
+                                    String actualVehicle = '';
+                                    if (tripTransport == 'Xe công ty') {
+                                      actualVehicle = 'Xe công ty';
+                                    } else if (tripTransport == 'Phương tiện ngoài (tự sắp xếp)') {
+                                      actualVehicle = tripExternalVehicle;
+                                    }
+
+                                    String actualTripType = 'DOMESTIC';
+                                    if (tripScope.contains('nước ngoài') || tripScope.contains('Quốc tế')) {
+                                      actualTripType = 'OVERSEAS';
+                                    } else if (tripScope.contains('liên chi nhánh')) {
+                                      actualTripType = 'INTERSITE';
+                                    }
 
                                     for (int i = 0; i < tripIntervals.length; i++) {
                                       final interval = tripIntervals[i];
@@ -613,6 +839,10 @@ void showCorrectionFormDialog({
                                       await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
                                         attendanceId: item?.id,
+                                        reasonId: actualReasonId,
+                                        projectId: selectedTripProject?.id,
+                                        projectCode: selectedTripProject?.code,
+                                        projectName: selectedTripProject?.name,
                                         draftId: (i == 0) ? draftItem?.id : null,
                                         expectedUpdatedAt: (i == 0) ? draftItem?.createdAt : null,
                                         requestDate: fDate,
@@ -623,25 +853,35 @@ void showCorrectionFormDialog({
                                         reason: fullReason,
                                         duration: interval.days,
                                         requestKind: 'BUSINESS_TRIP',
+                                        businessTripType: actualTripType,
+                                        destination: tripLocationCtrl.text.trim().isNotEmpty
+                                            ? tripLocationCtrl.text.trim()
+                                            : 'Công tác theo kế hoạch',
+                                        workDepartment: tripDeptCtrl.text.trim(),
+                                        vehicle: actualVehicle.isNotEmpty ? actualVehicle : null,
                                       );
                                     }
                                   } else if (selectedCategoryKey == 'correction') {
-                                    final reasonTag = selectedCorrectionReason ?? 'Đơn giải trình / Bổ sung công';
+                                    final reasonTag = selectedCorrectionReason?.name ?? 'Đơn giải trình / Bổ sung công';
                                     final timeStr = '${correctionTime.hour.toString().padLeft(2, '0')}:${correctionTime.minute.toString().padLeft(2, '0')}';
                                     final fullReason = '[$reasonTag - $correctionTimeType: $timeStr] ${descController.text.trim()}'.trim();
+                                    final actualReasonId = (selectedCorrectionReason != null && !selectedCorrectionReason!.id.startsWith('cor_'))
+                                        ? selectedCorrectionReason!.id
+                                        : null;
 
                                     final fDate = '${correctionDate.year}-${correctionDate.month.toString().padLeft(2, '0')}-${correctionDate.day.toString().padLeft(2, '0')}';
 
                                     await service.createCorrection(
                                       employeeId: attendanceContext?.employeeId,
                                       attendanceId: item?.id,
+                                      reasonId: actualReasonId,
                                       draftId: draftItem?.id,
                                       expectedUpdatedAt: draftItem?.createdAt,
                                       requestDate: fDate,
                                       fromDate: fDate,
                                       toDate: fDate,
                                       newCheckInAt: correctionTimeType == 'Giờ vào' ? '${fDate}T$timeStr:00' : '${fDate}T08:00:00',
-                                      newCheckOutAt: correctionTimeType == 'Giờ ra' ? '${fDate}T$timeStr:00' : '${fDate}T17:30:00',
+                                      newCheckOutAt: correctionTimeType == 'Giờ ra' ? '${fDate}T$timeStr:00' : '${fDate}T17:00:00',
                                       reason: fullReason,
                                       duration: 1.0,
                                       requestKind: 'ATTENDANCE_CORRECTION',
@@ -682,6 +922,28 @@ void showCorrectionFormDialog({
                                     isSubmitting = false;
                                     modalErrorMessage = parsedMsg;
                                   });
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                parsedMsg,
+                                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: const Color(0xFFDC2626),
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: const Duration(seconds: 6),
+                                      ),
+                                    );
+                                  }
                                 }
                               },
                         icon: isSubmitting
@@ -725,9 +987,9 @@ void showCorrectionFormDialog({
 Widget _buildLeaveForm({
   required BuildContext context,
   required StateSetter setModalState,
-  required List<LeaveReasonItem> reasons,
-  required String selectedReason,
-  required ValueChanged<String?> onReasonChanged,
+  required List<HrmRequestReason> reasons,
+  required HrmRequestReason selectedReason,
+  required ValueChanged<HrmRequestReason> onReasonChanged,
   required TextEditingController descController,
   required List<TimeInterval> intervals,
 }) {
@@ -738,73 +1000,14 @@ Widget _buildLeaveForm({
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       // Lý do * (Đồng bộ 1:1 với Web ESS - Có lương / Không lương / Trừ quỹ phép năm)
-      const Text('Lý do *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-      const SizedBox(height: 6),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFCBD5E1)),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            isExpanded: true,
-            menuMaxHeight: 320,
-            borderRadius: BorderRadius.circular(12),
-            value: selectedReason,
-            selectedItemBuilder: (_) {
-              return reasons.map((r) {
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          r.name,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildPaidBadge(r.isPaid),
-                      if (r.isAnnualLeave) ...[
-                        const SizedBox(width: 6),
-                        const Text('Trừ quỹ phép năm', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF92400E))),
-                      ],
-                    ],
-                  ),
-                );
-              }).toList();
-            },
-            items: reasons.map((r) {
-              return DropdownMenuItem<String>(
-                value: r.name,
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        r.name,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildPaidBadge(r.isPaid),
-                    if (r.isAnnualLeave) ...[
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Trừ quỹ phép năm',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }).toList(),
-            onChanged: onReasonChanged,
-          ),
-        ),
+      _buildReasonSelectorField(
+        context: context,
+        label: 'Lý do *',
+        reasons: reasons,
+        selectedReason: selectedReason,
+        onReasonChanged: onReasonChanged,
+        showPaid: true,
+        isLeave: true,
       ),
       const SizedBox(height: 14),
 
@@ -1051,50 +1254,44 @@ Widget _buildLeaveForm({
 Widget _buildOvertimeForm({
   required BuildContext context,
   required StateSetter setModalState,
-  required String? selectedReason,
-  required ValueChanged<String?> onReasonChanged,
+  required List<HrmRequestReason> reasons,
+  required HrmRequestReason selectedReason,
+  required ValueChanged<HrmRequestReason> onReasonChanged,
   required TextEditingController descController,
   required List<TimeInterval> intervals,
-  required String? workspace,
-  required ValueChanged<String?> onWorkspaceChanged,
+  required List<ProjectItem> projects,
+  required ProjectItem? selectedProject,
+  required ValueChanged<ProjectItem?> onProjectChanged,
 }) {
-  final otReasons = [
-    'Tăng ca theo tiến độ dự án',
-    'Xử lý sự cố / Đột xuất',
-    'Hỗ trợ ca làm việc',
-    'Làm thêm theo yêu cầu cấp trên',
-    'Lý do khác',
-  ];
-
-  final workspaces = [
-    'SVN DTS (Mặc định)',
-    'Dự án Trạm 500kV Phố Nối',
-    'Nhà máy Đắc Sin 1',
-    'Bảo trì Nhà máy Năng Lượng',
-  ];
-
   final totalHours = intervals.fold<double>(0.0, (acc, item) => acc + item.hours);
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // Lý do *
-      const Text('Lý do *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-      const SizedBox(height: 6),
-      _buildDropdownContainer(
-        value: selectedReason ?? otReasons.first,
-        hint: 'Chọn lý do...',
-        items: otReasons,
-        onChanged: onReasonChanged,
+      // Lý do * (Chọn từ danh mục request_reasons - Đồng bộ 1:1 với Web ESS)
+      _buildReasonSelectorField(
+        context: context,
+        label: 'Lý do *',
+        reasons: reasons,
+        selectedReason: selectedReason,
+        onReasonChanged: onReasonChanged,
+        showPaid: true,
       ),
       const SizedBox(height: 14),
 
-      // Mô tả nội dung công việc làm thêm *
-      const Text('Mô tả nội dung công việc làm thêm *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+      // Mô tả nội dung công việc làm thêm
+      Text(
+        selectedReason.requiresDescription
+            ? 'Mô tả nội dung công việc làm thêm *'
+            : 'Mô tả (nhập thêm chi tiết nếu cần)',
+        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+      ),
       const SizedBox(height: 6),
       _buildTextField(
         controller: descController,
-        hint: 'Nhập mô tả chi tiết công việc và lý do làm thêm (bắt buộc)...',
+        hint: selectedReason.requiresDescription
+            ? 'Nhập mô tả chi tiết công việc và lý do làm thêm (bắt buộc)...'
+            : 'Nhập thêm chi tiết nếu cần (không bắt buộc)...',
         maxLines: 3,
       ),
       const SizedBox(height: 14),
@@ -1205,13 +1402,12 @@ Widget _buildOvertimeForm({
       const SizedBox(height: 14),
 
       // Dự án liên quan (Workspace)
-      const Text('Dự án liên quan (Workspace)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-      const SizedBox(height: 6),
-      _buildDropdownContainer(
-        value: workspace ?? workspaces.first,
-        hint: 'Chọn dự án liên quan nếu có (không bắt buộc)...',
-        items: workspaces,
-        onChanged: onWorkspaceChanged,
+      _buildProjectSelectorField(
+        context: context,
+        projects: projects,
+        selectedProject: selectedProject,
+        onProjectChanged: onProjectChanged,
+        label: 'Dự án liên quan (Workspace)',
       ),
     ],
   );
@@ -1223,8 +1419,9 @@ Widget _buildOvertimeForm({
 Widget _buildBusinessTripForm({
   required BuildContext context,
   required StateSetter setModalState,
-  required String? selectedReason,
-  required ValueChanged<String?> onReasonChanged,
+  required List<HrmRequestReason> reasons,
+  required HrmRequestReason selectedReason,
+  required ValueChanged<HrmRequestReason> onReasonChanged,
   required TextEditingController descController,
   required List<TimeInterval> intervals,
   required String tripScope,
@@ -1233,56 +1430,58 @@ Widget _buildBusinessTripForm({
   required TextEditingController deptCtrl,
   required String transport,
   required ValueChanged<String> onTransportChanged,
-  required String? workspace,
-  required ValueChanged<String?> onWorkspaceChanged,
+  required String externalVehicle,
+  required ValueChanged<String> onExternalVehicleChanged,
+  required List<ProjectItem> projects,
+  required ProjectItem? selectedProject,
+  required ValueChanged<ProjectItem?> onProjectChanged,
 }) {
-  final tripReasons = [
-    'Khảo sát / Thi công công trình',
-    'Gặp gỡ khách hàng / Đối tác',
-    'Tham gia đào tạo / Hội thảo',
-    'Công tác liên tỉnh',
-    'Lý do khác',
-  ];
-
   final scopeOptions = [
     'Công tác trong nước (Nội địa)',
-    'Công tác nước ngoài',
+    'Công tác nước ngoài (Quốc tế)',
+    'Công tác nội bộ liên chi nhánh',
   ];
 
   final transportOptions = [
     'Không cần phương tiện',
     'Xe công ty',
-    'Máy bay',
-    'Tàu hỏa / Xe khách',
-    'Phương tiện cá nhân',
+    'Phương tiện ngoài (tự sắp xếp)',
   ];
 
-  final workspaces = [
-    'Dự án Trạm biến áp 500kV Phố Nối',
-    'Nhà máy Đắc Sin 1',
-    'SVN DTS Workspace',
+  final externalOptions = [
+    'Taxi hoặc xe ngoài',
+    'Máy bay',
+    'Xe cá nhân',
+    'Phương tiện khác',
   ];
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // Lý do *
-      const Text('Lý do *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-      const SizedBox(height: 6),
-      _buildDropdownContainer(
-        value: selectedReason ?? tripReasons.first,
-        hint: 'Chọn lý do...',
-        items: tripReasons,
-        onChanged: onReasonChanged,
+      // Lý do * (Chọn từ danh mục request_reasons - Đồng bộ 1:1 với Web ESS)
+      _buildReasonSelectorField(
+        context: context,
+        label: 'Lý do *',
+        reasons: reasons,
+        selectedReason: selectedReason,
+        onReasonChanged: onReasonChanged,
+        showPaid: false,
       ),
       const SizedBox(height: 14),
 
       // Nội dung công việc công tác *
-      const Text('Nội dung công việc công tác *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+      Text(
+        selectedReason.requiresDescription
+            ? 'Nội dung công việc công tác *'
+            : 'Mô tả nhiệm vụ công tác (nhập thêm nếu cần)',
+        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+      ),
       const SizedBox(height: 6),
       _buildTextField(
         controller: descController,
-        hint: 'Nhập chi tiết nhiệm vụ và nội dung công việc thực hiện trong chuyến công tác (bắt buộc)...',
+        hint: selectedReason.requiresDescription
+            ? 'Nhập chi tiết nhiệm vụ và nội dung công việc thực hiện trong chuyến công tác (bắt buộc)...'
+            : 'Nhập chi tiết nhiệm vụ và nội dung công việc (không bắt buộc)...',
         maxLines: 3,
       ),
       const SizedBox(height: 14),
@@ -1410,12 +1609,25 @@ Widget _buildBusinessTripForm({
       const SizedBox(height: 6),
       _buildDropdownContainer(
         value: transport,
-        hint: 'Chọn phương tiện...',
+        hint: 'Không cần phương tiện',
         items: transportOptions,
         onChanged: (v) {
           if (v != null) onTransportChanged(v);
         },
       ),
+      if (transport == 'Phương tiện ngoài (tự sắp xếp)') ...[
+        const SizedBox(height: 10),
+        const Text('Loại phương tiện *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+        const SizedBox(height: 6),
+        _buildDropdownContainer(
+          value: externalVehicle,
+          hint: 'Chọn loại phương tiện...',
+          items: externalOptions,
+          onChanged: (v) {
+            if (v != null) onExternalVehicleChanged(v);
+          },
+        ),
+      ],
       const SizedBox(height: 14),
 
       // Card: Dự trù kinh phí & Phụ phí công tác
@@ -1433,16 +1645,23 @@ Widget _buildBusinessTripForm({
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.attach_money_rounded, size: 18, color: Color(0xFF059669)),
-                    SizedBox(width: 4),
-                    Text(
-                      'Dự trù kinh phí & Phụ phí công tác',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-                    ),
-                  ],
+                Expanded(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.attach_money_rounded, size: 18, color: Color(0xFF059669)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Dự trù kinh phí & Phụ phí công tác',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.add, size: 14, color: Color(0xFF1E293B)),
@@ -1467,14 +1686,13 @@ Widget _buildBusinessTripForm({
       ),
       const SizedBox(height: 14),
 
-      // Dự án liên kết (Workspace)
-      const Text('Dự án liên kết (Workspace)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-      const SizedBox(height: 6),
-      _buildDropdownContainer(
-        value: workspace ?? workspaces.first,
-        hint: 'Chọn dự án liên kết nếu có...',
-        items: workspaces,
-        onChanged: onWorkspaceChanged,
+      // Dự án liên quan (Workspace)
+      _buildProjectSelectorField(
+        context: context,
+        projects: projects,
+        selectedProject: selectedProject,
+        onProjectChanged: onProjectChanged,
+        label: 'Dự án liên quan (Workspace)',
       ),
     ],
   );
@@ -1486,8 +1704,9 @@ Widget _buildBusinessTripForm({
 Widget _buildCorrectionForm({
   required BuildContext context,
   required StateSetter setModalState,
-  required String? selectedReason,
-  required ValueChanged<String?> onReasonChanged,
+  required List<HrmRequestReason> reasons,
+  required HrmRequestReason selectedReason,
+  required ValueChanged<HrmRequestReason> onReasonChanged,
   required TextEditingController descController,
   required DateTime workDate,
   required ValueChanged<DateTime> onPickWorkDate,
@@ -1496,36 +1715,35 @@ Widget _buildCorrectionForm({
   required TimeOfDay correctionTime,
   required ValueChanged<TimeOfDay> onPickTime,
 }) {
-  final correctionReasons = [
-    'Quên chấm công',
-    'Máy chấm công lỗi / mất kết nối',
-    'Đi công tác đột xuất',
-    'Đến muộn / Về sớm có lý do',
-    'Lý do khác',
-  ];
-
   final timeTypes = ['Giờ vào', 'Giờ ra'];
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // Lý do *
-      const Text('Lý do *', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-      const SizedBox(height: 6),
-      _buildDropdownContainer(
-        value: selectedReason ?? correctionReasons.first,
-        hint: 'Chọn lý do...',
-        items: correctionReasons,
-        onChanged: onReasonChanged,
+      // Lý do * (Chọn từ danh mục request_reasons - Đồng bộ 1:1 với Web ESS)
+      _buildReasonSelectorField(
+        context: context,
+        label: 'Lý do *',
+        reasons: reasons,
+        selectedReason: selectedReason,
+        onReasonChanged: onReasonChanged,
+        showPaid: false,
       ),
       const SizedBox(height: 14),
 
       // Mô tả (nhập thêm chi tiết nếu cần)
-      const Text('Mô tả (nhập thêm chi tiết nếu cần)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+      Text(
+        selectedReason.requiresDescription
+            ? 'Mô tả (bắt buộc khi chọn lý do này) *'
+            : 'Mô tả (nhập thêm chi tiết nếu cần)',
+        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+      ),
       const SizedBox(height: 6),
       _buildTextField(
         controller: descController,
-        hint: 'Nhập thêm chi tiết nếu cần (không bắt buộc)...',
+        hint: selectedReason.requiresDescription
+            ? 'Nhập mô tả chi tiết giải trình (bắt buộc)...'
+            : 'Nhập thêm chi tiết nếu cần (không bắt buộc)...',
         maxLines: 3,
       ),
       const SizedBox(height: 14),
@@ -1659,10 +1877,10 @@ Widget _buildPaidBadge(bool isPaid) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
     decoration: BoxDecoration(
-      color: isPaid ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7),
+      color: isPaid ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
       borderRadius: BorderRadius.circular(4),
       border: Border.all(
-        color: isPaid ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A),
+        color: isPaid ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
       ),
     ),
     child: Text(
@@ -1670,7 +1888,7 @@ Widget _buildPaidBadge(bool isPaid) {
       style: TextStyle(
         fontSize: 10.5,
         fontWeight: FontWeight.w700,
-        color: isPaid ? const Color(0xFF059669) : const Color(0xFFD97706),
+        color: isPaid ? const Color(0xFF059669) : const Color(0xFF64748B),
       ),
     ),
   );
@@ -1678,6 +1896,610 @@ Widget _buildPaidBadge(bool isPaid) {
 
 String _formatTime(TimeOfDay t) {
   return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+}
+
+Widget _buildReasonSelectorField({
+  required BuildContext context,
+  required String label,
+  required List<HrmRequestReason> reasons,
+  required HrmRequestReason selectedReason,
+  required ValueChanged<HrmRequestReason> onReasonChanged,
+  bool showPaid = true,
+  bool isLeave = false,
+}) {
+  final isAnnual = isLeave && (selectedReason.code.toUpperCase().contains('ANNUAL') || selectedReason.name.toLowerCase().contains('phép năm'));
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+      const SizedBox(height: 6),
+      InkWell(
+        onTap: () => _openReasonSearchSheet(
+          context: context,
+          title: label.replaceAll(' *', ''),
+          reasons: reasons,
+          selectedReason: selectedReason,
+          onReasonChanged: onReasonChanged,
+          showPaid: showPaid,
+          isLeave: isLeave,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFCBD5E1)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            selectedReason.name,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (showPaid) ...[
+                          const SizedBox(width: 6),
+                          _buildPaidBadge(selectedReason.paid),
+                        ],
+                        if (isAnnual) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFFFDE68A)),
+                            ),
+                            child: const Text(
+                              'Trừ quỹ phép năm',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF92400E),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (selectedReason.description != null && selectedReason.description!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        selectedReason.description!,
+                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B), size: 20),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+void _openReasonSearchSheet({
+  required BuildContext context,
+  required String title,
+  required List<HrmRequestReason> reasons,
+  required HrmRequestReason selectedReason,
+  required ValueChanged<HrmRequestReason> onReasonChanged,
+  bool showPaid = true,
+  bool isLeave = false,
+}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) {
+      String searchQuery = '';
+      return StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final query = searchQuery.trim().toLowerCase();
+          final filtered = query.isEmpty
+              ? reasons
+              : reasons.where((r) =>
+                  r.name.toLowerCase().contains(query) ||
+                  (r.description?.toLowerCase().contains(query) ?? false) ||
+                  r.code.toLowerCase().contains(query)).toList();
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.75,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextField(
+                    autofocus: reasons.length > 5,
+                    onChanged: (val) => setSheetState(() => searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: 'Chọn lý do...',
+                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                      prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+                      isDense: true,
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Không tìm thấy lý do phù hợp',
+                            style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.only(left: 12, right: 12, bottom: 20),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          itemBuilder: (_, idx) {
+                            final r = filtered[idx];
+                            final isSelected = r.id == selectedReason.id;
+                            final isRAnnual = isLeave && (r.code.toUpperCase().contains('ANNUAL') || r.name.toLowerCase().contains('phép năm'));
+                            return InkWell(
+                              onTap: () {
+                                onReasonChanged(r);
+                                Navigator.pop(sheetCtx);
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFFEFF6FF) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  r.name,
+                                                  style: TextStyle(
+                                                    fontSize: 13.5,
+                                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                                    color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFF1E293B),
+                                                  ),
+                                                ),
+                                              ),
+                                              if (showPaid) ...[
+                                                const SizedBox(width: 8),
+                                                _buildPaidBadge(r.paid),
+                                              ],
+                                              if (isRAnnual) ...[
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFFEF3C7),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(color: const Color(0xFFFDE68A)),
+                                                  ),
+                                                  child: const Text(
+                                                    'Trừ quỹ phép năm',
+                                                    style: TextStyle(
+                                                      fontSize: 10.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: Color(0xFF92400E),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                          if (r.description != null && r.description!.trim().isNotEmpty) ...[
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              r.description!,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(Icons.check_rounded, color: Color(0xFF2563EB), size: 18),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+Widget _buildProjectSelectorField({
+  required BuildContext context,
+  required List<ProjectItem> projects,
+  required ProjectItem? selectedProject,
+  required ValueChanged<ProjectItem?> onProjectChanged,
+  String label = 'Dự án liên quan (Workspace)',
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+          ),
+          if (selectedProject != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Text(
+                'Mã: ${selectedProject.code}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1D4ED8),
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 6),
+      InkWell(
+        onTap: () => _openProjectSearchSheet(
+          context: context,
+          projects: projects,
+          selectedProject: selectedProject,
+          onProjectChanged: onProjectChanged,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFCBD5E1)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: selectedProject == null
+                    ? const Text(
+                        'Không gắn dự án',
+                        style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${selectedProject.code} - ${selectedProject.name}',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              selectedProject.code,
+                              style: const TextStyle(fontSize: 10.5, fontFamily: 'monospace', color: Color(0xFF475569)),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              if (selectedProject != null)
+                InkWell(
+                  onTap: () => onProjectChanged(null),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(2),
+                    child: Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
+                  ),
+                )
+              else
+                const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B), size: 20),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        selectedProject != null
+            ? 'Đơn sẽ được ghi vào tab "Đơn từ" của dự án ${selectedProject.code} với mã DTxxx tự sinh.'
+            : 'Chỉ hiện dự án bạn đang tham gia. Chọn dự án để đơn này được ghi nhận trong dự án đó.',
+        style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+      ),
+    ],
+  );
+}
+
+void _openProjectSearchSheet({
+  required BuildContext context,
+  required List<ProjectItem> projects,
+  required ProjectItem? selectedProject,
+  required ValueChanged<ProjectItem?> onProjectChanged,
+}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) {
+      String searchQuery = '';
+      return StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final query = searchQuery.trim().toLowerCase();
+          final filtered = query.isEmpty
+              ? projects
+              : projects.where((p) =>
+                  p.name.toLowerCase().contains(query) ||
+                  p.code.toLowerCase().contains(query) ||
+                  p.statusLabel.toLowerCase().contains(query)).toList();
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.75,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Dự án liên kết (Workspace)',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextField(
+                    autofocus: projects.length > 5,
+                    onChanged: (val) => setSheetState(() => searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: 'Chọn dự án liên quan nếu có (không bắt buộc)...',
+                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                      prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+                      isDense: true,
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                    ),
+                  ),
+                ),
+                // Mục "Không gắn dự án"
+                InkWell(
+                  onTap: () {
+                    onProjectChanged(null);
+                    Navigator.pop(sheetCtx);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: selectedProject == null ? const Color(0xFFEFF6FF) : Colors.transparent,
+                      border: const Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.do_not_disturb_on_outlined, size: 16, color: Color(0xFF64748B)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Không gắn dự án',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: selectedProject == null ? FontWeight.w700 : FontWeight.w500,
+                            color: selectedProject == null ? const Color(0xFF1D4ED8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        if (selectedProject == null) ...[
+                          const Spacer(),
+                          const Icon(Icons.check_rounded, color: Color(0xFF2563EB), size: 18),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Bạn chưa tham gia dự án nào bên Workspace',
+                            style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.only(left: 12, right: 12, bottom: 20),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          itemBuilder: (_, idx) {
+                            final p = filtered[idx];
+                            final isSelected = p.id == selectedProject?.id;
+                            return InkWell(
+                              onTap: () {
+                                onProjectChanged(p);
+                                Navigator.pop(sheetCtx);
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFFEFF6FF) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  '${p.code} - ${p.name}',
+                                                  style: TextStyle(
+                                                    fontSize: 13.5,
+                                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                                    color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFF1E293B),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF1F5F9),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  p.code,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontFamily: 'monospace',
+                                                    color: Color(0xFF475569),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            p.statusLabel,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(Icons.check_rounded, color: Color(0xFF2563EB), size: 18),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
 }
 
 Widget _buildDropdownContainer({
@@ -1766,7 +2588,7 @@ Widget _buildDateTimeRangeRow({
                 Row(
                   children: [
                     Expanded(
-                      flex: 6,
+                      flex: 7,
                       child: InkWell(
                         onTap: () async {
                           final picked = await showDatePicker(
@@ -1778,20 +2600,24 @@ Widget _buildDateTimeRangeRow({
                           if (picked != null) onPickFromDate(picked);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFCBD5E1)),
                           ),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '${fromDate.day.toString().padLeft(2, '0')}/${fromDate.month.toString().padLeft(2, '0')}/${fromDate.year}',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  '${fromDate.day.toString().padLeft(2, '0')}/${fromDate.month.toString().padLeft(2, '0')}/${fromDate.year}',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              const Spacer(),
-                              const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF64748B)),
+                              const SizedBox(width: 1),
+                              const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF64748B)),
                             ],
                           ),
                         ),
@@ -1799,27 +2625,31 @@ Widget _buildDateTimeRangeRow({
                     ),
                     const SizedBox(width: 4),
                     Expanded(
-                      flex: 4,
+                      flex: 5,
                       child: InkWell(
                         onTap: () async {
                           final picked = await showTimePicker(context: context, initialTime: fromTime);
                           if (picked != null) onPickFromTime(picked);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFCBD5E1)),
                           ),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _formatTime(fromTime),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  _formatTime(fromTime),
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              const Spacer(),
-                              const Icon(Icons.access_time_rounded, size: 14, color: Color(0xFF64748B)),
+                              const SizedBox(width: 1),
+                              const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF64748B)),
                             ],
                           ),
                         ),
@@ -1831,8 +2661,8 @@ Widget _buildDateTimeRangeRow({
             ),
           ),
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 20),
-            child: Text('→', style: TextStyle(fontSize: 16, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+            padding: EdgeInsets.symmetric(horizontal: 3, vertical: 20),
+            child: Text('→', style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
           ),
           Expanded(
             child: Column(
@@ -1843,7 +2673,7 @@ Widget _buildDateTimeRangeRow({
                 Row(
                   children: [
                     Expanded(
-                      flex: 6,
+                      flex: 7,
                       child: InkWell(
                         onTap: () async {
                           final picked = await showDatePicker(
@@ -1855,20 +2685,24 @@ Widget _buildDateTimeRangeRow({
                           if (picked != null) onPickToDate(picked);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFCBD5E1)),
                           ),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '${toDate.day.toString().padLeft(2, '0')}/${toDate.month.toString().padLeft(2, '0')}/${toDate.year}',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  '${toDate.day.toString().padLeft(2, '0')}/${toDate.month.toString().padLeft(2, '0')}/${toDate.year}',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              const Spacer(),
-                              const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF64748B)),
+                              const SizedBox(width: 1),
+                              const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF64748B)),
                             ],
                           ),
                         ),
@@ -1876,27 +2710,31 @@ Widget _buildDateTimeRangeRow({
                     ),
                     const SizedBox(width: 4),
                     Expanded(
-                      flex: 4,
+                      flex: 5,
                       child: InkWell(
                         onTap: () async {
                           final picked = await showTimePicker(context: context, initialTime: toTime);
                           if (picked != null) onPickToTime(picked);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFCBD5E1)),
                           ),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _formatTime(toTime),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  _formatTime(toTime),
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              const Spacer(),
-                              const Icon(Icons.access_time_rounded, size: 14, color: Color(0xFF64748B)),
+                              const SizedBox(width: 1),
+                              const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF64748B)),
                             ],
                           ),
                         ),

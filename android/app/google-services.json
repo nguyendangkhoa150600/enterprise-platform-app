@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "959875756174",
+    "project_id": "svn-erp",
+    "storage_bucket": "svn-erp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:959875756174:android:7b31c8b768d097af4999df",
+        "android_client_info": {
+          "package_name": "com.savina.enterprise.platform"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMo4kZja_Ay2Mb-YoPQ7XxrvJDvEo56f0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

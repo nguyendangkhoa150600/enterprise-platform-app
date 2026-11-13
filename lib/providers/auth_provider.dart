@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import '../services/push_notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   static AuthProvider? instance;
@@ -107,6 +108,7 @@ class AuthProvider extends ChangeNotifier {
 
     // If logged in and saved credentials exist, trigger silent renewal to ensure fresh session
     if (_isLoggedIn) {
+      unawaited(PushNotificationService.instance.registerDeviceToken());
       final savedEmail = prefs.getString('saved_login_email');
       final savedPassword = prefs.getString('saved_login_password');
       if (savedEmail != null && savedEmail.isNotEmpty && savedPassword != null && savedPassword.isNotEmpty) {
@@ -262,6 +264,9 @@ class AuthProvider extends ChangeNotifier {
         await prefs.setString('saved_login_password', password);
         await prefs.setString('saved_login_portal', portal);
 
+        // Register FCM device token with Backend on successful login
+        unawaited(PushNotificationService.instance.registerDeviceToken());
+
         return true;
       }
       return false;
@@ -297,6 +302,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
+
+    try {
+      await PushNotificationService.instance.unregisterDeviceToken();
+    } catch (_) {}
 
     try {
       if (_cookies != null) {
