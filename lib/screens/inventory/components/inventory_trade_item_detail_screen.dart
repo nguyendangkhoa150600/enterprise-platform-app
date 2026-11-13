@@ -240,9 +240,13 @@ class _InventoryTradeItemDetailScreenState extends State<InventoryTradeItemDetai
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _item.code,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                Flexible(
+                  child: Text(
+                    _item.code,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 Container(
@@ -268,6 +272,11 @@ class _InventoryTradeItemDetailScreenState extends State<InventoryTradeItemDetai
           // Nút Ngừng dùng / Dùng lại
           TextButton(
             onPressed: _isActionInProgress ? null : _handleToggleStatus,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: Text(
               _item.isActive ? 'Ngừng dùng' : 'Dùng lại',
               style: TextStyle(
@@ -281,11 +290,19 @@ class _InventoryTradeItemDetailScreenState extends State<InventoryTradeItemDetai
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFF64748B)),
             tooltip: 'Xóa mặt hàng',
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
+            visualDensity: VisualDensity.compact,
             onPressed: _isActionInProgress ? null : _handleDelete,
           ),
           // Nút Sửa
           TextButton(
             onPressed: _isActionInProgress ? null : _openEditDialog,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: const Text(
               'Sửa',
               style: TextStyle(

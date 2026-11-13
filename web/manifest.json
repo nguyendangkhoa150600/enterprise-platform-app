@@ -1,6 +1,6 @@
 {
-    "name": "power_quality_analysis",
-    "short_name": "power_quality_analysis",
+    "name": "SVN ERP",
+    "short_name": "SVN ERP",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

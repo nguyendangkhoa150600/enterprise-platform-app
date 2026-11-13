@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../../../models/inventory_models.dart';
-import '../../../services/module_business_service.dart';
 import '../inventory_item_detail_screen.dart';
 import 'inventory_item_edit_dialog.dart';
 import 'inventory_movement_dialog.dart';
@@ -28,12 +28,106 @@ class InventoryItemsView extends StatefulWidget {
   State<InventoryItemsView> createState() => _InventoryItemsViewState();
 }
 
-class _InventoryItemsViewState extends State<InventoryItemsView> {
+class _InventoryItemsViewState extends State<InventoryItemsView>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
+  AnimationController? _headerAnimController;
+  Animation<Offset>? _headerSlideAnimation;
+  bool _isHeaderVisible = true;
+
   String _searchQuery = '';
   String _selectedKindFilter = 'ALL'; // 'ALL', 'STOCK', 'ASSET'
 
   int get _inStockCount => widget.items.where((i) => (i.kind ?? 'STOCK') == 'STOCK').length;
   int get _assetCount => widget.items.where((i) => (i.kind ?? '') == 'ASSET').length;
+
+  void _ensureAnimation() {
+    if (_headerAnimController == null) {
+      _headerAnimController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 240),
+        value: 1.0, // Hiển thị đầy đủ mặc định ban đầu
+      );
+      _headerSlideAnimation = Tween<Offset>(
+        begin: const Offset(0, -1.05),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: _headerAnimController!,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ));
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureAnimation();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _headerAnimController?.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Luôn hiển thị thanh tìm kiếm & bộ lọc khi cuộn về gần đỉnh trang
+    if (_scrollController.hasClients && _scrollController.offset <= 15) {
+      _showHeader();
+    }
+  }
+
+  void _showHeader() {
+    _ensureAnimation();
+    if (!_isHeaderVisible) {
+      _isHeaderVisible = true;
+      _headerAnimController?.forward();
+    }
+  }
+
+  void _hideHeader() {
+    _ensureAnimation();
+    if (_isHeaderVisible) {
+      _isHeaderVisible = false;
+      _headerAnimController?.reverse();
+    }
+  }
+
+  bool _handleScrollNotification(UserScrollNotification notification) {
+    if (_searchFocusNode.hasFocus) {
+      return false;
+    }
+
+    if (_scrollController.hasClients && _scrollController.offset <= 15) {
+      _showHeader();
+      return false;
+    }
+
+    if (notification.direction == ScrollDirection.reverse) {
+      // Đang lướt xuống dưới xem danh sách -> trượt ẩn thanh tìm kiếm & bộ lọc
+      _hideHeader();
+    } else if (notification.direction == ScrollDirection.forward) {
+      // Đang kéo nhẹ màn hình xuống -> làm nổi thanh tìm kiếm & bộ lọc lên ngay lập tức
+      _showHeader();
+    }
+    return false;
+  }
+
+  void _scrollToTopOnFilter() {
+    if (_scrollController.hasClients && _scrollController.offset > 0) {
+      _scrollController.jumpTo(0);
+      _showHeader();
+    }
+  }
 
   List<InventoryItem> get _filteredItems {
     var list = widget.items;
@@ -90,128 +184,182 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
 
   @override
   Widget build(BuildContext context) {
+    _ensureAnimation();
     final filtered = _filteredItems;
+    final hasWarehouseFilter = widget.selectedWarehouseFilter != null && widget.selectedWarehouseFilter!.isNotEmpty;
+    final double headerPaddingTop = hasWarehouseFilter ? 245 : 210;
 
-    return RefreshIndicator(
-      onRefresh: widget.onRefresh,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Top Banner: Nhu cầu cấp phát vật tư từ Quy trình (Bảng kê CSV)
-            _buildRequisitionBanner(),
-            const SizedBox(height: 14),
+    return Stack(
+      children: [
+        // 1. Danh sách cuộn mượt mà (Lớp nền)
+        NotificationListener<UserScrollNotification>(
+          onNotification: _handleScrollNotification,
+          child: RefreshIndicator(
+            onRefresh: widget.onRefresh,
+            edgeOffset: 140, // Vị trí spinner tròn không bị che khuất
+            child: ListView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(16, headerPaddingTop, 16, 24),
+              children: [
+                // 1. Top Banner: Nhu cầu cấp phát vật tư từ Quy trình (Bảng kê CSV)
+                _buildRequisitionBanner(),
+                const SizedBox(height: 14),
 
-            // 2. Search Bar
-            _buildSearchBar(),
-            const SizedBox(height: 12),
+                // 2. Danh sách mặt hàng hoặc trạng thái rỗng
+                if (filtered.isEmpty)
+                  _buildEmptyState()
+                else
+                  ...filtered.map((item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildItemCard(item),
+                      )),
+              ],
+            ),
+          ),
+        ),
 
-            // 3. Filter Pills: [Tất cả 55] [Trong kho 55] [Lắp đặt 0]
-            _buildFilterPills(),
-            const SizedBox(height: 12),
+        // 2. Thanh công cụ tìm kiếm & bộ lọc nổi thu phóng theo hướng cuộn (Rule 5.4)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipRect(
+            child: SlideTransition(
+              position: _headerSlideAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
+              child: AnimatedBuilder(
+                animation: _headerAnimController ?? const AlwaysStoppedAnimation(1.0),
+                builder: (context, child) {
+                  return IgnorePointer(
+                    ignoring: (_headerAnimController?.value ?? 1.0) == 0,
+                    child: child,
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: const Border(
+                      bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Search Bar
+                      _buildSearchBar(),
+                      const SizedBox(height: 10),
 
-            // Action Button: + Xuất/nhập kho (Quản lý tồn kho)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _openMovementDialog,
-                icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                label: const Text('+ Xuất/nhập kho', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      // 2. Filter Pills: [Tất cả 55] [Trong kho 55] [Lắp đặt 0]
+                      _buildFilterPills(),
+                      const SizedBox(height: 10),
+
+                      // 3. Action Button: + Xuất/nhập kho (Quản lý tồn kho)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _openMovementDialog,
+                          icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                          label: const Text('+ Xuất/nhập kho', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // 4. Horizontal Warehouse Selector (nếu có danh sách kho)
+                      if (widget.warehouses != null && widget.warehouses!.isNotEmpty) ...[
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildWarehouseChip(
+                                label: 'Tất cả kho',
+                                isSelected: widget.selectedWarehouseFilter == null || widget.selectedWarehouseFilter!.isEmpty,
+                                onTap: () {
+                                  _scrollToTopOnFilter();
+                                  widget.onClearWarehouseFilter?.call();
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              ...widget.warehouses!.map((wh) => Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: _buildWarehouseChip(
+                                      label: wh.name,
+                                      isSelected: widget.selectedWarehouseFilter != null &&
+                                          (widget.selectedWarehouseFilter == wh.code ||
+                                              widget.selectedWarehouseFilter == wh.name),
+                                      onTap: () {
+                                        _scrollToTopOnFilter();
+                                        widget.onSelectWarehouse?.call(wh.code);
+                                      },
+                                    ),
+                                  )),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // 5. Active Warehouse Filter Chip (if selected)
+                      if (hasWarehouseFilter) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.warehouse_outlined, size: 14, color: Color(0xFF2563EB)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Kho: ${widget.selectedWarehouseFilter}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  InkWell(
+                                    onTap: () {
+                                      _scrollToTopOnFilter();
+                                      widget.onClearWarehouseFilter?.call();
+                                    },
+                                    child: const Icon(Icons.close, size: 15, color: Color(0xFF2563EB)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-
-            // Horizontal Warehouse Selector (nếu có danh sách kho)
-            if (widget.warehouses != null && widget.warehouses!.isNotEmpty) ...[
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildWarehouseChip(
-                      label: 'Tất cả kho',
-                      isSelected: widget.selectedWarehouseFilter == null || widget.selectedWarehouseFilter!.isEmpty,
-                      onTap: () => widget.onClearWarehouseFilter?.call(),
-                    ),
-                    const SizedBox(width: 6),
-                    ...widget.warehouses!.map((wh) => Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: _buildWarehouseChip(
-                            label: wh.name,
-                            isSelected: widget.selectedWarehouseFilter != null &&
-                                (widget.selectedWarehouseFilter == wh.code ||
-                                    widget.selectedWarehouseFilter == wh.name),
-                            onTap: () => widget.onSelectWarehouse?.call(wh.code),
-                          ),
-                        )),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Active Warehouse Filter Chip (if selected)
-            if (widget.selectedWarehouseFilter != null && widget.selectedWarehouseFilter!.isNotEmpty) ...[
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.warehouse_outlined, size: 14, color: Color(0xFF2563EB)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Kho: ${widget.selectedWarehouseFilter}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF2563EB),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        InkWell(
-                          onTap: widget.onClearWarehouseFilter,
-                          child: const Icon(Icons.close, size: 15, color: Color(0xFF2563EB)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // 4. List of Items
-            if (filtered.isEmpty)
-              _buildEmptyState()
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return _buildItemCard(filtered[index]);
-                },
-              ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -325,6 +473,8 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
         ],
       ),
       child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
         onChanged: (val) => setState(() => _searchQuery = val),
         style: const TextStyle(fontSize: 13.5, color: Color(0xFF0F172A)),
         decoration: InputDecoration(
@@ -334,7 +484,10 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear, size: 16, color: Color(0xFF94A3B8)),
-                  onPressed: () => setState(() => _searchQuery = ''),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
                 )
               : null,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -371,7 +524,10 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
   Widget _buildFilterPill({required String id, required String label}) {
     final isSelected = _selectedKindFilter == id;
     return InkWell(
-      onTap: () => setState(() => _selectedKindFilter = id),
+      onTap: () {
+        _scrollToTopOnFilter();
+        setState(() => _selectedKindFilter = id);
+      },
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -438,6 +594,9 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
       MaterialPageRoute(
         builder: (_) => InventoryItemDetailScreen(
           item: item,
+          warehouses: widget.warehouses,
+          selectedWarehouseFilter: widget.selectedWarehouseFilter,
+          allItems: widget.items,
           onUpdated: widget.onRefresh,
         ),
       ),
@@ -450,8 +609,8 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
     final kindFg = isStock ? const Color(0xFF15803D) : const Color(0xFF7E22CE);
     final kindLabel = isStock ? 'Trong kho' : 'Lắp đặt';
 
-    final totalOwned = (item.totalOwned ?? 0.0) > 0 ? (item.totalOwned ?? 0.0) : (item.available ?? 0.0);
-    final isAvailable = (item.available ?? 0.0) > 0;
+    final totalOwned = item.totalOwned > 0 ? item.totalOwned : item.available;
+    final isAvailable = item.available > 0;
 
     return Material(
       color: Colors.white,
@@ -662,37 +821,6 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
       context,
       item: item,
       onUpdated: widget.onRefresh,
-    );
-  }
-
-  Widget _buildQuantityBox({
-    required String label,
-    required String value,
-    required Color valueColor,
-    bool bold = false,
-  }) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF64748B),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-            color: valueColor,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 

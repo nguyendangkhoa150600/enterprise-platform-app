@@ -4,16 +4,31 @@ import 'core/i18n/app_i18n.dart';
 import 'core/permissions/hrm_permissions.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'services/push_notification_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/analysis_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/chat_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/notification_center_screen.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppI18n.instance.init();
+  await PushNotificationService.instance.init(
+    onNotificationTapped: (data) {
+      debugPrint('[Main] Push notification tapped: $data');
+      final ctx = appNavigatorKey.currentContext;
+      if (ctx != null) {
+        Navigator.of(ctx).push(
+          MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
+        );
+      }
+    },
+  );
   runApp(
     MultiProvider(
       providers: [
@@ -43,6 +58,7 @@ class MyApp extends StatelessWidget {
         final i18n = context.watch<AppI18n>();
 
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           // Rebuild the whole tree when the language changes.
           key: ValueKey(i18n.locale.languageCode),
           locale: i18n.locale,
@@ -52,7 +68,7 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          title: 'Savina Enterprise Platform',
+          title: 'SVN ERP',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,

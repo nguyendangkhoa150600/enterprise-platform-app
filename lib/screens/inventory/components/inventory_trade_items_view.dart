@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import '../../../models/inventory_models.dart';
 import 'inventory_trade_item_create_dialog.dart';
@@ -23,16 +24,103 @@ class InventoryTradeItemsView extends StatefulWidget {
   State<InventoryTradeItemsView> createState() => _InventoryTradeItemsViewState();
 }
 
-class _InventoryTradeItemsViewState extends State<InventoryTradeItemsView> {
+class _InventoryTradeItemsViewState extends State<InventoryTradeItemsView>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
+  AnimationController? _headerAnimController;
+  Animation<Offset>? _headerSlideAnimation;
+  bool _isHeaderVisible = true;
+
   String _searchQuery = '';
   String _selectedGroup = 'ALL'; // 'ALL' | 'GOODS' | 'SERVICE'
   String _selectedStatus = 'ACTIVE'; // 'ACTIVE' | 'INACTIVE' | 'ALL'
 
+  void _ensureAnimation() {
+    if (_headerAnimController == null) {
+      _headerAnimController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 240),
+        value: 1.0, // Hiển thị đầy đủ mặc định ban đầu
+      );
+      _headerSlideAnimation = Tween<Offset>(
+        begin: const Offset(0, -1.05),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: _headerAnimController!,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ));
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureAnimation();
+    _scrollController.addListener(_onScroll);
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _headerAnimController?.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    // Luôn hiển thị thanh tìm kiếm khi cuộn về gần đầu trang
+    if (_scrollController.hasClients && _scrollController.offset <= 15) {
+      _showHeader();
+    }
+  }
+
+  void _showHeader() {
+    _ensureAnimation();
+    if (!_isHeaderVisible) {
+      _isHeaderVisible = true;
+      _headerAnimController?.forward();
+    }
+  }
+
+  void _hideHeader() {
+    _ensureAnimation();
+    if (_isHeaderVisible) {
+      _isHeaderVisible = false;
+      _headerAnimController?.reverse();
+    }
+  }
+
+  bool _handleScrollNotification(UserScrollNotification notification) {
+    if (_searchFocusNode.hasFocus) {
+      return false;
+    }
+
+    if (_scrollController.hasClients && _scrollController.offset <= 15) {
+      _showHeader();
+      return false;
+    }
+
+    if (notification.direction == ScrollDirection.reverse) {
+      // Đang lướt xuống dưới xem danh sách -> trượt ẩn thanh tìm kiếm & bộ lọc
+      _hideHeader();
+    } else if (notification.direction == ScrollDirection.forward) {
+      // Đang kéo nhẹ màn hình xuống (lướt lên đầu) -> làm nổi thanh tìm kiếm & bộ lọc lên ngay lập tức
+      _showHeader();
+    }
+    return false;
+  }
+
+  void _scrollToTopOnFilter() {
+    if (_scrollController.hasClients && _scrollController.offset > 0) {
+      _scrollController.jumpTo(0);
+      _showHeader();
+    }
   }
 
   int get _goodsCount => widget.items.where((i) => !i.isService).length;
@@ -131,46 +219,92 @@ class _InventoryTradeItemsViewState extends State<InventoryTradeItemsView> {
 
   @override
   Widget build(BuildContext context) {
+    _ensureAnimation();
     if (widget.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final filtered = _filteredItems;
 
-    return RefreshIndicator(
-      onRefresh: widget.onRefresh,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Thanh tìm kiếm & Nút "+ Thêm hàng hóa"
-            _buildSearchAndAddBar(),
-            const SizedBox(height: 12),
-
-            // 2. Bộ lọc Nhóm (Tất cả, Hàng hóa, Dịch vụ)
-            _buildGroupFilterPills(),
-            const SizedBox(height: 10),
-
-            // 3. Bộ lọc Trạng thái (Đang dùng, Ngừng dùng, Tất cả)
-            _buildStatusFilterRow(),
-            const SizedBox(height: 14),
-
-            // 4. Danh sách các mặt hàng
-            if (filtered.isEmpty)
-              _buildEmptyState()
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filtered.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, index) => _buildTradeItemCard(filtered[index]),
-              ),
-          ],
+    return Stack(
+      children: [
+        // 1. Danh sách hàng hóa cuộn mượt mà
+        NotificationListener<UserScrollNotification>(
+          onNotification: _handleScrollNotification,
+          child: RefreshIndicator(
+            onRefresh: widget.onRefresh,
+            edgeOffset: 140, // Vị trí spinner tròn không bị che bởi thanh nổi
+            child: filtered.isEmpty
+                ? SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 150, 16, 24),
+                    child: _buildEmptyState(),
+                  )
+                : ListView.separated(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 150, 16, 24),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (_, index) => _buildTradeItemCard(filtered[index]),
+                  ),
+          ),
         ),
-      ),
+
+        // 2. Thanh tìm kiếm & bộ lọc nổi lên / ẩn đi theo hướng cuộn (Ảnh 2)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipRect(
+            child: SlideTransition(
+              position: _headerSlideAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
+              child: AnimatedBuilder(
+                animation: _headerAnimController ?? const AlwaysStoppedAnimation(1.0),
+                builder: (context, child) {
+                  return IgnorePointer(
+                    ignoring: (_headerAnimController?.value ?? 1.0) == 0,
+                    child: child,
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: const Border(
+                      bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Thanh tìm kiếm & Nút "+ Thêm hàng hóa"
+                      _buildSearchAndAddBar(),
+                      const SizedBox(height: 10),
+
+                      // 2. Bộ lọc Nhóm (Tất cả, Hàng hóa, Dịch vụ)
+                      _buildGroupFilterPills(),
+                      const SizedBox(height: 8),
+
+                      // 3. Bộ lọc Trạng thái (Đang dùng, Ngừng dùng, Tất cả)
+                      _buildStatusFilterRow(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -200,6 +334,7 @@ class _InventoryTradeItemsViewState extends State<InventoryTradeItemsView> {
                 Expanded(
                   child: TextField(
                     controller: _searchController,
+                    focusNode: _searchFocusNode,
                     onChanged: (val) => setState(() => _searchQuery = val),
                     style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
                     decoration: const InputDecoration(
@@ -253,19 +388,28 @@ class _InventoryTradeItemsViewState extends State<InventoryTradeItemsView> {
           _buildPill(
             label: 'Tất cả (${widget.items.length})',
             isSelected: _selectedGroup == 'ALL',
-            onTap: () => setState(() => _selectedGroup = 'ALL'),
+            onTap: () {
+              setState(() => _selectedGroup = 'ALL');
+              _scrollToTopOnFilter();
+            },
           ),
           const SizedBox(width: 8),
           _buildPill(
             label: 'Hàng hóa ($_goodsCount)',
             isSelected: _selectedGroup == 'GOODS',
-            onTap: () => setState(() => _selectedGroup = 'GOODS'),
+            onTap: () {
+              setState(() => _selectedGroup = 'GOODS');
+              _scrollToTopOnFilter();
+            },
           ),
           const SizedBox(width: 8),
           _buildPill(
             label: 'Dịch vụ ($_serviceCount)',
             isSelected: _selectedGroup == 'SERVICE',
-            onTap: () => setState(() => _selectedGroup = 'SERVICE'),
+            onTap: () {
+              setState(() => _selectedGroup = 'SERVICE');
+              _scrollToTopOnFilter();
+            },
           ),
         ],
       ),
@@ -292,7 +436,10 @@ class _InventoryTradeItemsViewState extends State<InventoryTradeItemsView> {
   Widget _buildStatusChip(String label, String value) {
     final isSelected = _selectedStatus == value;
     return GestureDetector(
-      onTap: () => setState(() => _selectedStatus = value),
+      onTap: () {
+        setState(() => _selectedStatus = value);
+        _scrollToTopOnFilter();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(

@@ -75,7 +75,7 @@ class RequestCatalogCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -195,13 +195,13 @@ class RequestCorrectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     Color statusBg = const Color(0xFFFEF3C7);
     Color statusText = const Color(0xFFD97706);
-    String statusLabel = 'requests.status.pending'.tr();
+    String statusLabel = c.kind == 'ot' ? 'Chờ duyệt OT' : 'requests.status.pending'.tr();
     IconData statusIcon = Icons.hourglass_top_rounded;
 
     if (c.status == 'APPROVED') {
       statusBg = const Color(0xFFECFDF5);
       statusText = const Color(0xFF059669);
-      statusLabel = 'requests.status.approved'.tr();
+      statusLabel = c.kind == 'ot' ? 'Đã duyệt OT' : 'requests.status.approved'.tr();
       statusIcon = Icons.check_circle_rounded;
     } else if (c.status == 'REJECTED') {
       statusBg = const Color(0xFFFEF2F2);
@@ -215,20 +215,45 @@ class RequestCorrectionCard extends StatelessWidget {
       statusIcon = Icons.remove_circle_outline;
     }
 
-    String title = 'requests.type.leave'.tr();
-    String cleanReason = c.reason;
-    if (c.leaveTypeName != null && c.leaveTypeName!.isNotEmpty) {
-      title = c.leaveTypeName!;
-    } else {
-      final match = RegExp(r'^\[(.*?)\]').firstMatch(c.reason);
-      if (match != null) {
-        title = match.group(1)!;
-        cleanReason = c.reason.substring(match.end).trim();
-      }
-    }
-    if (cleanReason.isEmpty) cleanReason = c.reason;
+    // Kind icon and style (matching Web KIND_ICON)
+    IconData kindIcon = Icons.description_outlined;
+    Color kindBoxColor = const Color(0xFFF1F5F9);
+    Color kindColor = const Color(0xFF475569);
 
-    final code = c.id.length >= 8 ? c.id.substring(c.id.length - 8).toUpperCase() : (c.id.isNotEmpty ? c.id.toUpperCase() : '8E86BF8B');
+    if (c.kind == 'ot') {
+      kindIcon = Icons.access_time_rounded;
+      kindBoxColor = const Color(0xFFEDE9FE);
+      kindColor = const Color(0xFF7C3AED);
+    } else if (c.kind == 'leave') {
+      kindIcon = Icons.calendar_today_outlined;
+      kindBoxColor = const Color(0xFFECFDF5);
+      kindColor = const Color(0xFF059669);
+    } else if (c.kind == 'business_trip') {
+      kindIcon = Icons.business_center_outlined;
+      kindBoxColor = const Color(0xFFFFF7ED);
+      kindColor = const Color(0xFFEA580C);
+    } else if (c.kind == 'shift_change') {
+      kindIcon = Icons.swap_horiz_rounded;
+      kindBoxColor = const Color(0xFFF0FDFA);
+      kindColor = const Color(0xFF0D9488);
+    } else if (c.kind == 'correction') {
+      kindIcon = Icons.description_outlined;
+      kindBoxColor = const Color(0xFFFFF1F2);
+      kindColor = const Color(0xFFE11D48);
+    } else if (c.kind == 'advance') {
+      kindIcon = Icons.account_balance_wallet_outlined;
+      kindBoxColor = const Color(0xFFEEF2FF);
+      kindColor = const Color(0xFF4F46E5);
+    }
+
+    final displayTitle = c.typeName ?? (c.leaveTypeName != null && c.leaveTypeName!.isNotEmpty ? c.leaveTypeName! : 'requests.type.leave'.tr());
+    final displayCode = (c.code != null && c.code!.isNotEmpty)
+        ? c.code!
+        : (c.id.length >= 8 ? c.id.substring(0, 8).toUpperCase() : c.id.toUpperCase());
+
+    final displayPeriod = (c.effectiveDate != null && c.effectiveDate!.isNotEmpty)
+        ? c.effectiveDate!
+        : '${formatRequestDate(c.fromDate ?? c.requestDate)} - ${formatRequestDate(c.toDate ?? c.requestDate)}';
 
     return Container(
       width: double.infinity,
@@ -239,7 +264,7 @@ class RequestCorrectionCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.015),
+            color: Colors.black.withValues(alpha: 0.015),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -256,26 +281,49 @@ class RequestCorrectionCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(4),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: kindBoxColor,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(kindIcon, size: 14, color: kindColor),
                         ),
-                        child: Text(
-                          '#$code',
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            displayCode,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        title,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            displayTitle,
+                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                     decoration: BoxDecoration(
@@ -301,11 +349,21 @@ class RequestCorrectionCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.calendar_today_outlined, size: 13, color: Color(0xFF64748B)),
                   const SizedBox(width: 4),
-                  Text(
-                    '${formatRequestDate(c.fromDate ?? c.requestDate)} - ${formatRequestDate(c.toDate ?? c.requestDate)}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                  Expanded(
+                    child: Text(
+                      displayPeriod,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  if (c.duration != null) ...[
+                  if (c.durationText != null && c.durationText!.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '(${c.durationText})',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+                    ),
+                  ] else if (c.duration != null) ...[
                     const SizedBox(width: 8),
                     Text(
                       'requests.card.days_paren'.tr(args: {'count': c.duration!.toStringAsFixed(c.duration! % 1 == 0 ? 0 : 1)}),
@@ -323,11 +381,25 @@ class RequestCorrectionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFF1F5F9)),
                 ),
-                child: Text(
-                  'requests.card.reason'.tr(args: {'reason': cleanReason}),
-                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'requests.card.reason'.tr(args: {'reason': c.reason}),
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (c.description.isNotEmpty && c.description != '—' && c.description != c.reason) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Mô tả: ${c.description}',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -390,7 +462,7 @@ class RequestDraftCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFCBD5E1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.015),
+            color: Colors.black.withValues(alpha: 0.015),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
