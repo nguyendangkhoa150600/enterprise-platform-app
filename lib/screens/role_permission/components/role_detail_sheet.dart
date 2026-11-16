@@ -62,7 +62,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
             ),
           ),
 
-          // Pinned Bottom Action Bar (Cá»‘ Ä‘á»‹nh á»Ÿ Ä‘Ã¡y modal, khÃ´ng cáº§n cuá»™n)
+          // Pinned Bottom Action Bar (Cố định ở đáy modal, không cần cuộn)
           if (canManage && !role.isSystem)
             Container(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(ctx).padding.bottom),
@@ -120,7 +120,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
   List<Map<String, dynamic>> _getRoleEffectiveActions(TenantRole role) {
     final actionMap = <String, Map<String, dynamic>>{};
 
-    // 1. QuÃ©t permissions liÃªn káº¿t vá»›i role nÃ y
+    // 1. Quét permissions liên kết với role này
     for (final perm in _permissions) {
       final isLinked = role.permissionIds.contains(perm.id) ||
           perm.roleIds.contains(role.id) ||
@@ -146,7 +146,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
       }
     }
 
-    // 2. ThÃªm cÃ¡c actionKeys trá»±c tiáº¿p cá»§a role (náº¿u chÆ°a cÃ³)
+    // 2. Thêm các actionKeys trực tiếp của role (nếu chưa có)
     for (final a in role.actionKeys) {
       if (!actionMap.containsKey(a)) {
         actionMap[a] = {
@@ -157,21 +157,21 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
       }
     }
 
-    // 3. Sáº¯p xáº¿p theo thá»© tá»± nhÃ³m chuáº©n nhÆ° Web
+    // 3. Sắp xếp theo thứ tự nhóm chuẩn như Web
     final groupOrder = [
-      'Tá»” CHá»¨C',
-      'Há»† THá»NG DÃ™NG CHUNG',
-      'HRM - PHÃ‰P VÃ€ ÄÆ N',
-      'HRM - CÃ NHÃ‚N',
-      'HRM - Há»¢P Äá»’NG',
-      'HRM - CHáº¤M CÃ”NG',
-      'HRM - Báº¢NG LÆ¯Æ NG',
+      'TỔ CHỨC',
+      'HỆ THỐNG DÙNG CHUNG',
+      'HRM - PHÉP VÀ ĐƠN',
+      'HRM - CÁ NHÂN',
+      'HRM - HỢP ĐỒNG',
+      'HRM - CHẤM CÔNG',
+      'HRM - BẢNG LƯƠNG',
       'HRM',
       'INVENTORY',
       'PROCEDURE ENGINE',
       'WORKSPACE',
       'MAINTENANCE',
-      'KHÃC',
+      'KHÁC',
     ];
 
     final list = actionMap.values.toList();
@@ -192,22 +192,22 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
   String _getActionGroup(String actionKey) {
     final lower = actionKey.toLowerCase();
     if (lower.startsWith('core.organization') || lower.startsWith('org.')) {
-      return 'Tá»” CHá»¨C';
+      return 'TỔ CHỨC';
     }
     if (lower.startsWith('hrm.request')) {
-      return 'HRM - PHÃ‰P VÃ€ ÄÆ N';
+      return 'HRM - PHÉP VÀ ĐƠN';
     }
     if (lower.startsWith('hrm.self')) {
-      return 'HRM - CÃ NHÃ‚N';
+      return 'HRM - CÁ NHÂN';
     }
     if (lower.startsWith('hrm.contract')) {
-      return 'HRM - Há»¢P Äá»’NG';
+      return 'HRM - HỢP ĐỒNG';
     }
     if (lower.startsWith('hrm.timesheet') || lower.startsWith('hrm.attendance')) {
-      return 'HRM - CHáº¤M CÃ”NG';
+      return 'HRM - CHẤM CÔNG';
     }
     if (lower.startsWith('hrm.payroll') || lower.startsWith('hrm.salary')) {
-      return 'HRM - Báº¢NG LÆ¯Æ NG';
+      return 'HRM - BẢNG LƯƠNG';
     }
     if (lower.startsWith('hrm')) {
       return 'HRM';
@@ -225,7 +225,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
       return 'MAINTENANCE';
     }
     if (lower.startsWith('core')) {
-      return 'Há»† THá»NG DÃ™NG CHUNG';
+      return 'HỆ THỐNG DÙNG CHUNG';
     }
     final parts = actionKey.split('.');
     return parts.first.toUpperCase();
@@ -252,7 +252,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
     final effectiveActions = _getRoleEffectiveActions(role);
     final groupedActions = <String, List<Map<String, dynamic>>>{};
     for (final action in effectiveActions) {
-      final grp = action['group'] as String? ?? 'KHÃC';
+      final grp = action['group'] as String? ?? 'KHÁC';
       groupedActions.putIfAbsent(grp, () => []).add(action);
     }
 
@@ -340,9 +340,9 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
           const Divider(height: 1, color: Color(0xFFE2E8F0)),
           const SizedBox(height: 16),
 
-          // Ná»˜I DUNG CHI TIáº¾T THEO VAI TRÃ’
+          // NỘI DUNG CHI TIẾT THEO VAI TRÒ
           if (role.key == 'tenant-admin') ...[
-            // Alert xanh Ä‘á»“ng bá»™ vá»›i Web
+            // Alert xanh đồng bộ với Web
             Container(
               width: double.infinity,
               margin: const EdgeInsets.only(bottom: 16),
@@ -356,22 +356,22 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    'Vai trÃ² Quáº£n trá»‹ viÃªn cáº¥p cao (tenant-admin)',
+                    'Vai trò Quản trị viên cấp cao (tenant-admin)',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Sá»Ÿ há»¯u toÃ n bá»™ quyá»n thao tÃ¡c Core vÃ  module Ä‘ang kÃ­ch hoáº¡t cho tenant. ÄÃ¢y lÃ  vai trÃ² há»‡ thá»‘ng, khÃ´ng thá»ƒ thay Ä‘á»•i hoáº·c xÃ³a bá».',
+                    'Sở hữu toàn bộ quyền thao tác Core và module đang kích hoạt cho tenant. Đây là vai trò hệ thống, không thể thay đổi hoặc xóa bỏ.',
                     style: TextStyle(fontSize: 12, color: Color(0xFF1E40AF), height: 1.35),
                   ),
                 ],
               ),
             ),
 
-            // NgÆ°á»i Ä‘ang giá»¯ vai trÃ² (8)
+            // Người đang giữ vai trò (8)
             _buildRoleMembersSection(role, canManage),
           ] else ...[
-            // Sub-tabs: Quyá»n thao tÃ¡c & NgÆ°á»i dÃ¹ng (y há»‡t Web)
+            // Sub-tabs: Quyền thao tác & Người dùng (y hệt Web)
             Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
@@ -382,14 +382,14 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildRoleSubTab(
-                    label: 'Quyá»n thao tÃ¡c',
+                    label: 'Quyền thao tác',
                     count: effectiveActions.length,
                     isSelected: (_roleDetailTabMap[role.id] ?? 'actions') == 'actions',
                     onTap: () => setState(() => _roleDetailTabMap[role.id] = 'actions'),
                   ),
                   const SizedBox(width: 4),
                   _buildRoleSubTab(
-                    label: 'NgÆ°á»i dÃ¹ng',
+                    label: 'Người dùng',
                     count: role.userIds.length,
                     isSelected: (_roleDetailTabMap[role.id] ?? 'actions') == 'members',
                     onTap: () => setState(() => _roleDetailTabMap[role.id] = 'members'),
@@ -415,7 +415,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'HÃ€NH Äá»˜NG & QUYá»€N THAO TÃC (${effectiveActions.length})',
+                    'HÀNH ĐỘNG & QUYỀN THAO TÁC (${effectiveActions.length})',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
@@ -596,7 +596,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
         .toList();
     memberUsers.sort((a, b) => a.fullName.compareTo(b.fullName));
 
-    // CÃ¡c user cÃ³ thá»ƒ thÃªm vÃ o vai trÃ² nÃ y
+    // Các user có thể thêm vào vai trò này
     final candidates = _users.where((u) => !role.userIds.contains(u.id)).toList();
     candidates.sort((a, b) => a.fullName.compareTo(b.fullName));
 
@@ -608,14 +608,14 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
             const Icon(Icons.people_alt_outlined, size: 18, color: Color(0xFF2563EB)),
             const SizedBox(width: 8),
             Text(
-              'NgÆ°á»i Ä‘ang giá»¯ vai trÃ² (${role.userIds.length})',
+              'Người đang giữ vai trò (${role.userIds.length})',
               style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
             ),
           ],
         ),
         const SizedBox(height: 12),
 
-        // GÃ¡n vai trÃ² cho ngÆ°á»i dÃ¹ng (náº¿u cÃ³ quyá»n)
+        // Gán vai trò cho người dùng (nếu có quyền)
         if (canManage && candidates.isNotEmpty) ...[
           Container(
             padding: const EdgeInsets.all(12),
@@ -636,7 +636,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
                     items: candidates,
                     itemLabel: (u) => u.fullName,
                     itemSubtitle: (u) => u.email,
-                    hintText: 'Chá»n ngÆ°á»i dÃ¹ng Ä‘á»ƒ gÃ¡n vai trÃ²...',
+                    hintText: 'Chọn người dùng để gán vai trò...',
                     maxHeight: 220,
                     onChanged: (u) => setState(() => _selectedMemberUserIdToAdd = u.id),
                     onClear: () => setState(() => _selectedMemberUserIdToAdd = null),
@@ -652,7 +652,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
                     icon: _isAssigningMember
                         ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.person_add_alt_1_outlined, size: 14),
-                    label: const Text('GÃ¡n vai trÃ²', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    label: const Text('Gán vai trò', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0F172A),
                       foregroundColor: Colors.white,
@@ -670,7 +670,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
           const SizedBox(height: 12),
         ],
 
-        // Danh sÃ¡ch ngÆ°á»i Ä‘ang giá»¯ vai trÃ²
+        // Danh sách người đang giữ vai trò
         if (memberUsers.isEmpty)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -681,7 +681,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: const Text(
-              'ChÆ°a cÃ³ ngÆ°á»i dÃ¹ng nÃ o Ä‘Æ°á»£c gÃ¡n vai trÃ² nÃ y.',
+              'Chưa có người dùng nào được gán vai trò này.',
               style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
             ),
           )
@@ -729,7 +729,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
                   if (canManage)
                     IconButton(
                       icon: const Icon(Icons.person_remove_outlined, size: 18, color: Color(0xFFDC2626)),
-                      tooltip: 'Gá»¡ vai trÃ²',
+                      tooltip: 'Gỡ vai trò',
                       onPressed: () => _handleRemoveRoleFromUser(role, u),
                       visualDensity: VisualDensity.compact,
                     ),
@@ -772,7 +772,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
       (u) => u.id == userId,
       orElse: () => TenantUser(
         id: userId,
-        fullName: 'NgÆ°á»i dÃ¹ng',
+        fullName: 'Người dùng',
         email: '',
         status: 'active',
         systemRole: 'tenant-user',
@@ -790,7 +790,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('ÄÃ£ gÃ¡n vai trÃ² "${role.name}" cho "${user.fullName}".'),
+              content: Text('Đã gán vai trò "${role.name}" cho "${user.fullName}".'),
               backgroundColor: const Color(0xFF059669),
             ),
           );
@@ -801,7 +801,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('KhÃ´ng thá»ƒ gÃ¡n vai trÃ² cho ngÆ°á»i dÃ¹ng.'),
+              content: Text('Không thể gán vai trò cho người dùng.'),
               backgroundColor: Color(0xFFDC2626),
             ),
           );
@@ -811,7 +811,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('ÄÃ£ xáº£y ra lá»—i khi gÃ¡n vai trÃ².'),
+            content: Text('Đã xảy ra lỗi khi gán vai trò.'),
             backgroundColor: Color(0xFFDC2626),
           ),
         );
@@ -825,12 +825,12 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Gá»¡ vai trÃ²', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        content: Text('Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n gá»¡ vai trÃ² "${role.name}" khá»i "${user.fullName}"?'),
+        title: const Text('Gỡ vai trò', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text('Bạn có chắc chắn muốn gỡ vai trò "${role.name}" khỏi "${user.fullName}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Há»§y', style: TextStyle(color: Color(0xFF64748B))),
+            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -839,7 +839,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
               foregroundColor: Colors.white,
               elevation: 0,
             ),
-            child: const Text('Gá»¡ vai trÃ²'),
+            child: const Text('Gỡ vai trò'),
           ),
         ],
       ),
@@ -855,7 +855,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('ÄÃ£ gá»¡ vai trÃ² "${role.name}" khá»i "${user.fullName}".'),
+              content: Text('Đã gỡ vai trò "${role.name}" khỏi "${user.fullName}".'),
               backgroundColor: const Color(0xFF059669),
             ),
           );
@@ -865,7 +865,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('KhÃ´ng thá»ƒ gá»¡ vai trÃ² cá»§a ngÆ°á»i dÃ¹ng.'),
+              content: Text('Không thể gỡ vai trò của người dùng.'),
               backgroundColor: Color(0xFFDC2626),
             ),
           );
@@ -875,7 +875,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('ÄÃ£ xáº£y ra lá»—i khi gá»¡ vai trÃ².'),
+            content: Text('Đã xảy ra lỗi khi gỡ vai trò.'),
             backgroundColor: Color(0xFFDC2626),
           ),
         );

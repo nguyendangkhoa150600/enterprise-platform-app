@@ -1,18 +1,28 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../models/hrm_attendance_models.dart';
 import '../../../core/i18n/app_i18n.dart';
 
 String _formatTime(String? isoString) {
   if (isoString == null || isoString.isEmpty) return '--:--';
   final dt = DateTime.tryParse(isoString);
-  if (dt == null) return '--:--';
-  return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+  if (dt != null) {
+    final local = dt.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
+  final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
+  if (match != null) {
+    final h = match.group(1)!.padLeft(2, '0');
+    final m = match.group(2)!;
+    return '$h:$m';
+  }
+  return '--:--';
 }
 
 String _formatDate(String isoString) {
   final dt = DateTime.tryParse(isoString);
   if (dt == null) return isoString;
-  return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  final local = dt.toLocal();
+  return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
 }
 
 class AttendanceHistoryView extends StatefulWidget {

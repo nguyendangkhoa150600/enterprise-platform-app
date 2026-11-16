@@ -66,12 +66,12 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: const [
                               Text(
-                                'Táº¡o vai trÃ² ngÆ°á»i dÃ¹ng',
+                                'Tạo vai trò người dùng',
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Khai bÃ¡o thÃ´ng tin Ä‘á»‹nh danh vÃ  chá»n cÃ¡c quyá»n thao tÃ¡c cho vai trÃ².',
+                                'Khai báo thông tin định danh và chọn các quyền thao tác cho vai trò.',
                                 style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                               ),
                             ],
@@ -95,16 +95,16 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 1. THÃ”NG TIN Äá»ŠNH DANH
+                          // 1. THÔNG TIN ĐỊNH DANH
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: const [
                               Text(
-                                '1. THÃ”NG TIN Äá»ŠNH DANH',
+                                '1. THÔNG TIN ĐỊNH DANH',
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                               ),
                               Text(
-                                'Má»¥c cÃ³ dáº¥u (*) lÃ  báº¯t buá»™c',
+                                'Mục có dấu (*) là bắt buộc',
                                 style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
                               ),
                             ],
@@ -114,7 +114,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             controller: nameCtrl,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                             decoration: InputDecoration(
-                              labelText: 'TÃªn vai trÃ² *',
+                              labelText: 'Tên vai trò *',
                               labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -127,7 +127,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             maxLines: 2,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
-                              labelText: 'MÃ´ táº£ ngáº¯n gá»n',
+                              labelText: 'Mô tả ngắn gọn',
                               labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -137,14 +137,14 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
 
                           const SizedBox(height: 24),
 
-                          // 2. QUYá»€N THAO TÃC
+                          // 2. QUYỀN THAO TÁC
                           const Text(
-                            '2. QUYá»€N THAO TÃC',
+                            '2. QUYỀN THAO TÁC',
                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                           ),
                           const SizedBox(height: 10),
 
-                          // Header Bar: Permission X / Total & Chá»n táº¥t cáº£
+                          // Header Bar: Permission X / Total & Chọn tất cả
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -189,8 +189,8 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                                       const SizedBox(width: 4),
                                       Text(
                                         selectedPermIds.length == _permissions.length
-                                            ? 'Bá» chá»n táº¥t cáº£'
-                                            : 'Chá»n táº¥t cáº£ (${_permissions.length})',
+                                            ? 'Bỏ chọn tất cả'
+                                            : 'Chọn tất cả (${_permissions.length})',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -210,7 +210,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             onChanged: (val) => setSheetState(() => permSearch = val.trim()),
                             style: const TextStyle(fontSize: 12.5),
                             decoration: InputDecoration(
-                              hintText: 'TÃ¬m kiáº¿m trong ${_permissions.length} permission...',
+                              hintText: 'Tìm kiếm trong ${_permissions.length} permission...',
                               hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                               prefixIcon: Icon(Icons.search, size: 16, color: Colors.grey.shade400),
                               border: OutlineInputBorder(
@@ -334,7 +334,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Há»§y bá»', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: const Text('Hủy bỏ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -414,7 +414,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                                       SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          'Táº¡o vai trÃ² tháº¥t báº¡i. Vui lÃ²ng kiá»ƒm tra láº¡i káº¿t ná»‘i hoáº·c thÃ´ng tin.',
+                                          'Tạo vai trò thất bại. Vui lòng kiểm tra lại kết nối hoặc thông tin.',
                                           style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
                                         ),
                                       ),
@@ -441,7 +441,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                                   height: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('LÆ°u láº¡i', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              : const Text('Lưu lại', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -455,13 +455,13 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
     );
   }
 
-  // Edit Role Sheet (Äá»“ng bá»™ 1:1 vá»›i Web)
+  // Edit Role Sheet (Đồng bộ 1:1 với Web)
   void _showEditRoleSheet(BuildContext sheetContext, TenantRole role) {
     final nameCtrl = TextEditingController(text: role.name);
     final descCtrl = TextEditingController(text: role.description ?? '');
     String permSearch = '';
 
-    // Khá»Ÿi táº¡o cÃ¡c permissions Ä‘ang Ä‘Æ°á»£c gÃ¡n cho role nÃ y
+    // Khởi tạo các permissions đang được gán cho role này
     final selectedPermIds = <String>{};
     for (final p in _permissions) {
       final isLinked = role.permissionIds.contains(p.id) ||
@@ -513,7 +513,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                     ),
                   ),
 
-                  // Header (Chuáº©n Web)
+                  // Header (Chuẩn Web)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     child: Row(
@@ -533,12 +533,12 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: const [
                               Text(
-                                'Chá»‰nh sá»­a vai trÃ² ngÆ°á»i dÃ¹ng',
+                                'Chỉnh sửa vai trò người dùng',
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Khai bÃ¡o thÃ´ng tin Ä‘á»‹nh danh vÃ  chá»n cÃ¡c quyá»n thao tÃ¡c cho vai trÃ².',
+                                'Khai báo thông tin định danh và chọn các quyền thao tác cho vai trò.',
                                 style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                               ),
                             ],
@@ -562,16 +562,16 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 1. THÃ”NG TIN Äá»ŠNH DANH
+                          // 1. THÔNG TIN ĐỊNH DANH
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: const [
                               Text(
-                                '1. THÃ”NG TIN Äá»ŠNH DANH',
+                                '1. THÔNG TIN ĐỊNH DANH',
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                               ),
                               Text(
-                                'Má»¥c cÃ³ dáº¥u (*) lÃ  báº¯t buá»™c',
+                                'Mục có dấu (*) là bắt buộc',
                                 style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
                               ),
                             ],
@@ -581,7 +581,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             controller: nameCtrl,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                             decoration: InputDecoration(
-                              labelText: 'TÃªn vai trÃ² *',
+                              labelText: 'Tên vai trò *',
                               labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -594,7 +594,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             maxLines: 2,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
-                              labelText: 'MÃ´ táº£ ngáº¯n gá»n',
+                              labelText: 'Mô tả ngắn gọn',
                               labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -604,14 +604,14 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
 
                           const SizedBox(height: 24),
 
-                          // 2. QUYá»€N THAO TÃC
+                          // 2. QUYỀN THAO TÁC
                           const Text(
-                            '2. QUYá»€N THAO TÃC',
+                            '2. QUYỀN THAO TÁC',
                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                           ),
                           const SizedBox(height: 10),
 
-                          // Header Bar: Permission X / Total & Chá»n táº¥t cáº£
+                          // Header Bar: Permission X / Total & Chọn tất cả
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -656,8 +656,8 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                                       const SizedBox(width: 4),
                                       Text(
                                         selectedPermIds.length == _permissions.length
-                                            ? 'Bá» chá»n táº¥t cáº£'
-                                            : 'Chá»n táº¥t cáº£ (${_permissions.length})',
+                                            ? 'Bỏ chọn tất cả'
+                                            : 'Chọn tất cả (${_permissions.length})',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -677,7 +677,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             onChanged: (val) => setSheetState(() => permSearch = val.trim()),
                             style: const TextStyle(fontSize: 12.5),
                             decoration: InputDecoration(
-                              hintText: 'TÃ¬m kiáº¿m trong ${_permissions.length} permission...',
+                              hintText: 'Tìm kiếm trong ${_permissions.length} permission...',
                               hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                               prefixIcon: Icon(Icons.search, size: 16, color: Colors.grey.shade400),
                               border: OutlineInputBorder(
@@ -783,7 +783,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                     ),
                   ),
 
-                  // Bottom Action Bar (Chuáº©n Web)
+                  // Bottom Action Bar (Chuẩn Web)
                   Container(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                     decoration: const BoxDecoration(
@@ -801,7 +801,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Há»§y bá»', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: const Text('Hủy bỏ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -819,7 +819,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
 
                             setSheetState(() => isSaving = true);
 
-                            // Thu tháº­p actionKeys vÃ  moduleKeys tá»± Ä‘á»™ng tá»« cÃ¡c permission Ä‘Ã£ chá»n
+                            // Thu thập actionKeys và moduleKeys tự động từ các permission đã chọn
                             final collectedActionKeys = <String>{};
                             final collectedModuleKeys = <String>{};
                             for (final p in _permissions) {
@@ -882,7 +882,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                                       SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          'Cáº­p nháº­t vai trÃ² tháº¥t báº¡i. Vui lÃ²ng kiá»ƒm tra láº¡i káº¿t ná»‘i hoáº·c thÃ´ng tin.',
+                                          'Cập nhật vai trò thất bại. Vui lòng kiểm tra lại kết nối hoặc thông tin.',
                                           style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
                                         ),
                                       ),
@@ -909,7 +909,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                                   height: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('LÆ°u láº¡i', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              : const Text('Lưu lại', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),

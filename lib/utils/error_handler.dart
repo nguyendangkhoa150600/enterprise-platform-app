@@ -32,6 +32,9 @@ class ApiErrorHandler {
 
       // 403 Forbidden
       if (statusCode == 403 || (rawMsg != null && rawMsg.toLowerCase().contains('forbidden'))) {
+        if (rawMsg != null && rawMsg.isNotEmpty && !rawMsg.toLowerCase().contains('forbidden')) {
+          return rawMsg;
+        }
         return 'core_misc.err.forbidden_403'.tr();
       }
 

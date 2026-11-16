@@ -29,10 +29,15 @@ class MonitorRelatedRequestsSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'att_monitor.requests.title'.tr(args: {'count': requests.length}),
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              Expanded(
+                child: Text(
+                  'att_monitor.requests.title'.tr(args: {'count': requests.length}),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: onOpenApprovals,
                 borderRadius: BorderRadius.circular(6),
@@ -43,10 +48,10 @@ class MonitorRelatedRequestsSection extends StatelessWidget {
                     children: [
                       Text(
                         'att_monitor.requests.open_list'.tr(),
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                       ),
-                      SizedBox(width: 2),
-                      Icon(Icons.chevron_right, size: 14, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 2),
+                      const Icon(Icons.chevron_right, size: 14, color: Color(0xFF2563EB)),
                     ],
                   ),
                 ),

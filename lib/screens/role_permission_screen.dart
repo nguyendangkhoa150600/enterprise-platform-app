@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/i18n/app_i18n.dart';
@@ -225,7 +225,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                         : _showCreateRoleSheet(context),
                     icon: const Icon(Icons.add, size: 16, color: Colors.white),
                     label: Text(
-                      isPermTab ? 'Táº¡o permission' : 'roles.create_role'.tr(),
+                      isPermTab ? 'Tạo permission' : 'roles.create_role'.tr(),
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -244,7 +244,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
           : Column(
               children: [
-                // Top Fixed 2 Tab Lá»›n (Cá»‘ Ä‘á»‹nh á»Ÿ Ä‘á»‰nh, luÃ´n luÃ´n nhÃ¬n tháº¥y)
+                // Top Fixed 2 Tab Lớn (Cố định ở đỉnh, luôn luôn nhìn thấy)
                 Container(
                   color: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -255,15 +255,15 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                 ),
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-                // 2 MÃ n hÃ¬nh Ä‘á»™c láº­p (Chuyá»ƒn Ä‘á»•i qua láº¡i khi switch tab)
+                // 2 Màn hình độc lập (Chuyển đổi qua lại khi switch tab)
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      // MÃ n hÃ¬nh 1: Quáº£n trá»‹ Vai trÃ² (Full Screen)
+                      // Màn hình 1: Quản trị Vai trò (Full Screen)
                       _buildRolesScreen(canManage, systemRoleCount, customRoleCount),
 
-                      // MÃ n hÃ¬nh 2: Quáº£n trá»‹ Permission (Full Screen)
+                      // Màn hình 2: Quản trị Permission (Full Screen)
                       _buildPermissionsScreen(canManage),
                     ],
                   ),
@@ -284,11 +284,11 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
       ),
       child: Row(
         children: [
-          // Tab 1: Vai trÃ²
+          // Tab 1: Vai trò
           Expanded(
             child: _buildLargeTabItem(
               icon: Icons.shield_outlined,
-              label: 'Vai trÃ²',
+              label: 'Vai trò',
               count: _roles.length,
               isSelected: selectedIndex == 0,
               badgeBg: selectedIndex == 0 ? const Color(0xFFFEF08A) : const Color(0xFFE2E8F0),
@@ -358,12 +358,16 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
               color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
             ),
             const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 8),
@@ -428,7 +432,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     iconBg: const Color(0xFFECFDF5),
                     title: 'roles.stat_modules'.tr(),
                     value: '${_modules.where((m) => m.isActive).length} / ${_modules.length}',
-                    subtext: 'kÃ­ch hoáº¡t',
+                    subtext: 'kích hoạt',
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -439,7 +443,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     iconBg: const Color(0xFFF5F3FF),
                     title: 'roles.stat_users'.tr(),
                     value: '${_users.length}',
-                    subtext: 'ngÆ°á»i dÃ¹ng',
+                    subtext: 'người dùng',
                   ),
                 ),
               ],
@@ -498,13 +502,9 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Flexible(
-                      child: Text(
-                        value,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Text(
+                      value,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                     ),
                     if (subtext.isNotEmpty) ...[
                       const SizedBox(width: 4),
@@ -539,7 +539,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          // Banner giá»›i thiá»‡u
+          // Banner giới thiệu
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -610,7 +610,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                 ),
                 const SizedBox(height: 10),
 
-                // 2 Tab nhá» trong tab Vai trÃ²: Vai trÃ² há»‡ thá»‘ng & Vai trÃ² tÃ¹y chá»‰nh
+                // 2 Tab nhỏ trong tab Vai trò: Hệ thống & Tùy chỉnh
                 Container(
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
@@ -654,15 +654,19 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                                   color: _roleFilter == 'system' ? const Color(0xFF2563EB) : const Color(0xFF64748B),
                                 ),
                                 const SizedBox(width: 5),
-                                Text(
-                                  'Vai trÃ² há»‡ thá»‘ng',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: _roleFilter == 'system' ? FontWeight.w700 : FontWeight.w500,
-                                    color: _roleFilter == 'system' ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                Flexible(
+                                  child: Text(
+                                    'Hệ thống',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: _roleFilter == 'system' ? FontWeight.w700 : FontWeight.w500,
+                                      color: _roleFilter == 'system' ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 5),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                   decoration: BoxDecoration(
@@ -718,15 +722,19 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                                   color: _roleFilter == 'custom' ? const Color(0xFFD97706) : const Color(0xFF64748B),
                                 ),
                                 const SizedBox(width: 5),
-                                Text(
-                                  'Vai trÃ² tÃ¹y chá»‰nh',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: _roleFilter == 'custom' ? FontWeight.w700 : FontWeight.w500,
-                                    color: _roleFilter == 'custom' ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                Flexible(
+                                  child: Text(
+                                    'Tùy chỉnh',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: _roleFilter == 'custom' ? FontWeight.w700 : FontWeight.w500,
+                                      color: _roleFilter == 'custom' ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 5),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                   decoration: BoxDecoration(
@@ -755,7 +763,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
           ),
           const SizedBox(height: 14),
 
-          // Danh sÃ¡ch cÃ¡c vai trÃ² (Cuá»™n tá»± do, khÃ´ng bá»‹ bÃ³ cá»©ng)
+          // Danh sách các vai trò (Cuộn tự do, không bị bó cứng)
           if (filtered.isEmpty)
             Container(
               padding: const EdgeInsets.all(32),
@@ -846,7 +854,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                 ),
                 if (role.description?.isNotEmpty == true &&
                     role.description != 'roles.no_description'.tr() &&
-                    role.description != 'KhÃ´ng cÃ³ mÃ´ táº£ chi tiáº¿t.') ...[
+                    role.description != 'Không có mô tả chi tiết.') ...[
                   const SizedBox(height: 4),
                   Text(
                     role.description!,
@@ -871,7 +879,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     ),
                     const Spacer(),
                     Text(
-                      'Chi tiáº¿t',
+                      'Chi tiết',
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.bold,
@@ -938,12 +946,12 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Danh má»¥c Permission TiÃªu chuáº©n',
+                        'Danh mục Permission Tiêu chuẩn',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Há»‡ thá»‘ng gá»“m ${_permissions.length} quyá»n tiÃªu chuáº©n quáº£n lÃ½ cÃ¡c hÃ nh Ä‘á»™ng cá»‘t lÃµi vÃ  module.',
+                        'Hệ thống gồm ${_permissions.length} quyền tiêu chuẩn quản lý các hành động cốt lõi và module.',
                         style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -964,7 +972,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
             ),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'TÃ¬m theo tÃªn quyá»n, mÃ£ permission, hÃ nh Ä‘á»™ng...',
+                hintText: 'Tìm theo tên quyền, mã permission, hành động...',
                 hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
                 prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade400),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -989,7 +997,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
           ),
           const SizedBox(height: 14),
 
-          // Danh sÃ¡ch Permission Cards
+          // Danh sách Permission Cards
           if (filtered.isEmpty)
             Container(
               padding: const EdgeInsets.all(32),
@@ -1003,7 +1011,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                 children: [
                   Icon(Icons.vpn_key_outlined, size: 40, color: Colors.grey.shade300),
                   const SizedBox(height: 8),
-                  const Text('KhÃ´ng tÃ¬m tháº¥y permission phÃ¹ há»£p', style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5)),
+                  const Text('Không tìm thấy permission phù hợp', style: TextStyle(color: Color(0xFF64748B), fontSize: 13.5)),
                 ],
               ),
             )
@@ -1064,7 +1072,7 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
-                                      '${usedRoles.length} vai trÃ²   â€¢   ${perm.actionKeys.length} hÃ nh Ä‘á»™ng',
+                                      '${usedRoles.length} vai trò   •   ${perm.actionKeys.length} hành động',
                                       style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                                     ),
                                   ],
@@ -1147,13 +1155,13 @@ class _RolePermissionScreenState extends State<RolePermissionScreen> with Single
   String _slugify(String text) {
     return text
         .toLowerCase()
-        .replaceAll(RegExp(r'[Ã Ã¡áº¡áº£Ã£Ã¢áº§áº¥áº­áº©áº«Äƒáº±áº¯áº·áº³áºµ]'), 'a')
-        .replaceAll(RegExp(r'[Ã¨Ã©áº¹áº»áº½Ãªá»áº¿á»‡á»ƒá»…]'), 'e')
-        .replaceAll(RegExp(r'[Ã¬Ã­á»‹á»‰Ä©]'), 'i')
-        .replaceAll(RegExp(r'[Ã²Ã³á»á»ÃµÃ´á»“á»‘á»™á»•á»—Æ¡á»á»›á»£á»Ÿá»¡]'), 'o')
-        .replaceAll(RegExp(r'[Ã¹Ãºá»¥á»§Å©Æ°á»«á»©á»±á»­á»¯]'), 'u')
-        .replaceAll(RegExp(r'[á»³Ã½á»µá»·á»¹]'), 'y')
-        .replaceAll(RegExp(r'[Ä‘]'), 'd')
+        .replaceAll(RegExp(r'[àáạảãâầấậẩẫăằắặẳẵ]'), 'a')
+        .replaceAll(RegExp(r'[èéẹẻẽêềếệểễ]'), 'e')
+        .replaceAll(RegExp(r'[ìíịỉĩ]'), 'i')
+        .replaceAll(RegExp(r'[òóọỏõôồốộổỗơờớợởỡ]'), 'o')
+        .replaceAll(RegExp(r'[ùúụủũưừứựửữ]'), 'u')
+        .replaceAll(RegExp(r'[ỳýỵỷỹ]'), 'y')
+        .replaceAll(RegExp(r'[đ]'), 'd')
         .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
         .trim()
         .replaceAll(RegExp(r'\s+'), '-');
