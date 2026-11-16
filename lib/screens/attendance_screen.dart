@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -178,7 +178,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     _refreshLocation();
 
     if (mounted) {
-      final todayRec = results[1] as AttendanceRecord?;
+      final attContext = results[0] as AttendanceContext?;
+      var todayRec = results[1] as AttendanceRecord?;
       final allRemote = ((results[3] as List<AttendanceCorrection>?) ?? []).where((c) => !_cancelledRequestIds.contains(c.id)).toList();
       final explicitDrafts = (results[5] as List<AttendanceCorrection>?) ?? [];
       final combinedDrafts = <AttendanceCorrection>[
@@ -193,16 +194,57 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         }
       }
 
+      final monthBoard = results[6] as HrmTimesheetBoard?;
+      final now = DateTime.now();
+      final todayStr = attContext?.workDate ?? '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final boardDay = monthBoard?.myEmployee?.days[todayStr];
+
+      // Đồng bộ thông tin điểm danh hôm nay giữa AttendanceRecord và TimesheetBoard
+      if (todayRec == null && boardDay != null && (boardDay.checkIn?.isNotEmpty == true || boardDay.checkOut?.isNotEmpty == true)) {
+        todayRec = AttendanceRecord(
+          id: 'board-$todayStr',
+          employeeId: attContext?.employeeId ?? '',
+          workDate: todayStr,
+          firstCheckInAt: boardDay.checkIn,
+          lastCheckOutAt: boardDay.checkOut,
+          workedMinutes: boardDay.workedMinutes,
+          lateMinutes: boardDay.lateMinutes,
+          earlyLeaveMinutes: boardDay.earlyLeaveMinutes,
+          status: boardDay.status,
+        );
+      } else if (todayRec != null && (todayRec.firstCheckInAt == null || todayRec.firstCheckInAt!.isEmpty) && boardDay?.checkIn?.isNotEmpty == true) {
+        todayRec = AttendanceRecord(
+          id: todayRec.id,
+          employeeId: todayRec.employeeId,
+          workDate: todayRec.workDate,
+          firstCheckInAt: boardDay!.checkIn,
+          lastCheckOutAt: todayRec.lastCheckOutAt ?? boardDay.checkOut,
+          workedMinutes: todayRec.workedMinutes > 0 ? todayRec.workedMinutes : boardDay.workedMinutes,
+          lateMinutes: todayRec.lateMinutes > 0 ? todayRec.lateMinutes : boardDay.lateMinutes,
+          earlyLeaveMinutes: todayRec.earlyLeaveMinutes > 0 ? todayRec.earlyLeaveMinutes : boardDay.earlyLeaveMinutes,
+          status: todayRec.status,
+          attendanceSource: todayRec.attendanceSource,
+          matchedSiteName: todayRec.matchedSiteName,
+          note: todayRec.note,
+          punches: todayRec.punches,
+        );
+      }
+
+      final hasCheckIn = (todayRec?.firstCheckInAt != null && todayRec!.firstCheckInAt!.isNotEmpty) ||
+          (boardDay?.checkIn != null && boardDay!.checkIn!.isNotEmpty);
+      final hasCheckOut = (todayRec?.lastCheckOutAt != null && todayRec!.lastCheckOutAt!.isNotEmpty) ||
+          (boardDay?.checkOut != null && boardDay!.checkOut!.isNotEmpty);
+
       setState(() {
-        _context = results[0] as AttendanceContext?;
+        _context = attContext;
         _todayRecord = todayRec;
         _history = (results[2] as List<AttendanceRecord>?) ?? [];
         _corrections = allRemote.where((c) => c.status != 'DRAFT').toList();
         _drafts = uniqueDrafts;
         _leaveTypes = (results[4] as List<LeaveType>?) ?? [];
-        _currentMonthBoard = results[6] as HrmTimesheetBoard?;
+        _currentMonthBoard = monthBoard;
         if (_selectedMonth == _monthLabel(DateTime.now())) _timesheetBoard = _currentMonthBoard;
-        _isInShift = todayRec?.firstCheckInAt != null && todayRec?.lastCheckOutAt == null;
+        _isInShift = hasCheckIn && !hasCheckOut;
         _isLoading = false;
         _isLoadingTimesheet = false;
       });
@@ -258,13 +300,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     try {
       final fix = await _fixForPunch();
       if (fix == null) return;
-      final record = await _service.checkIn(latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy);
-      final history = await _service.getAttendanceHistory();
+      final record = await _service.checkIn(
+        employeeId: _context?.employeeId,
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        accuracy: fix.accuracy,
+      );
+      final monthKey = _parseSelectedMonthKey(_monthLabel(DateTime.now()));
+      final results = await Future.wait([
+        _service.getAttendanceHistory(),
+        _service.getTimesheetBoard(month: monthKey, self: true),
+      ]);
+      final history = (results[0] as List<AttendanceRecord>?) ?? [];
+      final board = results[1] as HrmTimesheetBoard?;
 
       if (mounted) {
         setState(() {
           _todayRecord = record;
           _history = history;
+          if (board != null) {
+            _currentMonthBoard = board;
+            if (_selectedMonth == _monthLabel(DateTime.now())) {
+              _timesheetBoard = board;
+            }
+          }
           _isInShift = true; // Chuyển sang hiển thị QUẸT RA
           _isPunching = false;
         });
@@ -304,13 +363,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     try {
       final fix = await _fixForPunch();
       if (fix == null) return;
-      final record = await _service.checkOut(latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy);
-      final history = await _service.getAttendanceHistory();
+      final record = await _service.checkOut(
+        employeeId: _context?.employeeId,
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        accuracy: fix.accuracy,
+      );
+      final monthKey = _parseSelectedMonthKey(_monthLabel(DateTime.now()));
+      final results = await Future.wait([
+        _service.getAttendanceHistory(),
+        _service.getTimesheetBoard(month: monthKey, self: true),
+      ]);
+      final history = (results[0] as List<AttendanceRecord>?) ?? [];
+      final board = results[1] as HrmTimesheetBoard?;
 
       if (mounted) {
         setState(() {
           _todayRecord = record;
           _history = history;
+          if (board != null) {
+            _currentMonthBoard = board;
+            if (_selectedMonth == _monthLabel(DateTime.now())) {
+              _timesheetBoard = board;
+            }
+          }
           _isInShift = false; // Quẹt ra xong lập tức chuyển lại hiển thị QUẸT VÀO cho ca/lượt tiếp theo
           _isPunching = false;
         });
@@ -348,8 +424,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   String _formatTime(String? isoString) {
     if (isoString == null || isoString.isEmpty) return '--:--';
     final dt = DateTime.tryParse(isoString);
-    if (dt == null) return '--:--';
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    if (dt != null) {
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+    final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
+    if (match != null) {
+      final h = match.group(1)!.padLeft(2, '0');
+      final m = match.group(2)!;
+      return '$h:$m';
+    }
+    return '--:--';
   }
 
   String _formatDate(String isoString) {
@@ -896,23 +980,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                           children: [
                             const Icon(Icons.logout_rounded, color: Colors.white, size: 28),
                             const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'attendance.punch.checkout_button'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    letterSpacing: 0.3,
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'attendance.punch.checkout_button'.tr(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 0.3,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  'attendance.punch.checkout_hint'.tr(),
-                                  style: TextStyle(fontSize: 11, color: Colors.white70),
-                                ),
-                              ],
+                                  Text(
+                                    'attendance.punch.checkout_hint'.tr(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -1048,23 +1139,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                         children: [
                           const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 28),
                           const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                hasPreviousPunches ? 'attendance.punch.checkin_next_button'.tr() : 'attendance.punch.checkin_button'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.3,
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  hasPreviousPunches ? 'attendance.punch.checkin_next_button'.tr() : 'attendance.punch.checkin_button'.tr(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.3,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                'attendance.punch.checkin_hint'.tr(),
-                                style: TextStyle(fontSize: 11, color: Colors.white70),
-                              ),
-                            ],
+                                Text(
+                                  'attendance.punch.checkin_hint'.tr(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

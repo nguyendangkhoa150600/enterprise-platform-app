@@ -80,15 +80,15 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   bool _hrm(String path) => _mod('hrm') && HrmCapabilities.instance.pageAllowed(path);
   bool _hrmTab(String path, String tab) => _mod('hrm') && HrmCapabilities.instance.tabAllowed(path, tab);
 
+  bool get _showOrg => false;
+  bool get _showAdmin => false;
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     context.watch<HrmCapabilities>();
     final canShowInventory = (auth.isTenantAdmin == true) || (auth.isPlatformAdmin == true) || _modInventory;
     final showApps = true;
-    // The ORG and ADMIN major categories are hidden from the mobile menu.
-    const showOrg = false;
-    const showAdmin = false;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -124,23 +124,6 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF0F172A),
                     letterSpacing: -0.3,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
-                  ),
-                  child: const Text(
-                    '20+ Chức năng',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2563EB),
-                    ),
                   ),
                 ),
               ],
@@ -210,16 +193,9 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
           // MỤC LỚN 1: ỨNG DỤNG / DANH SÁCH
           // ==========================================
           if (showApps) ...[
-            _buildMajorCategoryHeader(
-              title: _selectedCategory == 'LIST' ? 'MỤC LỚN: DANH SÁCH' : 'MỤC LỚN: ỨNG DỤNG',
-              subtitle: 'Các phân hệ vận hành, dự án, quy trình & sản xuất kinh doanh',
-              icon: _selectedCategory == 'LIST' ? Icons.view_list_rounded : Icons.grid_view_rounded,
-              color: const Color(0xFF2563EB),
-            ),
-
-            // 1. WORKPLACE (KHÔNG GIAN LÀM VIỆC / CÔNG VIỆC)
+            // 1. CÔNG VIỆC
             _buildMenuSection(
-              title: 'CÔNG VIỆC (WORKPLACE)',
+              title: 'CÔNG VIỆC',
               items: [
                 {
                   'title': 'Công việc của tôi',
@@ -386,9 +362,9 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
               ],
             ),
 
-            // 3. QUẢN TRỊ NHÂN SỰ (HRM)
+            // 3. QUẢN TRỊ NHÂN SỰ
             _buildMenuSection(
-              title: 'QUẢN TRỊ NHÂN SỰ (HRM)',
+              title: 'QUẢN TRỊ NHÂN SỰ',
               items: [
                 // Tổng quan
                 {
@@ -674,20 +650,6 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen())),
                 },
-              ],
-            ),
-
-            // 0. TỔNG QUAN & ỨNG DỤNG (Bảng điều khiển, Ứng dụng phân hệ)
-            _buildMenuSection(
-              title: 'TỔNG QUAN & ỨNG DỤNG',
-              items: [
-                {
-                  'title': 'Bảng điều khiển',
-                  'icon': Icons.grid_view_outlined,
-                  'bg': const Color(0xFFEFF6FF), // Blue 50
-                  'iconColor': const Color(0xFF2563EB),
-                  'onTap': () => widget.onOpenDashboard?.call(),
-                },
                 {
                   'title': 'Ứng dụng phân hệ',
                   'icon': Icons.inventory_2_outlined,
@@ -730,13 +692,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
           // ==========================================
           // MỤC LỚN 2: TỔ CHỨC & BỘ MÁY
           // ==========================================
-          if (showOrg) ...[
-            _buildMajorCategoryHeader(
-              title: 'MỤC LỚN: TỔ CHỨC & BỘ MÁY',
-              subtitle: 'Sơ đồ tổ chức, phòng ban, trung tâm & điều phối bổ nhiệm',
-              icon: Icons.alt_route_rounded,
-              color: const Color(0xFF059669),
-            ),
+          if (_showOrg) ...[
             _buildMenuSection(
               title: 'TỔ CHỨC & BỘ MÁY',
               items: [
@@ -771,13 +727,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
           // ==========================================
           // MỤC LỚN 3: QUẢN TRỊ
           // ==========================================
-          if (showAdmin) ...[
-            _buildMajorCategoryHeader(
-              title: 'MỤC LỚN: QUẢN TRỊ',
-              subtitle: 'Quản trị danh tính, tài khoản người dùng & ma trận phân quyền',
-              icon: Icons.shield_outlined,
-              color: const Color(0xFF7C3AED),
-            ),
+          if (_showAdmin) ...[
             _buildMenuSection(
               title: 'QUẢN TRỊ DANH TÍNH & TRUY CẬP',
               items: [
@@ -862,61 +812,6 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMajorCategoryHeader({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(top: 8, bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: color.withValues(alpha: 0.8),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

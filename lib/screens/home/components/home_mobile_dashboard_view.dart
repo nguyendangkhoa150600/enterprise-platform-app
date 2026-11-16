@@ -102,7 +102,7 @@ class HomeMobileDashboardView extends StatelessWidget {
   }
 
   // 1. Breadcrumb & Title
-  Widget _buildMobilePageHeader(BuildContext context, String tenantDisplay) {
+  Widget _buildMobilePageHeader(BuildContext context, [String? _]) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -114,7 +114,6 @@ class HomeMobileDashboardView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.all(6),
-                  margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -123,10 +122,6 @@ class HomeMobileDashboardView extends StatelessWidget {
                   child: const Icon(Icons.menu_rounded, size: 20, color: Color(0xFF1E293B)),
                 ),
               ),
-            ),
-            Text(
-              'home.mobile.tenant_portal'.tr(args: {'tenant': tenantDisplay.toLowerCase()}),
-              style: const TextStyle(fontSize: 12, color: AppColors.slate500, fontWeight: FontWeight.w500),
             ),
             const Spacer(),
             IconButton(
@@ -191,48 +186,15 @@ class HomeMobileDashboardView extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'home.mobile.system_overview'.tr(),
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-                letterSpacing: -0.5,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF), // bg-blue-50
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFBFDBFE)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.workspace_premium_outlined, size: 14, color: Color(0xFF2563EB)),
-                  SizedBox(width: 4),
-                  Text(
-                    'Enterprise Plan',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D4ED8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 10),
         Text(
-          'home.mobile.system_overview_desc'.tr(),
-          style: TextStyle(fontSize: 12.5, color: AppColors.slate500),
+          'home.mobile.system_overview'.tr(),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0F172A),
+            letterSpacing: -0.5,
+          ),
         ),
       ],
     );
@@ -550,11 +512,6 @@ class HomeMobileDashboardView extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'home.mobile.attention_desc'.tr(),
-                        style: const TextStyle(fontSize: 11.5, color: AppColors.slate500),
-                      ),
                     ],
                   ),
                 ),
@@ -730,7 +687,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                       Row(
                         children: [
                           const Text(
-                            'Đơn từ cần xử lý',
+                            'Đơn từ',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -754,11 +711,6 @@ class HomeMobileDashboardView extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Duyệt, từ chối và trao đổi đơn nghỉ phép, tăng ca, công tác, giải trình công... trong module Nhân sự.',
-                        style: TextStyle(fontSize: 11.5, color: AppColors.slate500, height: 1.35),
                       ),
                     ],
                   ),

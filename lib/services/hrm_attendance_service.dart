@@ -83,7 +83,11 @@ class HrmAttendanceService {
       }
       throw Exception('svc_hrm.checkin_failed'.tr(args: {'code': response.statusCode}));
     } catch (e) {
-      debugPrint('[HrmAttendanceService] checkIn error: $e');
+      if (e is DioException) {
+        debugPrint('[HrmAttendanceService] checkIn error status: ${e.response?.statusCode}, data: ${e.response?.data}');
+      } else {
+        debugPrint('[HrmAttendanceService] checkIn error: $e');
+      }
       rethrow;
     }
   }
@@ -124,17 +128,24 @@ class HrmAttendanceService {
       }
       throw Exception('svc_hrm.checkout_failed'.tr(args: {'code': response.statusCode}));
     } catch (e) {
-      debugPrint('[HrmAttendanceService] checkOut error: $e');
+      if (e is DioException) {
+        debugPrint('[HrmAttendanceService] checkOut error status: ${e.response?.statusCode}, data: ${e.response?.data}');
+      } else {
+        debugPrint('[HrmAttendanceService] checkOut error: $e');
+      }
       rethrow;
     }
   }
 
   // 5. Get Today Status
-  Future<AttendanceRecord?> getTodayAttendance() async {
+  Future<AttendanceRecord?> getTodayAttendance({String? targetWorkDate}) async {
     final endpoints = [
       '/hrm/v1/my-attendance',
       '/hrm/v1/attendance',
     ];
+    final now = DateTime.now();
+    final todayStr = targetWorkDate ?? '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
     for (final ep in endpoints) {
       try {
         final response = await _dio.get(
@@ -144,35 +155,59 @@ class HrmAttendanceService {
         if (response.statusCode == 200 && response.data != null) {
           final data = response.data['data'] ?? response.data['items'] ?? response.data;
           if (data is List && data.isNotEmpty) {
-            final now = DateTime.now();
-            final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
             for (final item in data) {
               if (item is Map<String, dynamic>) {
                 final rec = AttendanceRecord.fromJson(item);
-                if (rec.workDate == todayStr || rec.firstCheckInAt != null) {
+                if (rec.workDate == todayStr) {
                   _todayRecord = rec;
                   return _todayRecord;
                 }
               }
             }
           } else if (data is Map<String, dynamic>) {
-            _todayRecord = AttendanceRecord.fromJson(data);
-            return _todayRecord;
+            final rec = AttendanceRecord.fromJson(data);
+            if (rec.workDate == todayStr || rec.workDate.isEmpty) {
+              _todayRecord = rec;
+              return _todayRecord;
+            }
           }
         }
       } catch (e) {
         debugPrint('[HrmAttendanceService] getTodayAttendance info: $e');
       }
     }
-    return _todayRecord;
+    _todayRecord = null;
+    return null;
   }
 
-  // 6. Get Attendance History (Sổ chấm công)
-  Future<List<AttendanceRecord>> getAttendanceHistory({String? from, String? to, String? status}) async {
+  // 6. Get Attendance History (Sổ chấm công cá nhân - 1:1 Web /my-attendance)
+  Future<List<AttendanceRecord>> getAttendanceHistory({String? employeeId, String? from, String? to, String? status}) async {
     try {
+      // 1:1 với Web: Chấm công cá nhân gọi /hrm/v1/my-attendance để chỉ lấy dữ liệu của chính mình
+      if (employeeId == null) {
+        try {
+          final myResp = await _dio.get(
+            '/hrm/v1/my-attendance',
+            options: Options(validateStatus: (s) => s != null && s < 500),
+          );
+          if (myResp.statusCode == 200 && myResp.data != null) {
+            final dynamic raw = myResp.data['data'] ?? myResp.data['items'] ?? myResp.data;
+            if (raw is List) {
+              var list = raw.map((e) => AttendanceRecord.fromJson(e as Map<String, dynamic>)).toList();
+              if (from != null) list = list.where((r) => r.workDate.compareTo(from) >= 0).toList();
+              if (to != null) list = list.where((r) => r.workDate.compareTo(to) <= 0).toList();
+              if (status != null && status != 'ALL') list = list.where((r) => r.status == status).toList();
+              return list;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Khi có employee_id cụ thể hoặc fallback
       final response = await _dio.get(
         '/hrm/v1/attendance',
         queryParameters: {
+          if (employeeId != null) 'employee_id': employeeId,
           if (from != null) 'from': from,
           if (to != null) 'to': to,
           if (status != null && status != 'ALL') 'status': status,

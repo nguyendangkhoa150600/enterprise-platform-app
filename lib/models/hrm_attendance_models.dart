@@ -243,12 +243,25 @@ class AttendanceRecord {
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
     final rawPunches = json['punches'] as List<dynamic>? ?? [];
+    final inTime = json['checkInAt']?.toString() ??
+        json['check_in_at']?.toString() ??
+        json['firstCheckInAt']?.toString() ??
+        json['first_check_in_at']?.toString() ??
+        json['checkIn']?.toString() ??
+        json['check_in']?.toString();
+    final outTime = json['checkOutAt']?.toString() ??
+        json['check_out_at']?.toString() ??
+        json['lastCheckOutAt']?.toString() ??
+        json['last_check_out_at']?.toString() ??
+        json['checkOut']?.toString() ??
+        json['check_out']?.toString();
+
     return AttendanceRecord(
       id: json['id']?.toString() ?? 'att-0',
       employeeId: json['employee_id']?.toString() ?? json['employeeId']?.toString() ?? '',
       workDate: json['work_date']?.toString() ?? json['workDate']?.toString() ?? '',
-      firstCheckInAt: json['first_check_in_at']?.toString() ?? json['firstCheckInAt']?.toString() ?? json['check_in_at']?.toString(),
-      lastCheckOutAt: json['last_check_out_at']?.toString() ?? json['lastCheckOutAt']?.toString() ?? json['check_out_at']?.toString(),
+      firstCheckInAt: inTime?.isNotEmpty == true ? inTime : null,
+      lastCheckOutAt: outTime?.isNotEmpty == true ? outTime : null,
       workedMinutes: (json['worked_minutes'] ?? json['workedMinutes'] as num?)?.toInt() ?? 0,
       lateMinutes: (json['late_minutes'] ?? json['lateMinutes'] as num?)?.toInt() ?? 0,
       earlyLeaveMinutes: (json['early_leave_minutes'] ?? json['earlyLeaveMinutes'] as num?)?.toInt() ?? 0,

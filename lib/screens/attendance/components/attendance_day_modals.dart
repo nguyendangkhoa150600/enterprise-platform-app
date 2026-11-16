@@ -1,18 +1,52 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../models/hrm_attendance_models.dart';
 import '../../../core/i18n/app_i18n.dart';
 
 String _formatTime(String? isoString) {
   if (isoString == null || isoString.isEmpty) return '--:--';
   final dt = DateTime.tryParse(isoString);
-  if (dt == null) return '--:--';
-  return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+  if (dt != null) {
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+  final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
+  if (match != null) {
+    final h = match.group(1)!.padLeft(2, '0');
+    final m = match.group(2)!;
+    return '$h:$m';
+  }
+  return '--:--';
 }
 
 String _formatDate(String isoString) {
   final dt = DateTime.tryParse(isoString);
   if (dt == null) return isoString;
   return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+}
+
+int _timeToMinutes(String timeStr) {
+  final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(timeStr);
+  if (match == null) return 0;
+  final h = int.tryParse(match.group(1)!) ?? 0;
+  final m = int.tryParse(match.group(2)!) ?? 0;
+  return h * 60 + m;
+}
+
+class _TimelineEvent {
+  final String label;
+  final String time;
+  final String? note;
+  final bool isAlert;
+  final bool isSuccess;
+  final int orderPriority;
+
+  _TimelineEvent({
+    required this.label,
+    required this.time,
+    this.note,
+    this.isAlert = false,
+    this.isSuccess = false,
+    this.orderPriority = 0,
+  });
 }
 void showAttendanceDayDetailModal(
   BuildContext context, {
@@ -428,76 +462,121 @@ void showAttendanceDayDetailModal(
         ),
         const SizedBox(height: 14),
 
-        // 3. Shift Timeline (Dòng thời gian ca làm)
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTimelineStep(label: 'attendance.day.timeline.shift_start'.tr(), time: shiftStart, isLast: false),
-              _buildTimelineStep(label: 'attendance.day.timeline.break_start'.tr(), time: shiftBreakStart, isLast: false),
-              if (checkInTime != '--:--')
-                _buildTimelineStep(
-                  label: 'attendance.day.timeline.punch_in'.tr(),
-                  time: checkInTime,
-                  note: lateMinutes > 0 ? 'attendance.day.timeline.late_note'.tr(args: {'minutes': lateMinutes}) : null,
-                  isAlert: lateMinutes > 0,
-                  isSuccess: lateMinutes == 0,
-                  isLast: false,
-                ),
-              _buildTimelineStep(label: 'attendance.day.timeline.break_end'.tr(), time: shiftBreakEnd, isLast: false),
-              if (checkOutTime != '--:--')
-                _buildTimelineStep(
-                  label: 'attendance.day.timeline.punch_out'.tr(),
-                  time: checkOutTime,
-                  note: earlyMinutes > 0 ? 'attendance.day.timeline.early_note'.tr(args: {'minutes': earlyMinutes}) : null,
-                  isAlert: earlyMinutes > 0,
-                  isSuccess: earlyMinutes == 0,
-                  isLast: false,
-                ),
-              _buildTimelineStep(label: 'attendance.day.timeline.shift_end'.tr(), time: shiftEnd, isLast: true),
+        // 3. Shift Timeline (Dòng thời gian ca làm được sắp xếp theo trình tự thời gian)
+        Builder(builder: (context) {
+          final timelineEvents = <_TimelineEvent>[];
+          if (shiftStart.isNotEmpty && shiftStart != '--:--') {
+            timelineEvents.add(_TimelineEvent(
+              label: 'attendance.day.timeline.shift_start'.tr(),
+              time: shiftStart,
+              orderPriority: 1,
+            ));
+          }
+          if (checkInTime != '--:--' && checkInTime.isNotEmpty) {
+            timelineEvents.add(_TimelineEvent(
+              label: 'attendance.day.timeline.punch_in'.tr(),
+              time: checkInTime,
+              note: lateMinutes > 0 ? 'attendance.day.timeline.late_note'.tr(args: {'minutes': lateMinutes}) : null,
+              isAlert: lateMinutes > 0,
+              isSuccess: lateMinutes == 0,
+              orderPriority: 0,
+            ));
+          }
+          if (shiftBreakStart.isNotEmpty && shiftBreakStart != '--:--') {
+            timelineEvents.add(_TimelineEvent(
+              label: 'attendance.day.timeline.break_start'.tr(),
+              time: shiftBreakStart,
+              orderPriority: 1,
+            ));
+          }
+          if (shiftBreakEnd.isNotEmpty && shiftBreakEnd != '--:--') {
+            timelineEvents.add(_TimelineEvent(
+              label: 'attendance.day.timeline.break_end'.tr(),
+              time: shiftBreakEnd,
+              orderPriority: 1,
+            ));
+          }
+          if (shiftEnd.isNotEmpty && shiftEnd != '--:--') {
+            timelineEvents.add(_TimelineEvent(
+              label: 'attendance.day.timeline.shift_end'.tr(),
+              time: shiftEnd,
+              orderPriority: 1,
+            ));
+          }
+          if (checkOutTime != '--:--' && checkOutTime.isNotEmpty) {
+            timelineEvents.add(_TimelineEvent(
+              label: 'attendance.day.timeline.punch_out'.tr(),
+              time: checkOutTime,
+              note: earlyMinutes > 0 ? 'attendance.day.timeline.early_note'.tr(args: {'minutes': earlyMinutes}) : null,
+              isAlert: earlyMinutes > 0,
+              isSuccess: earlyMinutes == 0,
+              orderPriority: 0,
+            ));
+          }
 
-              // Note when punch in / punch out are missing (Matching Web text-fuchsia-700)
-              if (checkInTime == '--:--' && checkOutTime == '--:--') ...[
-                const SizedBox(height: 8),
-                Text(
-                  'attendance.day.timeline.missing_both'.tr(),
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFA21CAF), // Fuchsia / Purple matching web
+          timelineEvents.sort((a, b) {
+            final diff = _timeToMinutes(a.time).compareTo(_timeToMinutes(b.time));
+            if (diff != 0) return diff;
+            return a.orderPriority.compareTo(b.orderPriority);
+          });
+
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (int i = 0; i < timelineEvents.length; i++)
+                  _buildTimelineStep(
+                    label: timelineEvents[i].label,
+                    time: timelineEvents[i].time,
+                    note: timelineEvents[i].note,
+                    isAlert: timelineEvents[i].isAlert,
+                    isSuccess: timelineEvents[i].isSuccess,
+                    isLast: i == timelineEvents.length - 1,
                   ),
-                ),
-              ] else if (checkInTime == '--:--') ...[
-                const SizedBox(height: 8),
-                Text(
-                  'attendance.day.timeline.missing_in'.tr(),
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFA21CAF),
+
+                // Note when punch in / punch out are missing (Matching Web text-fuchsia-700)
+                if (checkInTime == '--:--' && checkOutTime == '--:--') ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'attendance.day.timeline.missing_both'.tr(),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFA21CAF), // Fuchsia / Purple matching web
+                    ),
                   ),
-                ),
-              ] else if (checkOutTime == '--:--') ...[
-                const SizedBox(height: 8),
-                Text(
-                  'attendance.day.timeline.missing_out'.tr(),
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFA21CAF),
+                ] else if (checkInTime == '--:--') ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'attendance.day.timeline.missing_in'.tr(),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFA21CAF),
+                    ),
                   ),
-                ),
+                ] else if (checkOutTime == '--:--') ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'attendance.day.timeline.missing_out'.tr(),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFA21CAF),
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
 
         // DayBands (Dải trạng thái: Nghỉ phép / Tăng ca / Công tác)
         if (hasLeave)

@@ -1,7 +1,7 @@
 ﻿part of '../../role_permission_screen.dart';
 
 extension PermissionDetailSheetExtension on _RolePermissionScreenState {
-  // Permission Detail Modal (Äá»“ng bá»™ 1:1 vá»›i Web)
+  // Permission Detail Modal (Đồng bộ 1:1 với Web)
   void _showPermissionDetailModal(TenantPermission perm, bool canManage) {
     showModalBottomSheet(
       context: context,
@@ -14,10 +14,10 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
   }
 
   Widget _buildPermissionDetailSheet(BuildContext ctx, TenantPermission openedPerm, bool canManage) {
-    // LuÃ´n láº¥y báº£n ghi má»›i nháº¥t
+    // Luôn lấy bản ghi mới nhất
     final perm = _permissions.where((p) => p.id == openedPerm.id).firstOrNull ?? openedPerm;
 
-    // TÃ¬m cÃ¡c vai trÃ² Ä‘ang dÃ¹ng permission nÃ y
+    // Tìm các vai trò đang dùng permission này
     final usedRoles = _roles.where((r) {
       return r.permissionIds.contains(perm.id) ||
           perm.roleIds.contains(r.id) ||
@@ -26,7 +26,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
           (perm.key != null && perm.key!.isNotEmpty && r.actionKeys.contains(perm.key));
     }).toList();
 
-    // NhÃ³m hÃ nh Ä‘á»™ng theo module
+    // Nhóm hành động theo module
     final groupedActions = <String, List<String>>{};
     for (final actionKey in perm.actionKeys) {
       final grp = _getActionGroup(actionKey);
@@ -101,7 +101,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                             Text(
                               perm.description != null && perm.description!.isNotEmpty
                                   ? perm.description!
-                                  : 'ChÆ°a thiáº¿t láº­p mÃ´ táº£ cho má»¥c nÃ y.',
+                                  : 'Chưa thiết lập mô tả cho mục này.',
                               style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                             ),
                             if (perm.key != null && perm.key!.isNotEmpty) ...[
@@ -127,7 +127,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
 
                   const SizedBox(height: 20),
 
-                  // 1. HÃ€NH Äá»˜NG & QUYá»€N THAO TÃC
+                  // 1. HÀNH ĐỘNG & QUYỀN THAO TÁC
                   Row(
                     children: [
                       Container(
@@ -140,7 +140,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'HÃ€NH Äá»˜NG & QUYá»€N THAO TÃC (${perm.actionKeys.length})',
+                        'HÀNH ĐỘNG & QUYỀN THAO TÁC (${perm.actionKeys.length})',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF92400E), letterSpacing: 0.3),
                       ),
                     ],
@@ -156,7 +156,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                      child: const Text('ChÆ°a cÃ³ hÃ nh Ä‘á»™ng nÃ o Ä‘Æ°á»£c gÃ¡n cho permission nÃ y.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                      child: const Text('Chưa có hành động nào được gán cho permission này.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                     )
                   else
                     ...groupedActions.entries.map((entry) {
@@ -219,7 +219,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
 
                   const SizedBox(height: 20),
 
-                  // 2. VAI TRÃ’ ÄANG DÃ™NG PERMISSION
+                  // 2. VAI TRÒ ĐANG DÙNG PERMISSION
                   Row(
                     children: [
                       Container(
@@ -232,12 +232,12 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                       ),
                       const SizedBox(width: 8),
                       const Text(
-                        'VAI TRÃ’ ÄANG DÃ™NG PERMISSION',
+                        'VAI TRÒ ĐANG DÙNG PERMISSION',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E3A8A), letterSpacing: 0.3),
                       ),
                       const Spacer(),
                       Text(
-                        '${usedRoles.length} vai trÃ² sá»­ dá»¥ng',
+                        '${usedRoles.length} vai trò sử dụng',
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -245,7 +245,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                   const SizedBox(height: 10),
 
                   if (usedRoles.isNotEmpty) ...[
-                    // Banner cáº£nh bÃ¡o mÃ u vÃ ng chuáº©n Web
+                    // Banner cảnh báo màu vàng chuẩn Web
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
@@ -261,7 +261,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Permission nÃ y hiá»‡n Ä‘ang Ä‘Æ°á»£c dÃ¹ng trong ${usedRoles.length} vai trÃ². Vui lÃ²ng gá»¡ permission khá»i cÃ¡c vai trÃ² trÆ°á»›c khi thá»±c hiá»‡n xÃ³a.',
+                              'Permission này hiện đang được dùng trong ${usedRoles.length} vai trò. Vui lòng gỡ permission khỏi các vai trò trước khi thực hiện xóa.',
                               style: const TextStyle(fontSize: 12, color: Color(0xFF92400E), height: 1.4),
                             ),
                           ),
@@ -269,7 +269,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // Danh sÃ¡ch role chips
+                    // Danh sách role chips
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -305,7 +305,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: const Text(
-                        'ChÆ°a cÃ³ vai trÃ² nÃ o sá»­ dá»¥ng permission nÃ y.',
+                        'Chưa có vai trò nào sử dụng permission này.',
                         style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                       ),
                     ),
@@ -315,7 +315,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
             ),
           ),
 
-          // Pinned Bottom Action Bar (Cá»‘ Ä‘á»‹nh á»Ÿ Ä‘Ã¡y)
+          // Pinned Bottom Action Bar (Cố định ở đáy)
           if (canManage && !perm.isSystem)
             Container(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(ctx).padding.bottom),
@@ -355,7 +355,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                         ScaffoldMessenger.of(this.context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Permission Ä‘ang Ä‘Æ°á»£c dÃ¹ng trong ${usedRoles.length} vai trÃ². HÃ£y gá»¡ khá»i vai trÃ² trÆ°á»›c khi xÃ³a!',
+                              'Permission đang được dùng trong ${usedRoles.length} vai trò. Hãy gỡ khỏi vai trò trước khi xóa!',
                             ),
                             backgroundColor: const Color(0xFFDC2626),
                             behavior: SnackBarBehavior.floating,
@@ -367,7 +367,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                       _confirmDeletePermission(perm);
                     },
                     icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
-                    tooltip: 'XÃ³a permission',
+                    tooltip: 'Xóa permission',
                     style: IconButton.styleFrom(
                       backgroundColor: const Color(0xFFFEE2E2),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -386,8 +386,8 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('XÃ¡c nháº­n xÃ³a permission'),
-        content: Text('Báº¡n cÃ³ cháº¯c muá»‘n xÃ³a permission "${perm.name}"? Thao tÃ¡c nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.'),
+        title: const Text('Xác nhận xóa permission'),
+        content: Text('Bạn có chắc muốn xóa permission "${perm.name}"? Thao tác này không thể hoàn tác.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           ElevatedButton(
@@ -404,7 +404,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                       children: [
                         Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                         SizedBox(width: 8),
-                        Text('XÃ³a permission thÃ nh cÃ´ng!'),
+                        Text('Xóa permission thành công!'),
                       ],
                     ),
                     backgroundColor: Color(0xFF16A34A),
@@ -414,7 +414,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
               } else {
                 messenger.showSnackBar(
                   const SnackBar(
-                    content: Text('XÃ³a permission tháº¥t báº¡i.'),
+                    content: Text('Xóa permission thất bại.'),
                     backgroundColor: Color(0xFFDC2626),
                     behavior: SnackBarBehavior.floating,
                   ),

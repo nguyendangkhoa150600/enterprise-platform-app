@@ -18,56 +18,73 @@ class MonitorEmployeeAttentionCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
+            // Avatar with Initials
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                color: Color(0xFFDBEAFE),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                row.initials,
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Employee Name & Department / Position
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    row.employeeName,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    [
+                      if (row.departmentName != null && row.departmentName!.isNotEmpty)
+                        '${'att_monitor.attention.dept_prefix'.tr()}${row.departmentName}',
+                        row.departmentName!,
+                      if (row.positionName != null && row.positionName!.isNotEmpty)
+                        row.positionName!,
+                    ].join(' · '),
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Status Badge & "Chi tiết" indicator
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Avatar with Initials
                 Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFDBEAFE),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    row.initials,
-                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Name & Code/Title
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        row.employeeName,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        [row.positionName, row.employeeCode].where((e) => e != null && e.isNotEmpty).join(' · '),
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: row.statusBgColor,
                     borderRadius: BorderRadius.circular(12),
@@ -78,115 +95,19 @@ class MonitorEmployeeAttentionCard extends StatelessWidget {
                     style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: row.statusTextColor),
                   ),
                 ),
-                const SizedBox(width: 6),
-                // Compact "Chi tiết" Button
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                  ),
-                  child: Text(
-                    'common.view_detail'.tr(),
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                  ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'common.view_detail'.tr(),
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
+                    ),
+                    const SizedBox(width: 1),
+                    const Icon(Icons.chevron_right, size: 13, color: Color(0xFF2563EB)),
+                  ],
                 ),
               ],
-            ),
-            const SizedBox(height: 6),
-
-            // Department & Shift info (2x2 Grid)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      // Col 1: Phòng ban
-                      Expanded(
-                        flex: 5,
-                        child: Row(
-                          children: [
-                            Text('att_monitor.attention.dept_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                            Expanded(
-                              child: Text(
-                                row.departmentName ?? '----',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Col 2: Ca làm việc
-                      Expanded(
-                        flex: 4,
-                        child: Row(
-                          children: [
-                            Text('att_monitor.attention.shift_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                            Expanded(
-                              child: Text(
-                                row.shiftName ?? '----',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      // Col 1: Giờ dự kiến
-                      Expanded(
-                        flex: 5,
-                        child: Row(
-                          children: [
-                            Text('att_monitor.attention.expected_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                            Expanded(
-                              child: Text(
-                                row.shiftTimeText,
-                                style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Col 2: Thực tế
-                      Expanded(
-                        flex: 4,
-                        child: Row(
-                          children: [
-                            Text('att_monitor.attention.actual_prefix'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                            Expanded(
-                              child: Text(
-                                row.actualText,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: row.checkIn != null ? const Color(0xFF059669) : const Color(0xFFDC2626),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -267,15 +188,20 @@ class MonitorAttentionSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                selectedTab == 'CHECKED_IN'
-                    ? 'att_monitor.attention.title_checked_in'.tr(args: {'count': totalItems})
-                    : (selectedTab == 'ALL'
-                        ? 'att_monitor.attention.title_all'.tr(args: {'count': totalItems})
-                        : 'att_monitor.attention.title_attention'.tr(args: {'count': totalItems})),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              Expanded(
+                child: Text(
+                  selectedTab == 'CHECKED_IN'
+                      ? 'att_monitor.attention.title_checked_in'.tr(args: {'count': totalItems})
+                      : (selectedTab == 'ALL'
+                          ? 'att_monitor.attention.title_all'.tr(args: {'count': totalItems})
+                          : 'att_monitor.attention.title_attention'.tr(args: {'count': totalItems})),
+                  style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              if (totalItems > pageSize)
+              if (totalItems > pageSize) ...[
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -288,6 +214,7 @@ class MonitorAttentionSection extends StatelessWidget {
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 2),

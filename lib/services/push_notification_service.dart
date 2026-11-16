@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
@@ -12,8 +13,12 @@ import 'api_client_helper.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  debugPrint('[PushNotificationService] Handling background message: ${message.messageId}');
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    debugPrint('[PushNotificationService] Handling background message: ${message.messageId}');
+  } catch (e) {
+    debugPrint('[PushNotificationService] Background handler error: $e');
+  }
 }
 
 class PushNotificationService {
@@ -29,11 +34,12 @@ class PushNotificationService {
   static final PushNotificationService instance = PushNotificationService._();
 
   late final Dio _dio;
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
+  bool _initialized = false;
 
   /// Android Notification Channel for Heads-up notifications
   static const AndroidNotificationChannel _androidChannel = AndroidNotificationChannel(
@@ -42,33 +48,46 @@ class PushNotificationService {
     description: 'Kênh nhận thông báo quan trọng từ hệ thống SVN ERP',
     importance: Importance.max,
     playSound: true,
+    enableVibration: true,
+    showBadge: true,
   );
 
   /// Callback when a notification is tapped by the user
   void Function(Map<String, dynamic> data)? onNotificationTapped;
 
   Future<void> init({void Function(Map<String, dynamic> data)? onNotificationTapped}) async {
+    if (_initialized) return;
+    _initialized = true;
     this.onNotificationTapped = onNotificationTapped;
 
     try {
-      // 1. Initialize Firebase
+      // 1. Initialize Firebase Core
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
       // 2. Set Background Message Handler
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e, stack) {
+      debugPrint('[PushNotificationService] Firebase Core init error: $e\n$stack');
+    }
 
-      // 3. Request permissions
-      await _requestPermissions();
+    // 3. Run permissions, local notifications and token setup in background (Never block UI rendering)
+    unawaited(_setupAsync());
+  }
 
-      // 4. Setup Local Notifications (for Foreground)
+  Future<void> _setupAsync() async {
+    try {
+      // Setup Local Notifications (for Foreground banner)
       await _setupLocalNotifications();
 
-      // 5. Get and log FCM Token
+      // Request user notification permissions
+      await _requestPermissions();
+
+      // Retrieve FCM / APNs Token
       await _retrieveToken();
 
-      // 6. Listen for Token updates
+      // Listen for Token updates
       // ignore: deprecated_member_use
       _fcm.onTokenRefresh.listen((newToken) {
         _fcmToken = newToken;
@@ -76,13 +95,13 @@ class PushNotificationService {
         registerDeviceToken(token: newToken);
       });
 
-      // 7. Auto register token if user is already logged in
+      // Auto register token if user is already logged in
       registerDeviceToken();
 
-      // 8. Configure Message Listeners
+      // Configure Message Listeners
       _setupMessageListeners();
     } catch (e, stack) {
-      debugPrint('[PushNotificationService] Initialization error: $e\n$stack');
+      debugPrint('[PushNotificationService] Setup async error: $e\n$stack');
     }
   }
 
@@ -159,12 +178,20 @@ class PushNotificationService {
   Future<String?> _retrieveToken() async {
     try {
       if (!kIsWeb && Platform.isIOS) {
-        String? apnsToken = await _fcm.getAPNSToken();
-        if (apnsToken == null) {
-          await Future.delayed(const Duration(seconds: 2));
-          apnsToken = await _fcm.getAPNSToken();
+        String? apnsToken;
+        // Trên thiết bị iPhone thật, APNs token có thể mất 3-6 giây để đăng ký với Apple
+        for (int i = 0; i < 8; i++) {
+          try {
+            apnsToken = await _fcm.getAPNSToken();
+            if (apnsToken != null) break;
+          } catch (_) {}
+          await Future.delayed(const Duration(seconds: 1));
         }
+
         debugPrint('[PushNotificationService] APNs Token: $apnsToken');
+        if (apnsToken == null) {
+          debugPrint('[PushNotificationService] APNs token is null (iOS Simulator hoặc đang chờ APNs).');
+        }
       }
 
       // ignore: deprecated_member_use
@@ -172,6 +199,9 @@ class PushNotificationService {
       debugPrint('====================================================');
       debugPrint('[FCM TOKEN] -> $_fcmToken');
       debugPrint('====================================================');
+      if (_fcmToken != null) {
+        registerDeviceToken(token: _fcmToken);
+      }
       return _fcmToken;
     } catch (e) {
       debugPrint('[PushNotificationService] Get token error: $e');
@@ -279,6 +309,12 @@ class PushNotificationService {
       final title = notification?.title ?? message.data['title']?.toString() ?? 'SVN ERP';
       final body = notification?.body ?? message.data['body']?.toString() ?? '';
 
+      final payloadData = Map<String, dynamic>.from(message.data);
+      if (notification != null) {
+        payloadData.putIfAbsent('title', () => notification.title);
+        payloadData.putIfAbsent('body', () => notification.body);
+      }
+
       _localNotifications.show(
         id: message.hashCode,
         title: title,
@@ -290,29 +326,44 @@ class PushNotificationService {
             channelDescription: _androidChannel.description,
             icon: android?.smallIcon ?? '@mipmap/ic_launcher',
             importance: Importance.max,
-            priority: Priority.high,
+            priority: Priority.max,
+            visibility: NotificationVisibility.public,
+            fullScreenIntent: true,
+            playSound: true,
+            enableVibration: true,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
             presentBadge: true,
             presentSound: true,
+            interruptionLevel: InterruptionLevel.timeSensitive,
           ),
         ),
-        payload: jsonEncode(message.data),
+        payload: jsonEncode(payloadData),
       );
     });
 
     // 2. App opened from background by tapping notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('[PushNotificationService] App opened from background notification: ${message.data}');
-      _handleNotificationPayload(message.data);
+      final combinedData = Map<String, dynamic>.from(message.data);
+      if (message.notification != null) {
+        combinedData.putIfAbsent('title', () => message.notification!.title);
+        combinedData.putIfAbsent('body', () => message.notification!.body);
+      }
+      _handleNotificationPayload(combinedData);
     });
 
     // 3. App opened from terminated state by tapping notification
     _fcm.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
         debugPrint('[PushNotificationService] App launched from terminated state: ${message.data}');
-        _handleNotificationPayload(message.data);
+        final combinedData = Map<String, dynamic>.from(message.data);
+        if (message.notification != null) {
+          combinedData.putIfAbsent('title', () => message.notification!.title);
+          combinedData.putIfAbsent('body', () => message.notification!.body);
+        }
+        _handleNotificationPayload(combinedData);
       }
     });
   }

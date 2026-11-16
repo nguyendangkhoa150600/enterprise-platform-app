@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/chat_models.dart';
 import '../providers/auth_provider.dart';
+import '../utils/user_resolver.dart';
 import 'api_client_helper.dart';
 
 class ChatService {
@@ -52,8 +53,8 @@ class ChatService {
     return 0;
   }
 
-  /// Lấy danh sách tin nhắn của một cuộc hội thoại
-  Future<List<ChatMessage>> getMessages(String conversationId, {String? before}) async {
+  /// Lấy danh sách tin nhắn và mốc đã đọc của thành viên trong cuộc hội thoại
+  Future<ChatMessagePageData> getMessagesPage(String conversationId, {String? before}) async {
     try {
       final queryParams = <String, dynamic>{};
       if (before != null && before.isNotEmpty) {
@@ -64,18 +65,53 @@ class ChatService {
         queryParameters: queryParams,
       );
       if (res.statusCode == 200 && res.data != null) {
-        final raw = res.data['messages'] ?? res.data['data'] ?? res.data;
-        if (raw is List) {
-          return raw
-              .whereType<Map<String, dynamic>>()
-              .map((m) => ChatMessage.fromJson(m))
-              .toList();
+        final msgsRaw = res.data['messages'] ?? res.data['data'];
+        final membersRaw = res.data['members'];
+        final hasMore = res.data['hasMore'] == true;
+
+        final messages = <ChatMessage>[];
+        if (msgsRaw is List) {
+          messages.addAll(
+            msgsRaw.whereType<Map<String, dynamic>>().map((m) => ChatMessage.fromJson(m)),
+          );
         }
+
+        final members = <ChatMember>[];
+        if (membersRaw is List) {
+          members.addAll(
+            membersRaw.whereType<Map<String, dynamic>>().map((m) => ChatMember.fromJson(m)),
+          );
+        }
+
+        return ChatMessagePageData(
+          messages: messages,
+          members: members,
+          hasMore: hasMore,
+        );
       }
     } catch (e) {
-      debugPrint('[ChatService] getMessages error on $conversationId: $e');
+      debugPrint('[ChatService] getMessagesPage error on $conversationId: $e');
     }
-    return [];
+    return ChatMessagePageData(messages: [], members: []);
+  }
+
+  /// Lấy danh sách tin nhắn của một cuộc hội thoại
+  Future<List<ChatMessage>> getMessages(String conversationId, {String? before}) async {
+    final page = await getMessagesPage(conversationId, before: before);
+    return page.messages;
+  }
+
+  /// Lấy ảnh chụp trạng thái trực tuyến của toàn bộ người dùng trong công ty
+  Future<PresenceSnapshot?> getPresence() async {
+    try {
+      final res = await _dio.get('/api/realtime/v1/presence');
+      if (res.statusCode == 200 && res.data != null && res.data is Map<String, dynamic>) {
+        return PresenceSnapshot.fromJson(res.data as Map<String, dynamic>);
+      }
+    } catch (e) {
+      debugPrint('[ChatService] getPresence error: $e');
+    }
+    return null;
   }
 
   /// Gửi tin nhắn mới
@@ -174,22 +210,51 @@ class ChatService {
     return null;
   }
 
-  /// Lấy danh bạ người dùng toàn công ty
+  /// Lấy danh bạ người dùng toàn công ty với cơ chế fallback đa nguồn
   Future<List<ChatPerson>> getPeopleDirectory() async {
-    try {
-      final res = await _dio.get('/api/platform/v1/people');
-      if (res.statusCode == 200 && res.data != null) {
-        final raw = res.data['people'] ?? res.data['data'] ?? res.data;
-        if (raw is List) {
-          return raw
-              .whereType<Map<String, dynamic>>()
-              .map((p) => ChatPerson.fromJson(p))
-              .toList();
+    final endpoints = [
+      '/api/platform/v1/people',
+      '/api/workspace/v1/directory',
+      '/api/platform/v1/tenant-users',
+      '/api/platform/v1/users',
+    ];
+
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(ep);
+        if (res.statusCode == 200 && res.data != null) {
+          final raw = res.data['people'] ?? res.data['data'] ?? res.data['items'] ?? res.data['users'] ?? res.data;
+          if (raw is List && raw.isNotEmpty) {
+            final list = raw
+                .whereType<Map<String, dynamic>>()
+                .map((p) => ChatPerson.fromJson(p))
+                .where((p) => p.id.isNotEmpty && p.fullName != 'Người dùng')
+                .toList();
+            if (list.isNotEmpty) {
+              for (final p in list) {
+                UserResolver.registerUser(p.id, p.fullName, email: p.email);
+              }
+              return list;
+            }
+          }
         }
+      } catch (e) {
+        debugPrint('[ChatService] getPeopleDirectory error on $ep: $e');
       }
-    } catch (e) {
-      debugPrint('[ChatService] getPeopleDirectory error: $e');
     }
+
+    // Fallback bổ trợ từ UserResolver cache (đã nạp từ tenant-users hoặc HRM)
+    await UserResolver.ensureLoaded();
+    if (UserResolver.allRawNames.isNotEmpty) {
+      return UserResolver.allRawNames.entries.map((entry) {
+        return ChatPerson(
+          id: entry.key,
+          fullName: entry.value,
+          email: '',
+        );
+      }).toList();
+    }
+
     return [];
   }
 

@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/i18n/app_i18n.dart';
 import 'core/permissions/hrm_permissions.dart';
 import 'package:provider/provider.dart';
@@ -12,23 +15,31 @@ import 'providers/chat_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/notification_center_screen.dart';
+import 'services/notification_router.dart';
 
-final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> appNavigatorKey = NotificationRouter.navigatorKey;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppI18n.instance.init();
-  await PushNotificationService.instance.init(
+
+  // 1. Initialize Firebase Core safely
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('[Main] Firebase.initializeApp error: $e');
+  }
+
+  // 2. Initialize push notification background listeners without blocking UI
+  unawaited(PushNotificationService.instance.init(
     onNotificationTapped: (data) {
       debugPrint('[Main] Push notification tapped: $data');
-      final ctx = appNavigatorKey.currentContext;
-      if (ctx != null) {
-        Navigator.of(ctx).push(
-          MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
-        );
-      }
+      NotificationRouter.handleAppNotificationTap(data);
     },
-  );
+  ));
+
   runApp(
     MultiProvider(
       providers: [

@@ -3,7 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Savina cần vị trí của bạn để xác thực chấm công.</string>
+	<string>Savina cần vị trí của bạn để xác thực địa điểm chấm công.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Savina cần vị trí của bạn để xác thực địa điểm chấm công.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Savina cần vị trí của bạn để xác thực địa điểm chấm công.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập tệp và thư viện ảnh để đính kèm chứng từ và tài liệu.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

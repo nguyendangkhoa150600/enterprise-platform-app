@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/chat_models.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../services/chat_service.dart';
+import '../../utils/user_resolver.dart';
 import '../../theme/colors.dart';
 import 'chat_thread_screen.dart';
 import 'create_group_dialog.dart';
@@ -17,6 +19,19 @@ class ChatInternalView extends StatefulWidget {
 class _ChatInternalViewState extends State<ChatInternalView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final chat = context.read<ChatProvider>();
+        chat.loadPeople();
+        chat.loadConversations(silent: true);
+        chat.loadPresence(silent: true);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -61,7 +76,9 @@ class _ChatInternalViewState extends State<ChatInternalView> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     final chatProvider = context.watch<ChatProvider>();
+    final myUserId = authProvider.userId ?? '';
     final conversations = chatProvider.conversations;
     final people = chatProvider.people;
 
@@ -95,6 +112,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
       onRefresh: () async {
         await chatProvider.loadConversations();
         await chatProvider.loadPeople();
+        await chatProvider.loadPresence();
       },
       color: AppColors.emerald,
       child: ListView(
@@ -170,7 +188,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
             const SizedBox(height: 8),
             ...filteredConversations
                 .where((c) => c.kind != 'company')
-                .map((conv) => _buildConversationRow(conv, people)),
+                .map((conv) => _buildConversationRow(conv, people, myUserId, chatProvider)),
             const SizedBox(height: 16),
           ],
 
@@ -202,7 +220,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
               child: const Text('Không tìm thấy nhân sự phù hợp', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
             )
           else
-            ...filteredPeople.map((p) => _buildPersonRow(p)),
+            ...filteredPeople.map((p) => _buildPersonRow(p, chatProvider)),
 
           const SizedBox(height: 24),
         ],
@@ -292,18 +310,59 @@ class _ChatInternalViewState extends State<ChatInternalView> {
     );
   }
 
-  Widget _buildConversationRow(ChatConversation conv, List<ChatPerson> people) {
+  Widget _buildConversationRow(
+    ChatConversation conv,
+    List<ChatPerson> people,
+    String myUserId,
+    ChatProvider chatProvider,
+  ) {
     // Determine title
     String title = conv.title ?? '';
-    if (title.isEmpty && conv.peerUserId != null) {
-      final peer = people.firstWhere(
-        (p) => p.id.toLowerCase() == conv.peerUserId!.toLowerCase(),
-        orElse: () => ChatPerson(id: conv.peerUserId!, fullName: 'Đồng nghiệp', email: ''),
+    String? peerUserId = conv.peerUserId;
+    if (conv.kind == 'direct' && (peerUserId == null || peerUserId.isEmpty)) {
+      peerUserId = conv.memberIds.firstWhere(
+        (id) => id.toLowerCase() != myUserId.toLowerCase(),
+        orElse: () => '',
       );
-      title = peer.fullName;
     }
-    if (title.isEmpty) title = 'Trò chuyện';
+    if (title.isEmpty && peerUserId != null && peerUserId.isNotEmpty) {
+      final peer = people.firstWhere(
+        (p) => p.id.toLowerCase() == peerUserId!.toLowerCase(),
+        orElse: () => ChatPerson(id: peerUserId!, fullName: '', email: ''),
+      );
+      if (peer.fullName.isNotEmpty && peer.fullName != 'Người dùng') {
+        title = peer.fullName;
+      } else {
+        final resolved = UserResolver.resolveName(peerUserId, fallback: '');
+        if (resolved.isNotEmpty && resolved != '—' && !UserResolver.isUuid(resolved)) {
+          title = resolved;
+        } else if (conv.lastMessage != null && conv.lastMessage!.senderId.toLowerCase() != myUserId.toLowerCase()) {
+          final senderPerson = people.firstWhere(
+            (p) => p.id.toLowerCase() == conv.lastMessage!.senderId.toLowerCase(),
+            orElse: () => ChatPerson(id: conv.lastMessage!.senderId, fullName: '', email: ''),
+          );
+          if (senderPerson.fullName.isNotEmpty && senderPerson.fullName != 'Người dùng') {
+            title = senderPerson.fullName;
+          } else {
+            final senderResolved = UserResolver.resolveName(conv.lastMessage!.senderId, fallback: '');
+            if (senderResolved.isNotEmpty && senderResolved != '—' && !UserResolver.isUuid(senderResolved)) {
+              title = senderResolved;
+            }
+          }
+        }
+        if (title.isEmpty) {
+          if (peerUserId.contains('@')) {
+            title = peerUserId.split('@').first;
+          } else {
+            title = 'Người dùng';
+          }
+        }
+      }
+    }
+    if (title.isEmpty) title = conv.kind == 'group' ? 'Nhóm thảo luận' : 'Người dùng';
 
+    final bool isDirect = conv.kind == 'direct';
+    final bool isOnline = isDirect && peerUserId != null && peerUserId.isNotEmpty && chatProvider.isUserOnline(peerUserId);
     final lastMsg = conv.lastMessage;
     final hasUnread = conv.unreadCount > 0;
 
@@ -317,13 +376,49 @@ class _ChatInternalViewState extends State<ChatInternalView> {
       child: ListTile(
         onTap: () => _openConversation(conv, title),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: CircleAvatar(
-          radius: 20,
-          backgroundColor: conv.kind == 'group' ? const Color(0xFF6366F1) : AppColors.emerald,
-          child: Text(
-            title.isNotEmpty ? title[0].toUpperCase() : '?',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-          ),
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: conv.kind == 'group'
+                    ? const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4F46E5)])
+                    : const LinearGradient(
+                        colors: [Color(0xFFFFC90A), Color(0xFFE8B400)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: conv.kind == 'group'
+                  ? const Icon(Icons.group_rounded, color: Colors.white, size: 20)
+                  : Text(
+                      _getInitials(title),
+                      style: const TextStyle(
+                        color: Color(0xFF18181B),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+            ),
+            if (isOnline)
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+          ],
         ),
         title: Text(
           title,
@@ -336,14 +431,16 @@ class _ChatInternalViewState extends State<ChatInternalView> {
           ),
         ),
         subtitle: Text(
-          lastMsg?.isDeleted == true ? 'Tin nhắn đã được thu hồi' : (lastMsg?.excerpt ?? 'Bắt đầu cuộc trò chuyện'),
+          lastMsg?.isDeleted == true ? 'Tin nhắn đã được thu hồi' : (lastMsg?.excerpt ?? (isOnline ? 'Đang trực tuyến' : 'Bắt đầu cuộc trò chuyện')),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 12,
             fontStyle: lastMsg?.isDeleted == true ? FontStyle.italic : FontStyle.normal,
-            color: hasUnread ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-            fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+            color: (lastMsg == null && isOnline)
+                ? const Color(0xFF10B981)
+                : (hasUnread ? const Color(0xFF0F172A) : const Color(0xFF64748B)),
+            fontWeight: (lastMsg == null && isOnline) || hasUnread ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
         trailing: hasUnread
@@ -368,7 +465,8 @@ class _ChatInternalViewState extends State<ChatInternalView> {
     );
   }
 
-  Widget _buildPersonRow(ChatPerson person) {
+  Widget _buildPersonRow(ChatPerson person, ChatProvider chatProvider) {
+    final isOnline = chatProvider.isUserOnline(person.id);
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
@@ -379,23 +477,76 @@ class _ChatInternalViewState extends State<ChatInternalView> {
       child: ListTile(
         onTap: () => _startDirectChat(person),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        leading: CircleAvatar(
-          radius: 18,
-          backgroundColor: const Color(0xFF3B82F6),
-          child: Text(
-            person.fullName.isNotEmpty ? person.fullName[0].toUpperCase() : '?',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-          ),
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFFFC90A), Color(0xFFE8B400)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _getInitials(person.fullName),
+                style: const TextStyle(
+                  color: Color(0xFF18181B),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13.5,
+                ),
+              ),
+            ),
+            if (isOnline)
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+          ],
         ),
         title: Text(
           person.fullName,
           style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
         ),
-        subtitle: Text(
-          person.email,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+        subtitle: Row(
+          children: [
+            if (isOnline) ...[
+              Container(
+                width: 7,
+                height: 7,
+                margin: const EdgeInsets.only(right: 5),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const Text(
+                'Đang trực tuyến • ',
+                style: TextStyle(fontSize: 11.5, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+              ),
+            ],
+            Expanded(
+              child: Text(
+                person.email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+              ),
+            ),
+          ],
         ),
         trailing: Container(
           padding: const EdgeInsets.all(6),
@@ -407,6 +558,17 @@ class _ChatInternalViewState extends State<ChatInternalView> {
         ),
       ),
     );
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) {
+      final firstChar = parts[0].isNotEmpty ? parts[0][0] : '';
+      final lastChar = parts[parts.length - 1].isNotEmpty ? parts[parts.length - 1][0] : '';
+      return '$firstChar$lastChar'.toUpperCase();
+    }
+    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
   }
 
   String _formatTime(String raw) {
