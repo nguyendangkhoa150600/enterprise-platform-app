@@ -85,12 +85,12 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Chá»‰nh sá»­a permission',
+                                    'Chỉnh sửa permission',
                                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Khai bÃ¡o thÃ´ng tin Ä‘á»‹nh danh vÃ  chá»n cÃ¡c hÃ nh Ä‘á»™ng Ä‘Æ°á»£c cáº¥p.',
+                                    'Khai báo thông tin định danh và chọn các hành động được cấp.',
                                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                                   ),
                                 ],
@@ -118,17 +118,17 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              '1. THÃ”NG TIN Äá»ŠNH DANH',
+                              '1. THÔNG TIN ĐỊNH DANH',
                               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                             ),
-                            Text('Má»¥c cÃ³ dáº¥u (*) lÃ  báº¯t buá»™c', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                            Text('Mục có dấu (*) là bắt buộc', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                           ],
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: nameCtrl,
                           decoration: InputDecoration(
-                            labelText: 'TÃªn permission *',
+                            labelText: 'Tên permission *',
                             labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                             filled: true,
                             fillColor: Colors.white,
@@ -143,7 +143,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                           controller: descCtrl,
                           maxLines: 2,
                           decoration: InputDecoration(
-                            labelText: 'MÃ´ táº£ ngáº¯n gá»n',
+                            labelText: 'Mô tả ngắn gọn',
                             labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                             filled: true,
                             fillColor: Colors.white,
@@ -159,7 +159,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                         Row(
                           children: [
                             const Text(
-                              '2. HÃ€NH Äá»˜NG ÄÆ¯á»¢C Cáº¤P',
+                              '2. HÀNH ĐỘNG ĐƯỢC CẤP',
                               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                             ),
                             const Spacer(),
@@ -203,7 +203,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      selectedActions.length == allActions.length ? 'Bá» chá»n táº¥t cáº£' : 'Chá»n táº¥t cáº£ (${allActions.length})',
+                                      selectedActions.length == allActions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả (${allActions.length})',
                                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFD97706)),
                                     ),
                                   ],
@@ -216,7 +216,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
 
                         TextField(
                           decoration: InputDecoration(
-                            hintText: 'TÃ¬m kiáº¿m trong ${allActions.length} hÃ nh Ä‘á»™ng...',
+                            hintText: 'Tìm kiếm trong ${allActions.length} hành động...',
                             hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey.shade400),
                             prefixIcon: Icon(Icons.search, size: 18, color: Colors.grey.shade400),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -314,7 +314,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Há»§y bá»', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: const Text('Hủy bỏ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -322,7 +322,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                             if (nameCtrl.text.trim().isEmpty) {
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Vui lÃ²ng nháº­p tÃªn permission'),
+                                  content: Text('Vui lòng nhập tên permission'),
                                   backgroundColor: Color(0xFFDC2626),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -351,7 +351,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                     children: [
                                       Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                                       SizedBox(width: 8),
-                                      Text('Cáº­p nháº­t permission thÃ nh cÃ´ng!'),
+                                      Text('Cập nhật permission thành công!'),
                                     ],
                                   ),
                                   backgroundColor: Color(0xFF16A34A),
@@ -363,7 +363,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                               setSheetState(() => isSaving = false);
                               messenger.showSnackBar(
                                 const SnackBar(
-                                  content: Text('Cáº­p nháº­t permission tháº¥t báº¡i. Vui lÃ²ng thá»­ láº¡i.'),
+                                  content: Text('Cập nhật permission thất bại. Vui lòng thử lại.'),
                                   backgroundColor: Color(0xFFDC2626),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -383,7 +383,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                   height: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('LÆ°u láº¡i', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              : const Text('Lưu lại', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -479,12 +479,12 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Táº¡o permission má»›i',
+                                    'Tạo permission mới',
                                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Khai bÃ¡o thÃ´ng tin Ä‘á»‹nh danh vÃ  chá»n cÃ¡c hÃ nh Ä‘á»™ng Ä‘Æ°á»£c cáº¥p.',
+                                    'Khai báo thông tin định danh và chọn các hành động được cấp.',
                                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                                   ),
                                 ],
@@ -512,17 +512,17 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              '1. THÃ”NG TIN Äá»ŠNH DANH',
+                              '1. THÔNG TIN ĐỊNH DANH',
                               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                             ),
-                            Text('Má»¥c cÃ³ dáº¥u (*) lÃ  báº¯t buá»™c', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                            Text('Mục có dấu (*) là bắt buộc', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                           ],
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: nameCtrl,
                           decoration: InputDecoration(
-                            labelText: 'TÃªn permission *',
+                            labelText: 'Tên permission *',
                             labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                             filled: true,
                             fillColor: Colors.white,
@@ -537,7 +537,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                           controller: descCtrl,
                           maxLines: 2,
                           decoration: InputDecoration(
-                            labelText: 'MÃ´ táº£ ngáº¯n gá»n',
+                            labelText: 'Mô tả ngắn gọn',
                             labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                             filled: true,
                             fillColor: Colors.white,
@@ -553,7 +553,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                         Row(
                           children: [
                             const Text(
-                              '2. HÃ€NH Äá»˜NG ÄÆ¯á»¢C Cáº¤P',
+                              '2. HÀNH ĐỘNG ĐƯỢC CẤP',
                               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: 0.3),
                             ),
                             const Spacer(),
@@ -597,7 +597,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      selectedActions.length == allActions.length ? 'Bá» chá»n táº¥t cáº£' : 'Chá»n táº¥t cáº£ (${allActions.length})',
+                                      selectedActions.length == allActions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả (${allActions.length})',
                                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFD97706)),
                                     ),
                                   ],
@@ -610,7 +610,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
 
                         TextField(
                           decoration: InputDecoration(
-                            hintText: 'TÃ¬m kiáº¿m trong ${allActions.length} hÃ nh Ä‘á»™ng...',
+                            hintText: 'Tìm kiếm trong ${allActions.length} hành động...',
                             hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey.shade400),
                             prefixIcon: Icon(Icons.search, size: 18, color: Colors.grey.shade400),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -708,7 +708,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text('Há»§y bá»', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: const Text('Hủy bỏ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -716,7 +716,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                             if (nameCtrl.text.trim().isEmpty) {
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Vui lÃ²ng nháº­p tÃªn permission'),
+                                  content: Text('Vui lòng nhập tên permission'),
                                   backgroundColor: Color(0xFFDC2626),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -746,7 +746,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                     children: [
                                       Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                                       SizedBox(width: 8),
-                                      Text('Táº¡o permission thÃ nh cÃ´ng!'),
+                                      Text('Tạo permission thành công!'),
                                     ],
                                   ),
                                   backgroundColor: Color(0xFF16A34A),
@@ -758,7 +758,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                               setSheetState(() => isSaving = false);
                               messenger.showSnackBar(
                                 const SnackBar(
-                                  content: Text('Táº¡o permission tháº¥t báº¡i. Vui lÃ²ng thá»­ láº¡i.'),
+                                  content: Text('Tạo permission thất bại. Vui lòng thử lại.'),
                                   backgroundColor: Color(0xFFDC2626),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -778,7 +778,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                                   height: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('LÆ°u láº¡i', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              : const Text('Lưu lại', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),

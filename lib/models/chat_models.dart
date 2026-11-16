@@ -12,11 +12,25 @@ class ChatPerson {
   });
 
   factory ChatPerson.fromJson(Map<String, dynamic> json) {
+    final id = json['id']?.toString() ?? json['userId']?.toString() ?? json['user_id']?.toString() ?? '';
+    final rawName = json['fullName']?.toString() ??
+        json['full_name']?.toString() ??
+        json['displayName']?.toString() ??
+        json['display_name']?.toString() ??
+        json['name']?.toString() ??
+        '';
+    final email = json['email']?.toString() ?? '';
+    final name = rawName.trim().isNotEmpty
+        ? rawName.trim()
+        : (email.isNotEmpty && email.contains('@') ? email.split('@').first : 'Người dùng');
+
     return ChatPerson(
-      id: json['id']?.toString() ?? '',
-      fullName: json['fullName']?.toString() ?? json['displayName']?.toString() ?? 'Người dùng',
-      email: json['email']?.toString() ?? '',
-      avatarVersion: json['avatarVersion'] is int ? json['avatarVersion'] as int : null,
+      id: id,
+      fullName: name,
+      email: email,
+      avatarVersion: json['avatarVersion'] is int
+          ? json['avatarVersion'] as int
+          : (json['avatar_version'] is int ? json['avatar_version'] as int : null),
     );
   }
 
@@ -95,25 +109,33 @@ class ChatConversation {
   });
 
   factory ChatConversation.fromJson(Map<String, dynamic> json) {
-    final membersRaw = json['memberIds'];
+    final membersRaw = json['memberIds'] ?? json['member_ids'];
     final membersList = membersRaw is List ? membersRaw.map((e) => e.toString()).toList() : <String>[];
 
     return ChatConversation(
       id: json['id']?.toString() ?? '',
       kind: json['kind']?.toString() ?? 'direct',
       title: json['title']?.toString(),
-      peerUserId: json['peerUserId']?.toString(),
+      peerUserId: json['peerUserId']?.toString() ?? json['peer_user_id']?.toString(),
       memberIds: membersList,
-      memberCount: json['memberCount'] is int ? json['memberCount'] as int : membersList.length,
-      myRole: json['myRole']?.toString(),
+      memberCount: json['memberCount'] is int
+          ? json['memberCount'] as int
+          : (json['member_count'] is int ? json['member_count'] as int : membersList.length),
+      myRole: json['myRole']?.toString() ?? json['my_role']?.toString(),
       muted: json['muted'] == true,
-      unreadCount: json['unreadCount'] is int ? json['unreadCount'] as int : 0,
-      unreadMentionCount: json['unreadMentionCount'] is int ? json['unreadMentionCount'] as int : 0,
+      unreadCount: json['unreadCount'] is int
+          ? json['unreadCount'] as int
+          : (json['unread_count'] is int ? json['unread_count'] as int : 0),
+      unreadMentionCount: json['unreadMentionCount'] is int
+          ? json['unreadMentionCount'] as int
+          : (json['unread_mention_count'] is int ? json['unread_mention_count'] as int : 0),
       lastMessage: json['lastMessage'] is Map<String, dynamic>
           ? ChatMessagePreview.fromJson(json['lastMessage'])
-          : null,
-      lastMessageAt: json['lastMessageAt']?.toString(),
-      createdAt: json['createdAt']?.toString() ?? '',
+          : (json['last_message'] is Map<String, dynamic>
+              ? ChatMessagePreview.fromJson(json['last_message'])
+              : null),
+      lastMessageAt: json['lastMessageAt']?.toString() ?? json['last_message_at']?.toString(),
+      createdAt: json['createdAt']?.toString() ?? json['created_at']?.toString() ?? '',
     );
   }
 }
@@ -254,4 +276,75 @@ class ChatMessage {
     );
   }
 }
+
+class ChatMember {
+  final String userId;
+  final String role;
+  final String? lastReadAt;
+  final String? lastDeliveredAt;
+
+  ChatMember({
+    required this.userId,
+    this.role = 'member',
+    this.lastReadAt,
+    this.lastDeliveredAt,
+  });
+
+  factory ChatMember.fromJson(Map<String, dynamic> json) {
+    return ChatMember(
+      userId: json['userId']?.toString() ?? json['user_id']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'member',
+      lastReadAt: json['lastReadAt']?.toString() ?? json['last_read_at']?.toString(),
+      lastDeliveredAt: json['lastDeliveredAt']?.toString() ?? json['last_delivered_at']?.toString(),
+    );
+  }
+}
+
+class ChatMessagePageData {
+  final List<ChatMessage> messages;
+  final List<ChatMember> members;
+  final bool hasMore;
+
+  ChatMessagePageData({
+    required this.messages,
+    required this.members,
+    this.hasMore = false,
+  });
+}
+
+class PresenceSnapshot {
+  final Set<String> onlineUserIds;
+  final Map<String, String> lastSeen;
+
+  PresenceSnapshot({
+    required this.onlineUserIds,
+    required this.lastSeen,
+  });
+
+  factory PresenceSnapshot.fromJson(Map<String, dynamic> json) {
+    final rawOnline = json['online'];
+    final onlineSet = <String>{};
+    if (rawOnline is List) {
+      for (final id in rawOnline) {
+        if (id != null) onlineSet.add(id.toString().toLowerCase());
+      }
+    }
+
+    final rawLastSeen = json['lastSeen'];
+    final lastSeenMap = <String, String>{};
+    if (rawLastSeen is Map) {
+      for (final entry in rawLastSeen.entries) {
+        if (entry.key != null && entry.value != null) {
+          lastSeenMap[entry.key.toString().toLowerCase()] = entry.value.toString();
+        }
+      }
+    }
+
+    return PresenceSnapshot(
+      onlineUserIds: onlineSet,
+      lastSeen: lastSeenMap,
+    );
+  }
+}
+
 

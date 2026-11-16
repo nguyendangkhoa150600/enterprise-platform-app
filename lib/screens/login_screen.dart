@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
+import '../providers/chat_provider.dart';
 import '../theme/colors.dart';
 import './home_screen.dart';
 import '../core/i18n/app_i18n.dart';
@@ -83,6 +84,13 @@ class _LoginScreenState extends State<LoginScreen> {
         } catch (_) {}
 
         if (mounted) {
+          try {
+            final chat = context.read<ChatProvider>();
+            chat.loadPeople();
+            chat.loadConversations(silent: true);
+            chat.loadPresence(silent: true);
+          } catch (_) {}
+
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -223,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                '© 2026 SVN Technology · Phiên bản 2.4.0',
+                '© 2026 SVN Technology · Phiên bản 1.0.0',
                 style: TextStyle(color: AppColors.slate600, fontSize: 11),
               ),
             ],
@@ -763,18 +771,43 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
-            // Footer note
-            Center(
-              child: Text(
-                'login.footer.tenant'.tr(),
-                style: const TextStyle(
-                  color: AppColors.slate500,
-                  fontSize: 11.5,
-                  height: 1.4,
+            // Enterprise Notice Banner (Explicitly informs Apple Reviewers & Users)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF334155),
+                  width: 1,
                 ),
-                textAlign: TextAlign.center,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 1.5),
+                    child: Icon(
+                      Icons.info_outline_rounded,
+                      size: 15,
+                      color: Color(0xFF38BDF8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'login.footer.tenant'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11.5,
+                        height: 1.45,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

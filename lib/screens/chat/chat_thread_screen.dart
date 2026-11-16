@@ -6,6 +6,7 @@ import '../../models/chat_models.dart';
 import '../../services/chat_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../utils/user_resolver.dart';
 import '../../theme/colors.dart';
 
 class ChatThreadScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   final ScrollController _scrollController = ScrollController();
 
   List<ChatMessage> _messages = [];
+  List<ChatMember> _members = [];
   bool _isLoading = true;
   Timer? _pollingTimer;
 
@@ -42,6 +44,14 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     super.initState();
     _loadMessages();
     _startPolling();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final chat = context.read<ChatProvider>();
+        if (chat.people.isEmpty) {
+          chat.loadPeople();
+        }
+      }
+    });
   }
 
   void _startPolling() {
@@ -52,10 +62,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
-    final msgs = await _chatService.getMessages(widget.conversation.id);
+    final page = await _chatService.getMessagesPage(widget.conversation.id);
     if (mounted) {
       setState(() {
-        _messages = msgs;
+        _messages = page.messages;
+        _members = page.members;
         _isLoading = false;
       });
       _scrollToBottom();
@@ -63,14 +74,33 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
   }
 
+  int _pollCount = 0;
   Future<void> _pollNewMessages() async {
-    final msgs = await _chatService.getMessages(widget.conversation.id);
-    if (mounted && msgs.length != _messages.length) {
-      setState(() {
-        _messages = msgs;
+    _pollCount++;
+    if (_pollCount % 3 == 0 && mounted) {
+      context.read<ChatProvider>().loadPresence(silent: true);
+    }
+    final page = await _chatService.getMessagesPage(widget.conversation.id);
+    if (mounted) {
+      final msgCountChanged = page.messages.length != _messages.length;
+      final membersChanged = page.members.any((pm) {
+        final existing = _members.firstWhere(
+          (m) => m.userId.toLowerCase() == pm.userId.toLowerCase(),
+          orElse: () => ChatMember(userId: ''),
+        );
+        return existing.lastReadAt != pm.lastReadAt;
       });
-      _scrollToBottom();
-      _markLastRead();
+
+      if (msgCountChanged || membersChanged) {
+        setState(() {
+          _messages = page.messages;
+          _members = page.members;
+        });
+        if (msgCountChanged) {
+          _scrollToBottom();
+          _markLastRead();
+        }
+      }
     }
   }
 
@@ -567,7 +597,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       (p) => p.id.toLowerCase() == senderId.toLowerCase(),
       orElse: () => ChatPerson(id: senderId, fullName: '', email: ''),
     );
-    if (person.fullName.isNotEmpty) return person.fullName;
+    if (person.fullName.isNotEmpty && person.fullName != 'Người dùng') return person.fullName;
+
+    final resolved = UserResolver.resolveName(senderId, fallback: '');
+    if (resolved.isNotEmpty && resolved != '—' && !UserResolver.isUuid(resolved)) {
+      return resolved;
+    }
+
     if (senderId.contains('@')) return senderId.split('@').first;
     return 'Người dùng';
   }
@@ -645,6 +681,64 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     final myUserId = authProvider.userId ?? '';
     final people = chatProvider.people;
 
+    // Xác định peerUserId cho cuộc trò chuyện 1-1
+    String? peerUserId = widget.conversation.peerUserId;
+    if ((peerUserId == null || peerUserId.isEmpty) && widget.conversation.kind == 'direct') {
+      peerUserId = widget.conversation.memberIds.firstWhere(
+        (id) => id.toLowerCase() != myUserId.toLowerCase(),
+        orElse: () => '',
+      );
+    }
+
+    final bool isPeerOnline = peerUserId != null &&
+        peerUserId.isNotEmpty &&
+        chatProvider.isUserOnline(peerUserId);
+
+    // Xác định tiêu đề hiển thị
+    String displayTitle = widget.title;
+    if (widget.conversation.kind == 'direct' && peerUserId != null && peerUserId.isNotEmpty) {
+      final peerName = _getSenderName(peerUserId, people);
+      if (peerName.isNotEmpty && peerName != 'Người dùng') {
+        displayTitle = peerName;
+      }
+    }
+
+    // Xác định phụ đề hiển thị & trạng thái trực tuyến
+    String displaySubtitle = widget.subtitle ?? '';
+    bool isSubtitleOnline = false;
+
+    if (widget.conversation.kind == 'company') {
+      displaySubtitle = 'Tin nhắn gửi đến toàn bộ ${widget.conversation.memberCount} người trong công ty';
+    } else if (widget.conversation.kind == 'group') {
+      final onlineCount = widget.conversation.memberIds
+          .where((m) => chatProvider.isUserOnline(m))
+          .length;
+      displaySubtitle = '${widget.conversation.memberCount} thành viên · $onlineCount đang trực tuyến';
+    } else if (widget.conversation.kind == 'direct') {
+      if (isPeerOnline) {
+        displaySubtitle = 'Đang trực tuyến';
+        isSubtitleOnline = true;
+      } else {
+        final lastSeen = peerUserId != null ? chatProvider.lastSeenOf(peerUserId) : null;
+        if (lastSeen != null && lastSeen.isNotEmpty) {
+          displaySubtitle = chatProvider.formatLastSeen(lastSeen);
+        } else if (widget.subtitle != null && widget.subtitle!.isNotEmpty) {
+          displaySubtitle = widget.subtitle!;
+        } else {
+          displaySubtitle = 'Ngoại tuyến';
+        }
+      }
+    }
+
+    // Tìm tin nhắn cuối cùng của chính mình để hiển thị trạng thái "Đã xem" / "Đã gửi"
+    ChatMessage? lastOwnMsg;
+    for (int i = _messages.length - 1; i >= 0; i--) {
+      if (_messages[i].senderId.toLowerCase() == myUserId.toLowerCase() && !_messages[i].isDeleted) {
+        lastOwnMsg = _messages[i];
+        break;
+      }
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -658,17 +752,53 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         titleSpacing: 0,
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 19,
-              backgroundColor: widget.conversation.kind == 'company'
-                  ? const Color(0xFF3B82F6)
-                  : const Color(0xFF10B981),
-              child: widget.conversation.kind == 'company'
-                  ? const Icon(Icons.apartment_rounded, color: Colors.white, size: 20)
-                  : Text(
-                      widget.title.isNotEmpty ? widget.title[0].toUpperCase() : '?',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    gradient: widget.conversation.kind == 'company'
+                        ? const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)])
+                        : widget.conversation.kind == 'group'
+                            ? const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4F46E5)])
+                            : const LinearGradient(
+                                colors: [Color(0xFFFFC90A), Color(0xFFE8B400)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: widget.conversation.kind == 'company'
+                      ? const Icon(Icons.apartment_rounded, color: Colors.white, size: 20)
+                      : widget.conversation.kind == 'group'
+                          ? const Icon(Icons.group_rounded, color: Colors.white, size: 20)
+                          : Text(
+                              _getSenderInitials(displayTitle),
+                              style: const TextStyle(
+                                color: Color(0xFF18181B),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                ),
+                if (widget.conversation.kind == 'direct' && isPeerOnline)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 11,
+                      height: 11,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
                     ),
+                  ),
+              ],
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -676,7 +806,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.title,
+                    displayTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -685,15 +815,15 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       color: Color(0xFF0F172A),
                     ),
                   ),
-                  if (widget.subtitle != null && widget.subtitle!.isNotEmpty)
+                  if (displaySubtitle.isNotEmpty)
                     Text(
-                      widget.subtitle!,
+                      displaySubtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
+                        color: isSubtitleOnline ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                        fontWeight: isSubtitleOnline ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                 ],
@@ -736,11 +866,15 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                           final msg = _messages[index];
                           final isMe = msg.senderId.toLowerCase() == myUserId.toLowerCase();
                           final prevMsg = index > 0 ? _messages[index - 1] : null;
+                          final isLastOwnMessage = isMe &&
+                              (lastOwnMsg != null && lastOwnMsg.id.isNotEmpty && msg.id == lastOwnMsg.id);
 
                           return _buildMessageRowWithDivider(
                             msg: msg,
                             prevMsg: prevMsg,
                             isMe: isMe,
+                            isLastOwnMessage: isLastOwnMessage,
+                            members: _members,
                             people: people,
                             myUserId: myUserId,
                           );
@@ -759,6 +893,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     required ChatMessage msg,
     required ChatMessage? prevMsg,
     required bool isMe,
+    required bool isLastOwnMessage,
+    required List<ChatMember> members,
     required List<ChatPerson> people,
     required String myUserId,
   }) {
@@ -821,6 +957,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         _buildMessageItem(
           msg: msg,
           isMe: isMe,
+          isLastOwnMessage: isLastOwnMessage,
+          members: members,
           showSenderHeader: showSenderHeader,
           senderName: senderName,
           initials: initials,
@@ -858,6 +996,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   Widget _buildMessageItem({
     required ChatMessage msg,
     required bool isMe,
+    required bool isLastOwnMessage,
+    required List<ChatMember> members,
     required bool showSenderHeader,
     required String senderName,
     required String initials,
@@ -998,8 +1138,129 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 
                 // Reactions display capsule under the bubble
                 _buildReactionsDisplay(msg, isMe, myUserId),
+
+                // Seen / Delivered / Sent status line under last own message
+                if (isLastOwnMessage)
+                  _buildSeenStatusLine(msg, members, myUserId, people),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeenStatusLine(
+    ChatMessage msg,
+    List<ChatMember> members,
+    String myUserId,
+    List<ChatPerson> people,
+  ) {
+    final others = members.where((m) => m.userId.toLowerCase() != myUserId.toLowerCase()).toList();
+    final readers = others.where((m) {
+      if (m.lastReadAt == null || m.lastReadAt!.isEmpty) return false;
+      try {
+        final readDt = DateTime.parse(m.lastReadAt!).toUtc();
+        final msgDt = DateTime.parse(msg.createdAt).toUtc();
+        return !readDt.isBefore(msgDt);
+      } catch (_) {
+        return false;
+      }
+    }).map((m) => m.userId).toList();
+
+    if (readers.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 3, right: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              'Đã xem',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 5),
+            ...readers.take(4).map((readerId) {
+              final readerName = _getSenderName(readerId, people);
+              final readerInitials = _getSenderInitials(readerName);
+              return Container(
+                margin: const EdgeInsets.only(left: 3),
+                width: 17,
+                height: 17,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFFC90A), Color(0xFFE8B400)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  readerInitials,
+                  style: const TextStyle(
+                    color: Color(0xFF18181B),
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            }),
+            if (readers.length > 4)
+              Padding(
+                padding: const EdgeInsets.only(left: 3),
+                child: Text(
+                  '+${readers.length - 4}',
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    final hasDelivered = others.any((m) {
+      if (m.lastDeliveredAt == null || m.lastDeliveredAt!.isEmpty) return false;
+      try {
+        final delivDt = DateTime.parse(m.lastDeliveredAt!).toUtc();
+        final msgDt = DateTime.parse(msg.createdAt).toUtc();
+        return !delivDt.isBefore(msgDt);
+      } catch (_) {
+        return false;
+      }
+    });
+
+    if (hasDelivered) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 3, right: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.done_all_rounded, size: 14, color: Color(0xFF94A3B8)),
+            SizedBox(width: 3),
+            Text(
+              'Đã nhận',
+              style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 3, right: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.done_rounded, size: 13, color: Color(0xFF94A3B8)),
+          SizedBox(width: 3),
+          Text(
+            'Đã gửi',
+            style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
           ),
         ],
       ),
