@@ -6,7 +6,8 @@ String _formatTime(String? isoString) {
   if (isoString == null || isoString.isEmpty) return '--:--';
   final dt = DateTime.tryParse(isoString);
   if (dt != null) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final local = dt.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
   final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
   if (match != null) {
@@ -20,7 +21,8 @@ String _formatTime(String? isoString) {
 String _formatDate(String isoString) {
   final dt = DateTime.tryParse(isoString);
   if (dt == null) return isoString;
-  return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  final local = dt.toLocal();
+  return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
 }
 
 int _timeToMinutes(String timeStr) {
@@ -906,7 +908,8 @@ void showAttendanceDayDetailModal(
     if (isoString == null || isoString.isEmpty) return '';
     final dt = DateTime.tryParse(isoString);
     if (dt == null) return isoString;
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final local = dt.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatRequestTimeRange(HrmDayRequest req) {

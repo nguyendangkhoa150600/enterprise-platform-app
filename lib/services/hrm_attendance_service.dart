@@ -137,19 +137,43 @@ class HrmAttendanceService {
     }
   }
 
-  // 5. Get Today Status
-  Future<AttendanceRecord?> getTodayAttendance({String? targetWorkDate}) async {
-    final endpoints = [
-      '/hrm/v1/my-attendance',
-      '/hrm/v1/attendance',
-    ];
+  // 5. Get Today Status (Chỉ lấy bản ghi của CHÍNH nhân viên hiện tại)
+  Future<AttendanceRecord?> getTodayAttendance({String? targetWorkDate, String? employeeId}) async {
     final now = DateTime.now();
     final todayStr = targetWorkDate ?? '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-    for (final ep in endpoints) {
+    try {
+      // 1:1 với Web: Ưu tiên gọi /hrm/v1/my-attendance (chỉ trả về dữ liệu của chính người đang đăng nhập)
+      final response = await _dio.get(
+        '/hrm/v1/my-attendance',
+        options: Options(validateStatus: (status) => true),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data['data'] ?? response.data['items'] ?? response.data;
+        if (data is List && data.isNotEmpty) {
+          for (final item in data) {
+            if (item is Map<String, dynamic>) {
+              final rec = AttendanceRecord.fromJson(item);
+              if (rec.workDate == todayStr) {
+                if (employeeId == null || employeeId.isEmpty || rec.employeeId == employeeId) {
+                  _todayRecord = rec;
+                  return _todayRecord;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getTodayAttendance my-attendance info: $e');
+    }
+
+    // Nếu có employeeId cụ thể và my-attendance không có, gọi endpoint scoped với employee_id
+    if (employeeId != null && employeeId.isNotEmpty) {
       try {
         final response = await _dio.get(
-          ep,
+          '/hrm/v1/attendance',
+          queryParameters: {'employee_id': employeeId, 'from': todayStr, 'to': todayStr},
           options: Options(validateStatus: (status) => true),
         );
         if (response.statusCode == 200 && response.data != null) {
@@ -158,24 +182,19 @@ class HrmAttendanceService {
             for (final item in data) {
               if (item is Map<String, dynamic>) {
                 final rec = AttendanceRecord.fromJson(item);
-                if (rec.workDate == todayStr) {
+                if (rec.workDate == todayStr && rec.employeeId == employeeId) {
                   _todayRecord = rec;
                   return _todayRecord;
                 }
               }
             }
-          } else if (data is Map<String, dynamic>) {
-            final rec = AttendanceRecord.fromJson(data);
-            if (rec.workDate == todayStr || rec.workDate.isEmpty) {
-              _todayRecord = rec;
-              return _todayRecord;
-            }
           }
         }
       } catch (e) {
-        debugPrint('[HrmAttendanceService] getTodayAttendance info: $e');
+        debugPrint('[HrmAttendanceService] getTodayAttendance scoped attendance info: $e');
       }
     }
+
     _todayRecord = null;
     return null;
   }

@@ -1089,7 +1089,15 @@ class HrmTimesheetBoard {
     this.meta = const {},
   });
 
-  HrmBoardEmployee? get myEmployee => employees.isNotEmpty ? employees.first : null;
+  HrmBoardEmployee? findEmployee(String? employeeId) {
+    if (employeeId == null || employeeId.isEmpty) return null;
+    for (final emp in employees) {
+      if (emp.employeeId == employeeId) return emp;
+    }
+    return null;
+  }
+
+  HrmBoardEmployee? get myEmployee => employees.length == 1 ? employees.first : null;
 
   factory HrmTimesheetBoard.fromJson(Map<String, dynamic> json) {
     final calRaw = json['calendar'];

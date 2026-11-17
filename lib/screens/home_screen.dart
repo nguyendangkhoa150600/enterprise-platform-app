@@ -7,7 +7,6 @@ import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
 import '../services/module_business_service.dart';
 import '../core/permissions/hrm_permissions.dart';
-import '../shared/widgets/no_access_view.dart';
 import './home/components/home_module_stats.dart';
 import '../theme/colors.dart';
 import './inventory_screen.dart';
@@ -21,7 +20,6 @@ import './role_permission_screen.dart';
 import './user_management_screen.dart';
 import './my_requests_screen.dart';
 import './workspace_screen.dart';
-import './assistant_chat_screen.dart';
 import './communication_hub_screen.dart';
 import '../providers/chat_provider.dart';
 import '../features/crm/presentation/screens/crm_hub_screen.dart';
@@ -31,6 +29,8 @@ import './home/components/home_organization_view.dart';
 import './home/components/home_desktop_users_view.dart';
 import './home/components/home_mobile_dashboard_view.dart';
 import './home/components/home_desktop_dashboard_view.dart';
+import './social/social_feed_view.dart';
+import './org_chart_workspace_screen.dart';
 import '../core/i18n/app_i18n.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -211,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -292,17 +292,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const SizedBox(width: 68, height: 66),
                   ),
 
-                  // Tab 2: Sơ đồ tổ chức (needs core.organization.read, like the web)
-                  if (context.watch<AuthProvider>().canViewOrganization)
-                    _buildBottomNavItem(
-                      icon: Icons.account_tree_outlined,
-                      activeIcon: Icons.account_tree,
-                      label: 'home_shell.nav.org'.tr(),
-                      isSelected: _mobileNavIndex == 2,
-                      onTap: () => setState(() => _mobileNavIndex = 2),
-                    )
-                  else
-                    const SizedBox(width: 56),
+                  // Tab 2: Mạng nội bộ (Social Feed - Enterprise Social Network)
+                  _buildBottomNavItem(
+                    icon: Icons.newspaper_outlined,
+                    activeIcon: Icons.newspaper_rounded,
+                    label: 'home_shell.nav.social'.tr(),
+                    isSelected: _mobileNavIndex == 2,
+                    onTap: () => setState(() => _mobileNavIndex = 2),
+                  ),
 
                   // Tài khoản
                   _buildBottomNavItem(
@@ -417,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         return _buildMobileModulesView();
       case 2:
-        return _buildMobilePeopleView();
+        return const SocialFeedView();
       case 3:
         return _buildMobileProfileView(userName, userInitials, tenantDisplay);
       default:
@@ -458,20 +455,6 @@ class _HomeScreenState extends State<HomeScreen> {
       onSelectOrgChart: () => setState(() => _mobileNavIndex = 2),
       onOpenDashboard: () => setState(() => _mobileNavIndex = 0),
       onOpenModule: _openModule,
-    );
-  }
-
-  // ==========================================
-  // MOBILE VIEW 3: SƠ ĐỒ TỔ CHỨC (ORGANIZATION STRUCTURE)
-  // ==========================================
-  Widget _buildMobilePeopleView() {
-    if (!context.read<AuthProvider>().canViewOrganization) {
-      return NoAccessView(message: 'perm.no_access_org'.tr());
-    }
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: _buildOrganizationView(),
     );
   }
 
@@ -557,6 +540,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   _buildDrawerItem(
+                    title: 'Mạng nội bộ',
+                    icon: Icons.newspaper_outlined,
+                    isSelected: _mobileNavIndex == 2,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _mobileNavIndex = 2);
+                    },
+                  ),
+                  _buildDrawerItem(
                     title: 'Ứng dụng phân hệ',
                     icon: Icons.inventory_2_outlined,
                     isSelected: _mobileNavIndex == 1,
@@ -574,10 +566,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildDrawerItem(
                       title: 'Sơ đồ tổ chức',
                       icon: Icons.alt_route_rounded,
-                      isSelected: _mobileNavIndex == 2,
                       onTap: () {
                         Navigator.pop(context);
-                        setState(() => _mobileNavIndex = 2);
+                        if (_orgSnapshot != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OrgChartWorkspaceScreen(snapshot: _orgSnapshot!),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                appBar: AppBar(title: Text('home_shell.nav.org'.tr())),
+                                body: _buildOrganizationView(),
+                              ),
+                            ),
+                          );
+                        }
                       },
                     ),
                     const SizedBox(height: 18),

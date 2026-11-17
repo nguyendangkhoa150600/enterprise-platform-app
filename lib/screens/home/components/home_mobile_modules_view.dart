@@ -521,14 +521,6 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'iconColor': const Color(0xFF9333EA),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'history'))),
                 },
-                {
-                  'title': 'Cài đặt',
-                  'visible': true,
-                  'icon': Icons.tune_rounded,
-                  'bg': const Color(0xFFF1F5F9), // Slate 50
-                  'iconColor': const Color(0xFF475569),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'settings'))),
-                },
               ],
             ),
 
