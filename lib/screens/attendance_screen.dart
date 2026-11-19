@@ -14,7 +14,6 @@ import './attendance/components/attendance_correction_dialog.dart';
 import './attendance/components/attendance_history_views.dart';
 import '../services/hrm_attendance_service.dart';
 import '../services/device_location_service.dart';
-import 'package:geolocator/geolocator.dart';
 import '../utils/error_handler.dart';
 import '../core/i18n/app_i18n.dart';
 
@@ -197,13 +196,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       final monthBoard = results[6] as HrmTimesheetBoard?;
       final now = DateTime.now();
       final todayStr = attContext?.workDate ?? '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final boardDay = monthBoard?.myEmployee?.days[todayStr];
+      final currentEmpId = attContext?.employeeId;
+      final boardEmp = (currentEmpId != null && currentEmpId.isNotEmpty)
+          ? monthBoard?.findEmployee(currentEmpId)
+          : monthBoard?.myEmployee;
+      final boardDay = boardEmp?.days[todayStr];
+
+      // Đảm bảo todayRec phải đúng là của nhân sự hiện tại
+      if (todayRec != null && currentEmpId != null && currentEmpId.isNotEmpty && todayRec.employeeId != currentEmpId) {
+        todayRec = null;
+      }
 
       // Đồng bộ thông tin điểm danh hôm nay giữa AttendanceRecord và TimesheetBoard
       if (todayRec == null && boardDay != null && (boardDay.checkIn?.isNotEmpty == true || boardDay.checkOut?.isNotEmpty == true)) {
         todayRec = AttendanceRecord(
           id: 'board-$todayStr',
-          employeeId: attContext?.employeeId ?? '',
+          employeeId: currentEmpId ?? '',
           workDate: todayStr,
           firstCheckInAt: boardDay.checkIn,
           lastCheckOutAt: boardDay.checkOut,
@@ -262,16 +270,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         _isLocating = false;
       });
     }
-  }
-
-  Future<void> _onLocationCardTap() async {
-    final st = _geoFix?.status;
-    if (st == DeviceLocationStatus.permissionDeniedForever) {
-      await Geolocator.openAppSettings();
-    } else if (st == DeviceLocationStatus.serviceDisabled) {
-      await Geolocator.openLocationSettings();
-    }
-    await _refreshLocation();
   }
 
   /// Gets a fresh position for a punch. Returns null (and tells the user) when the policy requires GPS but it is unavailable.
@@ -334,7 +332,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 const Icon(Icons.check_circle_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('attendance.snack.checkin_success'.tr(args: {'time': _formatTime(record.firstCheckInAt)})),
+                Expanded(
+                  child: Text(
+                    'attendance.snack.checkin_success'.tr(args: {'time': _formatTime(record.firstCheckInAt)}),
+                  ),
+                ),
               ],
             ),
             backgroundColor: const Color(0xFF059669),
@@ -397,7 +399,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 const Icon(Icons.check_circle_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('attendance.snack.checkout_success'.tr(args: {'time': _formatTime(record.lastCheckOutAt), 'hours': (record.workedMinutes / 60).toStringAsFixed(1)})),
+                Expanded(
+                  child: Text(
+                    'attendance.snack.checkout_success'.tr(args: {
+                      'time': _formatTime(record.lastCheckOutAt),
+                      'hours': (record.workedMinutes / 60).toStringAsFixed(1),
+                    }),
+                  ),
+                ),
               ],
             ),
             backgroundColor: const Color(0xFF2563EB),
@@ -425,7 +434,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     if (isoString == null || isoString.isEmpty) return '--:--';
     final dt = DateTime.tryParse(isoString);
     if (dt != null) {
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      final local = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
+      return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
     }
     final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
     if (match != null) {
@@ -439,7 +449,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   String _formatDate(String isoString) {
     final dt = DateTime.tryParse(isoString);
     if (dt == null) return isoString;
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    final local = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
   }
 
   List<AttendanceRecord> get _filteredHistory {
@@ -564,119 +575,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     return shift.breakMinutes > 0 ? 'attendance.today.shift_line'.tr(args: args) : 'attendance.today.shift_line_no_break'.tr(args: args);
   }
 
-  Widget _buildLocationCard() {
-    final fix = _geoFix;
-    late final Color color;
-    late final String text;
-    if (fix == null || (_isLocating && !(fix.isOk))) {
-      color = const Color(0xFFD97706);
-      text = 'attendance.geo.locating'.tr();
-    } else {
-      switch (fix.status) {
-        case DeviceLocationStatus.ok:
-          color = const Color(0xFF059669);
-          text = 'attendance.geo.ok'.tr();
-        case DeviceLocationStatus.permissionDenied:
-          color = const Color(0xFFDC2626);
-          text = 'attendance.geo.permission_denied'.tr();
-        case DeviceLocationStatus.permissionDeniedForever:
-          color = const Color(0xFFDC2626);
-          text = 'attendance.geo.permission_forever'.tr();
-        case DeviceLocationStatus.serviceDisabled:
-          color = const Color(0xFFDC2626);
-          text = 'attendance.geo.service_disabled'.tr();
-        case DeviceLocationStatus.failed:
-          color = const Color(0xFFDC2626);
-          text = 'attendance.geo.failed'.tr();
-      }
-    }
-    final ok = fix?.isOk == true;
-    String two(int v) => v.toString().padLeft(2, '0');
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: ok ? null : _onLocationCardTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(ok ? Icons.radar : Icons.location_off_outlined, color: color, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'attendance.today.location_status'.tr(),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (ok)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
-                    child: Text(
-                      'attendance.geo.accuracy'.tr(args: {'meters': fix!.accuracy!.round()}),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                    ),
-                  ),
-              ],
-            ),
-            if (ok) ...[
-              const SizedBox(height: 12),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildVerificationBadge(
-                    icon: Icons.gps_fixed,
-                    label: 'attendance.geo.coords'.tr(args: {'lat': fix!.latitude!.toStringAsFixed(5), 'lng': fix.longitude!.toStringAsFixed(5)}),
-                  ),
-                  _buildVerificationBadge(
-                    icon: Icons.update,
-                    label: 'attendance.geo.updated'.tr(args: {'time': '${two(fix.at!.hour)}:${two(fix.at!.minute)}:${two(fix.at!.second)}'}),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text('attendance.geo.server_verify'.tr(), style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   String _fmtDays(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
 
+  HrmShift? get _effectiveTodayShift {
+    if (_context?.shift != null && _context!.shift!.startTime.length >= 5) {
+      return _context!.shift;
+    }
+    // Fallback: Lấy ca đã được xếp lịch cho ngày hôm nay từ Bảng công / Lịch phân ca Roster của nhân viên
+    final now = _currentTime;
+    final todayKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final empId = _context?.employeeId;
+    final boardEmp = (empId != null && empId.isNotEmpty)
+        ? _currentMonthBoard?.findEmployee(empId)
+        : _currentMonthBoard?.myEmployee;
+    final boardDay = boardEmp?.days[todayKey];
+    if (boardDay != null && boardDay.shiftStart != null && boardDay.shiftStart!.length >= 5) {
+      return HrmShift(
+        id: boardDay.shiftCode ?? 's-assigned',
+        code: boardDay.shiftCode ?? 'CA_HC',
+        name: (boardDay.shiftName != null && boardDay.shiftName!.isNotEmpty)
+            ? boardDay.shiftName!
+            : 'models.shift.office_hours'.tr(),
+        startTime: boardDay.shiftStart!,
+        endTime: boardDay.shiftEnd ?? '17:00:00',
+        breakMinutes: boardDay.shiftBreakMinutes,
+      );
+    }
+    return null;
+  }
+
   Widget _buildTodayTab() {
-    final shift = _context?.shift;
+    final shift = _effectiveTodayShift;
     final hasCheckedIn = _todayRecord?.firstCheckInAt != null;
     final hasCheckedOut = _todayRecord?.lastCheckOutAt != null;
 
@@ -812,11 +741,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           ),
           const SizedBox(height: 16),
 
-          // 2. Location verification (real device GPS)
-          _buildLocationCard(),
-          const SizedBox(height: 16),
-
-          // 3. Dynamic Punch Action Hero Card (Chuyển đổi linh hoạt giữa Quẹt Vào & Quẹt Ra nhiều lần trong ngày)
+          // 2. Dynamic Punch Action Hero Card (Chuyển đổi linh hoạt giữa Chấm công Vào & Chấm công Ra)
           _buildDynamicPunchCard(),
           const SizedBox(height: 20),
 
@@ -874,22 +799,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(5),
                       decoration: const BoxDecoration(
                         color: Color(0xFFEFF6FF),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.work_outline_rounded, size: 16, color: Color(0xFF2563EB)),
+                      child: const Icon(Icons.work_outline_rounded, size: 15, color: Color(0xFF2563EB)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
                       'attendance.punch.shift_status'.tr(),
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
                     ),
                   ],
                 ),
+                const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -903,7 +830,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                       const SizedBox(width: 4),
                       Text(
                         'attendance.punch.in_shift'.tr(),
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
                       ),
                     ],
                   ),
@@ -978,31 +905,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.logout_rounded, color: Colors.white, size: 28),
+                            const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
                             const SizedBox(width: 10),
                             Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'attendance.punch.checkout_button'.tr(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                  Text(
-                                    'attendance.punch.checkout_hint'.tr(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11, color: Colors.white70),
-                                  ),
-                                ],
+                              child: Text(
+                                'attendance.punch.checkout_button'.tr(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.3,
+                                ),
                               ),
                             ),
                           ],
@@ -1041,22 +956,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(5),
                     decoration: const BoxDecoration(
                       color: Color(0xFFECFDF5),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.login_rounded, size: 16, color: Color(0xFF059669)),
+                    child: const Icon(Icons.login_rounded, size: 15, color: Color(0xFF059669)),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
                     'attendance.punch.shift_status'.tr(),
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
                   ),
                 ],
               ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -1137,31 +1054,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 28),
+                          const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 26),
                           const SizedBox(width: 10),
                           Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  hasPreviousPunches ? 'attendance.punch.checkin_next_button'.tr() : 'attendance.punch.checkin_button'.tr(),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                                Text(
-                                  'attendance.punch.checkin_hint'.tr(),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
-                                ),
-                              ],
+                            child: Text(
+                              hasPreviousPunches ? 'attendance.punch.checkin_next_button'.tr() : 'attendance.punch.checkin_button'.tr(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ],
@@ -1184,16 +1089,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildVerificationBadge({required IconData icon, required String label}) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: const Color(0xFF64748B)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-      ],
     );
   }
 

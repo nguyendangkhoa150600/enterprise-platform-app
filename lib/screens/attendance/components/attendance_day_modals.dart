@@ -6,7 +6,8 @@ String _formatTime(String? isoString) {
   if (isoString == null || isoString.isEmpty) return '--:--';
   final dt = DateTime.tryParse(isoString);
   if (dt != null) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final vn = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
+    return '${vn.hour.toString().padLeft(2, '0')}:${vn.minute.toString().padLeft(2, '0')}';
   }
   final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
   if (match != null) {
@@ -20,7 +21,8 @@ String _formatTime(String? isoString) {
 String _formatDate(String isoString) {
   final dt = DateTime.tryParse(isoString);
   if (dt == null) return isoString;
-  return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  final vn = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
+  return '${vn.day.toString().padLeft(2, '0')}/${vn.month.toString().padLeft(2, '0')}/${vn.year}';
 }
 
 int _timeToMinutes(String timeStr) {
@@ -906,18 +908,20 @@ void showAttendanceDayDetailModal(
     if (isoString == null || isoString.isEmpty) return '';
     final dt = DateTime.tryParse(isoString);
     if (dt == null) return isoString;
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final vn = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
+    final h = vn.hour.toString().padLeft(2, '0');
+    final min = vn.minute.toString().padLeft(2, '0');
+    final d = vn.day.toString().padLeft(2, '0');
+    final m = vn.month.toString().padLeft(2, '0');
+    final y = vn.year.toString();
+    return '$h:$min $d/$m/$y';
   }
 
   String _formatRequestTimeRange(HrmDayRequest req) {
     final from = _formatDateTimeVn(req.fromAt);
     final to = _formatDateTimeVn(req.toAt);
     if (from.isEmpty || to.isEmpty) return from.isNotEmpty ? from : to;
-    if (from.length >= 10 && to.length >= 10 && from.substring(0, 10) == to.substring(0, 10)) {
-      final toTime = to.length > 11 ? to.substring(11) : to;
-      return '$from - $toTime';
-    }
-    return '$from - $to';
+    return '$from -> $to';
   }
 
   String _formatMinutesToHours(int? minutes) {

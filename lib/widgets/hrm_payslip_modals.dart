@@ -401,8 +401,8 @@ class HrmPayslipModals {
                             final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
                             await _service.createCorrection(
                               requestDate: today,
-                              newCheckInAt: '${today}T08:00:00',
-                              newCheckOutAt: '${today}T17:30:00',
+                              newCheckInAt: '${today}T07:30:00',
+                              newCheckOutAt: '${today}T17:00:00',
                               reason: '[Đính chính hồ sơ: $selectedField -> ${newValCtrl.text.trim()}] ${reasonCtrl.text.trim()}',
                             );
 

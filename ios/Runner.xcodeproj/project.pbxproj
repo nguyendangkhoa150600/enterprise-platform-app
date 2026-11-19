@@ -320,7 +320,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n\nif [ -n \"$DWARF_DSYM_FOLDER_PATH\" ]; then\n  FRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Frameworks\"\n  if [ -d \"$FRAMEWORKS_DIR\" ]; then\n    for FW in \"$FRAMEWORKS_DIR\"/*.framework; do\n      [ -e \"$FW\" ] || continue\n      FW_NAME=$(basename \"$FW\" .framework)\n      DSYM_PATH=\"${DWARF_DSYM_FOLDER_PATH}/${FW_NAME}.framework.dSYM\"\n      BINARY_PATH=\"${FW}/${FW_NAME}\"\n      if [ -f \"$BINARY_PATH\" ] && [ ! -d \"$DSYM_PATH\" ]; then\n        echo \"Generating missing dSYM for ${FW_NAME}...\"\n        dsymutil \"$BINARY_PATH\" -o \"$DSYM_PATH\" || true\n      fi\n    done\n  fi\nfi\n";
 		};
 		85E0BFC3EB58729A09EF61C0 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -516,6 +516,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.savina.enterprise.platform;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -703,6 +704,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.savina.enterprise.platform;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -730,6 +732,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.savina.enterprise.platform;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

@@ -442,8 +442,8 @@ extension HrmServiceWorkSchedule on HrmService {
       String timeStr = createdAtRaw;
       final dt = DateTime.tryParse(createdAtRaw);
       if (dt != null) {
-        final localDt = dt.toLocal();
-        timeStr = '${localDt.day.toString().padLeft(2, '0')}/${localDt.month.toString().padLeft(2, '0')}/${localDt.year} ${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}';
+        final localDt = (dt.isUtc || createdAtRaw.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
+        timeStr = '${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')} ${localDt.day.toString().padLeft(2, '0')}/${localDt.month.toString().padLeft(2, '0')}/${localDt.year}';
       }
 
       final beforeList = _formatAuditRuns(main['before']);

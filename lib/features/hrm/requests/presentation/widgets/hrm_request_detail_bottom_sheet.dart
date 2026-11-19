@@ -334,14 +334,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
   Widget build(BuildContext context) {
     final isPending = _request.status == HrmRequestStatus.pending;
     final isApproved = _request.status == HrmRequestStatus.approved;
-    final start = _request.startDate;
-    final end = _request.endDate;
-    String timeDisplay = widget.formatDate(_request.requestDate);
-    if (start != null && end != null) {
-      timeDisplay = '${widget.formatDate(start)} ${widget.formatTime(start)} -> ${widget.formatDate(end)} ${widget.formatTime(end)}'.trim();
-    } else if (start != null) {
-      timeDisplay = 'hrm_requests.from_date'.tr(args: {'date': '${widget.formatDate(start)} ${widget.formatTime(start)}'}).trim();
-    }
+    final String timeDisplay = _request.displayPeriod;
 
     String quantityLabel = 'hrm_requests.qty_leave'.tr();
     String quantityValue = '1';
@@ -548,6 +541,79 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
               const Divider(color: Color(0xFFF1F5F9), height: 1),
               _buildDetailRow(quantityLabel, quantityValue),
               const Divider(color: Color(0xFFF1F5F9), height: 1),
+              if (_request.nextDayRest != null && _request.nextDayRest != 'NONE') ...[
+                _buildDetailRow(
+                  'Hôm sau nghỉ',
+                  _request.nextDayRest == 'HALF' ? 'Nghỉ nửa ngày' : 'Nghỉ cả ngày',
+                ),
+                const Divider(color: Color(0xFFF1F5F9), height: 1),
+              ],
+              if (_request.groupRanges != null && _request.groupRanges!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Chi tiết các khoản nghỉ',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                          ),
+                          Text(
+                            '${_request.groupRanges!.length} khoản',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ..._request.groupRanges!.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final r = entry.value;
+                        final periodStr = r.displayPeriod;
+                        return Container(
+                          margin: EdgeInsets.only(top: idx > 0 ? 6 : 0),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFF1F5F9)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Khoản ${idx + 1}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                                    const SizedBox(height: 2),
+                                    Text(periodStr, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '${r.duration.toStringAsFixed(r.duration % 1 == 0 ? 0 : 1)} ngày',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Divider(color: Color(0xFFF1F5F9), height: 1),
+              ],
               if (_request.projectName != null || _request.projectCode != null || _request.projectId != null) ...[
                 const SizedBox(height: 10),
                 Container(
@@ -669,7 +735,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${_request.requestDate.day.toString().padLeft(2, '0')}/${_request.requestDate.month.toString().padLeft(2, '0')} ${widget.formatTime(_request.requestDate).isNotEmpty ? widget.formatTime(_request.requestDate) : '13:39'}',
+                        '${widget.formatTime(_request.requestDate).isNotEmpty ? widget.formatTime(_request.requestDate) : '13:39'} ${_request.requestDate.day.toString().padLeft(2, '0')}/${_request.requestDate.month.toString().padLeft(2, '0')}',
                         style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                       ),
                     ],

@@ -182,7 +182,7 @@ class _StocktakeDetailSheetState extends State<StocktakeDetailSheet> {
     final s = widget.session;
     final dateStr = s.stocktakeDate != null && s.stocktakeDate!.isNotEmpty
         ? s.stocktakeDate!
-        : DateFormat('dd/MM/yyyy HH:mm').format(s.createdAt);
+        : DateFormat('HH:mm dd/MM/yyyy').format(s.createdAt);
 
     final countedCount = _lines.where((l) => l.actualQuantity != null).length;
     final totalCount = _lines.isNotEmpty ? _lines.length : s.totalItems;

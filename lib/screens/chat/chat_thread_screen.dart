@@ -636,7 +636,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 
   String _formatTime(String raw) {
     try {
-      final dt = DateTime.parse(raw).toLocal();
+      final parsed = DateTime.parse(raw);
+      final dt = (parsed.isUtc || raw.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
       final h = dt.hour.toString().padLeft(2, '0');
       final m = dt.minute.toString().padLeft(2, '0');
       return '$h:$m';
@@ -901,11 +902,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     DateTime? currentDate;
     DateTime? prevDate;
     try {
-      currentDate = DateTime.parse(msg.createdAt).toLocal();
+      final parsed = DateTime.parse(msg.createdAt);
+      currentDate = (parsed.isUtc || msg.createdAt.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
     } catch (_) {}
     if (prevMsg != null) {
       try {
-        prevDate = DateTime.parse(prevMsg.createdAt).toLocal();
+        final parsed = DateTime.parse(prevMsg.createdAt);
+        prevDate = (parsed.isUtc || prevMsg.createdAt.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
       } catch (_) {}
     }
 

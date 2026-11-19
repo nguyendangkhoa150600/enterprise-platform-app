@@ -1,4 +1,5 @@
 import '../core/i18n/app_i18n.dart';
+import 'hrm_attendance_models.dart';
 enum HrmRequestType {
   leave,
   overtime,
@@ -45,6 +46,9 @@ class HrmRequestItem {
   final String? projectStatus;
   final String? projectLinkStatus;
   final String? projectLinkRejectionReason;
+  final String? groupId;
+  final List<HrmLeaveGroupRange>? groupRanges;
+  final String? nextDayRest;
 
   const HrmRequestItem({
     required this.id,
@@ -74,6 +78,9 @@ class HrmRequestItem {
     this.projectStatus,
     this.projectLinkStatus,
     this.projectLinkRejectionReason,
+    this.groupId,
+    this.groupRanges,
+    this.nextDayRest,
   });
 
   HrmRequestItem copyWith({
@@ -81,6 +88,9 @@ class HrmRequestItem {
     String? approverName,
     DateTime? approvedAt,
     HrmRequestStatus? status,
+    String? groupId,
+    List<HrmLeaveGroupRange>? groupRanges,
+    String? nextDayRest,
   }) {
     return HrmRequestItem(
       id: id,
@@ -110,6 +120,9 @@ class HrmRequestItem {
       projectStatus: projectStatus,
       projectLinkStatus: projectLinkStatus,
       projectLinkRejectionReason: projectLinkRejectionReason,
+      groupId: groupId ?? this.groupId,
+      groupRanges: groupRanges ?? this.groupRanges,
+      nextDayRest: nextDayRest ?? this.nextDayRest,
     );
   }
 
@@ -162,6 +175,39 @@ class HrmRequestItem {
       case HrmRequestStatus.processing:
         return 'models.status.processing'.tr();
     }
+  }
+
+  /// Chuỗi hiển thị khoảng thời gian chuẩn UI: Giờ trước, ngày sau (HH:mm dd/MM/yyyy)
+  String get displayPeriod {
+    if (startDate != null && endDate != null) {
+      final s = startDate!;
+      final e = endDate!;
+      final sH = s.hour.toString().padLeft(2, '0');
+      final sM = s.minute.toString().padLeft(2, '0');
+      final eH = e.hour.toString().padLeft(2, '0');
+      final eM = e.minute.toString().padLeft(2, '0');
+      final sDay = s.day.toString().padLeft(2, '0');
+      final sMonth = s.month.toString().padLeft(2, '0');
+      final sYear = s.year.toString();
+      final eDay = e.day.toString().padLeft(2, '0');
+      final eMonth = e.month.toString().padLeft(2, '0');
+      final eYear = e.year.toString();
+
+      return '$sH:$sM $sDay/$sMonth/$sYear -> $eH:$eM $eDay/$eMonth/$eYear';
+    } else if (startDate != null) {
+      final s = startDate!;
+      final sH = s.hour.toString().padLeft(2, '0');
+      final sM = s.minute.toString().padLeft(2, '0');
+      final sDay = s.day.toString().padLeft(2, '0');
+      final sMonth = s.month.toString().padLeft(2, '0');
+      final sYear = s.year.toString();
+      return '$sH:$sM $sDay/$sMonth/$sYear';
+    }
+    final r = requestDate;
+    final rDay = r.day.toString().padLeft(2, '0');
+    final rMonth = r.month.toString().padLeft(2, '0');
+    final rYear = r.year.toString();
+    return '$rDay/$rMonth/$rYear';
   }
 
 
@@ -302,6 +348,17 @@ class HrmRequestItem {
 
     final requestDateRaw = json['request_date'] ?? json['requestDate'] ?? json['created_at'] ?? json['createdAt'];
 
+    DateTime? parseVnDateTime(dynamic raw) {
+      if (raw == null) return null;
+      final dt = DateTime.tryParse(raw.toString());
+      if (dt == null) return null;
+      // Nếu là chuỗi UTC (có đuôi Z hoặc isUtc), quy đổi chuẩn về múi giờ Việt Nam (UTC+7)
+      if (dt.isUtc || raw.toString().endsWith('Z')) {
+        return dt.add(const Duration(hours: 7));
+      }
+      return dt;
+    }
+
     return HrmRequestItem(
       id: json['id']?.toString() ?? '',
       type: resolveType(json['request_type'] ?? json['type'] ?? json['kind']),
@@ -310,16 +367,16 @@ class HrmRequestItem {
       employeeName: empName,
       employeeCode: empCode,
       department: dept,
-      requestDate: requestDateRaw != null ? (DateTime.tryParse(requestDateRaw.toString()) ?? DateTime.now()) : DateTime.now(),
-      startDate: startDateRaw != null ? DateTime.tryParse(startDateRaw.toString()) : null,
-      endDate: endDateRaw != null ? DateTime.tryParse(endDateRaw.toString()) : null,
+      requestDate: parseVnDateTime(requestDateRaw) ?? DateTime.now(),
+      startDate: parseVnDateTime(startDateRaw),
+      endDate: parseVnDateTime(endDateRaw),
       durationHours: durHours,
       durationDays: durDays,
       amount: (json['amount'] as num?)?.toDouble(),
       reason: reasonStr,
       status: resolveStatus(rawStat),
       approverName: json['approver_name'] ?? json['approverName'] ?? json['approvedBy'],
-      approvedAt: json['approved_at'] != null ? DateTime.tryParse(json['approved_at'].toString()) : (json['approvedAt'] != null ? DateTime.tryParse(json['approvedAt'].toString()) : null),
+      approvedAt: parseVnDateTime(json['approved_at'] ?? json['approvedAt']),
       rejectionReason: json['rejection_reason'] ?? json['rejectionReason'],
       note: json['note']?.toString(),
       rawStatus: rawStat,
@@ -330,6 +387,14 @@ class HrmRequestItem {
       projectStatus: (json['projectLink'] is Map ? (json['projectLink'] as Map)['projectStatus']?.toString() : null) ?? json['projectStatus']?.toString(),
       projectLinkStatus: json['projectLink'] is Map ? (json['projectLink'] as Map)['status']?.toString() : null,
       projectLinkRejectionReason: json['projectLink'] is Map ? (json['projectLink'] as Map)['rejectionReason']?.toString() : null,
+      groupId: json['groupId']?.toString() ?? json['group_id']?.toString(),
+      groupRanges: (json['groupRanges'] ?? json['group_ranges']) is List
+          ? ((json['groupRanges'] ?? json['group_ranges']) as List)
+              .whereType<Map<String, dynamic>>()
+              .map((r) => HrmLeaveGroupRange.fromJson(r))
+              .toList()
+          : null,
+      nextDayRest: json['nextDayRest']?.toString() ?? json['next_day_rest']?.toString(),
     );
   }
 }
@@ -880,12 +945,17 @@ class HrmRequestComment {
       }
     }
 
-    DateTime parsedCreated = DateTime.now();
-    if (json['createdAt'] != null) {
-      parsedCreated = DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now();
-    } else if (json['created_at'] != null) {
-      parsedCreated = DateTime.tryParse(json['created_at'].toString())?.toLocal() ?? DateTime.now();
+    DateTime parseCreated(dynamic raw) {
+      if (raw == null) return DateTime.now();
+      final dt = DateTime.tryParse(raw.toString());
+      if (dt == null) return DateTime.now();
+      if (dt.isUtc || raw.toString().endsWith('Z')) {
+        return dt.add(const Duration(hours: 7));
+      }
+      return dt;
     }
+
+    final parsedCreated = parseCreated(json['createdAt'] ?? json['created_at']);
 
     return HrmRequestComment(
       id: json['id']?.toString() ?? '',

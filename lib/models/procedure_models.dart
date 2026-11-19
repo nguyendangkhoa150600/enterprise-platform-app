@@ -230,18 +230,24 @@ class ProcedureInstance {
 
   factory ProcedureInstance.fromJson(Map<String, dynamic> json) {
     final rawSteps = json['steps'] as List<dynamic>? ?? [];
-    final stepsList = rawSteps
-        .map((e) => ProcedureInstanceStep.fromJson(e as Map<String, dynamic>))
-        .toList()
-      ..sort((a, b) => a.order.compareTo(b.order));
+    final List<ProcedureInstanceStep> stepsList = [];
+    for (final s in rawSteps) {
+      if (s is Map) {
+        stepsList.add(ProcedureInstanceStep.fromJson(Map<String, dynamic>.from(s)));
+      }
+    }
+    stepsList.sort((a, b) => a.order.compareTo(b.order));
 
     final rawActivity = json['activity'] as List<dynamic>? ?? [];
-    final activityList = rawActivity
-        .map((e) => ProcedureActivity.fromJson(e as Map<String, dynamic>))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final List<ProcedureActivity> activityList = [];
+    for (final a in rawActivity) {
+      if (a is Map) {
+        activityList.add(ProcedureActivity.fromJson(Map<String, dynamic>.from(a)));
+      }
+    }
+    activityList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final authJson = json['authorization'] as Map<String, dynamic>?;
+    final authJson = json['authorization'] is Map ? Map<String, dynamic>.from(json['authorization'] as Map) : null;
     final authorization = authJson != null ? ProcedureRuntimeAuthorization.fromJson(authJson) : null;
 
     final rawStatus = (json['status'] ?? json['stage'])?.toString().toLowerCase() ?? 'running';
@@ -465,7 +471,7 @@ class ProcedureRaciAssignment {
   factory ProcedureRaciAssignment.fromJson(dynamic json) {
     if (json == null) return ProcedureRaciAssignment(role: 'S');
     if (json is String) return ProcedureRaciAssignment(role: json.trim().toUpperCase());
-    if (json is Map<String, dynamic>) {
+    if (json is Map) {
       final roleStr = json['role']?.toString().trim().toUpperCase() ?? 'S';
       return ProcedureRaciAssignment(
         role: roleStr.isNotEmpty ? roleStr : 'S',
@@ -541,9 +547,12 @@ class ProcedureDefinition {
 
   factory ProcedureDefinition.fromJson(Map<String, dynamic> json) {
     final rawSteps = json['steps'] as List<dynamic>? ?? [];
-    final stepsList = rawSteps
-        .map((e) => ProcedureStepDefinition.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final List<ProcedureStepDefinition> stepsList = [];
+    for (final s in rawSteps) {
+      if (s is Map) {
+        stepsList.add(ProcedureStepDefinition.fromJson(Map<String, dynamic>.from(s)));
+      }
+    }
     stepsList.sort((a, b) => a.order.compareTo(b.order));
 
     return ProcedureDefinition(
@@ -581,23 +590,35 @@ class ProcedureWorkspaceData {
   });
 
   factory ProcedureWorkspaceData.fromJson(Map<String, dynamic> json) {
-    final map = (json['data'] is Map<String, dynamic>) ? json['data'] as Map<String, dynamic> : json;
+    final map = (json['data'] is Map) ? Map<String, dynamic>.from(json['data'] as Map) : json;
     final rawInstances = (map['instances'] ?? json['instances']) as List<dynamic>? ?? [];
     final rawDefs = (map['definitions'] ?? json['definitions']) as List<dynamic>? ?? [];
 
-    final instances = rawInstances
-        .map((e) => ProcedureInstance.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final List<ProcedureInstance> instances = [];
+    for (final raw in rawInstances) {
+      try {
+        if (raw is Map) {
+          instances.add(ProcedureInstance.fromJson(Map<String, dynamic>.from(raw)));
+        }
+      } catch (_) {}
+    }
 
-    final definitions = rawDefs
-        .map((e) => ProcedureDefinition.fromJson(e as Map<String, dynamic>))
-        .where((d) => d.steps.isNotEmpty)
-        .toList();
+    final List<ProcedureDefinition> definitions = [];
+    for (final raw in rawDefs) {
+      try {
+        if (raw is Map) {
+          final def = ProcedureDefinition.fromJson(Map<String, dynamic>.from(raw));
+          if (def.steps.isNotEmpty) {
+            definitions.add(def);
+          }
+        }
+      } catch (_) {}
+    }
 
     return ProcedureWorkspaceData(
       tenantId: (map['tenantId'] ?? json['tenantId'])?.toString() ?? '',
-      actor: (map['actor'] ?? json['actor']) as Map<String, dynamic>? ?? {},
-      permissions: (map['permissions'] ?? json['permissions']) as Map<String, dynamic>? ?? {},
+      actor: map['actor'] is Map ? Map<String, dynamic>.from(map['actor'] as Map) : (json['actor'] is Map ? Map<String, dynamic>.from(json['actor'] as Map) : {}),
+      permissions: map['permissions'] is Map ? Map<String, dynamic>.from(map['permissions'] as Map) : (json['permissions'] is Map ? Map<String, dynamic>.from(json['permissions'] as Map) : {}),
       instances: instances,
       definitions: definitions,
     );

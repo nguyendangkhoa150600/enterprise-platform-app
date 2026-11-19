@@ -6,7 +6,7 @@ String _formatTime(String? isoString) {
   if (isoString == null || isoString.isEmpty) return '--:--';
   final dt = DateTime.tryParse(isoString);
   if (dt != null) {
-    final local = dt.toLocal();
+    final local = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
     return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
   final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
@@ -21,7 +21,7 @@ String _formatTime(String? isoString) {
 String _formatDate(String isoString) {
   final dt = DateTime.tryParse(isoString);
   if (dt == null) return isoString;
-  final local = dt.toLocal();
+  final local = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
   return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
 }
 
@@ -57,6 +57,71 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   int _historyViewMode = 0;
   int _matrixSubTab = 0;
   String _historyFilter = 'ALL';
+  final ScrollController _matrixScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollToToday();
+  }
+
+  @override
+  void didUpdateWidget(covariant AttendanceHistoryView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedMonth != widget.selectedMonth ||
+        oldWidget.timesheetBoard != widget.timesheetBoard) {
+      _scrollToToday();
+    }
+  }
+
+  @override
+  void dispose() {
+    _matrixScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToToday({bool animated = true, int retryCount = 0}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_matrixScrollController.hasClients) {
+        if (retryCount < 6) {
+          Future.delayed(const Duration(milliseconds: 60), () {
+            if (mounted) _scrollToToday(animated: animated, retryCount: retryCount + 1);
+          });
+        }
+        return;
+      }
+
+      final parts = widget.selectedMonth.split('/');
+      final year = int.tryParse(parts.length > 1 ? parts[1].trim() : '${DateTime.now().year}') ?? DateTime.now().year;
+      final monthStr = parts[0].replaceAll(RegExp(r'[^0-9]'), '');
+      final month = int.tryParse(monthStr) ?? DateTime.now().month;
+
+      final now = DateTime.now();
+      // Only auto-scroll to today if selected month is current month
+      if (year == now.year && month == now.month) {
+        final today = now.day;
+        const columnWidth = 44.0;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final viewportWidth = screenWidth - 30.0; // padding 14*2 + border 2
+
+        // Center today in the viewport
+        double targetOffset = ((today - 1) * columnWidth + (columnWidth / 2)) - (viewportWidth / 2);
+        final maxScroll = _matrixScrollController.position.maxScrollExtent;
+        targetOffset = targetOffset.clamp(0.0, maxScroll);
+
+        if (animated && (_matrixScrollController.offset - targetOffset).abs() > 4) {
+          _matrixScrollController.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+        } else if (!animated) {
+          _matrixScrollController.jumpTo(targetOffset);
+        }
+      }
+    });
+  }
 
   List<AttendanceRecord> get _filteredHistory {
     if (_historyFilter == 'ALL') return widget.history;
@@ -165,7 +230,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                           children: [
                             Expanded(
                               child: InkWell(
-                                onTap: () => setState(() => _historyViewMode = 0),
+                                onTap: () {
+                                  setState(() => _historyViewMode = 0);
+                                  _scrollToToday();
+                                },
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 7),
@@ -348,7 +416,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             child: Row(
               children: [
                 InkWell(
-                  onTap: () => setState(() => _matrixSubTab = 0),
+                  onTap: () {
+                    setState(() => _matrixSubTab = 0);
+                    _scrollToToday();
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                     decoration: BoxDecoration(
@@ -530,6 +601,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
 
           // Horizontal Scrollable Calendar Matrix
           SingleChildScrollView(
+            controller: _matrixScrollController,
             scrollDirection: Axis.horizontal,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -903,7 +975,6 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
     int validDays = 0;
     int lateDays = 0;
     int abnormalDays = 0;
-    int totalWorkedMinutes = 0;
     int totalLateMinutes = 0;
 
     for (var r in dayRecordMap.values) {
@@ -913,7 +984,6 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
         totalLateMinutes += r.lateMinutes;
       }
       if (r.status == 'ABNORMAL') abnormalDays++;
-      totalWorkedMinutes += r.workedMinutes;
     }
 
     final standardDays = summary?.standardWorkDays ?? 0.0;

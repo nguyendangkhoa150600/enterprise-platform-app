@@ -69,7 +69,7 @@ class _InventoryTradeItemDetailScreenState extends State<InventoryTradeItemDetai
 
   String _formatDate(DateTime? dt) {
     if (dt == null) return '—';
-    return DateFormat('dd/MM/yyyy HH:mm').format(dt);
+    return DateFormat('HH:mm dd/MM/yyyy').format(dt);
   }
 
   Future<void> _handleToggleStatus() async {

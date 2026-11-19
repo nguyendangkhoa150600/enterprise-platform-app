@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import '../../../models/hrm_attendance_models.dart';
 import '../../../models/workspace_models.dart';
@@ -156,42 +158,174 @@ const List<HrmRequestReason> kDefaultCorrectionReasons = [
   ),
 ];
 
-/// Khoảng thời gian nghỉ (hỗ trợ thêm nhiều khoảng nghỉ độc lập)
+/// Khoảng thời gian nghỉ (hỗ trợ thêm nhiều khoảng nghỉ độc lập, chuẩn ca HC 1:1 Web ESS)
 class TimeInterval {
   DateTime fromDate;
   DateTime toDate;
   TimeOfDay fromTime;
   TimeOfDay toTime;
+  String kind; // 'leave', 'ot', 'business_trip'
+  String nextDayRest; // 'NONE' (Làm việc bình thường), 'HALF' (Nghỉ nửa ngày), 'FULL' (Nghỉ cả ngày)
 
   TimeInterval({
     required this.fromDate,
     required this.toDate,
     this.fromTime = const TimeOfDay(hour: 7, minute: 30),
     this.toTime = const TimeOfDay(hour: 17, minute: 0),
+    this.kind = 'leave',
+    this.nextDayRest = 'NONE',
   });
 
-  double get hours => calculateWorkingHours(fromDate, fromTime, toDate, toTime);
-  double get days => calculateWorkingDays(hours);
+  int get workingMinutes {
+    final startMinutes = fromTime.hour * 60 + fromTime.minute;
+    final endMinutes = toTime.hour * 60 + toTime.minute;
+    final dayDiff = toDate.difference(fromDate).inDays;
+
+    if (dayDiff < 0) return 0;
+    if (dayDiff == 0) {
+      if (endMinutes <= startMinutes) return 0;
+      return calculateDayWorkingMinutes(startMinutes, endMinutes);
+    } else {
+      // Ngày đầu
+      int total = calculateDayWorkingMinutes(startMinutes, 17 * 60);
+      // Các ngày ở giữa (mỗi ngày trọn ca 480 phút)
+      if (dayDiff > 1) {
+        total += (dayDiff - 1) * 480;
+      }
+      // Ngày cuối
+      total += calculateDayWorkingMinutes(7 * 60 + 30, endMinutes);
+      return total;
+    }
+  }
+
+  double get hours {
+    final startMinutes = fromTime.hour * 60 + fromTime.minute;
+    final endMinutes = toTime.hour * 60 + toTime.minute;
+    final dayDiff = toDate.difference(fromDate).inDays;
+
+    if (kind == 'ot') {
+      if (dayDiff < 0) return 0.0;
+      if (dayDiff == 0) {
+        if (endMinutes <= startMinutes) return 0.0;
+        return (endMinutes - startMinutes) / 60.0;
+      } else {
+        final d1 = (24 * 60 - startMinutes) / 60.0;
+        final mid = (dayDiff - 1) * 24.0;
+        final dN = endMinutes / 60.0;
+        return d1 + (mid > 0 ? mid : 0) + dN;
+      }
+    }
+    return workingMinutes / 60.0;
+  }
+
+  double get days {
+    if (kind == 'ot') {
+      return hours / 8.0;
+    }
+
+    final dFrom = DateTime(fromDate.year, fromDate.month, fromDate.day);
+    final dTo = DateTime(toDate.year, toDate.month, toDate.day);
+    final dayDiff = dTo.difference(dFrom).inDays;
+    final startMinutes = fromTime.hour * 60 + fromTime.minute;
+    final endMinutes = toTime.hour * 60 + toTime.minute;
+
+    if (dayDiff < 0 || (dayDiff == 0 && endMinutes <= startMinutes)) return 0.0;
+
+    if (dayDiff == 0) {
+      final mins = calculateDayWorkingMinutes(startMinutes, endMinutes);
+      if (mins >= 480 - 1) {
+        return 1.0;
+      } else if ((mins - 240).abs() <= 30) {
+        return 0.5;
+      } else {
+        // Nghỉ/công tác thời gian lẻ quy về bước 0.5 gần nhất (khớp 1:1 với Web)
+        return math.max(0.5, ((mins / 480.0) * 2).round() / 2.0);
+      }
+    } else {
+      // Đơn nhiều ngày
+      double d = 0.0;
+      final d1Mins = calculateDayWorkingMinutes(startMinutes, 17 * 60);
+      d += d1Mins >= 479 ? 1.0 : (d1Mins <= 0 ? 0.0 : math.min(1.0, math.max(0.5, ((d1Mins / 480.0) * 2).round() / 2.0)));
+      if (dayDiff > 1) {
+        d += (dayDiff - 1);
+      }
+      final dnMins = calculateDayWorkingMinutes(7 * 60 + 30, endMinutes);
+      d += dnMins >= 479 ? 1.0 : (dnMins <= 0 ? 0.0 : math.min(1.0, math.max(0.5, ((dnMins / 480.0) * 2).round() / 2.0)));
+      return d;
+    }
+  }
+
+  String? get error {
+    final dFrom = DateTime(fromDate.year, fromDate.month, fromDate.day);
+    final dTo = DateTime(toDate.year, toDate.month, toDate.day);
+    final dayDiff = dTo.difference(dFrom).inDays;
+    final startMinutes = fromTime.hour * 60 + fromTime.minute;
+    final endMinutes = toTime.hour * 60 + toTime.minute;
+
+    if (dayDiff < 0 || (dayDiff == 0 && endMinutes <= startMinutes)) {
+      return 'Thời điểm kết thúc phải sau thời điểm bắt đầu.';
+    }
+
+    if (kind == 'leave') {
+      if (dayDiff == 0) {
+        final mins = calculateDayWorkingMinutes(startMinutes, endMinutes);
+        if (mins == 0) {
+          return '${_isoDate(fromDate)}: khoảng đã chọn không nằm trong ca làm việc hoặc chỉ rơi vào giờ nghỉ giữa ca (11:30 - 13:00).';
+        }
+      }
+    } else if (kind == 'business_trip') {
+      if (dayDiff == 0) {
+        final mins = calculateDayWorkingMinutes(startMinutes, endMinutes);
+        // Nếu chọn trong khoảng giờ hành chính nhưng chỉ rơi vào giờ nghỉ trưa giữa ca
+        if (mins == 0 && startMinutes >= 7 * 60 + 30 && endMinutes <= 17 * 60) {
+          return '${_isoDate(fromDate)}: khoảng đã chọn chỉ rơi vào giờ nghỉ trưa giữa ca (11:30 - 13:00).';
+        }
+      }
+    }
+    return null;
+  }
+}
+
+/// Tính số phút làm việc thực tế trong ngày theo ca Hành chính (HC) chuẩn 1:1 với Web ESS
+int calculateDayWorkingMinutes(int startMinutes, int endMinutes) {
+  const shiftStart = 7 * 60 + 30; // 450 (07:30)
+  const breakStart = 11 * 60 + 30; // 690 (11:30)
+  const breakEnd = 13 * 60; // 780 (13:00)
+  const shiftEnd = 17 * 60; // 1020 (17:00)
+
+  final effStart = math.max<int>(startMinutes, shiftStart);
+  final effEnd = math.min<int>(endMinutes, shiftEnd);
+  if (effEnd <= effStart) return 0;
+
+  // Ca sáng: 07:30 - 11:30 (240 phút)
+  final morning = math.max<int>(0, math.min<int>(effEnd, breakStart) - math.max<int>(effStart, shiftStart));
+  // Ca chiều: 13:00 - 17:00 (240 phút)
+  final afternoon = math.max<int>(0, math.min<int>(effEnd, shiftEnd) - math.max<int>(effStart, breakEnd));
+  return morning + afternoon;
+}
+
+String _isoDate(DateTime d) {
+  final y = d.year.toString().padLeft(4, '0');
+  final m = d.month.toString().padLeft(2, '0');
+  final day = d.day.toString().padLeft(2, '0');
+  return '$y-$m-$day';
+}
+
+/// Chuyển mốc ngày & giờ Việt Nam (UTC+7) sang chuỗi chuẩn ISO 8601 UTC (.000Z) cho Backend ERP
+String _toUtcIso(DateTime date, TimeOfDay time) {
+  final vnLocal = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  final utc = vnLocal.subtract(const Duration(hours: 7));
+  final y = utc.year.toString().padLeft(4, '0');
+  final m = utc.month.toString().padLeft(2, '0');
+  final d = utc.day.toString().padLeft(2, '0');
+  final h = utc.hour.toString().padLeft(2, '0');
+  final min = utc.minute.toString().padLeft(2, '0');
+  final s = utc.second.toString().padLeft(2, '0');
+  return '$y-$m-${d}T$h:$min:$s.000Z';
 }
 
 double calculateWorkingHours(DateTime fromDate, TimeOfDay fromTime, DateTime toDate, TimeOfDay toTime) {
-  final startMinutes = fromTime.hour * 60 + fromTime.minute;
-  final endMinutes = toTime.hour * 60 + toTime.minute;
-  final dayDiff = toDate.difference(fromDate).inDays;
-
-  if (dayDiff == 0) {
-    // Standard ca làm 07:30 - 17:00 tính đúng 8 giờ (đã trừ 1.5h nghỉ trưa 11:30 - 13:00)
-    if (startMinutes <= 7 * 60 + 30 && endMinutes >= 17 * 60) {
-      return 8.0;
-    }
-    double diff = (endMinutes - startMinutes) / 60.0;
-    if (diff > 5.0) {
-      diff = (diff - 1.5).clamp(0.0, 8.0);
-    }
-    return diff.clamp(0.5, 8.0);
-  } else {
-    return (dayDiff + 1) * 8.0;
-  }
+  return TimeInterval(fromDate: fromDate, toDate: toDate, fromTime: fromTime, toTime: toTime).hours;
 }
 
 double calculateWorkingDays(double hours) {
@@ -253,6 +387,7 @@ void showCorrectionFormDialog({
       toDate: initialToDate,
       fromTime: const TimeOfDay(hour: 7, minute: 30),
       toTime: const TimeOfDay(hour: 17, minute: 0),
+      kind: 'leave',
     ),
   ];
 
@@ -263,6 +398,7 @@ void showCorrectionFormDialog({
       toDate: initialToDate,
       fromTime: const TimeOfDay(hour: 17, minute: 30),
       toTime: const TimeOfDay(hour: 20, minute: 30),
+      kind: 'ot',
     ),
   ];
 
@@ -272,7 +408,8 @@ void showCorrectionFormDialog({
       fromDate: initialFromDate,
       toDate: initialToDate,
       fromTime: const TimeOfDay(hour: 7, minute: 30),
-      toTime: const TimeOfDay(hour: 17, minute: 30),
+      toTime: const TimeOfDay(hour: 17, minute: 0),
+      kind: 'business_trip',
     ),
   ];
 
@@ -298,6 +435,7 @@ void showCorrectionFormDialog({
   ProjectItem? selectedTripProject;
 
   // Specific fields for OT
+  String otNextDayRest = 'NONE';
   ProjectItem? selectedOtProject;
   List<ProjectItem> linkableProjects = [];
 
@@ -305,6 +443,32 @@ void showCorrectionFormDialog({
   DateTime correctionDate = DateTime(now.year, now.month, now.day);
   String correctionTimeType = 'Giờ vào'; // 'Giờ vào' | 'Giờ ra'
   TimeOfDay correctionTime = const TimeOfDay(hour: 7, minute: 30);
+  if (item != null) {
+    correctionDate = DateTime.tryParse(item.workDate) ?? DateTime(now.year, now.month, now.day);
+    if (item.firstCheckInAt != null && item.lastCheckOutAt == null) {
+      correctionTimeType = 'Giờ ra';
+      correctionTime = const TimeOfDay(hour: 17, minute: 0);
+    } else if (item.firstCheckInAt == null && item.lastCheckOutAt != null) {
+      correctionTimeType = 'Giờ vào';
+      correctionTime = const TimeOfDay(hour: 7, minute: 30);
+    }
+  } else if (draftItem != null) {
+    if (draftItem.newCheckOutAt != null) {
+      correctionTimeType = 'Giờ ra';
+      final parsed = DateTime.tryParse(draftItem.newCheckOutAt!)?.toLocal();
+      if (parsed != null) {
+        correctionDate = DateTime(parsed.year, parsed.month, parsed.day);
+        correctionTime = TimeOfDay(hour: parsed.hour, minute: parsed.minute);
+      }
+    } else if (draftItem.newCheckInAt != null) {
+      correctionTimeType = 'Giờ vào';
+      final parsed = DateTime.tryParse(draftItem.newCheckInAt!)?.toLocal();
+      if (parsed != null) {
+        correctionDate = DateTime(parsed.year, parsed.month, parsed.day);
+        correctionTime = TimeOfDay(hour: parsed.hour, minute: parsed.minute);
+      }
+    }
+  }
 
   // Attachments & submission state
   String? selectedFileName;
@@ -477,6 +641,11 @@ void showCorrectionFormDialog({
                                     style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626)),
                                   ),
                                 ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: () => setModalState(() => modalErrorMessage = null),
+                                  child: const Icon(Icons.close, color: Color(0xFF991B1B), size: 16),
+                                ),
                               ],
                             ),
                           ),
@@ -552,6 +721,7 @@ void showCorrectionFormDialog({
                             onReasonChanged: (r) => setModalState(() => selectedLeaveReason = r),
                             descController: descController,
                             intervals: leaveIntervals,
+                            onClearError: () => setModalState(() => modalErrorMessage = null),
                           ),
                         ] else if (selectedCategoryKey == 'ot') ...[
                           _buildOvertimeForm(
@@ -562,9 +732,12 @@ void showCorrectionFormDialog({
                             onReasonChanged: (r) => setModalState(() => selectedOtReason = r),
                             descController: descController,
                             intervals: otIntervals,
+                            nextDayRest: otNextDayRest,
+                            onNextDayRestChanged: (v) => setModalState(() => otNextDayRest = v),
                             projects: linkableProjects,
                             selectedProject: selectedOtProject,
                             onProjectChanged: (p) => setModalState(() => selectedOtProject = p),
+                            onClearError: () => setModalState(() => modalErrorMessage = null),
                           ),
                         ] else if (selectedCategoryKey == 'business_trip') ...[
                           _buildBusinessTripForm(
@@ -586,6 +759,7 @@ void showCorrectionFormDialog({
                             projects: linkableProjects,
                             selectedProject: selectedTripProject,
                             onProjectChanged: (p) => setModalState(() => selectedTripProject = p),
+                            onClearError: () => setModalState(() => modalErrorMessage = null),
                           ),
                         ] else if (selectedCategoryKey == 'correction') ...[
                           _buildCorrectionForm(
@@ -598,7 +772,14 @@ void showCorrectionFormDialog({
                             workDate: correctionDate,
                             onPickWorkDate: (d) => setModalState(() => correctionDate = d),
                             timeType: correctionTimeType,
-                            onTimeTypeChanged: (t) => setModalState(() => correctionTimeType = t),
+                            onTimeTypeChanged: (t) => setModalState(() {
+                              correctionTimeType = t;
+                              if (t == 'Giờ ra' && correctionTime.hour < 12) {
+                                correctionTime = const TimeOfDay(hour: 17, minute: 0);
+                              } else if (t == 'Giờ vào' && correctionTime.hour >= 12) {
+                                correctionTime = const TimeOfDay(hour: 7, minute: 30);
+                              }
+                            }),
                             correctionTime: correctionTime,
                             onPickTime: (t) => setModalState(() => correctionTime = t),
                           ),
@@ -703,7 +884,38 @@ void showCorrectionFormDialog({
                         onPressed: (isSubmitting || isSavingDraft)
                             ? null
                             : () async {
-                                // Validation
+                                // Validation thời gian không hợp lệ (thời gian lẻ không khớp nửa ca / cả ca chuẩn Web ESS)
+                                if (selectedCategoryKey == 'leave') {
+                                  final errInterval = leaveIntervals.cast<TimeInterval?>().firstWhere(
+                                    (it) => it?.error != null,
+                                    orElse: () => null,
+                                  );
+                                  if (errInterval != null) {
+                                    setModalState(() => modalErrorMessage = errInterval.error);
+                                    return;
+                                  }
+                                }
+                                if (selectedCategoryKey == 'ot') {
+                                  final errInterval = otIntervals.cast<TimeInterval?>().firstWhere(
+                                    (it) => it?.error != null,
+                                    orElse: () => null,
+                                  );
+                                  if (errInterval != null) {
+                                    setModalState(() => modalErrorMessage = errInterval.error);
+                                    return;
+                                  }
+                                }
+                                if (selectedCategoryKey == 'business_trip') {
+                                  final errInterval = tripIntervals.cast<TimeInterval?>().firstWhere(
+                                    (it) => it?.error != null,
+                                    orElse: () => null,
+                                  );
+                                  if (errInterval != null) {
+                                    setModalState(() => modalErrorMessage = errInterval.error);
+                                    return;
+                                  }
+                                }
+
                                 if (selectedCategoryKey == 'ot') {
                                   final reqDesc = selectedOtReason?.requiresDescription ?? false;
                                   if (reqDesc && descController.text.trim().isEmpty) {
@@ -750,30 +962,42 @@ void showCorrectionFormDialog({
                                       targetLeaveTypeId ??= availableLeaveTypes.first.id;
                                     }
 
-                                    // Loop through each leave interval to submit (matching Web ESS behavior)
-                                    for (int i = 0; i < leaveIntervals.length; i++) {
-                                      final interval = leaveIntervals[i];
-                                      final fDate = '${interval.fromDate.year}-${interval.fromDate.month.toString().padLeft(2, '0')}-${interval.fromDate.day.toString().padLeft(2, '0')}';
-                                      final tDate = '${interval.toDate.year}-${interval.toDate.month.toString().padLeft(2, '0')}-${interval.toDate.day.toString().padLeft(2, '0')}';
-                                      final fTimeStr = '${interval.fromTime.hour.toString().padLeft(2, '0')}:${interval.fromTime.minute.toString().padLeft(2, '0')}:00';
-                                      final tTimeStr = '${interval.toTime.hour.toString().padLeft(2, '0')}:${interval.toTime.minute.toString().padLeft(2, '0')}:00';
+                                    // Gửi đơn nghỉ (Đồng bộ 1:1 với Web ESS: tạo đơn nhiều khoản trong 1 giao dịch qua extraRanges)
+                                    final mainInterval = leaveIntervals.first;
+                                    final mainFDate = '${mainInterval.fromDate.year}-${mainInterval.fromDate.month.toString().padLeft(2, '0')}-${mainInterval.fromDate.day.toString().padLeft(2, '0')}';
+                                    final mainTDate = '${mainInterval.toDate.year}-${mainInterval.toDate.month.toString().padLeft(2, '0')}-${mainInterval.toDate.day.toString().padLeft(2, '0')}';
 
-                                      await service.createCorrection(
-                                        employeeId: attendanceContext?.employeeId,
-                                        attendanceId: item?.id,
-                                        leaveTypeId: targetLeaveTypeId,
-                                        draftId: (i == 0) ? draftItem?.id : null,
-                                        expectedUpdatedAt: (i == 0) ? draftItem?.createdAt : null,
-                                        requestDate: fDate,
-                                        fromDate: fDate,
-                                        toDate: tDate,
-                                        newCheckInAt: '${fDate}T$fTimeStr',
-                                        newCheckOutAt: '${tDate}T$tTimeStr',
-                                        reason: fullReason,
-                                        duration: interval.days,
-                                        requestKind: 'LEAVE',
-                                      );
+                                    List<Map<String, dynamic>>? extraRangesPayload;
+                                    if (leaveIntervals.length > 1) {
+                                      extraRangesPayload = leaveIntervals.sublist(1).map((extra) {
+                                        final efDate = '${extra.fromDate.year}-${extra.fromDate.month.toString().padLeft(2, '0')}-${extra.fromDate.day.toString().padLeft(2, '0')}';
+                                        final etDate = '${extra.toDate.year}-${extra.toDate.month.toString().padLeft(2, '0')}-${extra.toDate.day.toString().padLeft(2, '0')}';
+                                        return {
+                                          'fromDate': efDate,
+                                          'toDate': etDate,
+                                          'fromAt': _toUtcIso(extra.fromDate, extra.fromTime),
+                                          'toAt': _toUtcIso(extra.toDate, extra.toTime),
+                                          'duration': extra.days,
+                                        };
+                                      }).toList();
                                     }
+
+                                    await service.createCorrection(
+                                      employeeId: attendanceContext?.employeeId,
+                                      attendanceId: item?.id,
+                                      leaveTypeId: targetLeaveTypeId,
+                                      draftId: draftItem?.id,
+                                      expectedUpdatedAt: draftItem?.createdAt,
+                                      requestDate: mainFDate,
+                                      fromDate: mainFDate,
+                                      toDate: mainTDate,
+                                      newCheckInAt: _toUtcIso(mainInterval.fromDate, mainInterval.fromTime),
+                                      newCheckOutAt: _toUtcIso(mainInterval.toDate, mainInterval.toTime),
+                                      reason: fullReason,
+                                      duration: mainInterval.days,
+                                      requestKind: 'LEAVE',
+                                      extraRanges: extraRangesPayload,
+                                    );
                                   } else if (selectedCategoryKey == 'ot') {
                                     final reasonTag = selectedOtReason?.name ?? 'Làm thêm giờ (Overtime)';
                                     final fullReason = '[$reasonTag] ${descController.text.trim()}'.trim();
@@ -785,8 +1009,6 @@ void showCorrectionFormDialog({
                                       final interval = otIntervals[i];
                                       final fDate = '${interval.fromDate.year}-${interval.fromDate.month.toString().padLeft(2, '0')}-${interval.fromDate.day.toString().padLeft(2, '0')}';
                                       final tDate = '${interval.toDate.year}-${interval.toDate.month.toString().padLeft(2, '0')}-${interval.toDate.day.toString().padLeft(2, '0')}';
-                                      final fTimeStr = '${interval.fromTime.hour.toString().padLeft(2, '0')}:${interval.fromTime.minute.toString().padLeft(2, '0')}:00';
-                                      final tTimeStr = '${interval.toTime.hour.toString().padLeft(2, '0')}:${interval.toTime.minute.toString().padLeft(2, '0')}:00';
 
                                       await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
@@ -800,11 +1022,12 @@ void showCorrectionFormDialog({
                                         requestDate: fDate,
                                         fromDate: fDate,
                                         toDate: tDate,
-                                        newCheckInAt: '${fDate}T$fTimeStr',
-                                        newCheckOutAt: '${tDate}T$tTimeStr',
+                                        newCheckInAt: _toUtcIso(interval.fromDate, interval.fromTime),
+                                        newCheckOutAt: _toUtcIso(interval.toDate, interval.toTime),
                                         reason: fullReason,
                                         duration: interval.hours,
                                         requestKind: 'OVERTIME',
+                                        nextDayRest: interval.nextDayRest,
                                       );
                                     }
                                   } else if (selectedCategoryKey == 'business_trip') {
@@ -833,8 +1056,6 @@ void showCorrectionFormDialog({
                                       final interval = tripIntervals[i];
                                       final fDate = '${interval.fromDate.year}-${interval.fromDate.month.toString().padLeft(2, '0')}-${interval.fromDate.day.toString().padLeft(2, '0')}';
                                       final tDate = '${interval.toDate.year}-${interval.toDate.month.toString().padLeft(2, '0')}-${interval.toDate.day.toString().padLeft(2, '0')}';
-                                      final fTimeStr = '${interval.fromTime.hour.toString().padLeft(2, '0')}:${interval.fromTime.minute.toString().padLeft(2, '0')}:00';
-                                      final tTimeStr = '${interval.toTime.hour.toString().padLeft(2, '0')}:${interval.toTime.minute.toString().padLeft(2, '0')}:00';
 
                                       await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
@@ -848,8 +1069,8 @@ void showCorrectionFormDialog({
                                         requestDate: fDate,
                                         fromDate: fDate,
                                         toDate: tDate,
-                                        newCheckInAt: '${fDate}T$fTimeStr',
-                                        newCheckOutAt: '${tDate}T$tTimeStr',
+                                        newCheckInAt: _toUtcIso(interval.fromDate, interval.fromTime),
+                                        newCheckOutAt: _toUtcIso(interval.toDate, interval.toTime),
                                         reason: fullReason,
                                         duration: interval.days,
                                         requestKind: 'BUSINESS_TRIP',
@@ -880,8 +1101,12 @@ void showCorrectionFormDialog({
                                       requestDate: fDate,
                                       fromDate: fDate,
                                       toDate: fDate,
-                                      newCheckInAt: correctionTimeType == 'Giờ vào' ? '${fDate}T$timeStr:00' : '${fDate}T08:00:00',
-                                      newCheckOutAt: correctionTimeType == 'Giờ ra' ? '${fDate}T$timeStr:00' : '${fDate}T17:00:00',
+                                      newCheckInAt: correctionTimeType == 'Giờ vào'
+                                          ? _toUtcIso(correctionDate, correctionTime)
+                                          : _toUtcIso(correctionDate, const TimeOfDay(hour: 7, minute: 30)),
+                                      newCheckOutAt: correctionTimeType == 'Giờ ra'
+                                          ? _toUtcIso(correctionDate, correctionTime)
+                                          : _toUtcIso(correctionDate, const TimeOfDay(hour: 17, minute: 0)),
                                       reason: fullReason,
                                       duration: 1.0,
                                       requestKind: 'ATTENDANCE_CORRECTION',
@@ -992,6 +1217,7 @@ Widget _buildLeaveForm({
   required ValueChanged<HrmRequestReason> onReasonChanged,
   required TextEditingController descController,
   required List<TimeInterval> intervals,
+  VoidCallback? onClearError,
 }) {
   // Compute total days across all intervals
   final totalDays = intervals.fold<double>(0.0, (acc, item) => acc + item.days);
@@ -1025,9 +1251,8 @@ Widget _buildLeaveForm({
       // DANH SÁCH CÁC KHOẢNG NGHỈ (KHOẢNG 1, KHOẢNG 2...)
       // ==========================================
       for (int i = 0; i < intervals.length; i++) ...[
-        if (i > 0) ...[
-          const SizedBox(height: 16),
-          // Header Khoảng nghỉ 2... kèm nút Xoá màu đỏ
+        if (intervals.length > 1) ...[
+          if (i > 0) const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1035,100 +1260,109 @@ Widget _buildLeaveForm({
                 'Khoảng nghỉ ${i + 1}',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
               ),
-              InkWell(
-                onTap: () {
-                  setModalState(() {
-                    intervals.removeAt(i);
-                  });
-                },
-                child: const Row(
-                  children: [
-                    Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
-                    SizedBox(width: 3),
-                    Text(
-                      'Xoá',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
+              if (i > 0)
+                InkWell(
+                  onTap: () {
+                    setModalState(() {
+                      intervals.removeAt(i);
+                    });
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+                        SizedBox(width: 3),
+                        Text(
+                          'Xoá',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 6),
+        ] else if (i > 0) ...[
+          const SizedBox(height: 14),
         ],
 
         _buildDateTimeRangeRow(
           context: context,
-          fromLabel: i == 0 ? 'Từ ngày giờ *' : 'Từ ngày giờ nghỉ *',
-          toLabel: i == 0 ? 'Đến ngày giờ *' : 'Đến ngày giờ nghỉ *',
+          fromLabel: intervals.length > 1 ? 'Từ ngày giờ nghỉ *' : 'Từ ngày giờ *',
+          toLabel: intervals.length > 1 ? 'Đến ngày giờ nghỉ *' : 'Đến ngày giờ *',
           fromDate: intervals[i].fromDate,
           toDate: intervals[i].toDate,
           fromTime: intervals[i].fromTime,
           toTime: intervals[i].toTime,
+          errorText: intervals[i].error,
           onPickFromDate: (d) => setModalState(() {
             intervals[i].fromDate = d;
             if (intervals[i].toDate.isBefore(d)) intervals[i].toDate = d;
+            onClearError?.call();
           }),
-          onPickToDate: (d) => setModalState(() => intervals[i].toDate = d),
-          onPickFromTime: (t) => setModalState(() => intervals[i].fromTime = t),
-          onPickToTime: (t) => setModalState(() => intervals[i].toTime = t),
+          onPickToDate: (d) => setModalState(() {
+            intervals[i].toDate = d;
+            onClearError?.call();
+          }),
+          onPickFromTime: (t) => setModalState(() {
+            intervals[i].fromTime = t;
+            onClearError?.call();
+          }),
+          onPickToTime: (t) => setModalState(() {
+            intervals[i].toTime = t;
+            onClearError?.call();
+          }),
         ),
-        const SizedBox(height: 8),
-
-        // Duration badge (8 giờ (1 ngày công))
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Text(
-            '${intervals[i].hours.toStringAsFixed(0)} giờ (${intervals[i].days.toStringAsFixed(intervals[i].days % 1 == 0 ? 0 : 1)} ngày công)',
-            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-          ),
-        ),
+        if (i < intervals.length - 1) const SizedBox(height: 14),
       ],
       const SizedBox(height: 12),
 
-      // Row: + Thêm khoảng nghỉ & helper text
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          OutlinedButton.icon(
-            onPressed: () {
-              setModalState(() {
-                final last = intervals.last;
-                final nextDate = last.toDate.add(const Duration(days: 1));
-                intervals.add(
-                  TimeInterval(
-                    fromDate: nextDate,
-                    toDate: nextDate,
-                    fromTime: const TimeOfDay(hour: 7, minute: 30),
-                    toTime: const TimeOfDay(hour: 17, minute: 0),
-                  ),
-                );
-              });
-            },
-            icon: const Icon(Icons.add, size: 15, color: Color(0xFF1E293B)),
-            label: const Text('+ Thêm khoảng nghỉ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFFCBD5E1)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      // Nút Thêm khoảng nghỉ & helper text bên dưới
+      OutlinedButton.icon(
+        onPressed: () {
+          setModalState(() {
+            final last = intervals.last;
+            final nextDate = last.toDate.add(const Duration(days: 1));
+            intervals.add(
+              TimeInterval(
+                fromDate: nextDate,
+                toDate: nextDate,
+                fromTime: const TimeOfDay(hour: 7, minute: 30),
+                toTime: const TimeOfDay(hour: 17, minute: 0),
+                kind: 'leave',
+              ),
+            );
+          });
+        },
+        icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E293B)),
+        label: const Text('Thêm khoảng nghỉ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFFCBD5E1)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        ),
+      ),
+      if (intervals.length > 1) ...[
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFF64748B)),
             ),
-          ),
-          if (intervals.length > 1)
+            const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'Gửi thành ${intervals.length} đơn nghỉ, cùng lý do, mô tả và chứng từ.',
-                textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                'Đơn nghỉ nhiều khoản: tạo trong một giao dịch (${intervals.length} khoản), duyệt/hủy cùng nhau.',
+                style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.35),
               ),
             ),
-        ],
-      ),
+          ],
+        ),
+      ],
       const SizedBox(height: 16),
 
       // ==========================================
@@ -1157,12 +1391,19 @@ Widget _buildLeaveForm({
               ],
             ),
             const SizedBox(height: 4),
-            if (intervals.length == 1)
+            if (intervals.length == 1) ...[
               Text(
                 '${totalDays.toStringAsFixed(totalDays % 1 == 0 ? 0 : 1)} ngày (Trọn ${totalDays.toStringAsFixed(totalDays % 1 == 0 ? 0 : 1)} ngày công)',
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF1E40AF)),
-              )
-            else ...[
+              ),
+              if (intervals[0].error != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  intervals[0].error!,
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFDC2626)),
+                ),
+              ],
+            ] else ...[
               const SizedBox(height: 8),
               // Bảng chi tiết từng khoảng (Matching Screenshot 3)
               Container(
@@ -1193,13 +1434,31 @@ Widget _buildLeaveForm({
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(flex: 3, child: Text('Khoảng nghỉ ${i + 1}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)))),
                             Expanded(
                               flex: 5,
-                              child: Text(
-                                '${intervals[i].fromDate.day}/${intervals[i].fromDate.month} ${_formatTime(intervals[i].fromTime)} - ${intervals[i].toDate.day}/${intervals[i].toDate.month} ${_formatTime(intervals[i].toTime)}',
-                                style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${intervals[i].fromDate.day}/${intervals[i].fromDate.month} ${_formatTime(intervals[i].fromTime)} - ${intervals[i].toDate.day}/${intervals[i].toDate.month} ${_formatTime(intervals[i].toTime)}',
+                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
+                                  ),
+                                  if (intervals[i].error != null) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      intervals[i].error!,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFFDC2626),
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             Expanded(
@@ -1259,9 +1518,12 @@ Widget _buildOvertimeForm({
   required ValueChanged<HrmRequestReason> onReasonChanged,
   required TextEditingController descController,
   required List<TimeInterval> intervals,
+  String nextDayRest = 'NONE',
+  ValueChanged<String>? onNextDayRestChanged,
   required List<ProjectItem> projects,
   required ProjectItem? selectedProject,
   required ValueChanged<ProjectItem?> onProjectChanged,
+  VoidCallback? onClearError,
 }) {
   final totalHours = intervals.fold<double>(0.0, (acc, item) => acc + item.hours);
 
@@ -1327,28 +1589,57 @@ Widget _buildOvertimeForm({
           toDate: intervals[i].toDate,
           fromTime: intervals[i].fromTime,
           toTime: intervals[i].toTime,
+          errorText: intervals[i].error,
           onPickFromDate: (d) => setModalState(() {
             intervals[i].fromDate = d;
             if (intervals[i].toDate.isBefore(d)) intervals[i].toDate = d;
+            onClearError?.call();
           }),
-          onPickToDate: (d) => setModalState(() => intervals[i].toDate = d),
-          onPickFromTime: (t) => setModalState(() => intervals[i].fromTime = t),
-          onPickToTime: (t) => setModalState(() => intervals[i].toTime = t),
+          onPickToDate: (d) => setModalState(() {
+            intervals[i].toDate = d;
+            onClearError?.call();
+          }),
+          onPickFromTime: (t) => setModalState(() {
+            intervals[i].fromTime = t;
+            onClearError?.call();
+          }),
+          onPickToTime: (t) => setModalState(() {
+            intervals[i].toTime = t;
+            onClearError?.call();
+          }),
         ),
         const SizedBox(height: 8),
 
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Text(
-            'Thời gian: ${intervals[i].hours.toStringAsFixed(intervals[i].hours % 1 == 0 ? 0 : 1)} giờ',
-            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
-          ),
+        const SizedBox(height: 10),
+
+        // Sáng hôm sau (Khớp 1:1 với Web: Làm việc bình thường / Nghỉ nửa ngày / Nghỉ cả ngày)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sáng hôm sau',
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+            ),
+            const SizedBox(height: 6),
+            _buildDropdownContainer(
+              value: intervals[i].nextDayRest == 'HALF'
+                  ? 'Nghỉ nửa ngày'
+                  : (intervals[i].nextDayRest == 'FULL' ? 'Nghỉ cả ngày' : 'Làm việc bình thường'),
+              hint: 'Làm việc bình thường',
+              items: const ['Làm việc bình thường', 'Nghỉ nửa ngày', 'Nghỉ cả ngày'],
+              onChanged: (v) {
+                setModalState(() {
+                  if (v == 'Nghỉ nửa ngày') {
+                    intervals[i].nextDayRest = 'HALF';
+                  } else if (v == 'Nghỉ cả ngày') {
+                    intervals[i].nextDayRest = 'FULL';
+                  } else {
+                    intervals[i].nextDayRest = 'NONE';
+                  }
+                });
+              },
+            ),
+          ],
         ),
       ],
       const SizedBox(height: 12),
@@ -1365,36 +1656,119 @@ Widget _buildOvertimeForm({
                 toDate: nextDate,
                 fromTime: const TimeOfDay(hour: 17, minute: 30),
                 toTime: const TimeOfDay(hour: 20, minute: 30),
+                kind: 'ot',
+                nextDayRest: 'NONE',
               ),
             );
           });
         },
-        icon: const Icon(Icons.add, size: 15, color: Color(0xFF1E293B)),
-        label: const Text('+ Thêm khoảng làm thêm', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+        icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E293B)),
+        label: const Text('Thêm khoảng làm thêm', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Color(0xFFCBD5E1)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         ),
       ),
       const SizedBox(height: 14),
 
-      // Summary Card
+      // Bảng chi tiết từng khoảng làm thêm (Đồng bộ 1:1 với Web ESS)
       Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
           children: [
-            const Text('Tổng thời gian làm thêm', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-            Text(
-              '${totalHours.toStringAsFixed(totalHours % 1 == 0 ? 0 : 1)} giờ (${intervals.length} khoảng)',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFFD97706)),
+            // Table Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEF9C3), // Light yellow matching Web
+                borderRadius: BorderRadius.vertical(top: Radius.circular(7)),
+              ),
+              child: const Row(
+                children: [
+                  Expanded(flex: 3, child: Text('Khoản', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF854D0E)))),
+                  Expanded(flex: 5, child: Text('Thời gian', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF854D0E)))),
+                  Expanded(flex: 2, child: Text('Số giờ', textAlign: TextAlign.right, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF854D0E)))),
+                ],
+              ),
+            ),
+            // Table Rows
+            for (int i = 0; i < intervals.length; i++) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 3, child: Text('Khoảng làm thêm ${i + 1}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)))),
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${intervals[i].fromDate.day}/${intervals[i].fromDate.month} ${_formatTime(intervals[i].fromTime)} - ${intervals[i].toDate.day}/${intervals[i].toDate.month} ${_formatTime(intervals[i].toTime)}',
+                            style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
+                          ),
+                          if (intervals[i].nextDayRest != 'NONE') ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Sáng hôm sau: ${intervals[i].nextDayRest == 'HALF' ? 'Nghỉ nửa ngày' : 'Nghỉ cả ngày'}',
+                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                          if (intervals[i].error != null) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              intervals[i].error!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFDC2626),
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        '${intervals[i].hours.toStringAsFixed(intervals[i].hours % 1 == 0 ? 0 : 1)} giờ',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (i < intervals.length - 1) const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            ],
+            // Table Footer: Tổng cộng
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(7)),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(flex: 8, child: Text('Tổng cộng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)))),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      '${totalHours.toStringAsFixed(totalHours % 1 == 0 ? 0 : 1)} giờ',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF1E40AF)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1435,6 +1809,7 @@ Widget _buildBusinessTripForm({
   required List<ProjectItem> projects,
   required ProjectItem? selectedProject,
   required ValueChanged<ProjectItem?> onProjectChanged,
+  VoidCallback? onClearError,
 }) {
   final scopeOptions = [
     'Công tác trong nước (Nội địa)',
@@ -1517,13 +1892,24 @@ Widget _buildBusinessTripForm({
           toDate: intervals[i].toDate,
           fromTime: intervals[i].fromTime,
           toTime: intervals[i].toTime,
+          errorText: intervals[i].error,
           onPickFromDate: (d) => setModalState(() {
             intervals[i].fromDate = d;
             if (intervals[i].toDate.isBefore(d)) intervals[i].toDate = d;
+            onClearError?.call();
           }),
-          onPickToDate: (d) => setModalState(() => intervals[i].toDate = d),
-          onPickFromTime: (t) => setModalState(() => intervals[i].fromTime = t),
-          onPickToTime: (t) => setModalState(() => intervals[i].toTime = t),
+          onPickToDate: (d) => setModalState(() {
+            intervals[i].toDate = d;
+            onClearError?.call();
+          }),
+          onPickFromTime: (t) => setModalState(() {
+            intervals[i].fromTime = t;
+            onClearError?.call();
+          }),
+          onPickToTime: (t) => setModalState(() {
+            intervals[i].toTime = t;
+            onClearError?.call();
+          }),
         ),
       ],
       const SizedBox(height: 10),
@@ -1539,13 +1925,14 @@ Widget _buildBusinessTripForm({
                 fromDate: nextDate,
                 toDate: nextDate,
                 fromTime: const TimeOfDay(hour: 7, minute: 30),
-                toTime: const TimeOfDay(hour: 17, minute: 30),
+                toTime: const TimeOfDay(hour: 17, minute: 0),
+                kind: 'business_trip',
               ),
             );
           });
         },
-        icon: const Icon(Icons.add, size: 15, color: Color(0xFF1E293B)),
-        label: const Text('+ Thêm khoảng công tác', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+        icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E293B)),
+        label: const Text('Thêm khoảng công tác', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Color(0xFFCBD5E1)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1808,7 +2195,14 @@ Widget _buildCorrectionForm({
                   hint: 'Chọn loại...',
                   items: timeTypes,
                   onChanged: (v) {
-                    if (v != null) onTimeTypeChanged(v);
+                    if (v != null) {
+                      onTimeTypeChanged(v);
+                      if (v == 'Giờ ra' && correctionTime.hour < 12) {
+                        onPickTime(const TimeOfDay(hour: 17, minute: 0));
+                      } else if (v == 'Giờ vào' && correctionTime.hour >= 12) {
+                        onPickTime(const TimeOfDay(hour: 7, minute: 30));
+                      }
+                    }
                   },
                 ),
               ],
@@ -1823,10 +2217,12 @@ Widget _buildCorrectionForm({
                 Text('$timeType *', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
                 const SizedBox(height: 6),
                 InkWell(
-                  onTap: () async {
-                    final picked = await showTimePicker(context: context, initialTime: correctionTime);
-                    if (picked != null) onPickTime(picked);
-                  },
+                  onTap: () => _showNativeTimeOnlyPicker(
+                    context: context,
+                    initialTime: correctionTime,
+                    timeType: timeType,
+                    onSelected: onPickTime,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
@@ -1850,6 +2246,62 @@ Widget _buildCorrectionForm({
               ],
             ),
           ),
+        ],
+      ),
+      const SizedBox(height: 8),
+
+      // Mốc gợi ý nhanh đồng bộ 1:1 với Web TimeComboInput
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          const Text(
+            'Gợi ý:',
+            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+          ),
+          ...((timeType == 'Giờ ra')
+                  ? const [
+                      TimeOfDay(hour: 17, minute: 0),
+                      TimeOfDay(hour: 17, minute: 30),
+                      TimeOfDay(hour: 18, minute: 0),
+                      TimeOfDay(hour: 12, minute: 0),
+                    ]
+                  : const [
+                      TimeOfDay(hour: 7, minute: 30),
+                      TimeOfDay(hour: 8, minute: 0),
+                      TimeOfDay(hour: 8, minute: 30),
+                      TimeOfDay(hour: 13, minute: 0),
+                    ])
+              .map((suggested) {
+            final isSelected =
+                correctionTime.hour == suggested.hour && correctionTime.minute == suggested.minute;
+            final label =
+                '${suggested.hour.toString().padLeft(2, '0')}:${suggested.minute.toString().padLeft(2, '0')}';
+            return InkWell(
+              onTap: () => onPickTime(suggested),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
+                    width: isSelected ? 1.2 : 0.8,
+                  ),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF334155),
+                  ),
+                ),
+              ),
+            );
+          }),
         ],
       ),
       const SizedBox(height: 12),
@@ -1908,6 +2360,7 @@ Widget _buildReasonSelectorField({
   bool isLeave = false,
 }) {
   final isAnnual = isLeave && (selectedReason.code.toUpperCase().contains('ANNUAL') || selectedReason.name.toLowerCase().contains('phép năm'));
+  final isCompOff = isLeave && (selectedReason.code.toUpperCase().contains('COMP') || selectedReason.name.toLowerCase().contains('nghỉ bù'));
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1968,6 +2421,25 @@ Widget _buildReasonSelectorField({
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF92400E),
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (isCompOff) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: const Text(
+                              'Trừ quỹ nghỉ bù',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E40AF),
                               ),
                             ),
                           ),
@@ -2096,6 +2568,7 @@ void _openReasonSearchSheet({
                             final r = filtered[idx];
                             final isSelected = r.id == selectedReason.id;
                             final isRAnnual = isLeave && (r.code.toUpperCase().contains('ANNUAL') || r.name.toLowerCase().contains('phép năm'));
+                            final isRCompOff = isLeave && (r.code.toUpperCase().contains('COMP') || r.name.toLowerCase().contains('nghỉ bù'));
                             return InkWell(
                               onTap: () {
                                 onReasonChanged(r);
@@ -2145,6 +2618,25 @@ void _openReasonSearchSheet({
                                                       fontSize: 10.5,
                                                       fontWeight: FontWeight.w700,
                                                       color: Color(0xFF92400E),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                              if (isRCompOff) ...[
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFEFF6FF),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                                  ),
+                                                  child: const Text(
+                                                    'Trừ quỹ nghỉ bù',
+                                                    style: TextStyle(
+                                                      fontSize: 10.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: Color(0xFF1E40AF),
                                                     ),
                                                   ),
                                                 ),
@@ -2561,6 +3053,276 @@ Widget _buildTextField({
   );
 }
 
+/// Kích hoạt chọn ngày giờ kiểu Native 1-Tap Trigger (Khớp Chuẩn Rule 5.3 Unified Date Capsule)
+void _showNativeDateTimePicker({
+  required BuildContext context,
+  required DateTime initialDate,
+  required TimeOfDay initialTime,
+  required void Function(DateTime date, TimeOfDay time) onSelected,
+  DateTime? minDate,
+}) {
+  final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+  DateTime tempDateTime = DateTime(
+    initialDate.year,
+    initialDate.month,
+    initialDate.day,
+    initialTime.hour,
+    initialTime.minute,
+  );
+
+  if (isIOS) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return Container(
+          height: 310,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                // Thanh điều khiển Xong / Huỷ
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Huỷ', style: TextStyle(color: Color(0xFF64748B), fontSize: 15)),
+                      ),
+                      const Text(
+                        'Chọn ngày & giờ',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0F172A)),
+                      ),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          onSelected(
+                            DateTime(tempDateTime.year, tempDateTime.month, tempDateTime.day),
+                            TimeOfDay(hour: tempDateTime.hour, minute: tempDateTime.minute),
+                          );
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Xong', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF021E73), fontSize: 15)),
+                      ),
+                    ],
+                  ),
+                ),
+                // Vòng xoay cuộn Native iOS (Cupertino wheel)
+                Expanded(
+                  child: CupertinoDatePicker(
+                    initialDateTime: tempDateTime.isBefore(minDate ?? DateTime(2025)) ? (minDate ?? DateTime(2025)) : tempDateTime,
+                    minimumDate: minDate,
+                    maximumDate: DateTime(2028),
+                    mode: CupertinoDatePickerMode.dateAndTime,
+                    use24hFormat: true,
+                    onDateTimeChanged: (DateTime newDt) {
+                      tempDateTime = newDt;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  } else {
+    // Android: Chọn ngày -> chọn giờ
+    showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(minDate ?? DateTime(2025)) ? (minDate ?? DateTime(2025)) : initialDate,
+      firstDate: minDate ?? DateTime(2025),
+      lastDate: DateTime(2028),
+    ).then((pickedDate) {
+      if (pickedDate != null && context.mounted) {
+        showTimePicker(
+          context: context,
+          initialTime: initialTime,
+        ).then((pickedTime) {
+          if (pickedTime != null) {
+            onSelected(pickedDate, pickedTime);
+          } else {
+            onSelected(pickedDate, initialTime);
+          }
+        });
+      }
+    });
+  }
+}
+
+/// Kích hoạt chọn giờ Native (Cupertino Time Wheel trên iOS - Rule 5.3)
+Future<void> _showNativeTimeOnlyPicker({
+  required BuildContext context,
+  required TimeOfDay initialTime,
+  required String timeType,
+  required ValueChanged<TimeOfDay> onSelected,
+}) async {
+  final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+  final now = DateTime.now();
+  DateTime tempDateTime = DateTime(
+    now.year,
+    now.month,
+    now.day,
+    initialTime.hour,
+    initialTime.minute,
+  );
+
+  if (isIOS) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return Container(
+          height: 290,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                // Thanh điều khiển Xong / Huỷ
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Huỷ', style: TextStyle(color: Color(0xFF64748B), fontSize: 15)),
+                      ),
+                      Text(
+                        'Chọn $timeType',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0F172A)),
+                      ),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          onSelected(TimeOfDay(hour: tempDateTime.hour, minute: tempDateTime.minute));
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Xong', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF021E73), fontSize: 15)),
+                      ),
+                    ],
+                  ),
+                ),
+                // Vòng xoay cuộn Native iOS (Cupertino time wheel)
+                Expanded(
+                  child: CupertinoDatePicker(
+                    initialDateTime: tempDateTime,
+                    mode: CupertinoDatePickerMode.time,
+                    use24hFormat: true,
+                    onDateTimeChanged: (DateTime newDt) {
+                      tempDateTime = newDt;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  } else {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      initialEntryMode: TimePickerEntryMode.input,
+      helpText: 'CHỌN $timeType'.toUpperCase(),
+    );
+    if (picked != null) {
+      onSelected(picked);
+    }
+  }
+}
+
+/// Hộp chọn thời gian Unified Date Capsule theo chuẩn Rule 5.3
+Widget _buildDateTimeCapsule({
+  required BuildContext context,
+  required DateTime date,
+  required TimeOfDay time,
+  required void Function(DateTime date, TimeOfDay time) onSelected,
+  DateTime? minDate,
+}) {
+  final dateStr = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+  return InkWell(
+    onTap: () => _showNativeDateTimePicker(
+      context: context,
+      initialDate: date,
+      initialTime: time,
+      onSelected: onSelected,
+      minDate: minDate,
+    ),
+    borderRadius: BorderRadius.circular(10),
+    child: Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+      ),
+      child: Row(
+        children: [
+          // Cyan glow dot (khớp Chuẩn Rule 5.3 Unified Date Capsule)
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0EA5E9),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0EA5E9).withValues(alpha: 0.5),
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Text thời gian
+          Expanded(
+            child: Text(
+              '$timeStr  ·  $dateStr',
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+          // Đường chia cách dọc mỏng
+          Container(
+            width: 1,
+            height: 20,
+            color: const Color(0xFFCBD5E1),
+          ),
+          const SizedBox(width: 10),
+          // Icon lịch
+          const Icon(Icons.calendar_month_outlined, size: 18, color: Color(0xFF64748B)),
+        ],
+      ),
+    ),
+  );
+}
+
 Widget _buildDateTimeRangeRow({
   required BuildContext context,
   required String fromLabel,
@@ -2573,180 +3335,56 @@ Widget _buildDateTimeRangeRow({
   required ValueChanged<DateTime> onPickToDate,
   required ValueChanged<TimeOfDay> onPickFromTime,
   required ValueChanged<TimeOfDay> onPickToTime,
+  String? errorText,
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(fromLabel, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 7,
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: fromDate,
-                            firstDate: DateTime(2025),
-                            lastDate: DateTime(2027),
-                          );
-                          if (picked != null) onPickFromDate(picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  '${fromDate.day.toString().padLeft(2, '0')}/${fromDate.month.toString().padLeft(2, '0')}/${fromDate.year}',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 1),
-                              const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF64748B)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      flex: 5,
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showTimePicker(context: context, initialTime: fromTime);
-                          if (picked != null) onPickFromTime(picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  _formatTime(fromTime),
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 1),
-                              const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF64748B)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 3, vertical: 20),
-            child: Text('→', style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(toLabel, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 7,
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: toDate.isBefore(fromDate) ? fromDate : toDate,
-                            firstDate: fromDate,
-                            lastDate: DateTime(2027),
-                          );
-                          if (picked != null) onPickToDate(picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  '${toDate.day.toString().padLeft(2, '0')}/${toDate.month.toString().padLeft(2, '0')}/${toDate.year}',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 1),
-                              const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF64748B)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      flex: 5,
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showTimePicker(context: context, initialTime: toTime);
-                          if (picked != null) onPickToTime(picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  _formatTime(toTime),
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 1),
-                              const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF64748B)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+      Text(
+        fromLabel,
+        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
       ),
+      const SizedBox(height: 6),
+      _buildDateTimeCapsule(
+        context: context,
+        date: fromDate,
+        time: fromTime,
+        onSelected: (d, t) {
+          onPickFromDate(d);
+          onPickFromTime(t);
+          if (toDate.isBefore(d)) {
+            onPickToDate(d);
+          }
+        },
+      ),
+      const SizedBox(height: 10),
+      Text(
+        toLabel,
+        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+      ),
+      const SizedBox(height: 6),
+      _buildDateTimeCapsule(
+        context: context,
+        date: toDate,
+        time: toTime,
+        minDate: fromDate,
+        onSelected: (d, t) {
+          onPickToDate(d);
+          onPickToTime(t);
+        },
+      ),
+      if (errorText != null && errorText.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        Text(
+          errorText,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFFDC2626),
+            height: 1.35,
+          ),
+        ),
+      ],
     ],
   );
 }

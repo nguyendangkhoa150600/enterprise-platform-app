@@ -573,12 +573,13 @@ class _ChatInternalViewState extends State<ChatInternalView> {
 
   String _formatTime(String raw) {
     try {
-      final dt = DateTime.parse(raw).toLocal();
+      final parsed = DateTime.parse(raw);
+      final dt = (parsed.isUtc || raw.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
       final now = DateTime.now();
       if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
         return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       }
-      return '${dt.day}/${dt.month}';
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';
     }
