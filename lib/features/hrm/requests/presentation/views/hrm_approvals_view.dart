@@ -105,13 +105,15 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
   String _formatDate(DateTime? dt) {
     if (widget.formatDate != null) return widget.formatDate!(dt);
     if (dt == null) return '--/--/----';
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    final vn = dt.isUtc ? dt.add(const Duration(hours: 7)) : dt;
+    return '${vn.day.toString().padLeft(2, '0')}/${vn.month.toString().padLeft(2, '0')}/${vn.year}';
   }
 
   String _formatTime(DateTime? dt) {
     if (widget.formatTime != null) return widget.formatTime!(dt);
     if (dt == null) return '';
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final vn = dt.isUtc ? dt.add(const Duration(hours: 7)) : dt;
+    return '${vn.hour.toString().padLeft(2, '0')}:${vn.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatCurrency(double? val) {
@@ -647,18 +649,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                   final isPending = r.status == HrmRequestStatus.pending;
                   final isSelected = _selectedApprovalIds.contains(r.id);
 
-                  final start = r.startDate;
-                  final end = r.endDate;
-                  String timeStr = _formatDate(r.requestDate);
-                  if (start != null && end != null) {
-                    if (start.day == end.day && start.month == end.month && start.year == end.year) {
-                      timeStr = '${_formatDate(start)} ${_formatTime(start)} -> ${_formatTime(end)}';
-                    } else {
-                      timeStr = '${_formatDate(start)} -> ${_formatDate(end)}';
-                    }
-                  } else if (start != null) {
-                    timeStr = 'hrm_requests.from_date'.tr(args: {'date': _formatDate(start)});
-                  }
+                  final String timeStr = r.displayPeriod;
 
                   String durationBadge = '';
                   if (r.durationDays != null && r.durationDays! > 0) {

@@ -389,7 +389,8 @@ class _StandaloneTaskDetailContentState extends State<_StandaloneTaskDetailConte
 
   String _formatDateTime(DateTime? dt) {
     if (dt == null) return '—';
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final vn = dt.isUtc ? dt.add(const Duration(hours: 7)) : dt;
+    return '${vn.hour.toString().padLeft(2, '0')}:${vn.minute.toString().padLeft(2, '0')} ${vn.day.toString().padLeft(2, '0')}/${vn.month.toString().padLeft(2, '0')}/${vn.year}';
   }
 
   @override

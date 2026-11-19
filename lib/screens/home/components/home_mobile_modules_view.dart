@@ -67,7 +67,23 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
     'CHẤT LƯỢNG ĐIỆN & CSKH',
   };
 
-  bool _mod(String key) => widget.modules.any((m) => m.key == key && (m.isActive == true));
+  bool _mod(String key) {
+    if (widget.modules.isEmpty) return true;
+    final k = key.toLowerCase();
+    return widget.modules.any((m) {
+      final mk = m.key.toLowerCase();
+      if (k == 'hrm') {
+        return (mk == 'hrm' ||
+                mk == 'human-resource' ||
+                mk == 'human_resource' ||
+                mk.contains('hrm')) &&
+            (m.isActive == true);
+      }
+      return (mk == k || mk.replaceAll('-', '_') == k.replaceAll('-', '_')) &&
+          (m.isActive == true);
+    });
+  }
+
   bool get _modProcedure => _mod('procedure-engine') || _mod('procedure');
   bool get _modInventory =>
       _mod('inventory') ||
@@ -79,6 +95,13 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   /// HRM menu item: the HRM module is available AND the user holds a permission of that web page.
   bool _hrm(String path) => _mod('hrm') && HrmCapabilities.instance.pageAllowed(path);
   bool _hrmTab(String path, String tab) => _mod('hrm') && HrmCapabilities.instance.tabAllowed(path, tab);
+
+  bool _canPunch(AuthProvider auth, HrmCapabilities hrmCaps) {
+    if (!_mod('hrm')) return false;
+    if (auth.isAdmin || auth.isTenantAdmin || auth.isPlatformAdmin) return true;
+    if (!hrmCaps.loaded || hrmCaps.actions.isEmpty) return true;
+    return hrmCaps.canPunch || hrmCaps.pageAllowed('/my-work');
+  }
 
   bool get _showOrg => false;
   bool get _showAdmin => false;
@@ -201,6 +224,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Công việc của tôi',
                   'visible': _mod('workspace'),
                   'icon': Icons.format_list_bulleted_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_workspace_tasks.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 0))),
@@ -209,6 +233,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Công việc khác',
                   'visible': _mod('workspace'),
                   'icon': Icons.assignment_outlined,
+                  'imageAsset': 'assets/images/icons/dashboard_work_todo.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 1))),
@@ -217,6 +242,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Dự án',
                   'visible': _mod('workspace'),
                   'icon': Icons.work_outline_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_workspace_projects.png',
                   'bg': const Color(0xFFFFFBEB), // Amber 50
                   'iconColor': const Color(0xFFD97706),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 2))),
@@ -225,6 +251,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Tài liệu',
                   'visible': _mod('workspace'),
                   'icon': Icons.description_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_shared_library.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 4))),
@@ -233,6 +260,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Báo cáo',
                   'visible': _mod('workspace'),
                   'icon': Icons.bar_chart_rounded,
+                  'imageAsset': 'assets/images/icons/nav_reports.png',
                   'bg': const Color(0xFFFAF5FF), // Purple 50
                   'iconColor': const Color(0xFF9333EA),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 5))),
@@ -241,6 +269,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Khách hàng & HĐ',
                   'visible': _mod('workspace'),
                   'icon': Icons.handshake_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_crm_leads.png',
                   'bg': const Color(0xFFEEF2FF), // Indigo 50
                   'iconColor': const Color(0xFF4F46E5),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 3))),
@@ -256,6 +285,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Tổng quan',
                   'visible': _modProcedure,
                   'icon': Icons.space_dashboard_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_procedure_workspace.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 0))),
@@ -264,6 +294,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Hồ sơ xử lý',
                   'visible': _modProcedure,
                   'icon': Icons.assignment_outlined,
+                  'imageAsset': 'assets/images/icons/dashboard_procedure_tasks.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 1))),
@@ -279,6 +310,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Tổng quan',
                   'visible': canShowInventory,
                   'icon': Icons.space_dashboard_rounded,
+                  'imageAsset': 'assets/images/icons/module_inventory.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryOverviewScreen())),
@@ -287,6 +319,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Kho & Danh mục',
                   'visible': canShowInventory,
                   'icon': Icons.inventory_2_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_inventory_stock.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryItemsScreen())),
@@ -295,6 +328,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Giao dịch & Nhập xuất',
                   'visible': canShowInventory,
                   'icon': Icons.swap_horiz_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_inventory_issue_requests.png',
                   'bg': const Color(0xFFF0F9FF), // Sky 50
                   'iconColor': const Color(0xFF0284C7),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen())),
@@ -303,6 +337,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Chứng từ kho',
                   'visible': canShowInventory,
                   'icon': Icons.receipt_long_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_inventory_documents.png',
                   'bg': const Color(0xFFFAF5FF), // Purple 50
                   'iconColor': const Color(0xFF9333EA),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen())),
@@ -311,6 +346,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Duyệt chứng từ',
                   'visible': canShowInventory,
                   'icon': Icons.assignment_turned_in_outlined,
+                  'imageAsset': 'assets/images/icons/dashboard_approvals.png',
                   'bg': const Color(0xFFFEF3C7), // Amber 50
                   'iconColor': const Color(0xFFD97706),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen(
@@ -323,6 +359,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Yêu cầu xuất từ đơn bán',
                   'visible': canShowInventory,
                   'icon': Icons.outbox_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_inventory_issue_requests.png',
                   'bg': const Color(0xFFFFF7ED), // Orange 50
                   'iconColor': const Color(0xFFEA580C),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryIssueRequestsScreen())),
@@ -331,6 +368,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Cây tài sản',
                   'visible': false,
                   'icon': Icons.account_tree_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_inventory_assets_tree.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryAssetsScreen(initialTab: 1))),
@@ -339,6 +377,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Tài sản',
                   'visible': false,
                   'icon': Icons.devices_other_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_inventory_custody.png',
                   'bg': const Color(0xFFEEF2FF), // Indigo 50
                   'iconColor': const Color(0xFF4F46E5),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryAssetsScreen(initialTab: 0))),
@@ -347,6 +386,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Báo cáo kho',
                   'visible': false,
                   'icon': Icons.bar_chart_rounded,
+                  'imageAsset': 'assets/images/icons/nav_reports.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryReportsScreen())),
@@ -355,6 +395,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Cài đặt',
                   'visible': false,
                   'icon': Icons.tune_rounded,
+                  'imageAsset': 'assets/images/icons/nav_settings.png',
                   'bg': const Color(0xFFF1F5F9), // Slate 50
                   'iconColor': const Color(0xFF475569),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventorySettingsScreen())),
@@ -370,25 +411,28 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Bàn làm việc',
                   'visible': _hrm('/'),
-                  'icon': Icons.space_dashboard_rounded,
-                  'bg': const Color(0xFFEEF2FF), // Indigo 50
-                  'iconColor': const Color(0xFF4F46E5),
+                  'icon': Icons.grid_view_rounded,
+                  'imageAsset': 'assets/images/icons/nav_dashboard.png',
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'dashboard'))),
                 },
                 {
                   'title': 'Giám sát chấm công',
                   'visible': _hrm('/attendance-monitor'),
-                  'icon': Icons.insights_rounded,
-                  'bg': const Color(0xFFFEF3C7), // Amber 100
-                  'iconColor': const Color(0xFFD97706),
+                  'icon': Icons.monitor_heart_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_attendance_monitor.png',
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF0284C7),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceMonitorScreen())),
                 },
                 {
                   'title': 'Đơn từ cần xử lý',
                   'visible': _hrm('/approvals'),
-                  'icon': Icons.assignment_turned_in_outlined,
-                  'bg': const Color(0xFFE0F2FE), // Sky 50
-                  'iconColor': const Color(0xFF0284C7),
+                  'icon': Icons.fact_check_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_approvals.png',
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'requests'))),
                 },
 
@@ -396,15 +440,17 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Bảng công của tôi',
                   'visible': _hrm('/my-work'),
-                  'icon': Icons.calendar_today_outlined,
+                  'icon': Icons.access_time_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_my_work.png',
                   'bg': const Color(0xFFF0FDF4), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen(initialTabIndex: 1))),
                 },
                 {
                   'title': 'Chấm công GPS',
-                  'visible': _mod('hrm') && HrmCapabilities.instance.canPunch,
+                  'visible': _canPunch(auth, context.watch<HrmCapabilities>()),
                   'icon': Icons.fingerprint_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_gps.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen(initialTabIndex: 0))),
@@ -412,15 +458,17 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Đơn từ của tôi',
                   'visible': _hrm('/requests'),
-                  'icon': Icons.assignment_outlined,
-                  'bg': const Color(0xFFEFF6FF), // Sky 50
+                  'icon': Icons.description_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_requests.png',
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRequestsScreen())),
                 },
                 {
                   'title': 'Hồ sơ & Thu nhập',
                   'visible': _hrm('/profile'),
-                  'icon': Icons.assignment_ind_outlined,
+                  'icon': Icons.account_circle_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_profile.png',
                   'bg': const Color(0xFFEEF2FF), // Indigo 50
                   'iconColor': const Color(0xFF4F46E5),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileIncomeScreen())),
@@ -428,6 +476,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Tài khoản & Mật khẩu',
                   'icon': Icons.manage_accounts_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_account.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen())),
@@ -437,15 +486,17 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Nhân sự',
                   'visible': _hrm('/employees'),
-                  'icon': Icons.people_alt_outlined,
-                  'bg': const Color(0xFFECFDF5), // Emerald 50
-                  'iconColor': const Color(0xFF059669),
+                  'icon': Icons.people_outline_rounded,
+                  'imageAsset': 'assets/images/icons/nav_users.png',
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'employees'))),
                 },
                 {
                   'title': 'Bảng công tổng hợp',
                   'visible': _hrm('/timekeeping'),
-                  'icon': Icons.calculate_outlined,
+                  'icon': Icons.edit_calendar_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_timekeeping.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'timesheet'))),
@@ -453,7 +504,8 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Quỹ phép năm',
                   'visible': _hrm('/leave'),
-                  'icon': Icons.beach_access_rounded,
+                  'icon': Icons.date_range_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_leave.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaveBalancesScreen())),
@@ -461,7 +513,8 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Lương và chi trả',
                   'visible': _hrm('/payroll'),
-                  'icon': Icons.payments_outlined,
+                  'icon': Icons.trending_up_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_payroll.png',
                   'bg': const Color(0xFFFFFBEB), // Amber 50
                   'iconColor': const Color(0xFFD97706),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'payroll'))),
@@ -470,9 +523,19 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Lịch xe',
                   'visible': _hrm('/fleet'),
                   'icon': Icons.directions_car_filled_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_hrm_fleet.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF1D4ED8),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FleetScheduleScreen())),
+                },
+                {
+                  'title': 'Cấu hình HRM',
+                  'visible': _hrm('/settings'),
+                  'icon': Icons.tune_rounded,
+                  'imageAsset': 'assets/images/icons/nav_settings.png',
+                  'bg': const Color(0xFFF1F5F9), // Slate 50
+                  'iconColor': const Color(0xFF475569),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HrmHubScreen(initialView: 'config'))),
                 },
               ],
             ),
@@ -485,6 +548,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Tổng quan',
                   'visible': true,
                   'icon': Icons.space_dashboard_rounded,
+                  'imageAsset': 'assets/images/icons/module_maintenance.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'dashboard'))),
@@ -493,6 +557,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Ma trận bảo trì',
                   'visible': true,
                   'icon': Icons.grid_view_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_maintenance_matrix.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'matrix'))),
@@ -501,6 +566,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Lịch bảo trì',
                   'visible': true,
                   'icon': Icons.calendar_month_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_maintenance_schedules.png',
                   'bg': const Color(0xFFFFFBEB), // Amber 50
                   'iconColor': const Color(0xFFD97706),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'schedules'))),
@@ -509,6 +575,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Phiếu phát sinh',
                   'visible': true,
                   'icon': Icons.warning_amber_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_maintenance_occurrences.png',
                   'bg': const Color(0xFFFFF1F2), // Rose 50
                   'iconColor': const Color(0xFFE11D48),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'occurrences'))),
@@ -517,17 +584,10 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Lịch sử',
                   'visible': true,
                   'icon': Icons.history_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_maintenance_history.png',
                   'bg': const Color(0xFFFAF5FF), // Purple 50
                   'iconColor': const Color(0xFF9333EA),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'history'))),
-                },
-                {
-                  'title': 'Cài đặt',
-                  'visible': true,
-                  'icon': Icons.tune_rounded,
-                  'bg': const Color(0xFFF1F5F9), // Slate 50
-                  'iconColor': const Color(0xFF475569),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenanceScreen(view: 'settings'))),
                 },
               ],
             ),
@@ -646,6 +706,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Trợ lý AI Savina',
                   'icon': Icons.auto_awesome,
+                  'imageAsset': 'assets/images/icons/module_assistant.png',
                   'bg': const Color(0xFFEFF6FF), // Sky 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen())),
@@ -653,6 +714,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 {
                   'title': 'Ứng dụng phân hệ',
                   'icon': Icons.inventory_2_outlined,
+                  'imageAsset': 'assets/images/icons/nav_applications.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
                   'onTap': () => Navigator.push(
@@ -673,6 +735,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Tài khoản người dùng',
                   'visible': auth.canViewUsers,
                   'icon': Icons.people_outline,
+                  'imageAsset': 'assets/images/icons/nav_users.png',
                   'bg': const Color(0xFFF1F5F9), // Slate 50
                   'iconColor': const Color(0xFF0F172A),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())),
@@ -681,6 +744,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'title': 'Vai trò & phân quyền',
                   'visible': auth.canViewRoles,
                   'icon': Icons.verified_user_outlined,
+                  'imageAsset': 'assets/images/icons/nav_authorization.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RolePermissionScreen())),
@@ -913,30 +977,55 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   borderRadius: BorderRadius.circular(16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
+                      const SizedBox(height: 4),
                       Container(
                         width: 54,
                         height: 54,
                         decoration: BoxDecoration(
-                          color: bg,
-                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: Center(
-                          child: Icon(icon, color: iconColor, size: 26),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: item['imageAsset'] != null
+                              ? Image.asset(
+                                  item['imageAsset'] as String,
+                                  width: 54,
+                                  height: 54,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Icon(icon, color: iconColor, size: 26),
+                                  ),
+                                )
+                              : Center(
+                                  child: Icon(icon, color: iconColor, size: 26),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF334155),
-                          height: 1.2,
+                      SizedBox(
+                        height: 32,
+                        child: Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF334155),
+                            height: 1.25,
+                          ),
                         ),
                       ),
                     ],
@@ -973,11 +1062,32 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: bg,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
-                          child: Center(
-                            child: Icon(icon, color: iconColor, size: 20),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: item['imageAsset'] != null
+                                ? Image.asset(
+                                    item['imageAsset'] as String,
+                                    width: 38,
+                                    height: 38,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Center(
+                                      child: Icon(icon, color: iconColor, size: 20),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Icon(icon, color: iconColor, size: 20),
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 12),

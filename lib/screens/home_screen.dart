@@ -7,7 +7,6 @@ import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
 import '../services/module_business_service.dart';
 import '../core/permissions/hrm_permissions.dart';
-import '../shared/widgets/no_access_view.dart';
 import './home/components/home_module_stats.dart';
 import '../theme/colors.dart';
 import './inventory_screen.dart';
@@ -21,7 +20,6 @@ import './role_permission_screen.dart';
 import './user_management_screen.dart';
 import './my_requests_screen.dart';
 import './workspace_screen.dart';
-import './assistant_chat_screen.dart';
 import './communication_hub_screen.dart';
 import '../providers/chat_provider.dart';
 import '../features/crm/presentation/screens/crm_hub_screen.dart';
@@ -31,6 +29,8 @@ import './home/components/home_organization_view.dart';
 import './home/components/home_desktop_users_view.dart';
 import './home/components/home_mobile_dashboard_view.dart';
 import './home/components/home_desktop_dashboard_view.dart';
+import './social/social_feed_view.dart';
+import './org_chart_workspace_screen.dart';
 import '../core/i18n/app_i18n.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -40,7 +40,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Navigation states
   int _mobileNavIndex = 0; // 0: Home, 1: Modules, 2: People, 3: Profile
   String _desktopTab = 'Dashboard';
@@ -56,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<HrmRequestItem> _pendingHrmRequests = [];
   final ModuleBusinessService _businessService = ModuleBusinessService();
   final HrmService _hrmService = HrmService();
+  DateTime? _lastDataLoadTime;
 
   final ScrollController _attentionScrollController = ScrollController();
   final ScrollController _requestsScrollController = ScrollController();
@@ -64,25 +65,80 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAllPlatformData();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _attentionScrollController.dispose();
     _requestsScrollController.dispose();
     _homeOrgScrollController.dispose();
     super.dispose();
   }
 
-  bool _canAttend(BuildContext context) =>
-      _hasModule('hrm') && context.watch<HrmCapabilities>().pageAllowed('/my-work');
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final now = DateTime.now();
+      // Auto-resync when returning to foreground if more than 20 seconds elapsed
+      if (_lastDataLoadTime == null || now.difference(_lastDataLoadTime!).inSeconds > 20) {
+        _resyncOnResume();
+      }
+    }
+  }
+
+  Future<void> _resyncOnResume() async {
+    await AuthProvider.silentRelogin();
+    if (mounted) {
+      _loadAllPlatformData(silent: true);
+    }
+  }
+
+  bool _canAttend(BuildContext context) {
+    // If modules catalog is loaded and explicitly doesn't have active HRM, hide
+    if (_modules.isNotEmpty && !_hasModule('hrm')) {
+      return false;
+    }
+    final auth = context.watch<AuthProvider>();
+    // Admins and owners can always attend/test attendance
+    if (auth.isAdmin || auth.isTenantAdmin || auth.isPlatformAdmin) {
+      return true;
+    }
+    final hrmCaps = context.watch<HrmCapabilities>();
+    // Allow if user has HRM permission, or if capabilities are still loading / cache is empty
+    if (!hrmCaps.loaded || hrmCaps.actions.isEmpty) {
+      return true;
+    }
+    return hrmCaps.pageAllowed('/my-work') ||
+        hrmCaps.can('hrm.self.read') ||
+        hrmCaps.can('hrm.self.attendance') ||
+        hrmCaps.can('hrm.attendance.read');
+  }
 
   /// The catalog is already filtered by the server to the modules this user's roles can open.
-  bool _hasModule(String key) => _modules.any((m) => m.key == key && m.isActive);
+  bool _hasModule(String key) {
+    if (_modules.isEmpty) return true;
+    final k = key.toLowerCase();
+    return _modules.any((m) {
+      final mk = m.key.toLowerCase();
+      if (k == 'hrm') {
+        return (mk == 'hrm' ||
+                mk == 'human-resource' ||
+                mk == 'human_resource' ||
+                mk.contains('hrm')) &&
+            m.isActive;
+      }
+      return (mk == k || mk.replaceAll('-', '_') == k.replaceAll('-', '_')) &&
+          m.isActive;
+    });
+  }
 
-  Future<void> _loadAllPlatformData() async {
-    setState(() => _isLoadingData = true);
+  Future<void> _loadAllPlatformData({bool silent = false}) async {
+    if (!silent && _modules.isEmpty) {
+      setState(() => _isLoadingData = true);
+    }
     final results = await Future.wait([
       _platformService.getTenantUsers(),
       _platformService.getModuleCatalog(),
@@ -94,12 +150,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (mounted) {
       setState(() {
-        _users = results[0] as List<TenantUser>;
-        _modules = results[1] as List<ModuleCatalogItem>;
-        _orgSnapshot = results[2] as OrganizationSnapshot;
-        _moduleStats = results[3] as HomeModuleStats;
-        _pendingHrmRequests = (results[5] as List<HrmRequestItem>?) ?? [];
+        final newUsers = results[0] as List<TenantUser>;
+        if (newUsers.isNotEmpty || _users.isEmpty) {
+          _users = newUsers;
+        }
+        final newModules = results[1] as List<ModuleCatalogItem>;
+        if (newModules.isNotEmpty || _modules.isEmpty) {
+          _modules = newModules;
+        }
+        final newSnapshot = results[2] as OrganizationSnapshot;
+        if (newSnapshot.nodes.isNotEmpty || _orgSnapshot == null) {
+          _orgSnapshot = newSnapshot;
+        }
+        final newStats = results[3] as HomeModuleStats;
+        _moduleStats = newStats;
+        _pendingHrmRequests = (results[5] as List<HrmRequestItem>?) ?? _pendingHrmRequests;
         _isLoadingData = false;
+        _lastDataLoadTime = DateTime.now();
       });
     }
   }
@@ -164,15 +231,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Mobile / Tablet layout
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF1F5F9),
       drawer: _buildMobileDrawer(authProvider, userName, userInitials, tenantDisplay),
       body: SafeArea(
         child: _isLoadingData
             ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadAllPlatformData,
-                child: _buildMobileBody(userName, userInitials, tenantDisplay),
-              ),
+            : _buildMobileBody(userName, userInitials, tenantDisplay),
       ),
       bottomNavigationBar: _buildMobileBottomBar(),
       floatingActionButton: Builder(
@@ -211,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -292,17 +356,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const SizedBox(width: 68, height: 66),
                   ),
 
-                  // Tab 2: Sơ đồ tổ chức (needs core.organization.read, like the web)
-                  if (context.watch<AuthProvider>().canViewOrganization)
-                    _buildBottomNavItem(
-                      icon: Icons.account_tree_outlined,
-                      activeIcon: Icons.account_tree,
-                      label: 'home_shell.nav.org'.tr(),
-                      isSelected: _mobileNavIndex == 2,
-                      onTap: () => setState(() => _mobileNavIndex = 2),
-                    )
-                  else
-                    const SizedBox(width: 56),
+                  // Tab 2: Mạng nội bộ (Social Feed - Enterprise Social Network)
+                  _buildBottomNavItem(
+                    icon: Icons.newspaper_outlined,
+                    activeIcon: Icons.newspaper_rounded,
+                    label: 'home_shell.nav.social'.tr(),
+                    isSelected: _mobileNavIndex == 2,
+                    onTap: () => setState(() => _mobileNavIndex = 2),
+                  ),
 
                   // Tài khoản
                   _buildBottomNavItem(
@@ -413,15 +474,27 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildMobileBody(String userName, String userInitials, String tenantDisplay) {
     switch (_mobileNavIndex) {
       case 0:
-        return _buildMobileDashboardView(userName, userInitials, tenantDisplay);
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileDashboardView(userName, userInitials, tenantDisplay),
+        );
       case 1:
-        return _buildMobileModulesView();
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileModulesView(),
+        );
       case 2:
-        return _buildMobilePeopleView();
+        return const SocialFeedView();
       case 3:
-        return _buildMobileProfileView(userName, userInitials, tenantDisplay);
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileProfileView(userName, userInitials, tenantDisplay),
+        );
       default:
-        return _buildMobileDashboardView(userName, userInitials, tenantDisplay);
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileDashboardView(userName, userInitials, tenantDisplay),
+        );
     }
   }
 
@@ -458,20 +531,6 @@ class _HomeScreenState extends State<HomeScreen> {
       onSelectOrgChart: () => setState(() => _mobileNavIndex = 2),
       onOpenDashboard: () => setState(() => _mobileNavIndex = 0),
       onOpenModule: _openModule,
-    );
-  }
-
-  // ==========================================
-  // MOBILE VIEW 3: SƠ ĐỒ TỔ CHỨC (ORGANIZATION STRUCTURE)
-  // ==========================================
-  Widget _buildMobilePeopleView() {
-    if (!context.read<AuthProvider>().canViewOrganization) {
-      return NoAccessView(message: 'perm.no_access_org'.tr());
-    }
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: _buildOrganizationView(),
     );
   }
 
@@ -557,6 +616,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   _buildDrawerItem(
+                    title: 'Mạng nội bộ',
+                    icon: Icons.newspaper_outlined,
+                    isSelected: _mobileNavIndex == 2,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _mobileNavIndex = 2);
+                    },
+                  ),
+                  _buildDrawerItem(
                     title: 'Ứng dụng phân hệ',
                     icon: Icons.inventory_2_outlined,
                     isSelected: _mobileNavIndex == 1,
@@ -574,10 +642,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildDrawerItem(
                       title: 'Sơ đồ tổ chức',
                       icon: Icons.alt_route_rounded,
-                      isSelected: _mobileNavIndex == 2,
                       onTap: () {
                         Navigator.pop(context);
-                        setState(() => _mobileNavIndex = 2);
+                        if (_orgSnapshot != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OrgChartWorkspaceScreen(snapshot: _orgSnapshot!),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                appBar: AppBar(title: Text('home_shell.nav.org'.tr())),
+                                body: _buildOrganizationView(),
+                              ),
+                            ),
+                          );
+                        }
                       },
                     ),
                     const SizedBox(height: 18),

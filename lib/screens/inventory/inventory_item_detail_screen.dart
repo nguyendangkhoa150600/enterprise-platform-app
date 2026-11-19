@@ -178,8 +178,9 @@ class _InventoryItemDetailScreenState extends State<InventoryItemDetailScreen> {
   String _formatDate(String? raw) {
     if (raw == null || raw.isEmpty) return '—';
     try {
-      final dt = DateTime.parse(raw).toLocal();
-      return DateFormat('dd/MM/yyyy HH:mm').format(dt);
+      final parsed = DateTime.parse(raw);
+      final dt = (parsed.isUtc || raw.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
+      return DateFormat('HH:mm dd/MM/yyyy').format(dt);
     } catch (_) {
       return raw;
     }

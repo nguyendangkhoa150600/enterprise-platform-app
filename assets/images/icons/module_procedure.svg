@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- SVNDTS - procedure engine -->
+  <defs>
+    <linearGradient id="svndts-grad-8v4xn8" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24">
+      <stop offset="0" stop-color="#c084fc" />
+      <stop offset="0.55" stop-color="#8b5cf6" />
+      <stop offset="1" stop-color="#6d28d9" />
+    </linearGradient>
+    <mask id="svndts-mask-11phlty" maskUnits="userSpaceOnUse" x="-24" y="-24" width="72" height="72">
+      <circle cx="8.286" cy="14.857" r="1.143" fill="#ffffff" stroke="#ffffff" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 9.371 14.457 C 10.628 13.943 10.686 12.4 12 12.114 C 13.371 11.828 13.543 13.086 14.857 11.771 L 16.571 10" fill="none" stroke="#ffffff" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 14.285 9.714 L 16.571 9.714 L 16.571 12" fill="none" stroke="#ffffff" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+    </mask>
+  </defs>
+  <rect x="0.5" y="0.5" width="23" height="23" rx="5.143" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" />
+  <rect x="5.143" y="5.143" width="13.714" height="13.714" fill="#0284c7" mask="url(#svndts-mask-11phlty)" />
+</svg>

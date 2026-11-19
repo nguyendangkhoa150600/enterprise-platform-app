@@ -549,13 +549,14 @@ class StockTransaction {
     String formattedDate = rawDate;
     if (rawDate.isNotEmpty) {
       try {
-        parsedDate = DateTime.parse(rawDate).toLocal();
+        final parsed = DateTime.parse(rawDate);
+        parsedDate = (parsed.isUtc || rawDate.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
         final day = parsedDate.day.toString().padLeft(2, '0');
         final month = parsedDate.month.toString().padLeft(2, '0');
         final year = parsedDate.year;
         final hour = parsedDate.hour.toString().padLeft(2, '0');
         final minute = parsedDate.minute.toString().padLeft(2, '0');
-        formattedDate = '$day/$month/$year $hour:$minute';
+        formattedDate = '$hour:$minute $day/$month/$year';
       } catch (_) {
         formattedDate = rawDate;
       }

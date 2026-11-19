@@ -29,6 +29,7 @@ class AuthProvider extends ChangeNotifier {
   String? get userId => _userId;
   bool get isPlatformAdmin => _kind == 'platform-admin' || _roles.contains('platform-admin');
   bool get isTenantAdmin => _roles.contains('tenant-admin');
+  bool get isAdmin => isPlatformAdmin || isTenantAdmin || canManageTenant;
   String? get tenantSlug => _tenantSlug;
   String? get fullName => _fullName;
   String? get email => _email;

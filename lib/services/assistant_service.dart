@@ -643,8 +643,8 @@ class AssistantService {
           requestDate: fromDate,
           fromDate: fromDate,
           toDate: toDate,
-          newCheckInAt: '${fromDate}T08:00:00',
-          newCheckOutAt: '${toDate}T17:30:00',
+          newCheckInAt: '${fromDate}T07:30:00',
+          newCheckOutAt: '${toDate}T17:00:00',
           reason: reason,
         );
 
@@ -687,8 +687,8 @@ class AssistantService {
           requestDate: fromDate,
           fromDate: fromDate,
           toDate: toDate,
-          newCheckInAt: '${fromDate}T08:00:00',
-          newCheckOutAt: '${toDate}T17:30:00',
+          newCheckInAt: '${fromDate}T07:30:00',
+          newCheckOutAt: '${toDate}T17:00:00',
           reason: 'assistant.svc.trip_reason'.tr(args: {'purpose': purpose, 'dest': dest}),
         );
 

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_client_helper.dart';
 
@@ -120,7 +121,9 @@ const Map<String, String> hrmConfigKeyToSettingsTab = {
 
 /// The HRM actions of the signed-in user, from GET /hrm/v1/capabilities (same source as the web).
 class HrmCapabilities extends ChangeNotifier {
-  HrmCapabilities._();
+  HrmCapabilities._() {
+    initFromCache();
+  }
   static final HrmCapabilities instance = HrmCapabilities._();
 
   late final Dio _dio = () {
@@ -141,6 +144,18 @@ class HrmCapabilities extends ChangeNotifier {
   bool get loading => _loading;
   Set<String> get actions => _actions;
 
+  Future<void> initFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getStringList('cached_hrm_actions');
+      if (cached != null && cached.isNotEmpty && _actions.isEmpty) {
+        _actions = cached.toSet();
+        _loaded = true;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
   Future<void> load({bool force = false}) async {
     if (_loading || (_loaded && !force)) return;
     _loading = true;
@@ -148,10 +163,25 @@ class HrmCapabilities extends ChangeNotifier {
       final res = await _dio.get('/hrm/v1/capabilities');
       final data = res.data is Map ? (res.data['data'] ?? res.data) : null;
       final list = data is Map ? data['actions'] : null;
-      _actions = list is List ? list.map((e) => e.toString()).toSet() : <String>{};
+      if (list is List) {
+        _actions = list.map((e) => e.toString()).toSet();
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setStringList('cached_hrm_actions', _actions.toList());
+        } catch (_) {}
+      }
     } catch (e) {
       debugPrint('[HrmCapabilities] load error: $e');
-      _actions = {};
+      // On network failure or temporary 401, preserve existing actions instead of clearing
+      if (_actions.isEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final cached = prefs.getStringList('cached_hrm_actions');
+          if (cached != null && cached.isNotEmpty) {
+            _actions = cached.toSet();
+          }
+        } catch (_) {}
+      }
     }
     _loaded = true;
     _loading = false;
@@ -167,6 +197,7 @@ class HrmCapabilities extends ChangeNotifier {
   void clear() {
     _actions = {};
     _loaded = false;
+    SharedPreferences.getInstance().then((prefs) => prefs.remove('cached_hrm_actions'));
     notifyListeners();
   }
 

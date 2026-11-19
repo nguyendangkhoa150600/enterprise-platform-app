@@ -882,6 +882,7 @@
   "home_shell.nav.home": "Home",
   "home_shell.nav.modules": "Modules",
   "home_shell.nav.org": "Org chart",
+  "home_shell.nav.social": "Social Feed",
   "home_shell.reload_data": "Reload data",
   "home_shell.section_modules": "BUSINESS MODULES",
   "home_shell.settings.subtitle": "Configure tenant identity and security policies.",

@@ -203,8 +203,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
               child: Text(
                 'notif.title'.tr(),
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: -0.2,
                   color: Color(0xFF0F172A),
                 ),
                 maxLines: 1,
@@ -417,36 +418,48 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: n.priority.badgeBg,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          n.priority.label,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.bold,
-                            color: n.priority.badgeColor,
-                          ),
+                      Expanded(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: n.priority.badgeBg,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                n.priority.label,
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: n.priority.badgeColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  n.categoryVietnamese,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          n.categoryVietnamese,
-                          style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Text(
                         n.timeAgo,
+                        maxLines: 1,
                         style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
                       ),
                     ],
@@ -469,11 +482,17 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'notif.module_label'.tr(args: {'module': n.module.displayName}),
-                        style: TextStyle(fontSize: 10.5, color: n.module.color, fontWeight: FontWeight.w600),
+                      Expanded(
+                        child: Text(
+                          'notif.module_label'.tr(args: {'module': n.module.displayName}),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 10.5, color: n.module.color, fontWeight: FontWeight.w600),
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             'common.view_detail'.tr(),
