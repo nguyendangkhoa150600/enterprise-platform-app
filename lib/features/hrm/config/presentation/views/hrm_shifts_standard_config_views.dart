@@ -242,7 +242,7 @@ class HrmShiftsCatalogConfigView extends StatelessWidget {
     required this.onOpenModal,
   });
 
-  Widget _buildShiftCard(String title, String hours, String breakTime, String duration, String credit, Color color) {
+  Widget _buildShiftCard(String title, String hours, String breakTime, String duration, String credit, Color color, {String? checkWindow}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -266,6 +266,10 @@ class HrmShiftsCatalogConfigView extends StatelessWidget {
                 Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 const SizedBox(height: 2),
                 Text('$hours · $breakTime', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                if (checkWindow != null && checkWindow.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(checkWindow, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+                ],
               ],
             ),
           ),
@@ -324,6 +328,7 @@ class HrmShiftsCatalogConfigView extends StatelessWidget {
                   'hrm_config.shifts.catalog.standard'.tr(),
                   'hrm_config.shifts.catalog.credit_1'.tr(),
                   color,
+                  checkWindow: 'Chấm: -${s.checkInBeforeMinutes}p / +${s.checkOutAfterMinutes}p',
                 ),
               );
             }),

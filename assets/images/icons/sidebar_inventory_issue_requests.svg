@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- SVNDTS - yeu cau xuat -->
+  <defs>
+    <linearGradient id="svndts-grad-17913hc" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24">
+      <stop offset="0" stop-color="#4cc3ff" />
+      <stop offset="0.55" stop-color="#0493f9" />
+      <stop offset="1" stop-color="#0263c9" />
+    </linearGradient>
+    <mask id="svndts-mask-1tcwemo" maskUnits="userSpaceOnUse" x="-24" y="-24" width="72" height="72">
+      <path d="M 6.857 7.429 L 8 7.429 L 9.371 13.828 C 9.482 14.369 9.962 14.754 10.514 14.743 L 14.914 14.743 C 15.449 14.76 15.923 14.403 16.057 13.886 L 17.143 9.714 L 8.686 9.714" fill="none" stroke="#ffffff" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="10.857" cy="16.857" r="0.743" fill="#ffffff" stroke="#ffffff" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="14.857" cy="16.857" r="0.743" fill="#ffffff" stroke="#ffffff" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+    </mask>
+  </defs>
+  <rect x="0.5" y="0.5" width="23" height="23" rx="5.143" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" />
+  <rect x="5.143" y="5.143" width="13.714" height="13.714" fill="#0284c7" mask="url(#svndts-mask-1tcwemo)" />
+</svg>

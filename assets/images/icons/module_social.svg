@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- SVNDTS - mang noi bo -->
+  <defs>
+    <linearGradient id="svndts-grad-1jznja1" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24">
+      <stop offset="0" stop-color="#fb7185" />
+      <stop offset="0.55" stop-color="#e11d48" />
+      <stop offset="1" stop-color="#9f1239" />
+    </linearGradient>
+    <mask id="svndts-mask-qshvg1" maskUnits="userSpaceOnUse" x="-24" y="-24" width="72" height="72">
+      <circle cx="12" cy="12" r="5.143" fill="#ffffff" stroke="#ffffff" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 6.857 12 L 17.143 12" fill="none" stroke="#000000" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 7.2 10 L 16.8 10 M 7.2 14 L 16.8 14" fill="none" stroke="#000000" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 12 6.857 C 10.628 8.286 9.943 10 9.943 12 C 9.943 14 10.628 15.714 12 17.143" fill="none" stroke="#000000" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 12 6.857 C 13.371 8.286 14.057 10 14.057 12 C 14.057 14 13.371 15.714 12 17.143" fill="none" stroke="#000000" stroke-width="1.286" stroke-linecap="round" stroke-linejoin="round" />
+    </mask>
+  </defs>
+  <rect x="0.5" y="0.5" width="23" height="23" rx="5.143" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" />
+  <rect x="5.143" y="5.143" width="13.714" height="13.714" fill="#0284c7" mask="url(#svndts-mask-qshvg1)" />
+</svg>

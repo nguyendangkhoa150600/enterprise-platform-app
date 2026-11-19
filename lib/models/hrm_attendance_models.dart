@@ -6,6 +6,11 @@ class LeaveType {
   final double? daysAllowed;
   final bool isPaid;
   final String? description;
+  final bool isAnnual;
+  final bool isCompOff;
+  final bool? compOffManaged;
+  final bool? deductBalance;
+  final double? negativeLimit;
 
   LeaveType({
     required this.id,
@@ -14,6 +19,11 @@ class LeaveType {
     this.daysAllowed,
     this.isPaid = true,
     this.description,
+    this.isAnnual = false,
+    this.isCompOff = false,
+    this.compOffManaged,
+    this.deductBalance,
+    this.negativeLimit,
   });
 
   factory LeaveType.fromJson(Map<String, dynamic> json) {
@@ -37,6 +47,16 @@ class LeaveType {
       parsedPaid = true;
     }
 
+    final isAnnual = json['isAnnual'] == true ||
+        json['is_annual'] == true ||
+        nameLower.contains('phép năm') ||
+        codeUpper.contains('ANNUAL');
+
+    final isCompOff = json['isCompOff'] == true ||
+        json['is_comp_off'] == true ||
+        nameLower.contains('nghỉ bù') ||
+        codeUpper.contains('COMP');
+
     return LeaveType(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? json['name']?.toString() ?? '',
@@ -46,8 +66,67 @@ class LeaveType {
           : null,
       isPaid: parsedPaid,
       description: json['description']?.toString(),
+      isAnnual: isAnnual,
+      isCompOff: isCompOff,
+      compOffManaged: (json['compOffManaged'] ?? json['comp_off_managed']) as bool?,
+      deductBalance: (json['deductBalance'] ?? json['deduct_balance']) as bool?,
+      negativeLimit: (json['negativeLimit'] ?? json['negative_limit'] as num?)?.toDouble(),
     );
   }
+}
+
+/// Một khoản nghỉ trong đơn nhiều khoản (khoản chính và các khoản bổ sung cùng lần gửi).
+class HrmLeaveGroupRange {
+  final String id;
+  final String fromDate;
+  final String toDate;
+  final String? fromAt;
+  final String? toAt;
+  final double duration;
+  final String status;
+
+  String get displayPeriod {
+    if (fromAt != null && toAt != null && fromAt!.isNotEmpty && toAt!.isNotEmpty) {
+      final fromStr = AttendanceCorrection.formatDateTimeStr(fromAt!);
+      final toStr = AttendanceCorrection.formatDateTimeStr(toAt!);
+      return '$fromStr -> $toStr';
+    }
+    final f = AttendanceCorrection.formatDateStr(fromDate);
+    final t = AttendanceCorrection.formatDateStr(toDate);
+    return (f != t && t.isNotEmpty) ? '$f -> $t' : f;
+  }
+
+  HrmLeaveGroupRange({
+    required this.id,
+    required this.fromDate,
+    required this.toDate,
+    this.fromAt,
+    this.toAt,
+    required this.duration,
+    required this.status,
+  });
+
+  factory HrmLeaveGroupRange.fromJson(Map<String, dynamic> json) {
+    return HrmLeaveGroupRange(
+      id: json['id']?.toString() ?? '',
+      fromDate: json['fromDate']?.toString() ?? json['from_date']?.toString() ?? '',
+      toDate: json['toDate']?.toString() ?? json['to_date']?.toString() ?? '',
+      fromAt: json['fromAt']?.toString() ?? json['from_at']?.toString(),
+      toAt: json['toAt']?.toString() ?? json['to_at']?.toString(),
+      duration: (json['duration'] as num?)?.toDouble() ?? 1.0,
+      status: json['status']?.toString() ?? 'PENDING',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'fromDate': fromDate,
+    'toDate': toDate,
+    if (fromAt != null) 'fromAt': fromAt,
+    if (toAt != null) 'toAt': toAt,
+    'duration': duration,
+    'status': status,
+  };
 }
 
 class HrmShift {
@@ -59,6 +138,8 @@ class HrmShift {
   final int breakMinutes;
   final int graceLateMinutes;
   final int graceEarlyMinutes;
+  final int checkInBeforeMinutes;
+  final int checkOutAfterMinutes;
 
   HrmShift({
     required this.id,
@@ -69,6 +150,8 @@ class HrmShift {
     this.breakMinutes = 90,
     this.graceLateMinutes = 10,
     this.graceEarlyMinutes = 5,
+    this.checkInBeforeMinutes = 120,
+    this.checkOutAfterMinutes = 240,
   });
 
   /// Server returns the shift as `{ window: { start, end, breakMinutes, ... } }` with ISO instants.
@@ -76,7 +159,7 @@ class HrmShift {
     if (iso == null) return null;
     final dt = DateTime.tryParse(iso.toString());
     if (dt == null) return null;
-    final l = dt.toLocal();
+    final l = (dt.isUtc || iso.toString().endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
     return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}:00';
   }
 
@@ -92,6 +175,8 @@ class HrmShift {
         breakMinutes: (window['breakMinutes'] as num?)?.toInt() ?? 0,
         graceLateMinutes: (window['graceLateMinutes'] as num?)?.toInt() ?? 0,
         graceEarlyMinutes: (window['graceEarlyMinutes'] as num?)?.toInt() ?? 0,
+        checkInBeforeMinutes: (window['checkInBeforeMinutes'] as num?)?.toInt() ?? 120,
+        checkOutAfterMinutes: (window['checkOutAfterMinutes'] as num?)?.toInt() ?? 240,
       );
     }
     return HrmShift(
@@ -103,6 +188,8 @@ class HrmShift {
       breakMinutes: (json['break_minutes'] ?? json['breakMinutes'] as num?)?.toInt() ?? 90,
       graceLateMinutes: (json['grace_late_minutes'] ?? json['graceLateMinutes'] as num?)?.toInt() ?? 10,
       graceEarlyMinutes: (json['grace_early_minutes'] ?? json['graceEarlyMinutes'] as num?)?.toInt() ?? 5,
+      checkInBeforeMinutes: (json['check_in_before_minutes'] ?? json['checkInBeforeMinutes'] as num?)?.toInt() ?? 120,
+      checkOutAfterMinutes: (json['check_out_after_minutes'] ?? json['checkOutAfterMinutes'] as num?)?.toInt() ?? 240,
     );
   }
 }
@@ -301,6 +388,9 @@ class AttendanceCorrection {
   final String createdAt;
   final String? rejectionReason;
   final Map<String, dynamic>? rawDetails;
+  final String? groupId;
+  final List<HrmLeaveGroupRange>? groupRanges;
+  final String? nextDayRest;
 
   AttendanceCorrection({
     required this.id,
@@ -329,6 +419,9 @@ class AttendanceCorrection {
     required this.createdAt,
     this.rejectionReason,
     this.rawDetails,
+    this.groupId,
+    this.groupRanges,
+    this.nextDayRest,
   });
 
   static String formatEffectiveDate(Map<String, dynamic> json, {String? defaultDate}) {
@@ -371,7 +464,7 @@ class AttendanceCorrection {
     return _formatDateStr(requestDate ?? DateTime.now().toIso8601String());
   }
 
-  static String _formatDateStr(String val) {
+  static String formatDateStr(String val) {
     if (val.length >= 10 && val.contains('-')) {
       final parts = val.substring(0, 10).split('-');
       if (parts.length == 3) {
@@ -381,18 +474,23 @@ class AttendanceCorrection {
     return val;
   }
 
-  static String _formatDateTimeStr(String iso) {
-    final dt = DateTime.tryParse(iso)?.toLocal();
-    if (dt != null) {
+  static String formatDateTimeStr(String iso) {
+    final parsed = DateTime.tryParse(iso);
+    if (parsed != null) {
+      // Đảm bảo luôn quy đổi chuẩn sang giờ Việt Nam (UTC+7)
+      final dt = (parsed.isUtc || iso.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
       final d = dt.day.toString().padLeft(2, '0');
       final m = dt.month.toString().padLeft(2, '0');
       final y = dt.year.toString();
       final h = dt.hour.toString().padLeft(2, '0');
       final min = dt.minute.toString().padLeft(2, '0');
-      return '$d/$m/$y $h:$min';
+      return '$h:$min $d/$m/$y';
     }
     return iso;
   }
+
+  static String _formatDateStr(String val) => formatDateStr(val);
+  static String _formatDateTimeStr(String iso) => formatDateTimeStr(iso);
 
   factory AttendanceCorrection.fromJson(
     Map<String, dynamic> json, {
@@ -558,6 +656,23 @@ class AttendanceCorrection {
     final rawFrom = json['from_date']?.toString() ?? json['fromDate']?.toString() ?? json['start_date']?.toString() ?? cleanDate;
     final rawTo = json['to_date']?.toString() ?? json['toDate']?.toString() ?? json['end_date']?.toString() ?? cleanDate;
 
+    final rawRanges = json['groupRanges'] ?? json['group_ranges'];
+    List<HrmLeaveGroupRange>? groupRanges;
+    if (rawRanges is List) {
+      groupRanges = rawRanges
+          .whereType<Map<String, dynamic>>()
+          .map((r) => HrmLeaveGroupRange.fromJson(r))
+          .toList();
+    }
+
+    if (groupRanges != null && groupRanges.length > 1) {
+      final totalDays = groupRanges.fold<double>(0.0, (acc, r) => acc + r.duration);
+      durationText = '${totalDays.toStringAsFixed(totalDays % 1 == 0 ? 0 : 1)} ngày (${groupRanges.length} khoản)';
+    }
+
+    final nextDayRest = json['nextDayRest']?.toString() ?? json['next_day_rest']?.toString();
+    final groupId = json['groupId']?.toString() ?? json['group_id']?.toString();
+
     return AttendanceCorrection(
       id: id,
       code: computedCode,
@@ -585,6 +700,9 @@ class AttendanceCorrection {
       createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString() ?? DateTime.now().toIso8601String(),
       rejectionReason: json['rejection_reason']?.toString() ?? json['rejectionReason']?.toString(),
       rawDetails: json,
+      groupId: groupId,
+      groupRanges: groupRanges,
+      nextDayRest: nextDayRest,
     );
   }
 

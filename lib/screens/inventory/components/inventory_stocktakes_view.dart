@@ -287,7 +287,7 @@ class _InventoryStocktakesViewState extends State<InventoryStocktakesView> {
 
     final dateStr = session.stocktakeDate != null && session.stocktakeDate!.isNotEmpty
         ? session.stocktakeDate!
-        : DateFormat('dd/MM/yyyy HH:mm').format(session.createdAt);
+        : DateFormat('HH:mm dd/MM/yyyy').format(session.createdAt);
 
     return InkWell(
       onTap: () => StocktakeDetailSheet.show(

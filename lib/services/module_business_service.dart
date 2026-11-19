@@ -28,12 +28,18 @@ class ModuleBusinessService {
       try {
         final response = await _dio.get(ep);
         if (response.statusCode == 200 && response.data != null) {
-          final data = response.data is Map<String, dynamic> ? response.data : null;
+          final Map<String, dynamic>? data = response.data is Map
+              ? Map<String, dynamic>.from(response.data as Map)
+              : null;
           if (data != null) {
-            return ProcedureWorkspaceData.fromJson(data as Map<String, dynamic>);
+            final ws = ProcedureWorkspaceData.fromJson(data);
+            debugPrint('[ModuleBusinessService] Procedure workspace ($ep) -> tenant: ${ws.tenantId}, instances: ${ws.instances.length}, defs: ${ws.definitions.length}');
+            return ws;
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[ModuleBusinessService] Procedure workspace ($ep) error: $e');
+      }
     }
     return ProcedureWorkspaceData(instances: [], definitions: []);
   }

@@ -398,7 +398,7 @@
   "attendance.punch.not_checked_in": "Chưa điểm danh vào",
   "attendance.punch.previous_round": "Lượt trước: Vào {in} — Ra {out} (Đã tích lũy {hours}h)",
   "attendance.punch.ready_new_shift": "Sẵn sàng vào ca mới",
-  "attendance.punch.shift_status": "TRẠNG THÁI CA LÀM",
+  "attendance.punch.shift_status": "TRẠNG THÁI CA",
   "attendance.snack.checkin_failed": "Không thể chấm công Vào ca. Vui lòng thử lại.",
   "attendance.snack.checkin_success": "Đã chấm công Vào ca lúc {time} thành công.",
   "attendance.snack.checkout_failed": "Không thể chấm công Ra ca. Vui lòng thử lại.",

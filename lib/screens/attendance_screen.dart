@@ -332,7 +332,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 const Icon(Icons.check_circle_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('attendance.snack.checkin_success'.tr(args: {'time': _formatTime(record.firstCheckInAt)})),
+                Expanded(
+                  child: Text(
+                    'attendance.snack.checkin_success'.tr(args: {'time': _formatTime(record.firstCheckInAt)}),
+                  ),
+                ),
               ],
             ),
             backgroundColor: const Color(0xFF059669),
@@ -395,7 +399,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 const Icon(Icons.check_circle_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('attendance.snack.checkout_success'.tr(args: {'time': _formatTime(record.lastCheckOutAt), 'hours': (record.workedMinutes / 60).toStringAsFixed(1)})),
+                Expanded(
+                  child: Text(
+                    'attendance.snack.checkout_success'.tr(args: {
+                      'time': _formatTime(record.lastCheckOutAt),
+                      'hours': (record.workedMinutes / 60).toStringAsFixed(1),
+                    }),
+                  ),
+                ),
               ],
             ),
             backgroundColor: const Color(0xFF2563EB),
@@ -423,7 +434,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     if (isoString == null || isoString.isEmpty) return '--:--';
     final dt = DateTime.tryParse(isoString);
     if (dt != null) {
-      final local = dt.toLocal();
+      final local = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
       return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
     }
     final match = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(isoString);
@@ -438,7 +449,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   String _formatDate(String isoString) {
     final dt = DateTime.tryParse(isoString);
     if (dt == null) return isoString;
-    final local = dt.toLocal();
+    final local = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
     return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
   }
 
@@ -566,8 +577,35 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   String _fmtDays(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
 
+  HrmShift? get _effectiveTodayShift {
+    if (_context?.shift != null && _context!.shift!.startTime.length >= 5) {
+      return _context!.shift;
+    }
+    // Fallback: Lấy ca đã được xếp lịch cho ngày hôm nay từ Bảng công / Lịch phân ca Roster của nhân viên
+    final now = _currentTime;
+    final todayKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final empId = _context?.employeeId;
+    final boardEmp = (empId != null && empId.isNotEmpty)
+        ? _currentMonthBoard?.findEmployee(empId)
+        : _currentMonthBoard?.myEmployee;
+    final boardDay = boardEmp?.days[todayKey];
+    if (boardDay != null && boardDay.shiftStart != null && boardDay.shiftStart!.length >= 5) {
+      return HrmShift(
+        id: boardDay.shiftCode ?? 's-assigned',
+        code: boardDay.shiftCode ?? 'CA_HC',
+        name: (boardDay.shiftName != null && boardDay.shiftName!.isNotEmpty)
+            ? boardDay.shiftName!
+            : 'models.shift.office_hours'.tr(),
+        startTime: boardDay.shiftStart!,
+        endTime: boardDay.shiftEnd ?? '17:00:00',
+        breakMinutes: boardDay.shiftBreakMinutes,
+      );
+    }
+    return null;
+  }
+
   Widget _buildTodayTab() {
-    final shift = _context?.shift;
+    final shift = _effectiveTodayShift;
     final hasCheckedIn = _todayRecord?.firstCheckInAt != null;
     final hasCheckedOut = _todayRecord?.lastCheckOutAt != null;
 
@@ -760,29 +798,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEFF6FF),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.work_outline_rounded, size: 16, color: Color(0xFF2563EB)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEFF6FF),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'attendance.punch.shift_status'.tr(),
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+                      child: const Icon(Icons.work_outline_rounded, size: 15, color: Color(0xFF2563EB)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'attendance.punch.shift_status'.tr(),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                    ),
+                  ],
                 ),
                 const SizedBox(width: 6),
                 Container(
@@ -923,29 +955,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFECFDF5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.login_rounded, size: 16, color: Color(0xFF059669)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFECFDF5),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'attendance.punch.shift_status'.tr(),
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+                    child: const Icon(Icons.login_rounded, size: 15, color: Color(0xFF059669)),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'attendance.punch.shift_status'.tr(),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  ),
+                ],
               ),
               const SizedBox(width: 6),
               Container(

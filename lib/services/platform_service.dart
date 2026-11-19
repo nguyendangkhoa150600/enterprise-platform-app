@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../utils/error_handler.dart';
@@ -29,15 +31,32 @@ class PlatformService {
         } else if (response.data is Map) {
           rawList = response.data['users'] ?? response.data['data'] ?? response.data['items'];
         }
-        if (rawList is List) {
+        if (rawList is List && rawList.isNotEmpty) {
           final list = rawList.map((e) => TenantUser.fromJson(e as Map<String, dynamic>)).toList();
           for (final u in list) {
             UserResolver.registerUser(u.id, u.fullName, email: u.email, username: u.username);
           }
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('cached_tenant_users_json', jsonEncode(rawList));
+          } catch (_) {}
           return list;
         }
       }
     } catch (_) {}
+
+    // Fallback to cached users if network/auth temporarily failed
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('cached_tenant_users_json');
+      if (cachedJson != null && cachedJson.isNotEmpty) {
+        final decoded = jsonDecode(cachedJson);
+        if (decoded is List && decoded.isNotEmpty) {
+          return decoded.map((e) => TenantUser.fromJson(e as Map<String, dynamic>)).toList();
+        }
+      }
+    } catch (_) {}
+
     return [];
   }
 
@@ -273,10 +292,28 @@ class PlatformService {
       if (response.statusCode == 200 && response.data != null) {
         final rawList = response.data['modules'] as List<dynamic>? ?? [];
         if (rawList.isNotEmpty) {
-          return rawList.map((e) => ModuleCatalogItem.fromJson(e as Map<String, dynamic>)).toList();
+          final list = rawList.map((e) => ModuleCatalogItem.fromJson(e as Map<String, dynamic>)).toList();
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('cached_module_catalog_json', jsonEncode(rawList));
+          } catch (_) {}
+          return list;
         }
       }
     } catch (_) {}
+
+    // Fallback to cached catalog on network error / token refresh
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('cached_module_catalog_json');
+      if (cachedJson != null && cachedJson.isNotEmpty) {
+        final decoded = jsonDecode(cachedJson);
+        if (decoded is List && decoded.isNotEmpty) {
+          return decoded.map((e) => ModuleCatalogItem.fromJson(e as Map<String, dynamic>)).toList();
+        }
+      }
+    } catch (_) {}
+
     return [];
   }
 

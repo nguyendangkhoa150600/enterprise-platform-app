@@ -30,17 +30,18 @@ void showCorrectionDetailDialog({
           ? attendanceContext.department!
           : '');
 
-  // Format creation time: dd/MM/yyyy HH:mm
+  // Format creation time: HH:mm dd/MM/yyyy
   String formattedCreatedAt = '';
   try {
-    final dt = DateTime.tryParse(c.createdAt)?.toLocal();
-    if (dt != null) {
+    final parsed = DateTime.tryParse(c.createdAt);
+    if (parsed != null) {
+      final dt = (parsed.isUtc || c.createdAt.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
       final d = dt.day.toString().padLeft(2, '0');
       final m = dt.month.toString().padLeft(2, '0');
       final y = dt.year.toString();
       final h = dt.hour.toString().padLeft(2, '0');
       final min = dt.minute.toString().padLeft(2, '0');
-      formattedCreatedAt = '$d/$m/$y $h:$min';
+      formattedCreatedAt = '$h:$min $d/$m/$y';
     } else {
       formattedCreatedAt = c.createdAt;
     }
@@ -256,6 +257,76 @@ void showCorrectionDetailDialog({
                     // 2. Field Details Grid (Matching Web DetailField 1:1)
                     _buildDetailField('Thời gian', displayPeriod),
                     _buildDetailField('Thời lượng', displayDuration),
+                    if (c.nextDayRest != null && c.nextDayRest != 'NONE')
+                      _buildDetailField(
+                        'Hôm sau nghỉ',
+                        c.nextDayRest == 'HALF' ? 'Nghỉ nửa ngày' : 'Nghỉ cả ngày',
+                      ),
+                    if (c.groupRanges != null && c.groupRanges!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Chi tiết các khoản nghỉ',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                                ),
+                                Text(
+                                  '${c.groupRanges!.length} khoản',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ...c.groupRanges!.asMap().entries.map((entry) {
+                              final idx = entry.key;
+                              final r = entry.value;
+                              final periodStr = r.displayPeriod;
+                              return Container(
+                                margin: EdgeInsets.only(top: idx > 0 ? 6 : 0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFF1F5F9)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Khoản ${idx + 1}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                                          const SizedBox(height: 2),
+                                          Text(periodStr, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      '${r.duration.toStringAsFixed(r.duration % 1 == 0 ? 0 : 1)} ngày',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     _buildDetailField('Lý do', c.reason),
                     _buildDetailField('Mô tả', c.description),
                     if (projectName != null && projectName.isNotEmpty)

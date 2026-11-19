@@ -5,6 +5,7 @@ import '../../models/social_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/social_service.dart';
 import 'components/social_composer_box.dart';
+import 'components/social_user_avatar.dart';
 import 'components/social_post_card.dart';
 import 'components/social_comments_sheet.dart';
 import 'components/social_create_post_sheet.dart';
@@ -30,6 +31,7 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
+  SocialPersonProfile? _myProfile;
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _nextCursor;
@@ -217,7 +219,7 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
       limit: 15,
     );
 
-    final results = await Future.wait([topicsFuture, feedFuture]);
+    final results = await Future.wait([topicsFuture, feedFuture, _loadMyProfile()]);
     final topics = results[0] as List<SocialTopic>;
     final page = results[1] as SocialFeedPage;
 
@@ -231,6 +233,18 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
         _isLoading = false;
       });
     }
+  }
+
+  Future<SocialPersonProfile?> _loadMyProfile() async {
+    final uid = AuthProvider.instance?.userId;
+    if (uid != null && uid.isNotEmpty) {
+      final prof = await SocialService().getProfile(uid);
+      if (mounted && prof != null) {
+        setState(() => _myProfile = prof);
+      }
+      return prof;
+    }
+    return null;
   }
 
   Future<void> _loadFeedOnly({bool showLoading = true}) async {
@@ -482,12 +496,189 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
     );
   }
 
+  void _openProfile(String userId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          body: SafeArea(
+            child: SocialProfileView(
+              userId: userId,
+              onBack: () => Navigator.pop(context),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMyProfileCard(AuthProvider auth, String userName) {
+    final position = _myProfile?.position;
+    final unit = _myProfile?.unitName;
+    String subtitle = '';
+    if (position != null && position.isNotEmpty && unit != null && unit.isNotEmpty) {
+      subtitle = '$position · $unit';
+    } else if (position != null && position.isNotEmpty) {
+      subtitle = position;
+    } else if (unit != null && unit.isNotEmpty) {
+      subtitle = unit;
+    } else if (auth.roles.isNotEmpty) {
+      subtitle = auth.roles.first;
+    }
+
+    final postCount = _myProfile?.postCount ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top banner decoration matching web
+            Container(
+              height: 52,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFDBEAFE), Color(0xFFEFF6FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Transform.translate(
+                    offset: const Offset(0, -26),
+                    child: Container(
+                      padding: const EdgeInsets.all(3.5),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: SocialUserAvatar(
+                        user: SocialUserRef(
+                          id: auth.userId ?? '',
+                          name: userName,
+                          avatarUrl: _myProfile?.user.avatarUrl,
+                        ),
+                        radius: 28,
+                      ),
+                    ),
+                  ),
+                  Transform.translate(
+                    offset: const Offset(0, -18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        if (subtitle.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '$postCount bài viết',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                if (auth.userId != null) {
+                                  _openProfile(auth.userId!);
+                                }
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                child: Text(
+                                  'Trang cá nhân',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     _ensureAnimation();
     final auth = context.watch<AuthProvider>();
     final userName = auth.fullName ?? 'Bạn';
     final showComposer = _activeSection == 'feed' || _activeSection == 'wall';
+    final showMyProfile = _activeSection == 'feed' && _selectedTopicId == null && _activeGroupId == null && _searchQuery.isEmpty;
+    final topPadding = MediaQuery.of(context).padding.top + 146;
+
+    final topWidgets = <Widget>[];
+    final banner = _buildSectionBanner();
+    if (banner is! SizedBox) {
+      topWidgets.add(banner);
+    }
+    if (showMyProfile) {
+      topWidgets.add(_buildMyProfileCard(auth, userName));
+    }
+    if (showComposer) {
+      topWidgets.add(SocialComposerBox(
+        user: SocialUserRef(
+          id: auth.userId ?? '',
+          name: userName,
+          avatarUrl: _myProfile?.user.avatarUrl,
+        ),
+        onTap: _openCreatePost,
+      ));
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -503,14 +694,14 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
           // 1. Body Content
           if (_activeSection == 'groups')
             Padding(
-              padding: const EdgeInsets.only(top: 142),
+              padding: EdgeInsets.only(top: topPadding),
               child: SocialGroupsView(
                 onGroupSelected: _onGroupSelected,
               ),
             )
           else if (_activeSection == 'profile')
             Padding(
-              padding: const EdgeInsets.only(top: 142),
+              padding: EdgeInsets.only(top: topPadding),
               child: SocialProfileView(
                 userId: auth.userId ?? '',
                 onBack: () {
@@ -525,25 +716,17 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
             NotificationListener<UserScrollNotification>(
               onNotification: _handleScrollNotification,
               child: RefreshIndicator(
-                edgeOffset: 140,
+                edgeOffset: topPadding - 10,
                 onRefresh: () => _loadFeedOnly(showLoading: false),
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _posts.isEmpty
                         ? ListView(
                             controller: _scrollController,
-                            padding: const EdgeInsets.fromLTRB(12, 142, 12, 80),
+                            padding: EdgeInsets.fromLTRB(12, topPadding, 12, 80),
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: [
-                              _buildSectionBanner(),
-                              if (showComposer)
-                                SocialComposerBox(
-                                  user: SocialUserRef(
-                                    id: auth.userId ?? '',
-                                    name: userName,
-                                  ),
-                                  onTap: _openCreatePost,
-                                ),
+                              ...topWidgets,
                               Container(
                                 margin: const EdgeInsets.only(top: 40),
                                 alignment: Alignment.center,
@@ -563,25 +746,15 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
                           )
                         : ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.fromLTRB(12, 142, 12, 80),
+                            padding: EdgeInsets.fromLTRB(12, topPadding, 12, 80),
                             physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: _posts.length + (showComposer ? 2 : 1) + (_isLoadingMore ? 1 : 0),
+                            itemCount: topWidgets.length + _posts.length + (_isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
-                              if (index == 0) {
-                                return _buildSectionBanner();
+                              if (index < topWidgets.length) {
+                                return topWidgets[index];
                               }
 
-                              if (showComposer && index == 1) {
-                                return SocialComposerBox(
-                                  user: SocialUserRef(
-                                    id: auth.userId ?? '',
-                                    name: userName,
-                                  ),
-                                  onTap: _openCreatePost,
-                                );
-                              }
-
-                              final postIndex = index - (showComposer ? 2 : 1);
+                              final postIndex = index - topWidgets.length;
                               if (postIndex < _posts.length) {
                                 final post = _posts[postIndex];
                                 return SocialPostCard(
@@ -671,21 +844,63 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
                                     ),
                                     const SizedBox(width: 4),
                                   ],
-                                  Icon(_sectionIcon, color: const Color(0xFF2563EB), size: 22),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _sectionTitle,
-                                      style: const TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF0F172A),
-                                        letterSpacing: -0.3,
+                                  if (_activeSection == 'feed' && _activeGroupId == null) ...[
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Image.asset(
+                                        'assets/images/svn_logo.png',
+                                        width: 26,
+                                        height: 26,
+                                        fit: BoxFit.cover,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            (auth.tenantSlug != null && auth.tenantSlug!.isNotEmpty)
+                                                ? auth.tenantSlug!.toUpperCase()
+                                                : 'SVN DTS',
+                                            style: const TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0F172A),
+                                              letterSpacing: -0.2,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const Text(
+                                            'Mạng nội bộ',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Icon(_sectionIcon, color: const Color(0xFF2563EB), size: 22),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _sectionTitle,
+                                        style: const TextStyle(
+                                          fontSize: 16.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF0F172A),
+                                          letterSpacing: -0.3,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                   IconButton(
                                     icon: const Icon(Icons.refresh, size: 20, color: Color(0xFF64748B)),
                                     onPressed: () {

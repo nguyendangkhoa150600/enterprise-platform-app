@@ -40,7 +40,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Navigation states
   int _mobileNavIndex = 0; // 0: Home, 1: Modules, 2: People, 3: Profile
   String _desktopTab = 'Dashboard';
@@ -56,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<HrmRequestItem> _pendingHrmRequests = [];
   final ModuleBusinessService _businessService = ModuleBusinessService();
   final HrmService _hrmService = HrmService();
+  DateTime? _lastDataLoadTime;
 
   final ScrollController _attentionScrollController = ScrollController();
   final ScrollController _requestsScrollController = ScrollController();
@@ -64,25 +65,80 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAllPlatformData();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _attentionScrollController.dispose();
     _requestsScrollController.dispose();
     _homeOrgScrollController.dispose();
     super.dispose();
   }
 
-  bool _canAttend(BuildContext context) =>
-      _hasModule('hrm') && context.watch<HrmCapabilities>().pageAllowed('/my-work');
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final now = DateTime.now();
+      // Auto-resync when returning to foreground if more than 20 seconds elapsed
+      if (_lastDataLoadTime == null || now.difference(_lastDataLoadTime!).inSeconds > 20) {
+        _resyncOnResume();
+      }
+    }
+  }
+
+  Future<void> _resyncOnResume() async {
+    await AuthProvider.silentRelogin();
+    if (mounted) {
+      _loadAllPlatformData(silent: true);
+    }
+  }
+
+  bool _canAttend(BuildContext context) {
+    // If modules catalog is loaded and explicitly doesn't have active HRM, hide
+    if (_modules.isNotEmpty && !_hasModule('hrm')) {
+      return false;
+    }
+    final auth = context.watch<AuthProvider>();
+    // Admins and owners can always attend/test attendance
+    if (auth.isAdmin || auth.isTenantAdmin || auth.isPlatformAdmin) {
+      return true;
+    }
+    final hrmCaps = context.watch<HrmCapabilities>();
+    // Allow if user has HRM permission, or if capabilities are still loading / cache is empty
+    if (!hrmCaps.loaded || hrmCaps.actions.isEmpty) {
+      return true;
+    }
+    return hrmCaps.pageAllowed('/my-work') ||
+        hrmCaps.can('hrm.self.read') ||
+        hrmCaps.can('hrm.self.attendance') ||
+        hrmCaps.can('hrm.attendance.read');
+  }
 
   /// The catalog is already filtered by the server to the modules this user's roles can open.
-  bool _hasModule(String key) => _modules.any((m) => m.key == key && m.isActive);
+  bool _hasModule(String key) {
+    if (_modules.isEmpty) return true;
+    final k = key.toLowerCase();
+    return _modules.any((m) {
+      final mk = m.key.toLowerCase();
+      if (k == 'hrm') {
+        return (mk == 'hrm' ||
+                mk == 'human-resource' ||
+                mk == 'human_resource' ||
+                mk.contains('hrm')) &&
+            m.isActive;
+      }
+      return (mk == k || mk.replaceAll('-', '_') == k.replaceAll('-', '_')) &&
+          m.isActive;
+    });
+  }
 
-  Future<void> _loadAllPlatformData() async {
-    setState(() => _isLoadingData = true);
+  Future<void> _loadAllPlatformData({bool silent = false}) async {
+    if (!silent && _modules.isEmpty) {
+      setState(() => _isLoadingData = true);
+    }
     final results = await Future.wait([
       _platformService.getTenantUsers(),
       _platformService.getModuleCatalog(),
@@ -94,12 +150,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (mounted) {
       setState(() {
-        _users = results[0] as List<TenantUser>;
-        _modules = results[1] as List<ModuleCatalogItem>;
-        _orgSnapshot = results[2] as OrganizationSnapshot;
-        _moduleStats = results[3] as HomeModuleStats;
-        _pendingHrmRequests = (results[5] as List<HrmRequestItem>?) ?? [];
+        final newUsers = results[0] as List<TenantUser>;
+        if (newUsers.isNotEmpty || _users.isEmpty) {
+          _users = newUsers;
+        }
+        final newModules = results[1] as List<ModuleCatalogItem>;
+        if (newModules.isNotEmpty || _modules.isEmpty) {
+          _modules = newModules;
+        }
+        final newSnapshot = results[2] as OrganizationSnapshot;
+        if (newSnapshot.nodes.isNotEmpty || _orgSnapshot == null) {
+          _orgSnapshot = newSnapshot;
+        }
+        final newStats = results[3] as HomeModuleStats;
+        _moduleStats = newStats;
+        _pendingHrmRequests = (results[5] as List<HrmRequestItem>?) ?? _pendingHrmRequests;
         _isLoadingData = false;
+        _lastDataLoadTime = DateTime.now();
       });
     }
   }
@@ -164,15 +231,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Mobile / Tablet layout
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF1F5F9),
       drawer: _buildMobileDrawer(authProvider, userName, userInitials, tenantDisplay),
       body: SafeArea(
         child: _isLoadingData
             ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadAllPlatformData,
-                child: _buildMobileBody(userName, userInitials, tenantDisplay),
-              ),
+            : _buildMobileBody(userName, userInitials, tenantDisplay),
       ),
       bottomNavigationBar: _buildMobileBottomBar(),
       floatingActionButton: Builder(
@@ -410,15 +474,27 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildMobileBody(String userName, String userInitials, String tenantDisplay) {
     switch (_mobileNavIndex) {
       case 0:
-        return _buildMobileDashboardView(userName, userInitials, tenantDisplay);
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileDashboardView(userName, userInitials, tenantDisplay),
+        );
       case 1:
-        return _buildMobileModulesView();
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileModulesView(),
+        );
       case 2:
         return const SocialFeedView();
       case 3:
-        return _buildMobileProfileView(userName, userInitials, tenantDisplay);
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileProfileView(userName, userInitials, tenantDisplay),
+        );
       default:
-        return _buildMobileDashboardView(userName, userInitials, tenantDisplay);
+        return RefreshIndicator(
+          onRefresh: _loadAllPlatformData,
+          child: _buildMobileDashboardView(userName, userInitials, tenantDisplay),
+        );
     }
   }
 

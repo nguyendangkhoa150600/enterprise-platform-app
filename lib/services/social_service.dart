@@ -187,6 +187,7 @@ class SocialService {
       final res = await _dio.post(
         '/api/social/v1/posts/$postId/comments',
         data: {
+          'body': content.trim(),
           'content': content.trim(),
           if (parentId != null && parentId.isNotEmpty) 'parentId': parentId,
         },
@@ -200,6 +201,20 @@ class SocialService {
       debugPrint('[SocialService] createComment error: $e');
     }
     return null;
+  }
+
+  /// Thả cảm xúc / react cho bình luận
+  Future<bool> setCommentReaction(String commentId, String? reactionType) async {
+    try {
+      final res = await _dio.put(
+        '/api/social/v1/comments/$commentId/reaction',
+        data: {'type': reactionType},
+      );
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[SocialService] setCommentReaction error: $e');
+      return false;
+    }
   }
 
   /// Xoá bình luận
@@ -255,6 +270,34 @@ class SocialService {
       debugPrint('[SocialService] getProfile error: $e');
     }
     return null;
+  }
+
+  /// Ghim / Bỏ ghim bài viết
+  Future<bool> pinPost(String postId, bool pinned) async {
+    try {
+      final res = await _dio.put(
+        '/api/social/v1/posts/$postId/pin',
+        data: {'pinned': pinned},
+      );
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[SocialService] pinPost error: $e');
+      return false;
+    }
+  }
+
+  /// Cập nhật bài viết (sửa nội dung, bật/tắt bình luận...)
+  Future<bool> updatePost(String postId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.patch(
+        '/api/social/v1/posts/$postId',
+        data: data,
+      );
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[SocialService] updatePost error: $e');
+      return false;
+    }
   }
 
   /// Xoá bài viết

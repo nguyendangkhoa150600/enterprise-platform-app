@@ -156,6 +156,13 @@ class HrmService {
             for (final item in raw) {
               if (item is Map<String, dynamic>) {
                 final id = item['id']?.toString() ?? '';
+                // Đơn nghỉ nhiều khoản: không hiện khoản bổ sung thành dòng riêng (khớp 1:1 với Web isLeaveGroupFollower)
+                if (ep['type'] == HrmRequestType.leave) {
+                  final grpId = item['groupId']?.toString() ?? item['group_id']?.toString();
+                  if (grpId != null && grpId.isNotEmpty && grpId != id) {
+                    continue;
+                  }
+                }
                 if (id.isNotEmpty && !all.any((r) => r.id == id)) {
                   final empId = item['employeeId']?.toString() ?? item['employee_id']?.toString() ?? '';
                   final emp = empMap[empId];

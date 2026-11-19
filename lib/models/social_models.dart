@@ -116,12 +116,45 @@ class SocialTopic {
   }
 }
 
+class SocialPostActivity {
+  final String type; // 'avatar.updated', etc.
+  final Map<String, dynamic> payload;
+
+  const SocialPostActivity({
+    required this.type,
+    this.payload = const {},
+  });
+
+  factory SocialPostActivity.fromJson(Map<String, dynamic> json) {
+    return SocialPostActivity(
+      type: json['type']?.toString() ?? '',
+      payload: (json['payload'] as Map<String, dynamic>?) ?? {},
+    );
+  }
+
+  String get label {
+    switch (type) {
+      case 'avatar.updated':
+        return 'đã cập nhật ảnh đại diện';
+      case 'cover.updated':
+        return 'đã cập nhật ảnh bìa';
+      case 'badge.awarded':
+        return 'nhận được huy hiệu mới';
+      case 'milestone.reached':
+        return 'đạt một mốc kỷ niệm';
+      default:
+        return 'có hoạt động mới';
+    }
+  }
+}
+
 class SocialPost {
   final String id;
   final SocialUserRef author;
   final String kind; // 'post' | 'announcement'
   final String? title;
   final String bodyHtml;
+  final SocialPostActivity? activity;
   final SocialTopic? topic;
   final List<SocialTopic> topics;
   final bool pinned;
@@ -136,6 +169,8 @@ class SocialPost {
   final bool canDelete;
   final bool canPin;
   final bool canComment;
+  final bool canToggleComments;
+  final bool commentsDisabled;
   final bool bookmarked;
   final String? groupName;
 
@@ -145,6 +180,7 @@ class SocialPost {
     this.kind = 'post',
     this.title,
     required this.bodyHtml,
+    this.activity,
     this.topic,
     this.topics = const [],
     this.pinned = false,
@@ -159,6 +195,8 @@ class SocialPost {
     this.canDelete = false,
     this.canPin = false,
     this.canComment = true,
+    this.canToggleComments = false,
+    this.commentsDisabled = false,
     this.bookmarked = false,
     this.groupName,
   });
@@ -207,12 +245,18 @@ class SocialPost {
     final rawGroup = json['group'];
     final groupName = rawGroup is Map ? rawGroup['name']?.toString() : null;
 
+    final activityJson = json['activity'];
+    final activity = activityJson is Map<String, dynamic>
+        ? SocialPostActivity.fromJson(activityJson)
+        : null;
+
     return SocialPost(
       id: json['id']?.toString() ?? '',
       author: author,
       kind: json['kind']?.toString() ?? 'post',
       title: json['title']?.toString(),
       bodyHtml: json['bodyHtml']?.toString() ?? json['body_html']?.toString() ?? json['content']?.toString() ?? '',
+      activity: activity,
       topic: topic,
       topics: topics,
       pinned: json['pinned'] == true,
@@ -227,12 +271,15 @@ class SocialPost {
       canDelete: caps['canDelete'] == true || caps['can_delete'] == true,
       canPin: caps['canPin'] == true || caps['can_pin'] == true,
       canComment: caps['canComment'] != false && caps['can_comment'] != false,
+      canToggleComments: caps['canToggleComments'] == true || caps['can_toggle_comments'] == true,
+      commentsDisabled: json['commentsDisabled'] == true || json['comments_disabled'] == true,
       bookmarked: json['bookmarked'] == true,
       groupName: groupName,
     );
   }
 
   SocialPost copyWith({
+    String? bodyHtml,
     Map<String, int>? reactionCounts,
     int? reactionTotal,
     String? myReaction,
@@ -240,13 +287,16 @@ class SocialPost {
     int? commentCount,
     bool? bookmarked,
     bool? pinned,
+    bool? commentsDisabled,
+    SocialPostActivity? activity,
   }) {
     return SocialPost(
       id: id,
       author: author,
       kind: kind,
       title: title,
-      bodyHtml: bodyHtml,
+      bodyHtml: bodyHtml ?? this.bodyHtml,
+      activity: activity ?? this.activity,
       topic: topic,
       topics: topics,
       pinned: pinned ?? this.pinned,
@@ -261,6 +311,8 @@ class SocialPost {
       canDelete: canDelete,
       canPin: canPin,
       canComment: canComment,
+      canToggleComments: canToggleComments,
+      commentsDisabled: commentsDisabled ?? this.commentsDisabled,
       bookmarked: bookmarked ?? this.bookmarked,
       groupName: groupName,
     );
@@ -274,10 +326,13 @@ class SocialComment {
   final DateTime publishedAt;
   final DateTime? editedAt;
   final String? parentId;
+  final int replyCount;
+  final Map<String, int> reactionCounts;
   final int reactionTotal;
   final String? myReaction;
   final bool canEdit;
   final bool canDelete;
+  final List<SocialComment> replies;
 
   const SocialComment({
     required this.id,
@@ -286,10 +341,13 @@ class SocialComment {
     required this.publishedAt,
     this.editedAt,
     this.parentId,
+    this.replyCount = 0,
+    this.reactionCounts = const {},
     this.reactionTotal = 0,
     this.myReaction,
     this.canEdit = false,
     this.canDelete = false,
+    this.replies = const [],
   });
 
   factory SocialComment.fromJson(Map<String, dynamic> json) {
@@ -299,7 +357,7 @@ class SocialComment {
         : const SocialUserRef(id: '', name: 'Nhân sự');
 
     DateTime pubAt = DateTime.now();
-    final rawPub = json['publishedAt'] ?? json['published_at'];
+    final rawPub = json['createdAt'] ?? json['created_at'] ?? json['publishedAt'] ?? json['published_at'];
     if (rawPub is String) {
       pubAt = DateTime.tryParse(rawPub) ?? DateTime.now();
     }
@@ -310,19 +368,64 @@ class SocialComment {
       editAt = DateTime.tryParse(rawEdit);
     }
 
+    final rawReactions = json['reactionCounts'] ?? json['reaction_counts'];
+    final reactionCounts = <String, int>{};
+    if (rawReactions is Map) {
+      rawReactions.forEach((k, v) {
+        if (v is num) reactionCounts[k.toString()] = v.toInt();
+      });
+    }
+
     final caps = json['capabilities'] as Map<String, dynamic>? ?? {};
+
+    final body = json['body']?.toString() ??
+        json['contentHtml']?.toString() ??
+        json['content_html']?.toString() ??
+        json['content']?.toString() ??
+        '';
 
     return SocialComment(
       id: json['id']?.toString() ?? '',
       author: author,
-      contentHtml: json['contentHtml']?.toString() ?? json['content_html']?.toString() ?? json['content']?.toString() ?? '',
+      contentHtml: body,
       publishedAt: pubAt,
       editedAt: editAt,
       parentId: json['parentId']?.toString() ?? json['parent_id']?.toString(),
-      reactionTotal: (json['reactionTotal'] ?? json['reaction_total'] ?? 0) as int,
+      replyCount: (json['replyCount'] ?? json['reply_count'] ?? 0) as int,
+      reactionCounts: reactionCounts,
+      reactionTotal: (json['reactionTotal'] ??
+              json['reaction_total'] ??
+              reactionCounts.values.fold<int>(0, (a, b) => a + b)) as int,
       myReaction: json['myReaction']?.toString() ?? json['my_reaction']?.toString(),
       canEdit: caps['canEdit'] == true || caps['can_edit'] == true,
       canDelete: caps['canDelete'] == true || caps['can_delete'] == true,
+      replies: const [],
+    );
+  }
+
+  SocialComment copyWith({
+    String? contentHtml,
+    Map<String, int>? reactionCounts,
+    int? reactionTotal,
+    String? myReaction,
+    bool clearMyReaction = false,
+    int? replyCount,
+    List<SocialComment>? replies,
+  }) {
+    return SocialComment(
+      id: id,
+      author: author,
+      contentHtml: contentHtml ?? this.contentHtml,
+      publishedAt: publishedAt,
+      editedAt: editedAt,
+      parentId: parentId,
+      replyCount: replyCount ?? this.replyCount,
+      reactionCounts: reactionCounts ?? this.reactionCounts,
+      reactionTotal: reactionTotal ?? this.reactionTotal,
+      myReaction: clearMyReaction ? null : (myReaction ?? this.myReaction),
+      canEdit: canEdit,
+      canDelete: canDelete,
+      replies: replies ?? this.replies,
     );
   }
 }

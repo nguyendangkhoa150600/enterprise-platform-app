@@ -718,6 +718,31 @@ class HrmAttendanceService {
     return filtered;
   }
 
+  /// Đảm bảo mốc thời gian gửi lên Backend ERP được chuyển về chuẩn UTC ISO 8601 (.000Z)
+  /// khớp chính xác múi giờ Việt Nam (UTC+7 -> UTC)
+  static String _ensureUtcIso(String dtStr, String fallbackDate, String fallbackTime) {
+    if (dtStr.endsWith('Z')) return dtStr;
+    try {
+      DateTime dt;
+      if (dtStr.contains('T')) {
+        dt = DateTime.parse(dtStr);
+      } else {
+        dt = DateTime.parse('${dtStr.isNotEmpty ? dtStr : fallbackDate}T$fallbackTime');
+      }
+      // Trừ 7 tiếng từ giờ Việt Nam (UTC+7) để ra giờ UTC chuẩn cho backend
+      final utc = dt.subtract(const Duration(hours: 7));
+      final y = utc.year.toString().padLeft(4, '0');
+      final m = utc.month.toString().padLeft(2, '0');
+      final d = utc.day.toString().padLeft(2, '0');
+      final h = utc.hour.toString().padLeft(2, '0');
+      final min = utc.minute.toString().padLeft(2, '0');
+      final s = utc.second.toString().padLeft(2, '0');
+      return '$y-$m-${d}T$h:$min:$s.000Z';
+    } catch (_) {
+      return dtStr.endsWith('Z') ? dtStr : '$dtStr.000Z';
+    }
+  }
+
   // 7. Create Attendance Correction / ESS Request (Làm đơn & đồng bộ lên hệ thống)
   Future<AttendanceCorrection> createCorrection({
     String? employeeId,
@@ -742,8 +767,10 @@ class HrmAttendanceService {
     String? destination,
     String? workDepartment,
     String? vehicle,
+    List<Map<String, dynamic>>? extraRanges,
+    String? nextDayRest,
   }) async {
-    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration, draftId: $draftId, requestKind: $requestKind');
+    debugPrint('[HrmAttendanceService] createCorrection START: $reason, date: $requestDate, leaveTypeId: $leaveTypeId, duration: $duration, draftId: $draftId, requestKind: $requestKind, extraRanges: ${extraRanges?.length}, nextDayRest: $nextDayRest');
 
     final cleanReason = reason.contains('] ') ? reason.substring(reason.indexOf('] ') + 2) : reason;
     final lowerReason = reason.toLowerCase();
@@ -751,7 +778,7 @@ class HrmAttendanceService {
     final toDateClean = toDate ?? (newCheckOutAt.length >= 10 ? newCheckOutAt.substring(0, 10) : requestDate);
     final inTimeClean = newCheckInAt.contains('T')
         ? newCheckInAt
-        : (newCheckInAt.length >= 10 ? '${newCheckInAt.substring(0, 10)}T08:00:00' : '${requestDate}T08:00:00');
+        : (newCheckInAt.length >= 10 ? '${newCheckInAt.substring(0, 10)}T07:30:00' : '${requestDate}T07:30:00');
 
     final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
     String? validUuidLeaveTypeId = (leaveTypeId != null && uuidRegex.hasMatch(leaveTypeId)) ? leaveTypeId : null;
@@ -811,8 +838,16 @@ class HrmAttendanceService {
           'toDate': toDateClean,
           'from_date': fromDateClean,
           'to_date': toDateClean,
+          'fromAt': _ensureUtcIso(inTimeClean, fromDateClean, '07:30:00'),
+          'toAt': _ensureUtcIso(newCheckOutAt, toDateClean, '17:00:00'),
           'requestDate': requestDate,
           'request_date': requestDate,
+          if (extraRanges != null && extraRanges.isNotEmpty)
+            'extraRanges': extraRanges.map((r) => {
+              ...r,
+              if (r['fromAt'] != null) 'fromAt': _ensureUtcIso(r['fromAt'].toString(), r['fromDate']?.toString() ?? fromDateClean, '07:30:00'),
+              if (r['toAt'] != null) 'toAt': _ensureUtcIso(r['toAt'].toString(), r['toDate']?.toString() ?? toDateClean, '17:00:00'),
+            }).toList(),
         };
 
         // Step 1: Sync draft to backend first (matching Web persistRequest behavior)
@@ -869,8 +904,11 @@ class HrmAttendanceService {
     if (requestType == 'ATTENDANCE_CORRECTION') {
       try {
         final actualReasonId = reasonId ?? await _resolveReasonIdForKind('ATTENDANCE_CORRECTION');
-        final punchAt = inTimeClean.contains('T') ? inTimeClean : '${requestDate}T08:00:00';
-        final punchIso = DateTime.tryParse(punchAt)?.toUtc().toIso8601String() ?? DateTime.now().toUtc().toIso8601String();
+        final isPunchOut = lowerReason.contains('giờ ra') || lowerReason.contains('checkout') || lowerReason.contains('ra ca');
+        final punchIso = isPunchOut
+            ? _ensureUtcIso(newCheckOutAt, toDateClean, '17:00:00')
+            : _ensureUtcIso(inTimeClean, fromDateClean, '07:30:00');
+        final punchKind = isPunchOut ? 'OUT' : 'IN';
         final response = await _dio.post(
           '/hrm/v1/attendance-corrections',
           data: {
@@ -879,7 +917,7 @@ class HrmAttendanceService {
             if (actualReasonId != null) 'reasonId': actualReasonId,
             'requestDate': requestDate,
             'punches': [
-              {'kind': 'IN', 'at': punchIso}
+              {'kind': punchKind, 'at': punchIso}
             ],
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
             'description': cleanReason.isNotEmpty ? cleanReason : reason,
@@ -930,9 +968,12 @@ class HrmAttendanceService {
             'workDate': fromDateClean,
             'startTime': otStartTime,
             'endTime': otEndTime,
+            'fromAt': _ensureUtcIso(newCheckInAt, fromDateClean, '18:00:00'),
+            'toAt': _ensureUtcIso(newCheckOutAt, toDateClean, '21:00:00'),
             'plannedMinutes': plannedMinutes,
             'otType': 'REGULAR',
             'isNightOt': false,
+            'nextDayRest': nextDayRest ?? 'NONE',
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
             'description': cleanReason.isNotEmpty ? cleanReason : reason,
           },
@@ -959,6 +1000,9 @@ class HrmAttendanceService {
             ? destination.trim()
             : (cleanReason.isNotEmpty ? cleanReason : 'Công tác theo kế hoạch');
 
+        final tripFromAt = _ensureUtcIso(newCheckInAt, fromDateClean, '07:30:00');
+        final tripToAt = _ensureUtcIso(newCheckOutAt, toDateClean, '17:00:00');
+
         final tripRes = await _dio.post(
           '/hrm/v1/business-trip-requests',
           data: {
@@ -971,9 +1015,9 @@ class HrmAttendanceService {
             'destination': dest,
             'fromDate': fromDateClean,
             'toDate': toDateClean,
-            'fromAt': '${fromDateClean}T07:30:00.000Z',
-            'toAt': '${toDateClean}T17:30:00.000Z',
-            'daysCount': duration.ceil() > 0 ? duration.ceil() : 1,
+            'fromAt': tripFromAt,
+            'toAt': tripToAt,
+            'daysCount': duration > 0 ? (duration < 1.0 ? 1 : duration.ceil()) : 1,
             'allowOt': false,
             'reason': cleanReason.isNotEmpty ? cleanReason : reason,
             'description': cleanReason.isNotEmpty ? cleanReason : reason,
@@ -1110,6 +1154,13 @@ class HrmAttendanceService {
             for (final item in raw) {
               if (item is Map<String, dynamic>) {
                 final id = item['id']?.toString() ?? item['code']?.toString() ?? '';
+                // Đơn nghỉ nhiều khoản: không hiện khoản bổ sung thành dòng riêng (khớp 1:1 với Web isLeaveGroupFollower)
+                if (kind == 'leave') {
+                  final grpId = item['groupId']?.toString() ?? item['group_id']?.toString();
+                  if (grpId != null && grpId.isNotEmpty && grpId != id) {
+                    continue;
+                  }
+                }
                 if (id.isNotEmpty && !remoteCorrections.any((c) => c.id == id)) {
                   final approver = directApprovers[id];
                   final parsed = AttendanceCorrection.fromJson(
@@ -1946,6 +1997,47 @@ class HrmAttendanceService {
       debugPrint('[HrmAttendanceService] getEmployeeLeaveBalances error: $e');
     }
     return [];
+  }
+
+  /// Lấy số dư quỹ nghỉ bù khả dụng của nhân viên (khớp 1:1 với compOffApi.availability trên Web)
+  Future<Map<String, dynamic>?> getCompOffAvailability(String employeeId, {String? date}) async {
+    try {
+      final query = <String, dynamic>{'employeeId': employeeId};
+      if (date != null && date.isNotEmpty) query['date'] = date;
+      final res = await _dio.get('/comp-off/availability', queryParameters: query);
+      if (res.statusCode == 200 && res.data != null) {
+        return (res.data['data'] ?? res.data) as Map<String, dynamic>?;
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] getCompOffAvailability error: $e');
+    }
+    return null;
+  }
+
+  /// Dự đoán phân loại giờ làm thêm / ca đêm và hỏi ngày nghỉ sau ca đêm (khớp 1:1 với Web classifyPreview)
+  Future<Map<String, dynamic>?> classifyOtPreview({
+    required String employeeId,
+    required String fromAt,
+    required String toAt,
+    String? nextDayRest,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/overtime-comp/classify-preview',
+        data: {
+          'employeeId': employeeId,
+          'fromAt': fromAt,
+          'toAt': toAt,
+          'nextDayRest': nextDayRest ?? 'NONE',
+        },
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        return (res.data['data'] ?? res.data) as Map<String, dynamic>?;
+      }
+    } catch (e) {
+      debugPrint('[HrmAttendanceService] classifyOtPreview error: $e');
+    }
+    return null;
   }
 }
 

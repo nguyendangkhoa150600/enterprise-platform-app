@@ -25,7 +25,7 @@ void showFleetBookingDetailsSheet({
   required BuildContext context,
   required HrmFleetBooking booking,
 }) {
-  final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+  final dateFormat = DateFormat('HH:mm dd/MM/yyyy');
 
   showModalBottomSheet(
     context: context,

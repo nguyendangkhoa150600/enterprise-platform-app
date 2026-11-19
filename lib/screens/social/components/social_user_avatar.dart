@@ -49,12 +49,20 @@ class SocialUserAvatar extends StatelessWidget {
     return colors[hash % colors.length];
   }
 
+  String _getInitials(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty) return 'U';
+    final parts = clean.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) {
+      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    }
+    return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final avatarUrl = _resolveAvatarUrl();
-    final initials = user.name.trim().isNotEmpty
-        ? user.name.trim().split(' ').last.substring(0, 1).toUpperCase()
-        : 'U';
+    final initials = _getInitials(user.name);
     final bgColor = _getBgColor(user.name);
 
     if (avatarUrl.isEmpty) {

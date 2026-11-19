@@ -154,7 +154,8 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
   String _formatUpdatedTime(String? iso) {
     if (iso == null || iso.isEmpty) return '';
     try {
-      final dt = DateTime.parse(iso).toLocal();
+      final parsed = DateTime.parse(iso);
+      final dt = (parsed.isUtc || iso.endsWith('Z')) ? parsed.add(const Duration(hours: 7)) : parsed;
       final h = dt.hour.toString().padLeft(2, '0');
       final min = dt.minute.toString().padLeft(2, '0');
       return '$h:$min';

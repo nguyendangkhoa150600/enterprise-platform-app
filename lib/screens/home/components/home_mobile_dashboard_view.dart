@@ -57,10 +57,47 @@ class HomeMobileDashboardView extends StatelessWidget {
     this.onRefreshRequests,
   });
 
-  bool _has(String key) => modules.any((m) => m.key == key && m.isActive);
+  bool _has(String key) {
+    if (modules.isEmpty) return true;
+    final k = key.toLowerCase();
+    return modules.any((m) {
+      final mk = m.key.toLowerCase();
+      if (k == 'hrm') {
+        return (mk == 'hrm' ||
+                mk == 'human-resource' ||
+                mk == 'human_resource' ||
+                mk.contains('hrm')) &&
+            m.isActive;
+      }
+      return (mk == k || mk.replaceAll('-', '_') == k.replaceAll('-', '_')) &&
+          m.isActive;
+    });
+  }
+
   bool get _hasProcedure => _has('procedure-engine') || _has('procedure');
   bool get _hasMaintenance => _has('maintenance');
-  bool get _hasHrm => _has('hrm') || _has('human-resource');
+  bool get _hasHrm => _has('hrm');
+
+  bool _canAttend(BuildContext context) {
+    if (!_hasHrm) return false;
+    final auth = context.watch<AuthProvider>();
+    if (auth.isAdmin || auth.isTenantAdmin || auth.isPlatformAdmin) return true;
+    final hrmCaps = context.watch<HrmCapabilities>();
+    if (!hrmCaps.loaded || hrmCaps.actions.isEmpty) return true;
+    return hrmCaps.pageAllowed('/my-work') ||
+        hrmCaps.can('hrm.self.read') ||
+        hrmCaps.can('hrm.self.attendance') ||
+        hrmCaps.can('hrm.attendance.read');
+  }
+
+  bool _canRequests(BuildContext context) {
+    if (!_hasHrm) return false;
+    final auth = context.watch<AuthProvider>();
+    if (auth.isAdmin || auth.isTenantAdmin || auth.isPlatformAdmin) return true;
+    final hrmCaps = context.watch<HrmCapabilities>();
+    if (!hrmCaps.loaded || hrmCaps.actions.isEmpty) return true;
+    return hrmCaps.pageAllowed('/requests') || hrmCaps.can('hrm.self.read');
+  }
 
   int get _activeUsersCount => users.where((u) => u.isActive).length;
   int get _activeModulesCount => modules.where((m) => m.isActive).length;
@@ -243,7 +280,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantChatScreen())),
                 ),
                 const SizedBox(width: 8),
-                if (_has('hrm') && context.watch<HrmCapabilities>().pageAllowed('/my-work')) ...[
+                if (_canAttend(context)) ...[
                   _buildWelcomeActionButton(
                     icon: Icons.fingerprint_rounded,
                     label: 'home.mobile.gps_attendance'.tr(),
@@ -251,7 +288,7 @@ class HomeMobileDashboardView extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                 ],
-                if (_has('hrm') && HrmCapabilities.instance.pageAllowed('/requests')) ...[
+                if (_canRequests(context)) ...[
                   _buildWelcomeActionButton(
                     icon: Icons.assignment_outlined,
                     label: 'home.mobile.my_requests'.tr(),
@@ -928,8 +965,14 @@ class HomeMobileDashboardView extends StatelessWidget {
         onRefreshData: () {
           onRefreshRequests?.call();
         },
-        formatDate: (dt) => '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}',
-        formatTime: (dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
+        formatDate: (dt) {
+          final vn = dt.isUtc ? dt.add(const Duration(hours: 7)) : dt;
+          return '${vn.day.toString().padLeft(2, '0')}/${vn.month.toString().padLeft(2, '0')}/${vn.year}';
+        },
+        formatTime: (dt) {
+          final vn = dt.isUtc ? dt.add(const Duration(hours: 7)) : dt;
+          return '${vn.hour.toString().padLeft(2, '0')}:${vn.minute.toString().padLeft(2, '0')}';
+        },
         formatCurrency: (val) {
           if (val == null) return '0 ₫';
           final s = val.toStringAsFixed(0);

@@ -105,6 +105,7 @@ class HrmShiftsModals {
                   s.breakMinutes > 0 ? 'hrm_screens.shifts.break_mid'.tr(args: {'minutes': s.breakMinutes}) : 'hrm_screens.shifts.break_none'.tr(),
                   'hrm_screens.shifts.hours_value'.tr(args: {'hours': _workedHours(s).toStringAsFixed(1)}),
                   _shiftColors[i % _shiftColors.length],
+                  checkWindow: 'Chấm: -${s.checkInBeforeMinutes}p / +${s.checkOutAfterMinutes}p',
                 );
               },
             );
@@ -114,7 +115,7 @@ class HrmShiftsModals {
     );
   }
 
-  static Widget _buildShiftCard(String title, String hours, String breakTime, String duration, Color color) {
+  static Widget _buildShiftCard(String title, String hours, String breakTime, String duration, Color color, {String? checkWindow}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -138,6 +139,10 @@ class HrmShiftsModals {
                 Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 const SizedBox(height: 2),
                 Text('$hours · $breakTime', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                if (checkWindow != null && checkWindow.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(checkWindow, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+                ],
               ],
             ),
           ),

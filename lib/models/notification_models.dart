@@ -207,6 +207,20 @@ class NotificationRecord {
       }
     }
 
+    DateTime parseDt(dynamic raw) {
+      if (raw == null) return DateTime.now();
+      if (raw is DateTime) return raw.toLocal();
+      final s = raw.toString().trim();
+      if (s.isEmpty) return DateTime.now();
+      try {
+        final dt = DateTime.tryParse(s);
+        if (dt != null) {
+          return dt.toLocal();
+        }
+      } catch (_) {}
+      return DateTime.now();
+    }
+
     return NotificationRecord(
       id: json['id']?.toString() ?? '',
       module: NotificationModule.fromString(json['module']?.toString()),
@@ -219,8 +233,8 @@ class NotificationRecord {
       sourceId: extractedSourceId,
       aggregateCount: (json['aggregate_count'] ?? json['aggregateCount'] as num?)?.toInt() ?? 1,
       readAt: json['read_at']?.toString() ?? json['readAt']?.toString(),
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now() : DateTime.now(),
+      createdAt: parseDt(json['createdAt'] ?? json['created_at'] ?? json['occurredAt'] ?? json['occurred_at'] ?? json['timestamp']),
+      updatedAt: parseDt(json['updatedAt'] ?? json['updated_at'] ?? json['createdAt'] ?? json['created_at']),
       sequence: (json['sequence'] as num?)?.toInt() ?? 0,
     );
   }
@@ -260,13 +274,37 @@ class NotificationRecord {
     }
   }
 
+  /// Định dạng thời gian cho thông báo gọn gàng 1 mốc, chống vỡ layout
   String get timeAgo {
-    final diff = DateTime.now().difference(createdAt);
-    if (diff.inMinutes < 1) return 'models.notif.just_now'.tr();
-    if (diff.inMinutes < 60) return 'models.notif.minutes_ago'.tr(args: {'n': diff.inMinutes});
-    if (diff.inHours < 24) return 'models.notif.hours_ago'.tr(args: {'n': diff.inHours});
-    if (diff.inDays < 7) return 'models.notif.days_ago'.tr(args: {'n': diff.inDays});
-    return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
+    final now = DateTime.now();
+    final local = createdAt.toLocal();
+    final diff = now.difference(local);
+
+    if (diff.isNegative || diff.inSeconds < 60) {
+      return 'models.notif.just_now'.tr();
+    }
+    if (diff.inMinutes < 60) {
+      return 'models.notif.minutes_ago'.tr(args: {'n': diff.inMinutes});
+    }
+
+    final isSameDay =
+        local.year == now.year && local.month == now.month && local.day == now.day;
+    if (isSameDay) {
+      return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    }
+
+    final yesterday = now.subtract(const Duration(days: 1));
+    final isYesterday =
+        local.year == yesterday.year && local.month == yesterday.month && local.day == yesterday.day;
+    if (isYesterday) {
+      return 'Hôm qua';
+    }
+
+    if (diff.inDays < 7) {
+      return 'models.notif.days_ago'.tr(args: {'n': diff.inDays});
+    }
+
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
   }
 }
 
