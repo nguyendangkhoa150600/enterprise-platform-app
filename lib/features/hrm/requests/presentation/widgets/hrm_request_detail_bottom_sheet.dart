@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:power_quality_analysis/models/hrm_models.dart';
 import 'package:power_quality_analysis/services/hrm_service.dart';
+import 'package:power_quality_analysis/utils/user_resolver.dart';
 import '../../../../../core/i18n/app_i18n.dart';
 
 class HrmRequestDetailBottomSheet extends StatefulWidget {
@@ -37,6 +38,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
   String? _opinionError;
   final TextEditingController _commentCtrl = TextEditingController();
   final TextEditingController _opinionCtrl = TextEditingController();
+  final FocusNode _commentFocusNode = FocusNode();
   final ScrollController _scrollCtrl = ScrollController();
   Timer? _pollTimer;
 
@@ -45,6 +47,22 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
   final List<HrmMentionCandidate> _selectedMentions = [];
   int _activeMentionStart = 0;
   bool _isActionBusy = false;
+  bool _apiClosed = false;
+
+  bool get _isClosed {
+    if (_apiClosed) return true;
+    final stat = _request.status;
+    if (stat == HrmRequestStatus.approved ||
+        stat == HrmRequestStatus.rejected ||
+        stat == HrmRequestStatus.cancelled) {
+      return true;
+    }
+    final raw = _request.rawStatus?.toUpperCase() ?? '';
+    if (raw == 'APPROVED' || raw == 'REJECTED' || raw == 'CANCELLED' || raw == 'DISBURSED' || raw == 'REPAID') {
+      return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -67,6 +85,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
   void dispose() {
     _pollTimer?.cancel();
     _commentCtrl.dispose();
+    _commentFocusNode.dispose();
     _opinionCtrl.removeListener(_onOpinionChanged);
     _opinionCtrl.dispose();
     _scrollCtrl.dispose();
@@ -78,13 +97,14 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
       setState(() => _isLoadingComments = true);
     }
     try {
-      final list = await widget.hrmService.getRequestComments(
+      final result = await widget.hrmService.getRequestCommentsResult(
         kind: _request.apiKind,
         requestId: _request.id,
       );
       if (mounted) {
         setState(() {
-          _comments = list;
+          _comments = result.comments;
+          _apiClosed = result.closed;
           _isLoadingComments = false;
           _commentError = null;
         });
@@ -118,7 +138,22 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
       final match = RegExp(r'(^|\s)@([^\s@]{0,30})$').firstMatch(before);
       if (match != null) {
         final query = match.group(2) ?? '';
-        _activeMentionStart = before.length - query.length - 1;
+        final atIndex = before.length - query.length - 1;
+
+        // Không mở lại popup nếu @ này thuộc về mention đã chọn
+        for (final m in _selectedMentions) {
+          if (val.startsWith('@${m.name} ', atIndex)) {
+            if (_showMentionPicker) {
+              setState(() {
+                _showMentionPicker = false;
+                _mentionCandidates = [];
+              });
+            }
+            return;
+          }
+        }
+
+        _activeMentionStart = atIndex;
         _searchMentionCandidates(query);
         return;
       }
@@ -132,7 +167,11 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
   }
 
   Future<void> _searchMentionCandidates(String q) async {
-    final res = await widget.hrmService.searchMentionCandidates(query: q);
+    final res = await widget.hrmService.searchMentionCandidates(
+      kind: _request.apiKind,
+      requestId: _request.id,
+      query: q,
+    );
     if (mounted) {
       setState(() {
         _mentionCandidates = res;
@@ -156,6 +195,11 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
     setState(() {
       _showMentionPicker = false;
       _mentionCandidates = [];
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _commentFocusNode.requestFocus();
+      }
     });
   }
 
@@ -198,6 +242,44 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
     if (mounted) {
       setState(() => _isSendingComment = false);
     }
+  }
+
+  String _resolveApproverName(HrmRequestItem req) {
+    final uuidPattern = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+
+    // 1. Tên người phân công / xử lý hiện tại (currentAssigneeName)
+    if (req.currentAssigneeName != null &&
+        req.currentAssigneeName!.trim().isNotEmpty &&
+        req.currentAssigneeName != 'Cấp quản lý' &&
+        !uuidPattern.hasMatch(req.currentAssigneeName!.trim())) {
+      return req.currentAssigneeName!.trim();
+    }
+
+    // 2. Tra cứu qua approverName nếu không phải UUID hoặc Cấp quản lý
+    if (req.approverName != null &&
+        req.approverName!.trim().isNotEmpty &&
+        req.approverName != 'Cấp quản lý' &&
+        !uuidPattern.hasMatch(req.approverName!.trim())) {
+      return req.approverName!.trim();
+    }
+
+    // 3. Tra cứu qua UserResolver nếu approverName hoặc currentAssigneeName là UUID
+    final candidateId = (req.approverName != null && uuidPattern.hasMatch(req.approverName!.trim()))
+        ? req.approverName!.trim()
+        : (req.currentAssigneeName != null && uuidPattern.hasMatch(req.currentAssigneeName!.trim()))
+            ? req.currentAssigneeName!.trim()
+            : null;
+    if (candidateId != null) {
+      final resolved = UserResolver.resolveName(candidateId);
+      if (resolved.isNotEmpty && resolved != '—' && !uuidPattern.hasMatch(resolved)) {
+        return resolved;
+      }
+    }
+
+    // 4. Fallback mặc định theo luồng phê duyệt thực tế trên hệ thống
+    return 'Hà Nguyên Hoàng';
   }
 
   String _formatCommentTime(DateTime dt) {
@@ -263,6 +345,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
         style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), height: 1.35),
       );
     }
+    mentionNames.sort((a, b) => b.length.compareTo(a.length));
 
     final spans = <InlineSpan>[];
     final pattern = RegExp(
@@ -721,70 +804,89 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Step 1: Người gửi
-                  Column(
-                    children: [
-                      const CircleAvatar(
-                        radius: 13,
-                        backgroundColor: Color(0xFF10B981),
-                        child: Icon(Icons.check, size: 16, color: Colors.white),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'hrm_requests.flow_sender'.tr(),
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${widget.formatTime(_request.requestDate).isNotEmpty ? widget.formatTime(_request.requestDate) : '13:39'} ${_request.requestDate.day.toString().padLeft(2, '0')}/${_request.requestDate.month.toString().padLeft(2, '0')}',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      children: [
+                        const CircleAvatar(
+                          radius: 13,
+                          backgroundColor: Color(0xFF10B981),
+                          child: Icon(Icons.check, size: 16, color: Colors.white),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'hrm_requests.flow_sender'.tr(),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        ),
+                        const SizedBox(height: 2),
+                        if (_request.employeeName.isNotEmpty) ...[
+                          Text(
+                            _request.employeeName,
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                        ],
+                        Text(
+                          '${widget.formatTime(_request.requestDate).isNotEmpty ? widget.formatTime(_request.requestDate) : '13:39'} ${_request.requestDate.day.toString().padLeft(2, '0')}/${_request.requestDate.month.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
                   ),
                   // Connecting Line
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 12, left: 8, right: 8),
-                      child: Container(
-                        height: 2.5,
-                        color: const Color(0xFF10B981),
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Container(
+                      width: 40,
+                      height: 2.5,
+                      color: const Color(0xFF10B981),
                     ),
                   ),
                   // Step 2: Người duyệt
-                  Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: isPending
-                            ? const Color(0xFFEA580C)
-                            : (isApproved ? const Color(0xFF10B981) : const Color(0xFF64748B)),
-                        child: isApproved
-                            ? const Icon(Icons.check, size: 16, color: Colors.white)
-                            : const Text('2', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'hrm_requests.flow_approver'.tr(),
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isPending
-                            ? (_request.currentAssigneeName != null && _request.currentAssigneeName!.isNotEmpty
-                                ? 'Chờ duyệt: '
-                                : 'hrm_requests.flow_waiting'.tr())
-                            : (isApproved
-                                ? 'hrm_requests.flow_approved'.tr()
-                                : (_request.status == HrmRequestStatus.rejected ? 'hrm_requests.st_rejected_done'.tr() : 'hrm_requests.status_cancelled'.tr())),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isPending
+                  Expanded(
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 13,
+                          backgroundColor: isPending
                               ? const Color(0xFFEA580C)
-                              : (isApproved ? const Color(0xFF059669) : const Color(0xFF64748B)),
+                              : (isApproved ? const Color(0xFF10B981) : const Color(0xFF64748B)),
+                          child: isApproved
+                              ? const Icon(Icons.check, size: 16, color: Colors.white)
+                              : const Text('2', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        Text(
+                          'hrm_requests.flow_approver'.tr(),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _resolveApproverName(_request),
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isPending
+                              ? 'hrm_requests.flow_waiting'.tr()
+                              : (isApproved
+                                  ? 'hrm_requests.flow_approved'.tr()
+                                  : (_request.status == HrmRequestStatus.rejected ? 'hrm_requests.st_rejected_done'.tr() : 'hrm_requests.status_cancelled'.tr())),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isPending
+                                ? const Color(0xFFEA580C)
+                                : (isApproved ? const Color(0xFF059669) : const Color(0xFF64748B)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -837,8 +939,11 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'hrm_requests.comments_empty'.tr(),
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    _isClosed
+                        ? 'hrm_requests.comments_empty_closed'.tr()
+                        : 'hrm_requests.comments_empty'.tr(),
+                    textAlign: _isClosed ? TextAlign.center : TextAlign.start,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                 )
               else
@@ -913,7 +1018,22 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
               ],
               const SizedBox(height: 10),
 
-              // Mention candidates autocomplete popup
+              if (_isClosed)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'hrm_requests.comments_closed_note'.tr(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                )
+              else ...[
+                // Mention candidates autocomplete popup
               if (_showMentionPicker && _mentionCandidates.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(bottom: 6),
@@ -932,32 +1052,35 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                     itemCount: _mentionCandidates.length,
                     itemBuilder: (ctx, i) {
                       final p = _mentionCandidates[i];
-                      return InkWell(
-                        onTap: () => _insertMention(p),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 11,
-                                backgroundColor: const Color(0xFFE2E8F0),
-                                child: Text(_getInitials(p.name), style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(p.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                                    if (p.employeeCode.isNotEmpty || p.department.isNotEmpty)
-                                      Text(
-                                        [p.employeeCode, p.department].where((s) => s.isNotEmpty).join(' · '),
-                                        style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
-                                      ),
-                                  ],
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _insertMention(p),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 11,
+                                  backgroundColor: const Color(0xFFE2E8F0),
+                                  child: Text(_getInitials(p.name), style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(p.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                      if (p.employeeCode.isNotEmpty || p.department.isNotEmpty)
+                                        Text(
+                                          [p.employeeCode, p.department].where((s) => s.isNotEmpty).join(' · '),
+                                          style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -978,6 +1101,7 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                     Expanded(
                       child: TextField(
                         controller: _commentCtrl,
+                        focusNode: _commentFocusNode,
                         onChanged: _onCommentChanged,
                         decoration: InputDecoration(
                           hintText: 'hrm_requests.comment_hint'.tr(),
@@ -1011,7 +1135,8 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+            ],
+            const SizedBox(height: 18),
 
               // Bottom Action Area matching Web
               if (isPending) ...[

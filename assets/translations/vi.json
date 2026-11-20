@@ -1982,6 +1982,8 @@
   "hrm_requests.bulk_title": "Phê duyệt hàng loạt",
   "hrm_requests.comment_hint": "Viết trao đổi... gõ @ để nhắc tên",
   "hrm_requests.comments_empty": "Chưa có trao đổi nào. Gõ @ để nhắc tên người cần xem đơn này.",
+  "hrm_requests.comments_empty_closed": "Chưa có trao đổi nào.",
+  "hrm_requests.comments_closed_note": "Đơn đã huỷ, rút hoặc hoàn tất xử lý nên không thể trao đổi thêm.",
   "hrm_requests.comments_loading": "Đang tải trao đổi...",
   "hrm_requests.comments_title": "Trao đổi và ý kiến ({count})",
   "hrm_requests.detail_title": "Chi tiết đơn",

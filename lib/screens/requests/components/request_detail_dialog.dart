@@ -2,6 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/hrm_attendance_models.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../utils/user_resolver.dart';
+
+String _resolveApproverName(AttendanceCorrection c) {
+  final uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
+  // 1. Tên người duyệt đã có sẵn dạng chuỗi hợp lệ (không phải null, không phải UUID, không phải nhãn chức vụ)
+  if (c.approver != null &&
+      c.approver!.trim().isNotEmpty &&
+      c.approver != 'Cấp quản lý' &&
+      !uuidPattern.hasMatch(c.approver!.trim())) {
+    return c.approver!.trim();
+  }
+
+  // 2. Tra cứu qua UserResolver nếu c.approver là UUID
+  if (c.approver != null && uuidPattern.hasMatch(c.approver!.trim())) {
+    final resolved = UserResolver.resolveName(c.approver!.trim());
+    if (resolved.isNotEmpty && resolved != '—' && !uuidPattern.hasMatch(resolved)) {
+      return resolved;
+    }
+  }
+
+  // 3. Tra cứu qua rawDetails (currentAssigneeName hoặc approvedBy)
+  if (c.rawDetails != null) {
+    final assignee = c.rawDetails!['currentAssigneeName']?.toString() ??
+        c.rawDetails!['assigneeName']?.toString() ??
+        c.rawDetails!['approvedByName']?.toString();
+    if (assignee != null && assignee.trim().isNotEmpty && !uuidPattern.hasMatch(assignee.trim())) {
+      return assignee.trim();
+    }
+
+    final approvedBy = c.rawDetails!['approvedBy']?.toString() ?? c.rawDetails!['approved_by']?.toString();
+    if (approvedBy != null && approvedBy.trim().isNotEmpty) {
+      final resolved = UserResolver.resolveName(approvedBy.trim());
+      if (resolved.isNotEmpty && resolved != '—' && !uuidPattern.hasMatch(resolved)) {
+        return resolved;
+      }
+    }
+  }
+
+  // 4. Fallback mặc định theo luồng phê duyệt HRM
+  return 'Hà Nguyên Hoàng';
+}
 
 void showCorrectionDetailDialog({
   required BuildContext context,
@@ -456,7 +500,7 @@ void showCorrectionDetailDialog({
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      c.approver ?? 'Hà Nguyên Hoàng',
+                                      _resolveApproverName(c),
                                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
                                     ),
                                     const SizedBox(height: 2),
@@ -511,36 +555,56 @@ void showCorrectionDetailDialog({
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: const Color(0xFFF1F5F9)),
                       ),
-                      child: const Text(
-                        'Chưa có trao đổi nào. Gõ @ để nhắc tên người cần xem đơn này.',
-                        style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                      child: Text(
+                        (c.status == 'APPROVED' || c.status == 'REJECTED' || c.status == 'CANCELLED')
+                            ? 'Chưa có trao đổi nào.'
+                            : 'Chưa có trao đổi nào. Gõ @ để nhắc tên người cần xem đơn này.',
+                        textAlign: (c.status == 'APPROVED' || c.status == 'REJECTED' || c.status == 'CANCELLED')
+                            ? TextAlign.center
+                            : TextAlign.start,
+                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: const [
-                          Expanded(
-                            child: Text(
-                              'Viết trao đổi... gõ @ để nhắc người liên quan...',
-                              style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                    if (c.status == 'APPROVED' || c.status == 'REJECTED' || c.status == 'CANCELLED')
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Đơn đã huỷ, rút hoặc hoàn tất xử lý nên không thể trao đổi thêm.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: const [
+                            Expanded(
+                              child: Text(
+                                'Viết trao đổi... gõ @ để nhắc người liên quan...',
+                                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          Icon(Icons.attach_file_rounded, size: 16, color: Color(0xFF94A3B8)),
-                          SizedBox(width: 8),
-                          Icon(Icons.send_rounded, size: 16, color: Color(0xFFF59E0B)),
-                        ],
+                            Icon(Icons.attach_file_rounded, size: 16, color: Color(0xFF94A3B8)),
+                            SizedBox(width: 8),
+                            Icon(Icons.send_rounded, size: 16, color: Color(0xFFF59E0B)),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

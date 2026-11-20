@@ -1,4 +1,5 @@
 import '../core/i18n/app_i18n.dart';
+import '../utils/user_resolver.dart';
 import 'hrm_attendance_models.dart';
 enum HrmRequestType {
   leave,
@@ -375,7 +376,19 @@ class HrmRequestItem {
       amount: (json['amount'] as num?)?.toDouble(),
       reason: reasonStr,
       status: resolveStatus(rawStat),
-      approverName: json['approver_name'] ?? json['approverName'] ?? json['approvedBy'],
+      approverName: () {
+        final raw = json['approver_name'] ?? json['approverName'] ?? json['approvedBy'] ?? json['approved_by'];
+        if (raw == null) return null;
+        final rawStr = raw.toString().trim();
+        final resolved = UserResolver.resolveName(rawStr);
+        if (resolved.isNotEmpty &&
+            resolved != '—' &&
+            !RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+                .hasMatch(resolved)) {
+          return resolved;
+        }
+        return rawStr;
+      }(),
       approvedAt: parseVnDateTime(json['approved_at'] ?? json['approvedAt']),
       rejectionReason: json['rejection_reason'] ?? json['rejectionReason'],
       note: json['note']?.toString(),
@@ -401,6 +414,7 @@ class HrmRequestItem {
 
 class HrmEmployeeItem {
   final String id;
+  final String? userId;
   final String code;
   final String fullName;
   final String email;
@@ -432,6 +446,7 @@ class HrmEmployeeItem {
 
   const HrmEmployeeItem({
     required this.id,
+    this.userId,
     required this.code,
     required this.fullName,
     required this.email,
@@ -502,6 +517,7 @@ class HrmEmployeeItem {
 
     return HrmEmployeeItem(
       id: json['id']?.toString() ?? json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? json['user_id']?.toString(),
       code: rawCode?.toString() ?? 'EMP-000',
       fullName: _extractName(rawName, 'models.employee.unnamed'.tr()),
       email: rawEmail?.toString() ?? '',
@@ -972,5 +988,16 @@ class HrmRequestComment {
     );
   }
 }
+
+class HrmRequestCommentsResult {
+  final List<HrmRequestComment> comments;
+  final bool closed;
+
+  const HrmRequestCommentsResult({
+    required this.comments,
+    this.closed = false,
+  });
+}
+
 
 

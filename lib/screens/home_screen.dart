@@ -23,6 +23,12 @@ import './workspace_screen.dart';
 import './communication_hub_screen.dart';
 import '../providers/chat_provider.dart';
 import '../features/crm/presentation/screens/crm_hub_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_overview_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_mine_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_incoming_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_outgoing_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_archive_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_report_screen.dart';
 import './home/components/home_mobile_profile_view.dart';
 import './home/components/home_mobile_modules_view.dart';
 import './home/components/home_organization_view.dart';
@@ -209,6 +215,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const CrmHubScreen()));
     } else if (key == 'assistant' || key == 'savina-agent' || key == 'ai' || key == 'tro-ly') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationHubScreen(initialIndex: 1)));
+    } else if (key == 'correspondence' || key == 'van-thu' || key == 'correspondence/overview') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceOverviewScreen()));
+    } else if (key == 'correspondence/mine') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceMineScreen()));
+    } else if (key == 'correspondence/incoming' || key == 'cong-van-den') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceIncomingScreen()));
+    } else if (key == 'correspondence/outgoing' || key == 'cong-van-di') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceOutgoingScreen()));
+    } else if (key == 'correspondence/archive' || key == 'kho-luu-tru') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceArchiveScreen()));
+    } else if (key == 'correspondence/reports' || key == 'bao-cao-van-thu') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceReportScreen()));
+    } else if (key.startsWith('correspondence') || key == 'cong-van') {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('home_shell.module_preparing'.tr(args: {'key': 'Văn thư & Sổ công văn'})),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('home_shell.module_preparing'.tr(args: {'key': key}))),
