@@ -507,8 +507,8 @@ extension HrmServiceTimeSettings on HrmService {
     return [];
   }
 
-  // 14. Get Request Comments (Trao Ä‘á»•i vÃ  Ã½ kiáº¿n)
-  Future<List<HrmRequestComment>> getRequestComments({
+  // 14. Get Request Comments (Trao đổi và ý kiến)
+  Future<HrmRequestCommentsResult> getRequestCommentsResult({
     required String kind,
     required String requestId,
   }) async {
@@ -521,16 +521,25 @@ extension HrmServiceTimeSettings on HrmService {
       debugPrint('[HrmService] getRequestComments status=${response.statusCode} data=${response.data}');
       if (response.statusCode == 200 && response.data != null) {
         final raw = response.data['data'] ?? response.data;
+        final closed = response.data['closed'] == true;
         if (raw is List) {
           final list = raw.map((item) => HrmRequestComment.fromJson(item as Map<String, dynamic>)).toList();
-          debugPrint('[HrmService] getRequestComments parsed ${list.length} comments');
-          return list;
+          debugPrint('[HrmService] getRequestComments parsed ${list.length} comments, closed=$closed');
+          return HrmRequestCommentsResult(comments: list, closed: closed);
         }
       }
     } catch (e, stack) {
       debugPrint('[HrmService] getRequestComments ERROR: $e\n$stack');
     }
-    return [];
+    return const HrmRequestCommentsResult(comments: [], closed: false);
+  }
+
+  Future<List<HrmRequestComment>> getRequestComments({
+    required String kind,
+    required String requestId,
+  }) async {
+    final result = await getRequestCommentsResult(kind: kind, requestId: requestId);
+    return result.comments;
   }
 
   // 15. Post Request Comment (Gá»­i trao Ä‘á»•i hoáº·c ghi nháº­n Ã½ kiáº¿n quyáº¿t Ä‘á»‹nh)
@@ -564,13 +573,21 @@ extension HrmServiceTimeSettings on HrmService {
     }
   }
 
-  // 16. Search Mention Candidates (TÃ¬m danh sÃ¡ch @ nháº¯c tÃªn)
-  Future<List<HrmMentionCandidate>> searchMentionCandidates({String query = ''}) async {
+  // 16. Search Mention Candidates (Tìm danh sách @ nhắc tên)
+  Future<List<HrmMentionCandidate>> searchMentionCandidates({
+    String? kind,
+    String? requestId,
+    String query = '',
+  }) async {
     try {
-      debugPrint('[HrmService] searchMentionCandidates q=$query');
+      debugPrint('[HrmService] searchMentionCandidates kind=$kind requestId=$requestId q=$query');
       final response = await _dio.get(
         '/hrm/v1/request-comments/mention-candidates',
-        queryParameters: {'q': query},
+        queryParameters: {
+          if (kind != null && kind.isNotEmpty) 'kind': kind,
+          if (requestId != null && requestId.isNotEmpty) 'requestId': requestId,
+          'q': query,
+        },
       );
       debugPrint('[HrmService] searchMentionCandidates status=${response.statusCode} data=${response.data}');
       if (response.statusCode == 200 && response.data != null) {

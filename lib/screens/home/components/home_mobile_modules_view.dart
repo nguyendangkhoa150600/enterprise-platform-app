@@ -23,6 +23,8 @@ import '../../role_permission_screen.dart';
 import '../../user_management_screen.dart';
 import '../../assistant_chat_screen.dart';
 import '../../enterprise_applications_screen.dart';
+import '../../../features/correspondence/presentation/screens/correspondence_overview_screen.dart';
+import '../../../features/correspondence/presentation/screens/correspondence_mine_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../core/permissions/hrm_permissions.dart';
@@ -540,7 +542,77 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
               ],
             ),
 
-            // 4. BẢO TRÌ (BẢO TRÌ PHÒNG NGỪA)
+            // 4. VĂN THƯ
+            _buildMenuSection(
+              title: 'VĂN THƯ',
+              items: [
+                {
+                  'title': 'Tổng quan',
+                  'visible': true,
+                  'icon': Icons.space_dashboard_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_correspondence_overview.png',
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceOverviewScreen())),
+                },
+                {
+                  'title': 'Cần tôi xử lý',
+                  'visible': true,
+                  'icon': Icons.assignment_ind_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_correspondence_mine.png',
+                  'bg': const Color(0xFFEFF6FF), // Sky 50
+                  'iconColor': const Color(0xFF0284C7),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceMineScreen())),
+                },
+                {
+                  'title': 'Theo dõi đôn đốc',
+                  'visible': true,
+                  'icon': Icons.notifications_active_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_correspondence_tracking.png',
+                  'bg': const Color(0xFFFFFBEB), // Amber 50
+                  'iconColor': const Color(0xFFD97706),
+                  'onTap': () => widget.onOpenModule('correspondence/tracking'),
+                },
+                {
+                  'title': 'Công văn đến',
+                  'visible': true,
+                  'icon': Icons.move_to_inbox_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_correspondence_incoming.png',
+                  'bg': const Color(0xFFEFF6FF), // Blue 50
+                  'iconColor': const Color(0xFF2563EB),
+                  'onTap': () => widget.onOpenModule('correspondence/incoming'),
+                },
+                {
+                  'title': 'Công văn đi',
+                  'visible': true,
+                  'icon': Icons.send_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_correspondence_outgoing.png',
+                  'bg': const Color(0xFFECFDF5), // Emerald 50
+                  'iconColor': const Color(0xFF059669),
+                  'onTap': () => widget.onOpenModule('correspondence/outgoing'),
+                },
+                {
+                  'title': 'Kho lưu trữ',
+                  'visible': true,
+                  'icon': Icons.archive_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_correspondence_archive.png',
+                  'bg': const Color(0xFFFAF5FF), // Purple 50
+                  'iconColor': const Color(0xFF9333EA),
+                  'onTap': () => widget.onOpenModule('correspondence/archive'),
+                },
+                {
+                  'title': 'Báo cáo',
+                  'visible': true,
+                  'icon': Icons.bar_chart_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_correspondence_reports.png',
+                  'bg': const Color(0xFFF0FDF4), // Green 50
+                  'iconColor': const Color(0xFF16A34A),
+                  'onTap': () => widget.onOpenModule('correspondence/reports'),
+                },
+              ],
+            ),
+
+            // 5. BẢO TRÌ (BẢO TRÌ PHÒNG NGỪA)
             _buildMenuSection(
               title: 'BẢO TRÌ',
               items: [
@@ -968,7 +1040,6 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 final item = filteredItems[index];
                 final label = item['title'] as String;
                 final icon = item['icon'] as IconData;
-                final bg = item['bg'] as Color;
                 final iconColor = item['iconColor'] as Color;
                 final onTap = item['onTap'] as VoidCallback;
 
@@ -1003,7 +1074,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                                   width: 54,
                                   height: 54,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Center(
+                                  errorBuilder: (context, error, stackTrace) => Center(
                                     child: Icon(icon, color: iconColor, size: 26),
                                   ),
                                 )
@@ -1047,7 +1118,6 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 final item = filteredItems[index];
                 final label = item['title'] as String;
                 final icon = item['icon'] as IconData;
-                final bg = item['bg'] as Color;
                 final iconColor = item['iconColor'] as Color;
                 final onTap = item['onTap'] as VoidCallback;
 
@@ -1081,7 +1151,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                                     width: 38,
                                     height: 38,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Center(
+                                    errorBuilder: (context, error, stackTrace) => Center(
                                       child: Icon(icon, color: iconColor, size: 20),
                                     ),
                                   )

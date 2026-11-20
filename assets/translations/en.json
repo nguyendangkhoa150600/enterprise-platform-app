@@ -1982,6 +1982,8 @@
   "hrm_requests.bulk_title": "Bulk approval",
   "hrm_requests.comment_hint": "Write a message... type @ to mention someone",
   "hrm_requests.comments_empty": "No discussion yet. Type @ to mention the person who should review this request.",
+  "hrm_requests.comments_empty_closed": "No discussion yet.",
+  "hrm_requests.comments_closed_note": "The request has been cancelled, recalled or closed, so no further discussion can be added.",
   "hrm_requests.comments_loading": "Loading discussion...",
   "hrm_requests.comments_title": "Discussion and comments ({count})",
   "hrm_requests.detail_title": "Request details",

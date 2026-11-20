@@ -1106,25 +1106,61 @@ class HrmAttendanceService {
     final List<AttendanceCorrection> remoteCorrections = [];
     debugPrint('[HrmAttendanceService] getCorrections START with status: $status');
 
-    // 8.1 Fetch direct approvers index (matching Web)
+    // 8.1 Fetch direct approvers index & employee options for name lookup (matching Web)
     final Map<String, String> directApprovers = {};
-    try {
-      final daRes = await _dio.get('/hrm/v1/request-direct-approvers');
-      if (daRes.statusCode == 200 && daRes.data != null) {
-        final list = (daRes.data['data'] as List<dynamic>?) ?? [];
-        for (final item in list) {
-          if (item is Map<String, dynamic>) {
-            final rId = item['requestId']?.toString() ?? '';
-            final aName = item['assigneeName']?.toString() ?? '';
-            if (rId.isNotEmpty && aName.isNotEmpty) {
-              directApprovers[rId] = aName;
+    final Map<String, String> peopleMap = {};
+
+    await Future.wait([
+      () async {
+        try {
+          final daRes = await _dio.get('/hrm/v1/request-direct-approvers');
+          if (daRes.statusCode == 200 && daRes.data != null) {
+            final list = (daRes.data['data'] as List<dynamic>?) ?? [];
+            for (final item in list) {
+              if (item is Map<String, dynamic>) {
+                final rId = item['requestId']?.toString() ?? '';
+                final aName = item['assigneeName']?.toString() ?? '';
+                if (rId.isNotEmpty && aName.isNotEmpty) {
+                  directApprovers[rId] = aName;
+                }
+              }
             }
           }
+        } catch (e) {
+          debugPrint('[HrmAttendanceService] get request-direct-approvers error: $e');
         }
-      }
-    } catch (e) {
-      debugPrint('[HrmAttendanceService] get request-direct-approvers error: $e');
-    }
+      }(),
+      () async {
+        try {
+          final endpoints = [
+            '/hrm/v1/employee-options?page=1&page_size=100',
+            '/api/hrm/v1/employee-options?page=1&page_size=100',
+          ];
+          for (final ep in endpoints) {
+            try {
+              final eoRes = await _dio.get(ep);
+              if (eoRes.statusCode == 200 && eoRes.data != null) {
+                final list = (eoRes.data['data'] as List<dynamic>?) ?? [];
+                for (final item in list) {
+                  if (item is Map<String, dynamic>) {
+                    final eId = item['employeeId']?.toString() ?? '';
+                    final uId = item['userId']?.toString() ?? '';
+                    final fName = item['fullName']?.toString() ?? '';
+                    if (fName.isNotEmpty) {
+                      if (eId.isNotEmpty) peopleMap[eId] = fName;
+                      if (uId.isNotEmpty) peopleMap[uId] = fName;
+                    }
+                  }
+                }
+                if (peopleMap.isNotEmpty) break;
+              }
+            } catch (_) {}
+          }
+        } catch (e) {
+          debugPrint('[HrmAttendanceService] get employee-options error: $e');
+        }
+      }(),
+    ]);
 
     final endpointConfigs = [
       {'ep': '/hrm/v1/ot-requests', 'kind': 'ot', 'prefix': 'OT-'},
@@ -1168,6 +1204,7 @@ class HrmAttendanceService {
                     defaultKind: kind,
                     defaultCodePrefix: prefix,
                     directApproverName: approver,
+                    nameLookup: peopleMap,
                   );
                   remoteCorrections.add(parsed);
                 }

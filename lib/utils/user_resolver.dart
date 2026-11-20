@@ -132,6 +132,9 @@ class UserResolver {
 
   static Future<void> _loadInternal() async {
     try {
+      // 0. Known managers / approvers
+      registerUser('632ee275-2508-4acf-ab20-aa586a3b0afb', 'Hà Nguyên Hoàng');
+
       // 1. Current user
       final auth = AuthProvider.instance;
       if (auth != null && auth.userId != null && auth.userId!.isNotEmpty) {
@@ -150,6 +153,9 @@ class UserResolver {
         final employees = await HrmService().getEmployees();
         for (final e in employees) {
           registerUser(e.id, e.fullName, email: e.email);
+          if (e.userId != null && e.userId!.isNotEmpty) {
+            registerUser(e.userId!, e.fullName, email: e.email);
+          }
         }
       } catch (e) {
         debugPrint('[UserResolver] Error loading employees: $e');

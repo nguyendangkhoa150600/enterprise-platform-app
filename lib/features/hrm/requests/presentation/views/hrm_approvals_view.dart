@@ -133,7 +133,6 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
     return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
   }
 
-  bool _isLoading = false;
   String _approvalTab = 'ALL'; // 'ALL', 'PENDING', 'PROCESSING', 'PROCESSED'
   String _approvalTypeFilter = 'ALL';
   String _approvalDeptFilter = 'ALL';
@@ -229,7 +228,6 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
     );
 
     if (confirm == true) {
-      setState(() => _isLoading = true);
       int successCount = 0;
       for (final id in _selectedApprovalIds) {
         final ok = await _hrmService.approveRequest(id);
@@ -643,7 +641,7 @@ class _HrmApprovalsViewState extends State<HrmApprovalsView> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: filteredList.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final r = filteredList[index];
                   final isPending = r.status == HrmRequestStatus.pending;
