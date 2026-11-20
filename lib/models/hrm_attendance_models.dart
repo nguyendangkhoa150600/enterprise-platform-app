@@ -497,6 +497,7 @@ class AttendanceCorrection {
     String? defaultKind,
     String? defaultCodePrefix,
     String? directApproverName,
+    Map<String, String>? nameLookup,
   }) {
     final rawDate = json['request_date']?.toString() ??
         json['requestDate']?.toString() ??
@@ -620,15 +621,44 @@ class AttendanceCorrection {
     }
 
     // 6. Approver:
-    final approverName = directApproverName ??
-        json['currentAssigneeName']?.toString() ??
-        json['current_assignee_name']?.toString() ??
-        json['approvedByName']?.toString() ??
-        json['approved_by_name']?.toString() ??
-        json['approverName']?.toString() ??
-        json['approver_name']?.toString() ??
-        json['approvedBy']?.toString() ??
-        'Hà Nguyên Hoàng';
+    final uuidPattern = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    );
+
+    String? approverName = directApproverName;
+    if (approverName == null || approverName.isEmpty || uuidPattern.hasMatch(approverName)) {
+      final candidates = [
+        json['currentAssigneeName']?.toString(),
+        json['current_assignee_name']?.toString(),
+        json['approvedByName']?.toString(),
+        json['approved_by_name']?.toString(),
+        json['approverName']?.toString(),
+        json['approver_name']?.toString(),
+      ];
+      for (final c in candidates) {
+        if (c != null && c.trim().isNotEmpty && !uuidPattern.hasMatch(c.trim())) {
+          approverName = c.trim();
+          break;
+        }
+      }
+    }
+
+    if (approverName == null || approverName.isEmpty || uuidPattern.hasMatch(approverName)) {
+      final approvedBy = json['approvedBy']?.toString() ?? json['approved_by']?.toString();
+      if (approvedBy != null && approvedBy.trim().isNotEmpty) {
+        final text = approvedBy.trim();
+        if (nameLookup != null && nameLookup.containsKey(text)) {
+          approverName = nameLookup[text];
+        } else if (!uuidPattern.hasMatch(text)) {
+          approverName = text;
+        }
+      }
+    }
+
+    if (approverName == null || approverName.isEmpty || uuidPattern.hasMatch(approverName)) {
+      approverName = 'Hà Nguyên Hoàng';
+    }
 
     // 7. Employee info:
     final emp = (json['employee'] is Map ? json['employee'] as Map<String, dynamic> : null) ??

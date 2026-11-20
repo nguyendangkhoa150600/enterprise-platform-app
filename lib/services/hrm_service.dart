@@ -124,7 +124,12 @@ class HrmService {
   }
 
   // 2. Get Requests (ÄÆ¡n tá»« cáº§n xá»­ lÃ½ & YÃªu cáº§u)
-  Future<List<HrmRequestItem>> getRequests({String? status, HrmRequestType? type, bool forceRefresh = false}) async {
+  Future<List<HrmRequestItem>> getRequests({
+    String? status,
+    HrmRequestType? type,
+    bool forApproval = true,
+    bool forceRefresh = false,
+  }) async {
     final List<HrmRequestItem> all = [];
 
     // Ensure employees are cached so we can map employeeId -> Name / Code / Dept
@@ -136,14 +141,16 @@ class HrmService {
       }
     } catch (_) {}
 
+    // Web 1:1 - Approvals list always specifies ?forApproval=1 so the backend limits to user's approval scope
+    final q = forApproval ? '?forApproval=1' : '';
     final endpoints = [
-      {'path': '/hrm/v1/leave-requests', 'type': HrmRequestType.leave},
-      {'path': '/hrm/v1/ot-requests', 'type': HrmRequestType.overtime},
-      {'path': '/hrm/v1/attendance-corrections', 'type': HrmRequestType.attendanceCorrection},
-      {'path': '/hrm/v1/business-trip-requests', 'type': HrmRequestType.businessTrip},
-      {'path': '/hrm/v1/shift-change-requests', 'type': HrmRequestType.shiftChange},
-      {'path': '/hrm/v1/salary-advance-requests', 'type': HrmRequestType.advance},
-      {'path': '/hrm/v1/requests', 'type': null},
+      {'path': '/hrm/v1/leave-requests$q', 'type': HrmRequestType.leave},
+      {'path': '/hrm/v1/ot-requests$q', 'type': HrmRequestType.overtime},
+      {'path': '/hrm/v1/attendance-corrections$q', 'type': HrmRequestType.attendanceCorrection},
+      {'path': '/hrm/v1/business-trip-requests$q', 'type': HrmRequestType.businessTrip},
+      {'path': '/hrm/v1/shift-change-requests$q', 'type': HrmRequestType.shiftChange},
+      {'path': '/hrm/v1/salary-advance-requests$q', 'type': HrmRequestType.advance},
+      {'path': '/hrm/v1/requests$q', 'type': null},
     ];
 
     for (final ep in endpoints) {
@@ -156,6 +163,13 @@ class HrmService {
             for (final item in raw) {
               if (item is Map<String, dynamic>) {
                 final id = item['id']?.toString() ?? '';
+                final rawStatus = item['status']?.toString().toUpperCase() ?? '';
+
+                // Web 1:1 - Đơn nhân viên đã rút/hủy (CANCELLED / DRAFT) không cần người quản lý xử lý: ẩn khỏi bảng Đơn từ cần xử lý
+                if (forApproval && (rawStatus == 'CANCELLED' || rawStatus == 'DRAFT')) {
+                  continue;
+                }
+
                 // Đơn nghỉ nhiều khoản: không hiện khoản bổ sung thành dòng riêng (khớp 1:1 với Web isLeaveGroupFollower)
                 if (ep['type'] == HrmRequestType.leave) {
                   final grpId = item['groupId']?.toString() ?? item['group_id']?.toString();
@@ -187,11 +201,14 @@ class HrmService {
       if (approvers.isNotEmpty) {
         for (var i = 0; i < all.length; i++) {
           final req = all[i];
-          if (req.status == HrmRequestStatus.pending && (req.currentAssigneeName == null || req.currentAssigneeName!.isEmpty)) {
-            final name = approvers[req.id];
-            if (name != null && name.isNotEmpty) {
-              all[i] = req.copyWith(currentAssigneeName: name);
-            }
+          final directApprover = approvers[req.id];
+          if (directApprover != null && directApprover.isNotEmpty) {
+            all[i] = req.copyWith(
+              currentAssigneeName: directApprover,
+              approverName: (req.approverName == null || req.approverName!.isEmpty || req.approverName == 'Cấp quản lý')
+                  ? directApprover
+                  : req.approverName,
+            );
           }
         }
       }
