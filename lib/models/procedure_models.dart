@@ -69,6 +69,8 @@ class ProcedureInstanceStep {
   final int? slaHours;
   final String? slaDueAt;
   final String? completedAt;
+  final ProcedureStepIntegration? integration;
+  final ProcedureStepFinanceVoucher? financeVoucher;
 
   ProcedureInstanceStep({
     required this.id,
@@ -82,6 +84,8 @@ class ProcedureInstanceStep {
     this.slaHours,
     this.slaDueAt,
     this.completedAt,
+    this.integration,
+    this.financeVoucher,
   });
 
   factory ProcedureInstanceStep.fromJson(Map<String, dynamic> json) {
@@ -98,11 +102,91 @@ class ProcedureInstanceStep {
       slaHours: (json['slaHours'] as num?)?.toInt(),
       slaDueAt: json['slaDueAt']?.toString(),
       completedAt: json['completedAt']?.toString(),
+      integration: json['integration'] is Map<String, dynamic>
+          ? ProcedureStepIntegration.fromJson(json['integration'] as Map<String, dynamic>)
+          : null,
+      financeVoucher: json['financeVoucher'] is Map<String, dynamic>
+          ? ProcedureStepFinanceVoucher.fromJson(json['financeVoucher'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   bool get isCurrent => status == 'active' || status == 'ready';
   bool get isCompleted => status == 'completed';
+  bool get isFinanceStep =>
+      (integration != null && integration!.isFinance) ||
+      financeVoucher != null ||
+      name.toLowerCase().contains('phiếu chi') ||
+      name.toLowerCase().contains('phiếu thu');
+}
+
+class ProcedureStepIntegration {
+  final String module;
+  final String action;
+  final String voucherKind;
+  final String? returnToStepId;
+
+  ProcedureStepIntegration({
+    required this.module,
+    required this.action,
+    required this.voucherKind,
+    this.returnToStepId,
+  });
+
+  factory ProcedureStepIntegration.fromJson(Map<String, dynamic> json) {
+    return ProcedureStepIntegration(
+      module: json['module']?.toString() ?? '',
+      action: json['action']?.toString() ?? '',
+      voucherKind: json['voucherKind']?.toString() ?? 'PAYMENT',
+      returnToStepId: json['returnToStepId']?.toString(),
+    );
+  }
+
+  bool get isFinance => module.toLowerCase() == 'finance';
+}
+
+class ProcedureStepFinanceVoucher {
+  final int activation;
+  final String state; // 'requested' | 'linked' | 'posted' | 'returned'
+  final String? requestedAt;
+  final String? voucherId;
+  final String? code;
+  final double? amount;
+  final String? postedAt;
+  final String? postedBy;
+  final String? postedByName;
+  final String? returnedReason;
+  final String? updatedAt;
+
+  ProcedureStepFinanceVoucher({
+    required this.activation,
+    required this.state,
+    this.requestedAt,
+    this.voucherId,
+    this.code,
+    this.amount,
+    this.postedAt,
+    this.postedBy,
+    this.postedByName,
+    this.returnedReason,
+    this.updatedAt,
+  });
+
+  factory ProcedureStepFinanceVoucher.fromJson(Map<String, dynamic> json) {
+    return ProcedureStepFinanceVoucher(
+      activation: (json['activation'] as num?)?.toInt() ?? 1,
+      state: json['state']?.toString() ?? 'requested',
+      requestedAt: json['requestedAt']?.toString(),
+      voucherId: json['voucherId']?.toString(),
+      code: json['code']?.toString(),
+      amount: (json['amount'] is num) ? (json['amount'] as num).toDouble() : null,
+      postedAt: json['postedAt']?.toString(),
+      postedBy: json['postedBy']?.toString(),
+      postedByName: json['postedByName']?.toString(),
+      returnedReason: json['returnedReason']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
+    );
+  }
 }
 
 class ProcedureActivity {
