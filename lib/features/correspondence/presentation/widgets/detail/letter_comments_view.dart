@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 class _MentionQuery {
   final int start;
@@ -252,18 +253,18 @@ class _LetterCommentsViewState extends State<LetterCommentsView> {
           // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text(
-                'Trao đổi',
-                style: TextStyle(
+                'correspondence.detail_view.comments_title'.tr(),
+                style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A),
                 ),
               ),
               Text(
-                'Gõ @ để nhắc tên',
-                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                'correspondence.detail_view.comments_mention_hint'.tr(),
+                style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
               ),
             ],
           ),
@@ -271,11 +272,11 @@ class _LetterCommentsViewState extends State<LetterCommentsView> {
 
           // Comments List or Empty subtitle
           if (widget.comments.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                'Chưa có trao đổi nào. Trao đổi ở đây gắn với bước đang xử lý.',
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                'correspondence.detail_view.comments_empty'.tr(),
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
               ),
             )
           else
@@ -401,11 +402,11 @@ class _LetterCommentsViewState extends State<LetterCommentsView> {
                     style: const TextStyle(fontSize: 13),
                     onChanged: _onTextChanged,
                     onTap: _checkMentionQuery,
-                    decoration: const InputDecoration(
-                      hintText: 'Viết ý kiến trao đổi, gõ @ để nhắc tên người liên quan',
-                      hintStyle: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                    decoration: InputDecoration(
+                      hintText: 'correspondence.detail_view.comments_input_hint'.tr(),
+                      hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                   ),
                 ),

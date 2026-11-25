@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
@@ -10,6 +11,8 @@ import '../widgets/correspondence_letter_detail_bottom_sheet.dart';
 import '../widgets/correspondence_outgoing_dialog.dart';
 import '../widgets/correspondence_intake_dialog.dart';
 import '../../utils/correspondence_register_exporter.dart';
+import 'correspondence_tracking_screen.dart';
+import '../utils/correspondence_error.dart';
 
 /// Screen "Công văn đến" (Incoming Letters) matching Savina ERP Web 1:1
 class CorrespondenceIncomingScreen extends StatefulWidget {
@@ -95,7 +98,7 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
         _repository.getLetters(
           box: 'incoming',
           search: _searchQuery,
-          stage: _selectedStage.isNotEmpty ? _selectedStage : null,
+          stage: (_selectedStage.isNotEmpty && _selectedStage != 'overdue') ? _selectedStage : null,
           kind: _selectedKind,
           bookId: _selectedBookId,
         ),
@@ -113,7 +116,7 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Không tải được danh sách công văn đến. Vui lòng thử lại.';
+        _errorMessage = 'correspondence.list.incoming_load_failed'.tr();
         _isLoading = false;
       });
     }
@@ -167,8 +170,8 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
     if (filtered.isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không có văn bản nào để xuất sổ.'),
+        SnackBar(
+          content: Text('correspondence.list.export_empty'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -177,18 +180,18 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            SizedBox(
+            const SizedBox(
               width: 18,
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Đang chuẩn bị trích xuất sổ đăng ký công văn đến...',
+                'correspondence.list.export_preparing_incoming'.tr(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -196,7 +199,7 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
           ],
         ),
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 15),
+        duration: const Duration(seconds: 15),
       ),
     );
 
@@ -210,7 +213,7 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đã xuất sổ đăng ký: $count văn bản.'),
+          content: Text('correspondence.list.export_done'.tr(args: {'count': count})),
           backgroundColor: const Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
@@ -221,7 +224,7 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không xuất được sổ đăng ký: $e'),
+          content: Text('correspondence.list.export_failed'.tr(args: {'error': correspondenceErrorMessage(e, 'common.error_generic'.tr())})),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -253,7 +256,11 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
   List<LetterSummary> _getFilteredLetters() {
     return _allLetters.where((letter) {
       // 1. Stage filter
-      if (_selectedStage.isNotEmpty && letter.stage != _selectedStage) {
+      if (_selectedStage == 'overdue') {
+        if (!CorrespondenceDateUtils.isOverdue(letter.dueOn, letter.stage, _today)) {
+          return false;
+        }
+      } else if (_selectedStage.isNotEmpty && letter.stage != _selectedStage) {
         return false;
       }
       // 2. Kind filter
@@ -294,21 +301,21 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Công văn đến',
-              style: TextStyle(
+            Text(
+              'correspondence.list.incoming'.tr(),
+              style: const TextStyle(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
               ),
             ),
             Row(
-              children: const [
-                Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
-                SizedBox(width: 4),
+              children: [
+                const Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
+                const SizedBox(width: 4),
                 Text(
-                  'Văn thư > Sổ công văn',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                  'correspondence.list.breadcrumb_registers'.tr(),
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -319,14 +326,14 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
           if (canCreateOutgoing)
             IconButton(
               icon: const Icon(Icons.edit_document, size: 20, color: Color(0xFF0284C7)),
-              tooltip: 'Soạn công văn đi',
+              tooltip: 'correspondence.list.compose_outgoing'.tr(),
               onPressed: () => CorrespondenceOutgoingDialog.show(context, onCreated: _loadData),
             ),
           // Tiếp nhận công văn đến button
           if (canRegister)
             IconButton(
               icon: const Icon(Icons.add_circle_outline_rounded, size: 22, color: Color(0xFF0284C7)),
-              tooltip: 'Tiếp nhận công văn đến',
+              tooltip: 'correspondence.list.register_incoming'.tr(),
               onPressed: () => CorrespondenceIntakeDialog.show(context, onCreated: _loadData),
             ),
           IconButton(
@@ -345,15 +352,15 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
     List<LetterSummary> filteredLetters,
   ) {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
-            SizedBox(height: 14),
+            const CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
+            const SizedBox(height: 14),
             Text(
-              'Đang tải danh sách công văn đến...',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              'correspondence.list.incoming_loading'.tr(),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
           ],
         ),
@@ -378,7 +385,7 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
               ElevatedButton.icon(
                 onPressed: _loadData,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Thử lại'),
+                label: Text('common.retry'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
                   foregroundColor: Colors.white,
@@ -489,19 +496,45 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
-                'Không tìm thấy công văn đến nào',
-                style: TextStyle(
+              Text(
+                _selectedStage == 'overdue'
+                    ? 'correspondence.list.incoming_empty_overdue'.tr()
+                    : 'correspondence.list.incoming_empty'.tr(),
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF334155),
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Thử thay đổi bộ lọc trạng thái hoặc từ khoá tìm kiếm.',
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+              Text(
+                _selectedStage == 'overdue'
+                    ? 'correspondence.list.incoming_empty_overdue_hint'.tr()
+                    : 'correspondence.list.incoming_empty_hint'.tr(),
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                textAlign: TextAlign.center,
               ),
+              if (_selectedStage == 'overdue') ...[
+                const SizedBox(height: 14),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CorrespondenceTrackingScreen(initialFilter: 'overdue'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_active_outlined, size: 16),
+                  label: Text('correspondence.list.view_all_overdue'.tr()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
               if (_selectedStage.isNotEmpty || _searchQuery.isNotEmpty || _selectedKind != null) ...[
                 const SizedBox(height: 14),
                 OutlinedButton.icon(
@@ -515,7 +548,7 @@ class _CorrespondenceIncomingScreenState extends State<CorrespondenceIncomingScr
                     _loadData();
                   },
                   icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
-                  label: const Text('Xoá tất cả bộ lọc'),
+                  label: Text('correspondence.list.clear_filters'.tr()),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
                     foregroundColor: const Color(0xFF475569),

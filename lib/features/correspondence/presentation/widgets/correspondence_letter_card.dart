@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../domain/models/correspondence_models.dart';
 
 /// Reusable card displaying an Incoming or Outgoing Letter in list views
@@ -23,10 +24,10 @@ class CorrespondenceLetterCard extends StatelessWidget {
             ? letter.displayNo
             : (letter.outgoingNo != null && letter.outgoingNo!.isNotEmpty
                 ? letter.outgoingNo!
-                : 'Chưa cấp số'))
+                : 'correspondence.card.no_number'.tr()))
         : (letter.incomingNo.isNotEmpty
             ? letter.incomingNo
-            : (letter.displayNo.isNotEmpty ? letter.displayNo : 'Chưa cấp số'));
+            : (letter.displayNo.isNotEmpty ? letter.displayNo : 'correspondence.card.no_number'.tr()));
 
     final letterDate = isOutgoing && letter.publishedOn != null && letter.publishedOn!.isNotEmpty
         ? CorrespondenceDateUtils.formatDay(letter.publishedOn!)
@@ -119,7 +120,7 @@ class CorrespondenceLetterCard extends StatelessWidget {
 
                 // 2. Trích yếu (Subject)
                 Text(
-                  letter.subject.isNotEmpty ? letter.subject : '(Không có trích yếu)',
+                  letter.subject.isNotEmpty ? letter.subject : 'correspondence.card.no_subject'.tr(),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -235,10 +236,10 @@ class CorrespondenceLetterCard extends StatelessWidget {
                     // Xem chi tiết >
                     Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         Text(
-                          'Chi tiết',
-                          style: TextStyle(
+                          'correspondence.card.details'.tr(),
+                          style: const TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF0284C7),
@@ -286,7 +287,7 @@ class CorrespondenceLetterCard extends StatelessWidget {
           ),
           const SizedBox(width: 4.5),
           Text(
-            letter.urgencyName.isNotEmpty ? letter.urgencyName : 'Thường',
+            letter.urgencyName.isNotEmpty ? letter.urgencyName : 'correspondence.card.urgency_normal'.tr(),
             style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500, color: textColor),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/correspondence_models.dart';
 
 /// Bảng dữ liệu phân tích Báo cáo (Theo loại văn bản / Theo phòng ban) khớp 1:1 với Web
@@ -46,12 +47,12 @@ class ReportDataTable extends StatelessWidget {
 
           // Table Content
           if (rows.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Text(
-                  'Chưa có số liệu.',
-                  style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+                  'correspondence.report.no_data'.tr(),
+                  style: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                 ),
               ),
             )
@@ -78,44 +79,44 @@ class ReportDataTable extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const DataColumn(
+                    DataColumn(
                       numeric: true,
                       label: Text(
-                        'Đến',
-                        style: TextStyle(
+                        'correspondence.report.col_incoming'.tr(),
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF475569),
                         ),
                       ),
                     ),
-                    const DataColumn(
+                    DataColumn(
                       numeric: true,
                       label: Text(
-                        'Đi',
-                        style: TextStyle(
+                        'correspondence.report.col_outgoing'.tr(),
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF475569),
                         ),
                       ),
                     ),
-                    const DataColumn(
+                    DataColumn(
                       numeric: true,
                       label: Text(
-                        'Đã xong',
-                        style: TextStyle(
+                        'correspondence.report.col_done'.tr(),
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF475569),
                         ),
                       ),
                     ),
-                    const DataColumn(
+                    DataColumn(
                       numeric: true,
                       label: Text(
-                        'Trễ hạn',
-                        style: TextStyle(
+                        'correspondence.report.col_late'.tr(),
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF475569),

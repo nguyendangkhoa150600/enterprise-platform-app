@@ -211,6 +211,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       context,
       project: project,
       service: _service,
+      onProjectsChanged: _controller.loadAllData,
     );
   }
 

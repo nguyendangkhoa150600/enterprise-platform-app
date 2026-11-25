@@ -4,18 +4,31 @@ import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
 import '../../../workspace/presentation/widgets/searchable_dropdown_field.dart';
+import '../../../../core/i18n/app_i18n.dart';
 
 class CorrespondenceOutgoingDialog extends StatefulWidget {
   final VoidCallback? onCreated;
+  final LetterDetail? replyTo;
 
-  const CorrespondenceOutgoingDialog({super.key, this.onCreated});
+  const CorrespondenceOutgoingDialog({
+    super.key,
+    this.onCreated,
+    this.replyTo,
+  });
 
-  static Future<void> show(BuildContext context, {VoidCallback? onCreated}) {
+  static Future<void> show(
+    BuildContext context, {
+    VoidCallback? onCreated,
+    LetterDetail? replyTo,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => CorrespondenceOutgoingDialog(onCreated: onCreated),
+      builder: (_) => CorrespondenceOutgoingDialog(
+        onCreated: onCreated,
+        replyTo: replyTo,
+      ),
     );
   }
 
@@ -49,6 +62,12 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
   void initState() {
     super.initState();
     _dueOn = CorrespondenceDateUtils.localToday();
+    if (widget.replyTo != null) {
+      final r = widget.replyTo!;
+      _subjectController.text = 'V/v trả lời công văn số ${r.displayNo}: ${r.subject}';
+      _recipientController.text = r.senderOrg;
+      _selectedKind = r.kind;
+    }
     _loadConfigAndDirectory();
   }
 
@@ -123,22 +142,22 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Thêm nhanh $kindTitle', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text('correspondence.outgoing_dialog.quick_add_title'.tr(args: {'label': kindTitle}), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         content: TextField(
           controller: textController,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Nhập tên $kindTitle...',
+            hintText: 'correspondence.outgoing_dialog.quick_add_hint'.tr(args: {'label': kindTitle}),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             isDense: true,
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
             onPressed: () => Navigator.pop(ctx, textController.text.trim()),
-            child: const Text('Thêm', style: TextStyle(color: Colors.white)),
+            child: Text('common.add'.tr(), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -165,7 +184,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
     final recipient = _recipientController.text.trim();
 
     if (subject.isEmpty || recipient.isEmpty) {
-      setState(() => _errorMessage = 'Vui lòng nhập trích yếu và nơi nhận.');
+      setState(() => _errorMessage = 'correspondence.outgoing_dialog.validation_required'.tr());
       return;
     }
 
@@ -185,17 +204,29 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
         authorUnitId: _selectedAuthorUnitId,
         sentAs: _sentAs,
         workflowId: _selectedWorkflowId,
+        relatedLetterId: widget.replyTo?.id,
       );
 
       final letter = await _repository.createOutgoing(req);
+
+      bool uploadFailed = false;
+      if (_selectedFile != null) {
+        try {
+          await _repository.uploadLetterAttachment(letter.id, _selectedFile!, 'draft');
+        } catch (_) {
+          uploadFailed = true;
+        }
+      }
 
       if (!mounted) return;
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đã tạo công văn đi, số dự thảo: ${letter.displayNo}'),
-          backgroundColor: const Color(0xFF059669),
+          content: Text(uploadFailed
+              ? 'correspondence.outgoing.created_upload_failed'.tr(args: {'no': letter.displayNo})
+              : 'correspondence.outgoing.created'.tr(args: {'no': letter.displayNo})),
+          backgroundColor: uploadFailed ? const Color(0xFFD97706) : const Color(0xFF059669),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -207,7 +238,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _errorMessage = 'Không tạo được công văn đi. Vui lòng kiểm tra lại.';
+        _errorMessage = 'correspondence.outgoing_dialog.create_failed'.tr();
       });
     }
   }
@@ -261,19 +292,21 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Soạn công văn đi',
-                        style: TextStyle(
+                        widget.replyTo != null ? 'correspondence.outgoing_dialog.title_reply'.tr() : 'correspondence.list.compose_outgoing'.tr(),
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF0F172A),
                         ),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
-                        'Cấp số dự thảo: gửi văn thư kiểm tra khi dự thảo xong. Số đi cấp khi văn thư ban hành.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.25),
+                        widget.replyTo != null
+                            ? 'correspondence.outgoing_dialog.desc_reply'.tr(args: {'no': widget.replyTo!.displayNo})
+                            : 'correspondence.outgoing_dialog.desc'.tr(),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.25),
                       ),
                     ],
                   ),
@@ -325,24 +358,24 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                           ),
 
                         // 1. Trích yếu nội dung *
-                        _buildFieldLabel('Trích yếu nội dung', isRequired: true),
+                        _buildFieldLabel('correspondence.outgoing_dialog.subject_label'.tr(), isRequired: true),
                         const SizedBox(height: 5),
                         TextField(
                           controller: _subjectController,
                           maxLines: 3,
                           maxLength: 1000,
                           style: const TextStyle(fontSize: 13.5),
-                          decoration: _inputDecoration('V/v báo cáo tình hình triển khai dự án quý IV năm 2026'),
+                          decoration: _inputDecoration('correspondence.outgoing_dialog.subject_hint'.tr()),
                         ),
                         const SizedBox(height: 12),
 
                         // 2. Nơi nhận *
-                        _buildFieldLabel('Nơi nhận', isRequired: true),
+                        _buildFieldLabel('correspondence.outgoing_dialog.recipient_label'.tr(), isRequired: true),
                         const SizedBox(height: 5),
                         TextField(
                           controller: _recipientController,
                           style: const TextStyle(fontSize: 13.5),
-                          decoration: _inputDecoration('Sở Kế hoạch và Đầu tư Đà Nẵng'),
+                          decoration: _inputDecoration('correspondence.outgoing_dialog.recipient_hint'.tr()),
                         ),
                         const SizedBox(height: 12),
 
@@ -360,7 +393,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                                   _buildSentAsField(),
                                   const SizedBox(height: 12),
                                   _buildCatalogSelector(
-                                    label: 'Loại văn bản',
+                                    label: 'correspondence.outgoing_dialog.kind'.tr(),
                                     items: kinds,
                                     selectedCode: _selectedKind,
                                     kindKey: 'letter_type',
@@ -372,7 +405,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                                     children: [
                                       Expanded(
                                         child: _buildCatalogSelector(
-                                          label: 'Độ khẩn',
+                                          label: 'correspondence.outgoing_dialog.urgency'.tr(),
                                           items: urgencies,
                                           selectedCode: _selectedUrgency,
                                           kindKey: 'urgency',
@@ -382,7 +415,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: _buildCatalogSelector(
-                                          label: 'Độ mật',
+                                          label: 'correspondence.outgoing_dialog.confidentiality'.tr(),
                                           items: confs,
                                           selectedCode: _selectedConfidentiality,
                                           kindKey: 'confidentiality',
@@ -412,7 +445,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                                   children: [
                                     Expanded(
                                       child: _buildCatalogSelector(
-                                        label: 'Loại văn bản',
+                                        label: 'correspondence.outgoing_dialog.kind'.tr(),
                                         items: kinds,
                                         selectedCode: _selectedKind,
                                         kindKey: 'letter_type',
@@ -422,7 +455,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: _buildCatalogSelector(
-                                        label: 'Độ khẩn',
+                                        label: 'correspondence.outgoing_dialog.urgency'.tr(),
                                         items: urgencies,
                                         selectedCode: _selectedUrgency,
                                         kindKey: 'urgency',
@@ -432,7 +465,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: _buildCatalogSelector(
-                                        label: 'Độ mật',
+                                        label: 'correspondence.outgoing_dialog.confidentiality'.tr(),
                                         items: confs,
                                         selectedCode: _selectedConfidentiality,
                                         kindKey: 'confidentiality',
@@ -456,7 +489,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildFieldLabel('Hạn ban hành'),
+                                  _buildFieldLabel('correspondence.outgoing_dialog.issue_deadline'.tr()),
                                   const SizedBox(height: 5),
                                   InkWell(
                                     onTap: () async {
@@ -500,13 +533,13 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildFieldLabel('Tệp dự thảo'),
+                                  _buildFieldLabel('correspondence.outgoing_dialog.draft_file'.tr()),
                                   const SizedBox(height: 5),
                                   OutlinedButton.icon(
                                     onPressed: _pickFile,
                                     icon: const Icon(Icons.attach_file, size: 16, color: Color(0xFF0284C7)),
                                     label: Text(
-                                      _selectedFile != null ? _selectedFile!.name : 'Chọn tệp Word, PDF',
+                                      _selectedFile != null ? _selectedFile!.name : 'correspondence.outgoing_dialog.pick_file'.tr(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(fontSize: 12, color: Color(0xFF0284C7)),
@@ -525,22 +558,22 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                         const SizedBox(height: 14),
 
                         // 6. Quy trình
-                        _buildFieldLabel('Quy trình'),
+                        _buildFieldLabel('correspondence.outgoing_dialog.workflow'.tr()),
                         const SizedBox(height: 5),
                         SearchableDropdownField<WorkflowModel>(
                           value: outgoingWorkflows.where((w) => w.id == _selectedWorkflowId).firstOrNull,
                           items: outgoingWorkflows,
                           onChanged: (w) => setState(() => _selectedWorkflowId = w.id),
-                          itemLabel: (w) => 'Theo cấu hình: ${w.name}',
-                          hintText: 'Chọn quy trình...',
+                          itemLabel: (w) => 'correspondence.outgoing_dialog.workflow_item'.tr(args: {'name': w.name}),
+                          hintText: 'correspondence.outgoing_dialog.workflow_hint'.tr(),
                           icon: Icons.search,
                           showClear: true,
                           onClear: () => setState(() => _selectedWorkflowId = null),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Để trống: theo quy trình cấu hình cho loại văn bản (hay quy trình mặc định).',
-                          style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        Text(
+                          'correspondence.outgoing_dialog.workflow_note'.tr(),
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                         const SizedBox(height: 8),
 
@@ -556,7 +589,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildStepPreviewItem('1. ${currentWf.startName ?? "Phòng ban soạn thảo"}', 'Ở đầu'),
+                                _buildStepPreviewItem('1. ${currentWf.startName ?? 'correspondence.outgoing_dialog.author_unit'.tr()}', 'correspondence.outgoing_dialog.at_start'.tr()),
                                 ...currentWf.steps.asMap().entries.map((entry) {
                                   return _buildStepPreviewItem('${entry.key + 2}. ${entry.value.name}', null);
                                 }),
@@ -583,7 +616,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   ),
-                  child: const Text('Huỷ', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                  child: Text('common.cancel'.tr(), style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton(
@@ -597,7 +630,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                   ),
                   child: _isSubmitting
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Tạo dự thảo', style: TextStyle(fontWeight: FontWeight.w700)),
+                      : Text('correspondence.outgoing_dialog.submit'.tr(), style: const TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
@@ -629,14 +662,14 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFieldLabel('Phòng ban soạn thảo'),
+        _buildFieldLabel('correspondence.outgoing_dialog.author_unit'.tr()),
         const SizedBox(height: 5),
         SearchableDropdownField<OrgUnitModel>(
           value: selectedUnit,
           items: _directory.units,
           onChanged: (u) => setState(() => _selectedAuthorUnitId = u.id),
           itemLabel: (u) => u.name,
-          hintText: 'Chọn phòng ban soạn thảo...',
+          hintText: 'correspondence.outgoing_dialog.author_unit_hint'.tr(),
           icon: Icons.search,
           showClear: true,
           onClear: () => setState(() => _selectedAuthorUnitId = null),
@@ -649,14 +682,14 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFieldLabel('Gửi với danh nghĩa'),
+        _buildFieldLabel('correspondence.outgoing_dialog.sent_as'.tr()),
         const SizedBox(height: 5),
         SearchableDropdownField<String>(
           value: _sentAs,
           items: const ['person', 'unit'],
           onChanged: (val) => setState(() => _sentAs = val),
-          itemLabel: (s) => s == 'unit' ? 'Phòng ban' : 'Cá nhân người soạn',
-          hintText: 'Chọn danh nghĩa...',
+          itemLabel: (s) => s == 'unit' ? 'correspondence.outgoing_dialog.sent_as_unit'.tr() : 'correspondence.outgoing_dialog.sent_as_person'.tr(),
+          hintText: 'correspondence.outgoing_dialog.sent_as_hint'.tr(),
           icon: null,
           showClear: false,
           maxHeight: 120,
@@ -689,7 +722,7 @@ class _CorrespondenceOutgoingDialogState extends State<CorrespondenceOutgoingDia
                 items: items,
                 onChanged: (it) => onChanged(it.code),
                 itemLabel: (it) => it.name,
-                hintText: 'Chọn $label...',
+                hintText: 'correspondence.outgoing_dialog.select_label'.tr(args: {'label': label}),
                 icon: showSearchIcon ? Icons.search : null,
                 showClear: true,
                 onClear: () => onChanged(null),

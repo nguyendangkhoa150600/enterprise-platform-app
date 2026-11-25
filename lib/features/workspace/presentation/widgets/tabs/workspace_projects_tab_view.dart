@@ -178,28 +178,32 @@ class _WorkspaceProjectsTabViewState extends State<WorkspaceProjectsTabView> {
                 ],
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
 
             // Top Stats (matching Web: 194 dự án · Đang chạy 124 · Hoàn thành 0)
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                children: [
-                  Text(
-                    '$totalProjects dự án',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Đang chạy $runningProjects',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Hoàn thành $completedProjects',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                  ),
-                ],
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$totalProjects dự án',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Đang chạy $runningProjects',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Hoàn thành $completedProjects',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

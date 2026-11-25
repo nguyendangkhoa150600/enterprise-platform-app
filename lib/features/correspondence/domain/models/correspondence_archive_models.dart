@@ -1,3 +1,5 @@
+import '../../../../core/i18n/app_i18n.dart';
+
 /// Model cho một tệp trong cây lưu trữ (nằm ở kho tài liệu của Hệ dùng chung)
 class ArchiveFile {
   final String id;
@@ -43,17 +45,17 @@ class ArchiveFile {
   String get kindLabel {
     switch (kind) {
       case 'incoming':
-        return 'Bản quét công văn đến';
+        return 'correspondence.archive.file_kind.incoming'.tr();
       case 'outgoing':
-        return 'Văn bản đã ban hành';
+        return 'correspondence.archive.file_kind.outgoing'.tr();
       case 'draft':
-        return 'Bản dự thảo';
+        return 'correspondence.archive.file_kind.draft'.tr();
       case 'result':
-        return 'Tệp kết quả xử lý';
+        return 'correspondence.archive.file_kind.result'.tr();
       case 'reference':
-        return 'Tài liệu kèm theo';
+        return 'correspondence.archive.file_kind.reference'.tr();
       default:
-        return 'Tệp đính kèm';
+        return 'correspondence.archive.file_kind.other'.tr();
     }
   }
 }
@@ -170,7 +172,7 @@ class ArchiveTree {
   factory ArchiveTree.fromJson(Map<String, dynamic> json) {
     final rawYears = json['years'] as List? ?? [];
     return ArchiveTree(
-      rootName: json['rootName']?.toString() ?? 'Văn thư',
+      rootName: json['rootName']?.toString() ?? 'correspondence.archive.root_name'.tr(),
       years: rawYears
           .whereType<Map<String, dynamic>>()
           .map((y) => ArchiveYearGroup.fromJson(y))

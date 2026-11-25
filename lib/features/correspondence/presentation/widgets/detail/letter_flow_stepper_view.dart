@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Section 1: Tiến trình xử lý (FlowStepper matching Savina Web 1:1)
 class LetterFlowStepperView extends StatelessWidget {
@@ -37,9 +38,9 @@ class LetterFlowStepperView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Tiến trình xử lý',
-                style: TextStyle(
+              Text(
+                'correspondence.detail_view.flow_title'.tr(),
+                style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A),
@@ -48,7 +49,7 @@ class LetterFlowStepperView extends StatelessWidget {
               if (workflowName != null && workflowName!.isNotEmpty)
                 Flexible(
                   child: Text(
-                    'Quy trình: $workflowName',
+                    'correspondence.detail_view.flow_workflow'.tr(args: {'name': workflowName}),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
@@ -154,9 +155,9 @@ class LetterFlowStepperView extends StatelessWidget {
                             color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(5),
                           ),
-                          child: const Text(
-                            'Đang xử lý',
-                            style: TextStyle(
+                          child: Text(
+                            'correspondence.detail_view.flow_current'.tr(),
+                            style: const TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF2563EB),

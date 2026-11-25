@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/workspace/presentation/utils/project_access_extension.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
 import '../../../utils/user_resolver.dart';
@@ -8,8 +10,8 @@ void showWorkspaceProjectMembersSheet(
   required ProjectItem project,
   required WorkspaceService service,
   required List<ProjectMemberItem> initialMembers,
-  required List<StandaloneTaskItem> projectTasks,
   required VoidCallback onMembersUpdated,
+  ProjectAccess? access,
 }) {
   showModalBottomSheet(
     context: context,
@@ -19,8 +21,8 @@ void showWorkspaceProjectMembersSheet(
       project: project,
       service: service,
       initialMembers: initialMembers,
-      projectTasks: projectTasks,
       onMembersUpdated: onMembersUpdated,
+      access: access ?? project.access,
     ),
   );
 }
@@ -29,16 +31,18 @@ class WorkspaceProjectMembersSheet extends StatefulWidget {
   final ProjectItem project;
   final WorkspaceService service;
   final List<ProjectMemberItem> initialMembers;
-  final List<StandaloneTaskItem> projectTasks;
   final VoidCallback onMembersUpdated;
+
+  /// Quyền trong dự án: sửa danh sách cần `project.manage_members`, trao chủ nhiệm cần canOwn (như web).
+  final ProjectAccess? access;
 
   const WorkspaceProjectMembersSheet({
     super.key,
     required this.project,
     required this.service,
     required this.initialMembers,
-    required this.projectTasks,
     required this.onMembersUpdated,
+    this.access,
   });
 
   @override
@@ -72,31 +76,18 @@ class _WorkspaceProjectMembersSheetState extends State<WorkspaceProjectMembersSh
     super.dispose();
   }
 
+  bool get _canEdit => widget.access?.canManageMembers ?? true;
+  bool get _canTransferOwner => widget.access?.canOwn ?? true;
+
+  // Chỉ thành viên thật của dự án (GET /projects/{id}/members); không ghép người được giao việc,
+  // vì lưu (PUT cả danh sách) sẽ âm thầm thêm họ vào dự án.
   void _initMembersList() {
     final Map<String, ProjectMemberItem> memberMap = {};
-
-    // 1. Initial members from API
     for (final m in widget.initialMembers) {
       if (m.userId.isNotEmpty) {
         memberMap[m.userId] = m;
       }
     }
-
-    // 2. Synchronize with task assignees if not present
-    for (final t in widget.projectTasks) {
-      if (t.assigneeUserId.isNotEmpty && !memberMap.containsKey(t.assigneeUserId)) {
-        final name = t.assigneeName != null && t.assigneeName!.isNotEmpty
-            ? t.assigneeName!
-            : UserResolver.resolveName(t.assigneeUserId);
-        memberMap[t.assigneeUserId] = ProjectMemberItem(
-          userId: t.assigneeUserId,
-          fullName: name,
-          email: '',
-          role: 'member',
-        );
-      }
-    }
-
     _members = memberMap.values.toList();
   }
 
@@ -465,102 +456,104 @@ class _WorkspaceProjectMembersSheetState extends State<WorkspaceProjectMembersSh
                         const SizedBox(height: 24),
 
                         // Section: "Thêm người" matching Web 1:1
-                        const Text(
-                          'Thêm người',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Search box
-                        TextField(
-                          controller: _searchCtrl,
-                          onChanged: (val) => setState(() => _addSearchQuery = val.trim()),
-                          decoration: InputDecoration(
-                            hintText: 'Tìm theo tên, email hoặc đơn vị',
-                            hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                            prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
-                            suffixIcon: _addSearchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear, size: 16, color: Color(0xFF94A3B8)),
-                                    onPressed: () {
-                                      _searchCtrl.clear();
-                                      setState(() => _addSearchQuery = '');
-                                    },
-                                  )
-                                : null,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Color(0xFFEAB308), width: 1.5),
+                        if (_canEdit) ...[
+                          const Text(
+                            'Thêm người',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-
-                        // Helper text matching Web 1:1
-                        const Text(
-                          'Người vừa chọn hiện thành một dòng bên trên; chọn vai trò ngay tại dòng đó.',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: Color(0xFF64748B),
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-
-                        // Suggestion list from Workspace Directory
-                        if (matchingPeople.isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: matchingPeople.map((person) {
-                                return InkWell(
-                                  onTap: () => _onSelectPersonToAdd(person),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.person_add_alt_1, size: 16, color: Color(0xFFEAB308)),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            person.subtitle,
-                                            style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+
+                          // Search box
+                          TextField(
+                            controller: _searchCtrl,
+                            onChanged: (val) => setState(() => _addSearchQuery = val.trim()),
+                            decoration: InputDecoration(
+                              hintText: 'Tìm theo tên, email hoặc đơn vị',
+                              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                              prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
+                              suffixIcon: _addSearchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 16, color: Color(0xFF94A3B8)),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() => _addSearchQuery = '');
+                                      },
+                                    )
+                                  : null,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Color(0xFFEAB308), width: 1.5),
+                              ),
                             ),
                           ),
+                          const SizedBox(height: 6),
+
+                          // Helper text matching Web 1:1
+                          const Text(
+                            'Người vừa chọn hiện thành một dòng bên trên; chọn vai trò ngay tại dòng đó.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+
+                          // Suggestion list from Workspace Directory
+                          if (matchingPeople.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: matchingPeople.map((person) {
+                                  return InkWell(
+                                    onTap: () => _onSelectPersonToAdd(person),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.person_add_alt_1, size: 16, color: Color(0xFFEAB308)),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              person.subtitle,
+                                              style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
                         ],
 
                         const SizedBox(height: 30),
@@ -585,26 +578,27 @@ class _WorkspaceProjectMembersSheetState extends State<WorkspaceProjectMembersSh
                     ),
                     child: const Text('Huỷ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _saveAllMembers,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFEAB308),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  if (_canEdit) const SizedBox(width: 12),
+                  if (_canEdit)
+                    ElevatedButton(
+                      onPressed: _isSaving ? null : _saveAllMembers,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEAB308),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text(
+                              'Lưu',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
                     ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text(
-                            'Lưu',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                  ),
                 ],
               ),
             ),
@@ -618,6 +612,7 @@ class _WorkspaceProjectMembersSheetState extends State<WorkspaceProjectMembersSh
   Widget _buildMemberRow(ProjectMemberItem member) {
     final title = _formatMemberSubtitle(member);
     final currentRoleLabel = _getRoleLabel(member.role);
+    final isOwner = member.role.toLowerCase() == 'owner';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -639,50 +634,60 @@ class _WorkspaceProjectMembersSheetState extends State<WorkspaceProjectMembersSh
           ),
           const SizedBox(width: 8),
 
-          // Dropdown matching Web: [ 🔍 Role ▾ ]
-          PopupMenuButton<String>(
-            onSelected: (newRole) => _onUpdateRole(member, newRole),
-            itemBuilder: (ctx) => [
-              _buildRoleMenuItem('owner', 'Chủ nhiệm', member.role.toLowerCase() == 'owner'),
-              _buildRoleMenuItem('manager', 'Quản lý', member.role.toLowerCase() == 'manager' || member.role.toLowerCase() == 'pm'),
-              _buildRoleMenuItem('member', 'Thành viên', member.role.toLowerCase() == 'member' || member.role.toLowerCase() == 'technician'),
-              _buildRoleMenuItem('viewer', 'Người xem', member.role.toLowerCase() == 'viewer'),
-            ],
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.search, size: 14, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 4),
-                  Text(
-                    currentRoleLabel,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF0F172A),
+          if (!_canEdit)
+            Text(currentRoleLabel, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))
+          else if (isOwner && !_canTransferOwner)
+            Tooltip(
+              message: 'workspace.members.owner_locked'.tr(),
+              child: Text(currentRoleLabel, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
+            )
+          else
+            // Dropdown matching Web: [ 🔍 Role ▾ ]
+            PopupMenuButton<String>(
+              onSelected: (newRole) => _onUpdateRole(member, newRole),
+              itemBuilder: (ctx) => [
+                if (_canTransferOwner || isOwner)
+                  _buildRoleMenuItem('owner', 'Chủ nhiệm', isOwner),
+                _buildRoleMenuItem('manager', 'Quản lý', member.role.toLowerCase() == 'manager' || member.role.toLowerCase() == 'pm'),
+                _buildRoleMenuItem('member', 'Thành viên', member.role.toLowerCase() == 'member' || member.role.toLowerCase() == 'technician'),
+                _buildRoleMenuItem('viewer', 'Người xem', member.role.toLowerCase() == 'viewer'),
+              ],
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.search, size: 14, color: Color(0xFF94A3B8)),
+                    const SizedBox(width: 4),
+                    Text(
+                      currentRoleLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF64748B)),
-                ],
+                    const SizedBox(width: 4),
+                    const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF64748B)),
+                  ],
+                ),
               ),
             ),
-          ),
           const SizedBox(width: 4),
 
           // Trash icon
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFF94A3B8)),
-            onPressed: () => _onRemoveMember(member),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            tooltip: 'Xoá thành viên',
-          ),
+          if (_canEdit)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFF94A3B8)),
+              onPressed: () => _onRemoveMember(member),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              tooltip: 'Xoá thành viên',
+            ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
@@ -86,7 +87,7 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Không tải được dữ liệu kho lưu trữ. Vui lòng thử lại.';
+        _errorMessage = 'correspondence.archive.load_failed'.tr();
         _isLoading = false;
       });
     }
@@ -129,21 +130,21 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Kho lưu trữ',
-              style: TextStyle(
+            Text(
+              'correspondence.archive.title'.tr(),
+              style: const TextStyle(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
               ),
             ),
             Row(
-              children: const [
-                Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
-                SizedBox(width: 4),
+              children: [
+                const Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
+                const SizedBox(width: 4),
                 Text(
-                  'Văn thư > Kho lưu trữ',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  'correspondence.archive.breadcrumb'.tr(),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -154,7 +155,7 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
           if (canCreateOutgoing)
             IconButton(
               icon: const Icon(Icons.edit_document, color: Color(0xFF0284C7)),
-              tooltip: 'Soạn công văn đi',
+              tooltip: 'correspondence.overview.action_compose_outgoing'.tr(),
               onPressed: () => CorrespondenceOutgoingDialog.show(
                 context,
                 onCreated: _loadData,
@@ -164,7 +165,7 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
           if (canRegister)
             IconButton(
               icon: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF059669)),
-              tooltip: 'Tiếp nhận công văn đến',
+              tooltip: 'correspondence.overview.action_register_incoming'.tr(),
               onPressed: () => CorrespondenceIntakeDialog.show(
                 context,
                 onCreated: _loadData,
@@ -172,7 +173,7 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
             ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF64748B)),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadData,
           ),
         ],
@@ -205,7 +206,7 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: 'Tìm hồ sơ, số công văn, số hồ sơ, tên tệp...',
+                    hintText: 'correspondence.archive.search_hint'.tr(),
                     hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                     suffixIcon: _searchController.text.isNotEmpty
@@ -254,9 +255,9 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Chỉ hồ sơ đã lưu trữ',
-                        style: TextStyle(
+                      Text(
+                        'correspondence.archive.only_archived'.tr(),
+                        style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w500,
                           color: Color(0xFF334155),
@@ -294,7 +295,7 @@ class _CorrespondenceArchiveScreenState extends State<CorrespondenceArchiveScree
                         ElevatedButton.icon(
                           onPressed: _loadData,
                           icon: const Icon(Icons.refresh_rounded, size: 16),
-                          label: const Text('Thử lại'),
+                          label: Text('common.retry'.tr()),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0284C7),
                             foregroundColor: Colors.white,

@@ -1,5 +1,7 @@
 import '../utils/user_resolver.dart';
 import '../core/i18n/app_i18n.dart';
+import 'work_item_meta.dart';
+export 'work_item_meta.dart';
 // Workspace Models: Customers, Contracts, Projects, Roles, and Standalone Tasks (1:1 Web Parity)
 
 class CustomerItem {
@@ -131,6 +133,13 @@ class ProjectItem {
   final DateTime? startDate;
   final DateTime? endDate;
   final List<StandaloneTaskItem> tasks;
+  /// Dự án đã lưu trữ: chỉ xem, mọi quyền ghi bị bỏ (web `projects-view.tsx`).
+  final DateTime? archivedAt;
+  /// `false` khi server bản cũ không trả `myPermissions`: dùng quyền mặc định của vai.
+  final bool permissionsProvided;
+  /// Server chỉ trả khối tài chính cho vai được xem tài chính.
+  final Map<String, dynamic>? finance;
+  final String? createdBy;
 
   const ProjectItem({
     required this.id,
@@ -150,14 +159,29 @@ class ProjectItem {
     this.startDate,
     this.endDate,
     this.tasks = const [],
+    this.archivedAt,
+    this.permissionsProvided = false,
+    this.finance,
+    this.createdBy,
   });
+
+  bool get isArchived => archivedAt != null;
 
   factory ProjectItem.fromJson(Map<String, dynamic> json, [Map<String, String>? customerMap]) {
     final cid = json['customerId']?.toString();
+    final pId = json['id']?.toString() ?? '';
+    final pCode = json['code']?.toString() ?? '';
+    final pName = json['name']?.toString() ?? 'models.workspace.project_unnamed'.tr();
     final rawTasks = json['tasks'] ?? json['items'] ?? json['children'];
     List<StandaloneTaskItem> taskList = [];
     if (rawTasks is List) {
-      taskList = rawTasks.map((t) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(t as Map))).toList();
+      taskList = rawTasks.map((t) {
+        final tMap = Map<String, dynamic>.from(t as Map);
+        tMap['projectId'] ??= pId;
+        tMap['projectCode'] ??= pCode;
+        tMap['projectName'] ??= pName;
+        return StandaloneTaskItem.fromJson(tMap);
+      }).toList();
     }
 
     final rawPerms = json['myPermissions'];
@@ -184,6 +208,10 @@ class ProjectItem {
       startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
       endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
       tasks: taskList,
+      archivedAt: json['archivedAt'] != null ? DateTime.tryParse(json['archivedAt'].toString()) : null,
+      permissionsProvided: rawPerms is List,
+      finance: json['finance'] is Map ? Map<String, dynamic>.from(json['finance'] as Map) : null,
+      createdBy: json['createdBy']?.toString(),
     );
   }
 
@@ -293,6 +321,21 @@ class StandaloneTaskItem {
   final bool isReversed;
   final String? reversalReason;
   final String? blockedReason;
+  final String? projectId;
+  final String? projectCode;
+  final String? projectName;
+  final double? estimatedHours;
+  final double? actualHours;
+  final String? parentId;
+  final double? weight;
+  final String? progressMethod;
+  final List<String> tagIds;
+  final String? reopenPolicy;
+  final Map<String, dynamic>? completion;
+  /// Trường contract còn lại (loại, độ sâu, khối lượng, huỷ hiệu lực...).
+  final WorkItemMeta meta;
+
+  bool get isProjectTask => projectId != null && projectId!.isNotEmpty;
 
   const StandaloneTaskItem({
     required this.id,
@@ -317,6 +360,18 @@ class StandaloneTaskItem {
     this.isReversed = false,
     this.reversalReason,
     this.blockedReason,
+    this.projectId,
+    this.projectCode,
+    this.projectName,
+    this.estimatedHours,
+    this.actualHours,
+    this.parentId,
+    this.weight,
+    this.progressMethod,
+    this.tagIds = const [],
+    this.reopenPolicy,
+    this.completion,
+    this.meta = const WorkItemMeta(),
   });
 
   factory StandaloneTaskItem.fromJson(Map<String, dynamic> json) {
@@ -401,6 +456,97 @@ class StandaloneTaskItem {
       isReversed: task['reversal'] != null,
       reversalReason: task['reversal'] is Map ? task['reversal']['reason']?.toString() : null,
       blockedReason: task['blockedReason']?.toString() ?? task['blocked_reason']?.toString(),
+      projectId: task['projectId']?.toString() ?? json['projectId']?.toString(),
+      projectCode: task['projectCode']?.toString() ?? json['projectCode']?.toString(),
+      projectName: task['projectName']?.toString() ?? json['projectName']?.toString(),
+      // Contract dùng `estimateHours`; giữ `estimatedHours` cho API cũ.
+      estimatedHours: (task['estimateHours'] ?? task['estimatedHours']) != null
+          ? double.tryParse((task['estimateHours'] ?? task['estimatedHours']).toString())
+          : null,
+      actualHours: task['actualHours'] != null ? double.tryParse(task['actualHours'].toString()) : null,
+      parentId: task['parentId']?.toString() ?? task['parentTaskId']?.toString(),
+      weight: task['weight'] != null ? double.tryParse(task['weight'].toString()) : null,
+      progressMethod: task['progressMethod']?.toString() ?? task['progress_method']?.toString(),
+      tagIds: (task['tagIds'] as List?)?.map((e) => e.toString()).toList() ??
+          (task['tags'] as List?)?.map((e) => e is Map ? e['id']?.toString() ?? '' : e.toString()).where((e) => e.isNotEmpty).toList() ??
+          const [],
+      reopenPolicy: task['reopenPolicy']?.toString(),
+      completion: task['completion'] is Map ? Map<String, dynamic>.from(task['completion'] as Map) : null,
+      meta: WorkItemMeta.fromJson(Map<String, dynamic>.from(task)),
+    );
+  }
+
+  StandaloneTaskItem copyWith({
+    String? id,
+    String? code,
+    String? title,
+    String? description,
+    String? status,
+    String? priority,
+    String? assigneeUserId,
+    String? assigneeName,
+    String? createdBy,
+    String? creatorName,
+    double? progressPercent,
+    DateTime? plannedStart,
+    DateTime? dueDate,
+    DateTime? createdAt,
+    List<String>? participantUserIds,
+    List<String>? followerUserIds,
+    String? myRole,
+    int? childCount,
+    int? openChildCount,
+    bool? isReversed,
+    String? reversalReason,
+    String? blockedReason,
+    String? projectId,
+    String? projectCode,
+    String? projectName,
+    double? estimatedHours,
+    double? actualHours,
+    String? parentId,
+    double? weight,
+    String? progressMethod,
+    List<String>? tagIds,
+    String? reopenPolicy,
+    Map<String, dynamic>? completion,
+    WorkItemMeta? meta,
+  }) {
+    return StandaloneTaskItem(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      assigneeUserId: assigneeUserId ?? this.assigneeUserId,
+      assigneeName: assigneeName ?? this.assigneeName,
+      createdBy: createdBy ?? this.createdBy,
+      creatorName: creatorName ?? this.creatorName,
+      progressPercent: progressPercent ?? this.progressPercent,
+      plannedStart: plannedStart ?? this.plannedStart,
+      dueDate: dueDate ?? this.dueDate,
+      createdAt: createdAt ?? this.createdAt,
+      participantUserIds: participantUserIds ?? this.participantUserIds,
+      followerUserIds: followerUserIds ?? this.followerUserIds,
+      myRole: myRole ?? this.myRole,
+      childCount: childCount ?? this.childCount,
+      openChildCount: openChildCount ?? this.openChildCount,
+      isReversed: isReversed ?? this.isReversed,
+      reversalReason: reversalReason ?? this.reversalReason,
+      blockedReason: blockedReason ?? this.blockedReason,
+      projectId: projectId ?? this.projectId,
+      projectCode: projectCode ?? this.projectCode,
+      projectName: projectName ?? this.projectName,
+      estimatedHours: estimatedHours ?? this.estimatedHours,
+      actualHours: actualHours ?? this.actualHours,
+      parentId: parentId ?? this.parentId,
+      weight: weight ?? this.weight,
+      progressMethod: progressMethod ?? this.progressMethod,
+      tagIds: tagIds ?? this.tagIds,
+      reopenPolicy: reopenPolicy ?? this.reopenPolicy,
+      completion: completion ?? this.completion,
+      meta: meta ?? this.meta,
     );
   }
 
@@ -450,54 +596,6 @@ class StandaloneTaskItem {
       default:
         return 'Bình thường';
     }
-  }
-
-  StandaloneTaskItem copyWith({
-    String? id,
-    String? code,
-    String? title,
-    String? description,
-    String? status,
-    String? priority,
-    String? assigneeUserId,
-    String? assigneeName,
-    String? createdBy,
-    String? creatorName,
-    double? progressPercent,
-    DateTime? plannedStart,
-    DateTime? dueDate,
-    DateTime? createdAt,
-    List<String>? participantUserIds,
-    List<String>? followerUserIds,
-    String? myRole,
-    int? childCount,
-    int? openChildCount,
-    bool? isReversed,
-    String? reversalReason,
-  }) {
-    return StandaloneTaskItem(
-      id: id ?? this.id,
-      code: code ?? this.code,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      status: status ?? this.status,
-      priority: priority ?? this.priority,
-      assigneeUserId: assigneeUserId ?? this.assigneeUserId,
-      assigneeName: assigneeName ?? this.assigneeName,
-      createdBy: createdBy ?? this.createdBy,
-      creatorName: creatorName ?? this.creatorName,
-      progressPercent: progressPercent ?? this.progressPercent,
-      plannedStart: plannedStart ?? this.plannedStart,
-      dueDate: dueDate ?? this.dueDate,
-      createdAt: createdAt ?? this.createdAt,
-      participantUserIds: participantUserIds ?? this.participantUserIds,
-      followerUserIds: followerUserIds ?? this.followerUserIds,
-      myRole: myRole ?? this.myRole,
-      childCount: childCount ?? this.childCount,
-      openChildCount: openChildCount ?? this.openChildCount,
-      isReversed: isReversed ?? this.isReversed,
-      reversalReason: reversalReason ?? this.reversalReason,
-    );
   }
 }
 
@@ -662,19 +760,26 @@ class WorkspaceDirectoryPerson {
 
   factory WorkspaceDirectoryPerson.fromJson(Map<String, dynamic> json) {
     final units = <String>[];
-    if (json['unitNames'] is List) {
-      for (final u in json['unitNames']) {
+    final rawUnits = json['unitNames'] ?? json['units'] ?? json['departmentNames'];
+    if (rawUnits is List) {
+      for (final u in rawUnits) {
         if (u != null && u.toString().isNotEmpty) {
           units.add(u.toString());
         }
       }
     }
+    final uid = json['userId']?.toString() ?? json['id']?.toString() ?? json['uid']?.toString() ?? '';
+    final name = json['displayName']?.toString() ??
+        json['fullName']?.toString() ??
+        json['name']?.toString() ??
+        json['username']?.toString() ??
+        '';
     return WorkspaceDirectoryPerson(
-      userId: json['userId']?.toString() ?? '',
-      displayName: json['displayName']?.toString() ?? '',
+      userId: uid,
+      displayName: name,
       email: json['email']?.toString(),
       unitNames: units,
-      positionName: json['positionName']?.toString(),
+      positionName: json['positionName']?.toString() ?? json['position']?.toString() ?? json['systemRole']?.toString(),
     );
   }
 
@@ -702,12 +807,19 @@ class WorkspaceDirectoryResponse {
   });
 
   factory WorkspaceDirectoryResponse.fromJson(Map<String, dynamic> json) {
-    final rawPeople = json['people'];
+    dynamic rawPeople = json['people'];
+    if (rawPeople == null && json['data'] is Map) {
+      rawPeople = json['data']['people'] ?? json['data']['users'];
+    } else if (rawPeople == null && json['data'] is List) {
+      rawPeople = json['data'];
+    } else if (rawPeople == null && json['users'] is List) {
+      rawPeople = json['users'];
+    }
     final list = <WorkspaceDirectoryPerson>[];
     if (rawPeople is List) {
       for (final p in rawPeople) {
-        if (p is Map<String, dynamic>) {
-          list.add(WorkspaceDirectoryPerson.fromJson(p));
+        if (p is Map) {
+          list.add(WorkspaceDirectoryPerson.fromJson(Map<String, dynamic>.from(p)));
         }
       }
     }

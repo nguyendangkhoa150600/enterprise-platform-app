@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/i18n/app_i18n.dart';
+import '../utils/app_toast.dart';
 
 import '../models/chat_models.dart';
 import '../models/hrm_models.dart';
@@ -25,6 +27,12 @@ import '../screens/procedure_screen.dart';
 import '../screens/profile_income_screen.dart';
 import '../screens/workspace_screen.dart';
 import '../features/crm/presentation/screens/crm_hub_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_letter_detail_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_overview_screen.dart';
+import '../features/finance/presentation/finance_routes.dart';
+import '../features/finance/presentation/widgets/common/finance_page_guard.dart';
+import '../features/finance/presentation/utils/finance_format.dart';
+import '../features/finance/presentation/utils/finance_scope.dart';
 
 /// Bộ điều hướng tập trung chuyển màn hình dựa trên dữ liệu sự kiện thông báo (Deep Linking)
 class NotificationRouter {
@@ -126,6 +134,22 @@ class NotificationRouter {
 
     if (isChat && conversationId != null && conversationId.isNotEmpty) {
       await _openChatConversation(context, conversationId, data);
+      return;
+    }
+
+    // =========================================================================
+    // 1b. TÀI CHÍNH (phiếu cần duyệt, kết quả xử lý phiếu, phiếu chưa ghi sổ được).
+    // Đặt TRƯỚC HRM: thông báo duyệt phiếu có category 'approval' nên trước đây bị mở nhầm sang Duyệt đơn HRM.
+    // Server (notification-catalog): module 'finance', sourceType 'finance_*', sourceId '<voucherId>:<eventId>',
+    // deepLink '/modules/finance/<receipts|payments|transfers>/<voucherId>'.
+    // =========================================================================
+    final isFinance = module == 'finance' ||
+        sourceType.startsWith('finance_') ||
+        webLink.contains('/modules/finance') ||
+        deepLink.contains('/modules/finance');
+
+    if (isFinance) {
+      await _openFinance(context, targetId, webLink.isNotEmpty ? webLink : deepLink);
       return;
     }
 
@@ -338,9 +362,111 @@ class NotificationRouter {
     }
 
     // =========================================================================
-    // 12. FALLBACK: TRUNG TÂM THÔNG BÁO (Notification Center)
+    // 12. VĂN THƯ & CÔNG VĂN (Correspondence)
+    // =========================================================================
+    final isCorrespondence = module == 'correspondence' ||
+        module == 'letter' ||
+        category.contains('correspondence') ||
+        sourceType.contains('correspondence') ||
+        sourceType.contains('letter') ||
+        webLink.contains('/modules/correspondence') ||
+        webLink.contains('/correspondence') ||
+        webLink.contains('#letters/') ||
+        deepLink.contains('/correspondence') ||
+        deepLink.contains('#letters/');
+
+    if (isCorrespondence) {
+      await _openCorrespondence(context, targetId, webLink.isNotEmpty ? webLink : deepLink, data);
+      return;
+    }
+
+    // =========================================================================
+    // 13. FALLBACK: TRUNG TÂM THÔNG BÁO (Notification Center)
     // =========================================================================
     nav.push(MaterialPageRoute(builder: (_) => const NotificationCenterScreen()));
+  }
+
+  /// Mở phiếu Tài chính (chi tiết phiếu); không xác định được phiếu thì mở Dashboard Tài chính.
+  /// Màn chi tiết tự chặn khi người dùng không còn quyền xem phiếu (server trả 403/404).
+  static Future<void> _openFinance(BuildContext context, String targetId, String rawLink) async {
+    // Liên kết từ hồ sơ quy trình (web open-link-screen): `/modules/finance/open/<linkId>` → tra phiếu rồi mở chi tiết.
+    final openLink = RegExp(r'/modules/finance/open/([^/?#]+)').firstMatch(rawLink);
+    if (openLink != null) {
+      try {
+        final found = await FinanceScope.instance.repository.getVoucherByLink(Uri.decodeComponent(openLink.group(1)!));
+        if (!context.mounted) return;
+        await FinanceRoutes.openVoucherDetail(context, found.id);
+      } catch (e) {
+        FinanceScope.instance.onError(e);
+        if (!context.mounted) return;
+        AppToast.error(context, 'finance.open_link.error'.tr(args: {'error': financeErrorMessage(e, 'finance.open_link.failed')}));
+        await FinanceRoutes.openPage(context, FinancePage.dashboard);
+      }
+      return;
+    }
+    String voucherId = '';
+    final match = RegExp(r'/modules/finance/(?:receipts|payments|transfers)/([0-9a-fA-F-]{36})').firstMatch(rawLink);
+    if (match != null) voucherId = match.group(1) ?? '';
+    if (voucherId.isEmpty && targetId.isNotEmpty) {
+      final first = targetId.split(':').first.trim();
+      if (RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(first)) voucherId = first;
+    }
+    if (voucherId.isNotEmpty) {
+      await FinanceRoutes.openVoucherDetail(context, voucherId);
+      return;
+    }
+    await FinanceRoutes.openPage(context, FinancePage.dashboard);
+  }
+
+  /// Điều hướng tới công văn văn thư (chi tiết hoặc màn hình tổng quan)
+  static Future<void> _openCorrespondence(
+    BuildContext context,
+    String targetId,
+    String rawLink,
+    Map<String, dynamic> data,
+  ) async {
+    final nav = Navigator.of(context);
+    String letterId = targetId.trim();
+
+    // Nếu targetId có dạng "<letterId>:<eventType>:<eventId>" hoặc "<letterId>:<kind>:<dueAt>"
+    if (letterId.contains(':')) {
+      final firstPart = letterId.split(':').first.trim();
+      if (firstPart.isNotEmpty && !firstPart.contains('correspondence')) {
+        letterId = firstPart;
+      }
+    }
+
+    // Trích xuất từ data payload nếu có
+    if (letterId.isEmpty || letterId == 'correspondence') {
+      final payloadId = (data['letterId'] ?? data['letter_id'])?.toString().trim();
+      if (payloadId != null && payloadId.isNotEmpty) {
+        letterId = payloadId;
+      }
+    }
+
+    // Trích xuất từ webLink hoặc deepLink (ví dụ: /modules/correspondence#letters/<letterId>)
+    if (letterId.isEmpty || letterId == 'correspondence') {
+      if (rawLink.contains('#letters/')) {
+        final match = RegExp(r'#letters/([a-zA-Z0-9_\-]+)').firstMatch(rawLink);
+        if (match != null) {
+          letterId = match.group(1) ?? '';
+        }
+      } else if (rawLink.contains('/letters/')) {
+        final match = RegExp(r'/letters/([a-zA-Z0-9_\-]+)').firstMatch(rawLink);
+        if (match != null) {
+          letterId = match.group(1) ?? '';
+        }
+      }
+    }
+
+    if (letterId.isNotEmpty && letterId != 'correspondence') {
+      debugPrint('[NotificationRouter] Opening CorrespondenceLetterDetailScreen for letterId: $letterId');
+      CorrespondenceLetterDetailScreen.open(context, letterId);
+      return;
+    }
+
+    debugPrint('[NotificationRouter] Opening CorrespondenceOverviewScreen');
+    nav.push(MaterialPageRoute(builder: (_) => const CorrespondenceOverviewScreen()));
   }
 
   /// Mở màn hình hội thoại chat tương ứng

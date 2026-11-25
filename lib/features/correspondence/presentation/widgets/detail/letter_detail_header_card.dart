@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Top Header Card for Letter Detail: Badges, Subject, Sender, Quick Action Buttons
 class LetterDetailHeaderCard extends StatelessWidget {
@@ -50,7 +51,7 @@ class LetterDetailHeaderCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '● ${isIncoming ? "Công văn đến" : "Công văn đi"} ${letter.displayNo}',
+                  '● ${isIncoming ? 'correspondence.detail_view.incoming_letter'.tr() : 'correspondence.detail_view.outgoing_letter'.tr()} ${letter.displayNo}',
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -130,9 +131,9 @@ class LetterDetailHeaderCard extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onReply,
                     icon: const Icon(Icons.reply_rounded, size: 15, color: Color(0xFF334155)),
-                    label: const Text(
-                      'Soạn trả lời',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                    label: Text(
+                      'correspondence.detail_view.reply'.tr(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -146,9 +147,9 @@ class LetterDetailHeaderCard extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onRemind,
                     icon: const Icon(Icons.notifications_active_outlined, size: 15, color: Color(0xFF334155)),
-                    label: const Text(
-                      'Đôn đốc',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                    label: Text(
+                      'correspondence.detail_view.remind'.tr(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -162,9 +163,9 @@ class LetterDetailHeaderCard extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onEdit,
                     icon: const Icon(Icons.edit_outlined, size: 15, color: Color(0xFF334155)),
-                    label: const Text(
-                      'Sửa thông tin',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                    label: Text(
+                      'correspondence.detail_view.edit_info'.tr(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
