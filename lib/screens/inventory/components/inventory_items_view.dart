@@ -1,858 +1,399 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/inventory/data/goods/goods_models.dart';
+import '../../../features/inventory/presentation/goods/goods_format.dart';
+import '../../../features/inventory/presentation/goods/goods_store.dart';
+import '../../../features/inventory/presentation/goods/widgets/goods_ui.dart';
+import '../../../features/inventory/presentation/utils/inventory_scope.dart';
 import '../../../models/inventory_models.dart';
+import '../../../theme/colors.dart';
 import '../inventory_item_detail_screen.dart';
-import 'inventory_item_edit_dialog.dart';
+import '../../../features/inventory/domain/stocktake/stocktake_models.dart';
+import '../../../features/inventory/presentation/stocktake/create_stocktake_sheet.dart';
+import '../../../features/inventory/presentation/stock_import/stock_import_warehouse_flow.dart';
+import '../../../utils/app_toast.dart';
 import 'inventory_movement_dialog.dart';
-import 'inventory_overview_view.dart';
 
+/// Một dòng tồn của tab Nhà kho: một mặt hàng ở một kho.
+class GoodsWarehouseRow {
+  final GoodsStockRow stock;
+  final GoodsMaterial material;
+  final GoodsWarehouse? warehouse;
+  const GoodsWarehouseRow(this.stock, this.material, this.warehouse);
+}
+
+/// Tab Nhà kho của trang Kho hàng (web `WarehouseStockTab`): tồn hiện có, mỗi dòng là một mặt hàng ở
+/// một kho. Dịch vụ không có tồn nên không xuất hiện. Chạm một dòng mở chi tiết tồn.
 class InventoryItemsView extends StatefulWidget {
-  final List<InventoryItem> items;
-  final List<WarehouseItem>? warehouses;
-  final String? selectedWarehouseFilter;
-  final VoidCallback? onClearWarehouseFilter;
-  final ValueChanged<String?>? onSelectWarehouse;
-  final Future<void> Function() onRefresh;
+  final GoodsStore store;
+
+  /// Danh mục cho form Nhập/Xuất kho (form của nhóm Xuất/nhập dùng `InventoryItem`).
+  final List<InventoryItem> movementItems;
+
+  /// Mã kho mở sẵn bộ lọc (từ màn Tổng quan).
+  final String? initialWarehouseCode;
+
+  /// Gọi sau khi ghi phiếu nhập/xuất xong.
+  final Future<void> Function() onMovementSubmitted;
 
   const InventoryItemsView({
     super.key,
-    required this.items,
-    this.warehouses,
-    this.selectedWarehouseFilter,
-    this.onClearWarehouseFilter,
-    this.onSelectWarehouse,
-    required this.onRefresh,
+    required this.store,
+    required this.movementItems,
+    required this.onMovementSubmitted,
+    this.initialWarehouseCode,
   });
 
   @override
   State<InventoryItemsView> createState() => _InventoryItemsViewState();
 }
 
-class _InventoryItemsViewState extends State<InventoryItemsView>
-    with SingleTickerProviderStateMixin {
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
-  final ScrollController _scrollController = ScrollController();
+class _InventoryItemsViewState extends State<InventoryItemsView> {
+  final TextEditingController _search = TextEditingController();
+  String _warehouseId = '';
+  String _level = '';
+  bool _showEmpty = false;
+  int _page = 1;
+  int _pageSize = GoodsFormat.pageSizes.first;
+  String? _pendingWarehouseCode;
 
-  AnimationController? _headerAnimController;
-  Animation<Offset>? _headerSlideAnimation;
-  bool _isHeaderVisible = true;
-
-  String _searchQuery = '';
-  String _selectedKindFilter = 'ALL'; // 'ALL', 'STOCK', 'ASSET'
-
-  int get _inStockCount => widget.items.where((i) => (i.kind ?? 'STOCK') == 'STOCK').length;
-  int get _assetCount => widget.items.where((i) => (i.kind ?? '') == 'ASSET').length;
-
-  void _ensureAnimation() {
-    if (_headerAnimController == null) {
-      _headerAnimController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 240),
-        value: 1.0, // Hiển thị đầy đủ mặc định ban đầu
-      );
-      _headerSlideAnimation = Tween<Offset>(
-        begin: const Offset(0, -1.05),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _headerAnimController!,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      ));
-    }
-  }
+  static const _levels = ['IN_STOCK', 'LOW', 'EMPTY'];
 
   @override
   void initState() {
     super.initState();
-    _ensureAnimation();
-    _scrollController.addListener(_onScroll);
+    _pendingWarehouseCode = widget.initialWarehouseCode;
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    _headerAnimController?.dispose();
+    _search.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    // Luôn hiển thị thanh tìm kiếm & bộ lọc khi cuộn về gần đỉnh trang
-    if (_scrollController.hasClients && _scrollController.offset <= 15) {
-      _showHeader();
-    }
-  }
+  void _change(VoidCallback apply) => setState(() {
+        apply();
+        _page = 1;
+      });
 
-  void _showHeader() {
-    _ensureAnimation();
-    if (!_isHeaderVisible) {
-      _isHeaderVisible = true;
-      _headerAnimController?.forward();
-    }
-  }
+  String _levelLabel(String l) => 'inventory.goods.level_${l.toLowerCase()}'.tr();
 
-  void _hideHeader() {
-    _ensureAnimation();
-    if (_isHeaderVisible) {
-      _isHeaderVisible = false;
-      _headerAnimController?.reverse();
-    }
-  }
+  static String _warehouseLabel(GoodsWarehouse w) => w.name.isNotEmpty ? '${w.name} (${w.code})' : w.code;
 
-  bool _handleScrollNotification(UserScrollNotification notification) {
-    if (_searchFocusNode.hasFocus) {
-      return false;
+  List<GoodsWarehouseRow> _rows(GoodsWorkspace ws) {
+    final materialById = {for (final m in ws.materials) m.id: m};
+    final warehouseById = {for (final w in ws.warehouses) w.id: w};
+    final out = <GoodsWarehouseRow>[];
+    for (final s in ws.stock) {
+      final m = materialById[s.materialId];
+      if (m == null || m.isService) continue;
+      out.add(GoodsWarehouseRow(s, m, warehouseById[s.warehouseId]));
     }
-
-    if (_scrollController.hasClients && _scrollController.offset <= 15) {
-      _showHeader();
-      return false;
-    }
-
-    if (notification.direction == ScrollDirection.reverse) {
-      // Đang lướt xuống dưới xem danh sách -> trượt ẩn thanh tìm kiếm & bộ lọc
-      _hideHeader();
-    } else if (notification.direction == ScrollDirection.forward) {
-      // Đang kéo nhẹ màn hình xuống -> làm nổi thanh tìm kiếm & bộ lọc lên ngay lập tức
-      _showHeader();
-    }
-    return false;
-  }
-
-  void _scrollToTopOnFilter() {
-    if (_scrollController.hasClients && _scrollController.offset > 0) {
-      _scrollController.jumpTo(0);
-      _showHeader();
-    }
-  }
-
-  List<InventoryItem> get _filteredItems {
-    var list = widget.items;
-
-    // Filter by warehouse
-    if (widget.selectedWarehouseFilter != null && widget.selectedWarehouseFilter!.isNotEmpty) {
-      final wh = widget.selectedWarehouseFilter!.toLowerCase();
-      list = list.where((i) {
-        return i.warehouseStocks.any((ws) =>
-            ws.warehouseCode.toLowerCase().contains(wh) ||
-            ws.warehouseName.toLowerCase().contains(wh));
-      }).toList();
-    }
-
-    // Filter by kind
-    if (_selectedKindFilter == 'STOCK') {
-      list = list.where((i) => (i.kind ?? 'STOCK') == 'STOCK').toList();
-    } else if (_selectedKindFilter == 'ASSET') {
-      list = list.where((i) => (i.kind ?? '') == 'ASSET').toList();
-    }
-
-    // Filter by search query
-    if (_searchQuery.trim().isNotEmpty) {
-      final q = _searchQuery.trim().toLowerCase();
-      list = list.where((i) =>
-          i.code.toLowerCase().contains(q) ||
-          i.name.toLowerCase().contains(q) ||
-          (i.installedAtName ?? '').toLowerCase().contains(q) ||
-          (i.category ?? '').toLowerCase().contains(q)).toList();
-    }
-
-    // Sắp xếp từ trên xuống dưới: mới nhất xuống cũ nhất (createdAt giảm dần + tie-breaker)
-    final indexMap = <InventoryItem, int>{};
-    for (int i = 0; i < list.length; i++) {
-      indexMap[list[i]] = i;
-    }
-    final sorted = List<InventoryItem>.from(list);
-    sorted.sort((a, b) {
-      if (a.createdAt != null && b.createdAt != null) {
-        final cmp = b.createdAt!.compareTo(a.createdAt!);
-        if (cmp != 0) return cmp;
-      } else if (a.createdAt != null) {
-        return -1;
-      } else if (b.createdAt != null) {
-        return 1;
-      }
-      final idxA = indexMap[a] ?? 0;
-      final idxB = indexMap[b] ?? 0;
-      return idxB.compareTo(idxA);
+    out.sort((a, b) {
+      final c = a.material.code.compareTo(b.material.code);
+      return c != 0 ? c : (a.warehouse?.name ?? '').compareTo(b.warehouse?.name ?? '');
     });
+    return out;
+  }
 
-    return sorted;
+  List<GoodsWarehouseRow> _filter(List<GoodsWarehouseRow> rows, List<GoodsStockRow> stock) {
+    // Khả dụng gộp mọi kho của từng mã, để so với mức tồn tối thiểu của mã đó.
+    final availableByMaterial = <String, double>{};
+    for (final s in stock) {
+      availableByMaterial[s.materialId] = (availableByMaterial[s.materialId] ?? 0) + s.available;
+    }
+    final term = GoodsFormat.fold(_search.text.trim());
+    return rows.where((r) {
+      if (_warehouseId.isNotEmpty && r.stock.warehouseId != _warehouseId) return false;
+      final empty = r.stock.quantity <= 0;
+      // Chọn mức tồn thì mức đó quyết định; không chọn thì ẩn dòng hết hàng trừ khi bật "Hiện cả".
+      if (_level == 'EMPTY') {
+        if (!empty) return false;
+      } else if (_level == 'IN_STOCK') {
+        if (empty) return false;
+      } else if (_level == 'LOW') {
+        final available = availableByMaterial[r.material.id] ?? 0;
+        if (r.material.minStock <= 0 || available >= r.material.minStock) return false;
+      } else if (empty && !_showEmpty) {
+        return false;
+      }
+      if (term.isEmpty) return true;
+      return [r.material.code, r.material.name].any((v) => GoodsFormat.fold(v).contains(term));
+    }).toList();
+  }
+
+  Future<void> _openMovement(String kind, [String? materialCode]) => InventoryMovementDialog.show(
+        context,
+        items: widget.movementItems,
+        initialKind: kind,
+        initialMaterialCode: materialCode,
+        onSubmitted: widget.onMovementSubmitted,
+      );
+
+  /// Web "Tạo đợt kiểm kê": mở form tạo đợt, chọn sẵn kho đang lọc; tạo xong chỉ báo như web.
+  Future<void> _openStocktake(GoodsWorkspace ws) async {
+    final selected = ws.warehouses.where((w) => w.id == _warehouseId).firstOrNull;
+    final created = await CreateStocktakeSheet.show(
+      context,
+      warehouses: [for (final w in ws.warehouses) InvStocktakeWarehouse(id: w.id, code: w.code, name: w.name)],
+      initialWarehouseCode: selected?.code,
+    );
+    if (created == null || !mounted) return;
+    AppToast.success(context, 'inventory.stocktake.notice_created'.tr(args: {'code': created.code}));
+  }
+
+  void _open(GoodsWarehouseRow r) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => InventoryItemDetailScreen(
+        store: widget.store,
+        stockRowId: r.stock.id,
+        onOpenMovement: (kind) => _openMovement(kind, r.material.code),
+      ),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    _ensureAnimation();
-    final filtered = _filteredItems;
-    final hasWarehouseFilter = widget.selectedWarehouseFilter != null && widget.selectedWarehouseFilter!.isNotEmpty;
-    final double headerPaddingTop = hasWarehouseFilter ? 245 : 210;
+    return ListenableBuilder(
+      listenable: Listenable.merge([widget.store, InventoryScope.instance.capabilities]),
+      builder: (context, _) {
+        final store = widget.store;
+        final ws = store.workspace;
+        if (_pendingWarehouseCode != null && ws.warehouses.isNotEmpty) {
+          for (final w in ws.warehouses) {
+            if (w.code == _pendingWarehouseCode) _warehouseId = w.id;
+          }
+          _pendingWarehouseCode = null;
+        }
+        final rows = _rows(ws);
+        final filtered = _filter(rows, ws.stock);
+        final view = GoodsPage.of(filtered, _page, _pageSize);
+        final canWrite = InventoryScope.instance.capabilities.value.canWriteTransactions;
 
-    return Stack(
-      children: [
-        // 1. Danh sách cuộn mượt mà (Lớp nền)
-        NotificationListener<UserScrollNotification>(
-          onNotification: _handleScrollNotification,
-          child: RefreshIndicator(
-            onRefresh: widget.onRefresh,
-            edgeOffset: 140, // Vị trí spinner tròn không bị che khuất
-            child: ListView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(16, headerPaddingTop, 16, 24),
-              children: [
-                // 1. Top Banner: Nhu cầu cấp phát vật tư từ Quy trình (Bảng kê CSV)
-                _buildRequisitionBanner(),
-                const SizedBox(height: 14),
-
-                // 2. Danh sách mặt hàng hoặc trạng thái rỗng
-                if (filtered.isEmpty)
-                  _buildEmptyState()
-                else
-                  ...filtered.map((item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildItemCard(item),
-                      )),
-              ],
+        Widget body;
+        if (view.total == 0) {
+          final failed = store.error != null && !store.loaded;
+          final String text;
+          if (store.loading && !store.loaded) {
+            text = 'inventory.goods.loading'.tr();
+          } else if (failed) {
+            text = inventoryErrorMessage(store.error, 'inventory.goods.load_error');
+          } else {
+            text = rows.isEmpty ? 'inventory.goods.wh_empty'.tr() : 'inventory.goods.wh_no_match'.tr();
+          }
+          body = SliverToBoxAdapter(
+            child: GoodsMessage(text: text, isError: failed, onRetry: failed ? store.reload : null),
+          );
+        } else {
+          body = SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            sliver: SliverList.separated(
+              itemCount: view.rows.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (_, i) => _card(view.rows[i]),
             ),
-          ),
-        ),
+          );
+        }
 
-        // 2. Thanh công cụ tìm kiếm & bộ lọc nổi thu phóng theo hướng cuộn (Rule 5.4)
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: ClipRect(
-            child: SlideTransition(
-              position: _headerSlideAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
-              child: AnimatedBuilder(
-                animation: _headerAnimController ?? const AlwaysStoppedAnimation(1.0),
-                builder: (context, child) {
-                  return IgnorePointer(
-                    ignoring: (_headerAnimController?.value ?? 1.0) == 0,
-                    child: child,
-                  );
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: const Border(
-                      bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 1. Search Bar
-                      _buildSearchBar(),
-                      const SizedBox(height: 10),
-
-                      // 2. Filter Pills: [Tất cả 55] [Trong kho 55] [Lắp đặt 0]
-                      _buildFilterPills(),
-                      const SizedBox(height: 10),
-
-                      // 3. Action Button: + Xuất/nhập kho (Quản lý tồn kho)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _openMovementDialog,
-                          icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                          label: const Text('+ Xuất/nhập kho', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // 4. Horizontal Warehouse Selector (nếu có danh sách kho)
-                      if (widget.warehouses != null && widget.warehouses!.isNotEmpty) ...[
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _buildWarehouseChip(
-                                label: 'Tất cả kho',
-                                isSelected: widget.selectedWarehouseFilter == null || widget.selectedWarehouseFilter!.isEmpty,
-                                onTap: () {
-                                  _scrollToTopOnFilter();
-                                  widget.onClearWarehouseFilter?.call();
-                                },
-                              ),
-                              const SizedBox(width: 6),
-                              ...widget.warehouses!.map((wh) => Padding(
-                                    padding: const EdgeInsets.only(right: 6),
-                                    child: _buildWarehouseChip(
-                                      label: wh.name,
-                                      isSelected: widget.selectedWarehouseFilter != null &&
-                                          (widget.selectedWarehouseFilter == wh.code ||
-                                              widget.selectedWarehouseFilter == wh.name),
-                                      onTap: () {
-                                        _scrollToTopOnFilter();
-                                        widget.onSelectWarehouse?.call(wh.code);
-                                      },
-                                    ),
-                                  )),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      // 5. Active Warehouse Filter Chip (if selected)
-                      if (hasWarehouseFilter) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFFBFDBFE)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.warehouse_outlined, size: 14, color: Color(0xFF2563EB)),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Kho: ${widget.selectedWarehouseFilter}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF2563EB),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  InkWell(
-                                    onTap: () {
-                                      _scrollToTopOnFilter();
-                                      widget.onClearWarehouseFilter?.call();
-                                    },
-                                    child: const Icon(Icons.close, size: 15, color: Color(0xFF2563EB)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
+        return GoodsFloatingHeaderList(
+          onRefresh: store.reload,
+          header: _header(ws, canWrite),
+          slivers: [
+            body,
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 4, 24),
+              sliver: SliverToBoxAdapter(
+                child: GoodsPager(
+                  view: view,
+                  pageSize: _pageSize,
+                  onPageChange: (p) => setState(() => _page = p),
+                  onPageSizeChange: (s) => setState(() {
+                    _pageSize = s;
+                    _page = 1;
+                  }),
                 ),
               ),
             ),
-          ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _header(GoodsWorkspace ws, bool canWrite) {
+    GoodsWarehouse? selected;
+    for (final w in ws.warehouses) {
+      if (w.id == _warehouseId) selected = w;
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GoodsSearchField(
+          controller: _search,
+          hint: 'inventory.goods.wh_search'.tr(),
+          onChanged: (_) => _change(() {}),
         ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            GoodsFilterChip(
+              label: 'inventory.goods.col_warehouse'.tr(),
+              value: selected == null ? null : _warehouseLabel(selected),
+              onTap: () async {
+                final pick = await showGoodsPicker(
+                  context,
+                  title: 'inventory.goods.col_warehouse'.tr(),
+                  options: ws.warehouses.map((w) => GoodsOption(w.id, _warehouseLabel(w))).toList(),
+                  selected: _warehouseId,
+                );
+                if (pick != null && mounted) _change(() => _warehouseId = pick.value);
+              },
+              onClear: () => _change(() => _warehouseId = ''),
+            ),
+            const SizedBox(width: 8),
+            GoodsFilterChip(
+              label: 'inventory.goods.level'.tr(),
+              value: _level.isEmpty ? null : _levelLabel(_level),
+              onTap: () async {
+                final pick = await showGoodsPicker(
+                  context,
+                  title: 'inventory.goods.level'.tr(),
+                  options: _levels.map((l) => GoodsOption(l, _levelLabel(l))).toList(),
+                  selected: _level,
+                );
+                if (pick != null && mounted) _change(() => _level = pick.value);
+              },
+              onClear: () => _change(() => _level = ''),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _change(() => _showEmpty = !_showEmpty),
+              child: Row(children: [
+                Checkbox(
+                  value: _showEmpty,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (v) => _change(() => _showEmpty = v ?? false),
+                ),
+                Text('inventory.goods.show_empty'.tr(),
+                    style: const TextStyle(fontSize: 12, color: AppColors.slate600)),
+              ]),
+            ),
+          ]),
+        ),
+        if (canWrite) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => StockImportWarehouseFlow.run(
+              context,
+              firstWarehouseCode: ws.warehouses.isNotEmpty ? ws.warehouses.first.code : '',
+              onImported: widget.onMovementSubmitted,
+            ),
+            icon: const Icon(Icons.upload_file_outlined, size: 17),
+            label: Text('inventory.stock_import.open_bulk'.tr()),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.slate700,
+              side: const BorderSide(color: AppColors.slate300),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+        if (InventoryScope.instance.capabilities.value.canCreateStocktake) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _openStocktake(ws),
+            icon: const Icon(Icons.fact_check_outlined, size: 17),
+            label: Text('inventory.goods.create_stocktake'.tr()),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.slate700,
+              side: const BorderSide(color: AppColors.slate300),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+        if (canWrite) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _openMovement('issue'),
+                icon: const Icon(Icons.upload_outlined, size: 17),
+                label: Text('inventory.goods.issue'.tr()),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.slate700,
+                  side: const BorderSide(color: AppColors.slate300),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _openMovement('receipt'),
+                icon: const Icon(Icons.download_outlined, size: 17),
+                label: Text('inventory.goods.receipt'.tr()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: goodsPrimary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ]),
+        ],
       ],
     );
   }
 
-  Widget _buildRequisitionBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
+  Widget _card(GoodsWarehouseRow r) {
+    final m = r.material;
+    return Opacity(
+      opacity: m.isActive ? 1 : 0.55,
+      child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFDBEAFE)),
-                ),
-                child: const Icon(
-                  Icons.feed_outlined,
-                  size: 20,
-                  color: Color(0xFF2563EB),
-                ),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => _open(r),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.slate200),
+            ),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(m.code,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: goodsPrimary)),
+                  const SizedBox(height: 3),
+                  Text(m.name,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.slate900)),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    const Icon(Icons.warehouse_outlined, size: 13, color: AppColors.slate500),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(r.warehouse?.name ?? '—',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
+                    ),
+                  ]),
+                ]),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Nhu cầu cấp phát vật tư từ Quy trình (Bảng kê CSV)',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Quy trình con & lệnh bảo trì tự động kết xuất bảng kê CSV để thủ kho chủ động lập phiếu xuất/giữ chỗ.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF64748B),
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Text(
-                  '0 yêu cầu',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const SizedBox(height: 8),
-          const Text(
-            'Hiện chưa có hồ sơ quy trình nào gửi yêu cầu vật tư hoặc bảng kê CSV chờ xử lý.',
-            style: TextStyle(
-              fontSize: 11.5,
-              color: Color(0xFF94A3B8),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        focusNode: _searchFocusNode,
-        onChanged: (val) => setState(() => _searchQuery = val),
-        style: const TextStyle(fontSize: 13.5, color: Color(0xFF0F172A)),
-        decoration: InputDecoration(
-          hintText: 'Tìm theo mã, tên hoặc vị trí lắp đặt...',
-          hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
-          prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF64748B)),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, size: 16, color: Color(0xFF94A3B8)),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                )
-              : null,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          border: InputBorder.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterPills() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _buildFilterPill(
-            id: 'ALL',
-            label: 'Tất cả ${widget.items.length}',
-          ),
-          const SizedBox(width: 8),
-          _buildFilterPill(
-            id: 'STOCK',
-            label: 'Trong kho $_inStockCount',
-          ),
-          const SizedBox(width: 8),
-          _buildFilterPill(
-            id: 'ASSET',
-            label: 'Lắp đặt $_assetCount',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterPill({required String id, required String label}) {
-    final isSelected = _selectedKindFilter == id;
-    return InkWell(
-      onTap: () {
-        _scrollToTopOnFilter();
-        setState(() => _selectedKindFilter = id);
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6.5),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2563EB) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.25),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF334155),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(GoodsFormat.number(r.stock.quantity),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.slate900)),
+                Text(m.unit, style: const TextStyle(fontSize: 11.5, color: AppColors.slate500)),
+              ]),
+            ]),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildWarehouseChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF475569),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openDetailScreen(InventoryItem item) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => InventoryItemDetailScreen(
-          item: item,
-          warehouses: widget.warehouses,
-          selectedWarehouseFilter: widget.selectedWarehouseFilter,
-          allItems: widget.items,
-          onUpdated: widget.onRefresh,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemCard(InventoryItem item) {
-    final isStock = (item.kind ?? 'STOCK') == 'STOCK';
-    final kindBg = isStock ? const Color(0xFFDCFCE7) : const Color(0xFFF3E8FF);
-    final kindFg = isStock ? const Color(0xFF15803D) : const Color(0xFF7E22CE);
-    final kindLabel = isStock ? 'Trong kho' : 'Lắp đặt';
-
-    final totalOwned = item.totalOwned > 0 ? item.totalOwned : item.available;
-    final isAvailable = item.available > 0;
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: () => _openDetailScreen(item),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Hàng 1: Mã SKU + Phân loại + Nút Sửa & Nút Chi tiết
-              Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            item.code,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF2563EB),
-                              letterSpacing: -0.2,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: kindBg,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text(
-                            kindLabel,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: kindFg,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Nút Sửa
-                  InkWell(
-                    onTap: () => _openEditDialog(item),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFCBD5E1)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.edit_outlined, size: 12, color: Color(0xFF475569)),
-                          SizedBox(width: 3),
-                          Text(
-                            'Sửa',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  // Nút Chi tiết
-                  InkWell(
-                    onTap: () => _openDetailScreen(item),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFBFDBFE)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Chi tiết',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
-                          ),
-                          SizedBox(width: 2),
-                          Icon(Icons.chevron_right, size: 13, color: Color(0xFF2563EB)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 7),
-
-              // Hàng 2: Tên vật tư
-              Text(
-                item.name,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
-                  height: 1.25,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-
-              // Hàng 3: Strip tóm tắt Tổng sở hữu & Khả dụng
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFF1F5F9)),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Tổng sở hữu: ',
-                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
-                    ),
-                    Text(
-                      '${InventoryOverviewView.formatViNumber(totalOwned)} ${item.unit}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(width: 1, height: 14, color: const Color(0xFFCBD5E1)),
-                    const Spacer(),
-                    Text(
-                      'Khả dụng: ',
-                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
-                    ),
-                    Text(
-                      '${InventoryOverviewView.formatViNumber(item.available)} ${item.unit}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: isAvailable ? const Color(0xFF15803D) : Colors.red.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              if (item.warehouseStocks.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.warehouse_outlined, size: 12, color: Color(0xFF64748B)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        item.warehouseStocks.map((ws) => '${ws.warehouseName} (${InventoryOverviewView.formatViNumber(ws.quantity)})').join(' • '),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF64748B),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openMovementDialog() {
-    InventoryMovementDialog.show(
-      context,
-      items: widget.items,
-      onSubmitted: widget.onRefresh,
-    );
-  }
-
-  void _openEditDialog(InventoryItem item) {
-    InventoryItemEditDialog.show(
-      context,
-      item: item,
-      onUpdated: widget.onRefresh,
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: const Column(
-        children: [
-          Icon(Icons.inventory_2_outlined, size: 40, color: Color(0xFF94A3B8)),
-          SizedBox(height: 10),
-          Text(
-            'Không tìm thấy vật tư phù hợp',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF334155),
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Thử thay đổi từ khoá tìm kiếm hoặc chuyển tab phân loại',
-            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-          ),
-        ],
       ),
     );
   }
 }
-

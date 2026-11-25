@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../models/inventory_models.dart';
-import '../../services/module_business_service.dart';
+import '../../core/i18n/app_i18n.dart';
+import '../../features/inventory/data/reports/inventory_reports_repository.dart';
+import '../../features/inventory/domain/reports/inventory_report_models.dart';
+import '../../features/inventory/presentation/reports/approval_report_view.dart';
+import '../../features/inventory/presentation/reports/movement_report_view.dart';
+import '../../features/inventory/presentation/reports/stock_report_view.dart';
+import '../../features/inventory/presentation/utils/inventory_scope.dart';
 import '../../theme/colors.dart';
-import 'components/inventory_overview_view.dart';
 
+enum _ReportView { warehouse, lot, serial, movements, approvals }
+
+/// Báo cáo kho (web `InventoryReports`, T7-09): tồn theo kho, lô, serial với bốn loại tồn;
+/// nhập xuất theo kỳ; lịch sử chứng từ phải duyệt. Mỗi bảng xuất được toàn bộ tập đã lọc (CSV).
 class InventoryReportsScreen extends StatefulWidget {
   const InventoryReportsScreen({super.key});
 
@@ -12,198 +20,109 @@ class InventoryReportsScreen extends StatefulWidget {
 }
 
 class _InventoryReportsScreenState extends State<InventoryReportsScreen> {
-  final ModuleBusinessService _service = ModuleBusinessService();
-  InventoryOverviewData _overview = InventoryOverviewData.empty();
-  bool _isLoading = true;
+  final _repo = InventoryReportsRepository.instance;
+  _ReportView _view = _ReportView.warehouse;
+  List<ReportWarehouse> _warehouses = const [];
+  List<String> _categories = const [];
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    InventoryScope.instance.ensureCapabilities();
+    _loadLookups();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    final data = await _service.getInventoryOverview();
-    if (mounted) {
-      setState(() {
-        _overview = data;
-        _isLoading = false;
-      });
+  /// Kho và phân loại cho bộ lọc; lỗi thì bộ lọc chỉ còn "Mọi kho"/"Mọi phân loại", báo cáo vẫn xem được.
+  Future<void> _loadLookups() async {
+    try {
+      final warehouses = await _repo.loadWarehouses();
+      if (!mounted) return;
+      setState(() => _warehouses = warehouses);
+    } catch (e) {
+      InventoryScope.instance.onError(e);
     }
+    try {
+      final categories = await _repo.loadTradeCategories();
+      if (!mounted) return;
+      setState(() => _categories = categories);
+    } catch (_) {}
   }
+
+  String _label(_ReportView v) => switch (v) {
+    _ReportView.warehouse => 'inventory.reports.view.warehouse'.tr(),
+    _ReportView.lot => 'inventory.reports.view.lot'.tr(),
+    _ReportView.serial => 'inventory.reports.view.serial'.tr(),
+    _ReportView.movements => 'inventory.reports.view.movements'.tr(),
+    _ReportView.approvals => 'inventory.reports.view.approvals'.tr(),
+  };
+
+  Widget _body() => switch (_view) {
+    _ReportView.movements => MovementReportView(warehouses: _warehouses),
+    _ReportView.approvals => ApprovalReportView(warehouses: _warehouses),
+    _ReportView.warehouse => _stock(StockReportGroupBy.warehouse),
+    _ReportView.lot => _stock(StockReportGroupBy.lot),
+    _ReportView.serial => _stock(StockReportGroupBy.serial),
+  };
+
+  Widget _stock(StockReportGroupBy g) =>
+      StockReportView(key: ValueKey(g), groupBy: g, warehouses: _warehouses, categories: _categories);
 
   @override
   Widget build(BuildContext context) {
-    final lowStock = _overview.items.where((i) => i.available <= 0).length;
-
     return Scaffold(
       backgroundColor: AppColors.slate50,
       appBar: AppBar(
         backgroundColor: AppColors.slate900,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('inventory.reports.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             Text(
-              'Báo cáo kho',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Báo cáo tồn kho, định mức an toàn & xuất nhập tồn',
-              style: TextStyle(fontSize: 11, color: AppColors.slate400),
+              'inventory.reports.subtitle'.tr(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: AppColors.slate400),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Làm mới',
-            onPressed: _loadData,
-          ),
-        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Summary cards
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildReportMetric(
-                            'Tổng khả dụng',
-                            InventoryOverviewView.formatViNumber(_overview.availableStock),
-                            Icons.inventory_2_outlined,
-                            const Color(0xFF2563EB),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildReportMetric(
-                            'Kho hoạt động',
-                            '${_overview.activeWarehousesCount}',
-                            Icons.warehouse_outlined,
-                            const Color(0xFF059669),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildReportMetric(
-                            'Tổng mã vật tư',
-                            '${_overview.items.length}',
-                            Icons.layers_outlined,
-                            const Color(0xFF475569),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildReportMetric(
-                            'Cảnh báo hết hàng',
-                            '$lowStock',
-                            Icons.warning_amber_rounded,
-                            lowStock > 0 ? Colors.red.shade700 : const Color(0xFF16A34A),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Warehouse breakdown table
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Thống kê theo Kho lưu trữ',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(height: 14),
-                          ..._overview.warehouses.map((wh) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(wh.name, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                                    Text('Mã: ${wh.code}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      InventoryOverviewView.formatViNumber(wh.totalItems),
-                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                                    ),
-                                    Text('${wh.materialCount} danh mục', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          )),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildReportMetric(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          Container(
+            color: Colors.white,
+            height: 52,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              children: _ReportView.values.map((v) {
+                final active = v == _view;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ChoiceChip(
+                    label: Text(_label(v)),
+                    selected: active,
+                    showCheckmark: false,
+                    onSelected: (_) => setState(() => _view = v),
+                    labelStyle: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: active ? Colors.white : AppColors.slate600,
+                    ),
+                    selectedColor: const Color(0xFF021E73),
+                    backgroundColor: Colors.white,
+                    side: BorderSide(color: active ? const Color(0xFF021E73) : AppColors.slate200),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
-          ),
+          const Divider(height: 1, color: AppColors.slate200),
+          Expanded(child: _body()),
         ],
       ),
     );
   }
 }
-

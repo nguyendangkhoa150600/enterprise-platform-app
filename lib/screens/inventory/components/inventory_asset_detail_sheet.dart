@@ -1,539 +1,417 @@
 import 'package:flutter/material.dart';
-import '../../../models/inventory_models.dart';
-import '../../../services/module_business_service.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/inventory/data/assets/inventory_asset_repository.dart';
+import '../../../features/inventory/domain/assets/inventory_asset_models.dart';
+import '../../../features/inventory/domain/inventory_capabilities.dart';
+import '../../../features/inventory/presentation/assets/inventory_asset_ui.dart';
+import '../../../features/inventory/presentation/assets/inventory_incident_record_sheet.dart';
+import '../../../features/inventory/presentation/utils/inventory_scope.dart';
+import '../../../theme/colors.dart';
 import 'asset_tabs/asset_bom_tab_view.dart';
 import 'asset_tabs/asset_documents_tab_view.dart';
 import 'asset_tabs/asset_history_tab_view.dart';
 import 'asset_tabs/asset_maintenance_plan_tab_view.dart';
 import 'asset_tabs/asset_overview_tab_view.dart';
-import 'inventory_asset_create_dialog.dart';
 
+/// Hồ sơ một thiết bị trên cây (web `AssetDetail`): đầu trang + 5 tab con.
+/// Đọc thiết bị từ [workspace] (nạp lại sau mỗi lần lưu); thiết bị biến mất (đã tháo về kho) thì tự đóng.
 class InventoryAssetDetailSheet extends StatefulWidget {
-  final AssetItem asset;
-  final VoidCallback onSaved;
-  final VoidCallback? onAssetDeleted;
+  final String assetId;
+  final ValueNotifier<InvAssetWorkspace?> workspace;
+  final Future<void> Function() onReload;
+  final void Function(InvAsset asset)? onRetire;
+  final void Function(InvAsset asset)? onAddChild;
+
+  /// Nhật ký sự cố ghi trong phiên, theo mã thiết bị (web `historyLogsByAsset`).
+  final Map<String, List<InvIncidentLog>> sessionLogs;
 
   const InventoryAssetDetailSheet({
     super.key,
-    required this.asset,
-    required this.onSaved,
-    this.onAssetDeleted,
+    required this.assetId,
+    required this.workspace,
+    required this.onReload,
+    required this.sessionLogs,
+    this.onRetire,
+    this.onAddChild,
   });
 
   static Future<void> show(
     BuildContext context, {
-    required AssetItem asset,
-    required VoidCallback onSaved,
-    VoidCallback? onAssetDeleted,
-  }) {
-    return showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => InventoryAssetDetailSheet(
-        asset: asset,
-        onSaved: onSaved,
-        onAssetDeleted: onAssetDeleted,
-      ),
-    );
-  }
+    required String assetId,
+    required ValueNotifier<InvAssetWorkspace?> workspace,
+    required Future<void> Function() onReload,
+    required Map<String, List<InvIncidentLog>> sessionLogs,
+    void Function(InvAsset asset)? onRetire,
+    void Function(InvAsset asset)? onAddChild,
+  }) =>
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => InventoryAssetDetailSheet(
+          assetId: assetId,
+          workspace: workspace,
+          onReload: onReload,
+          sessionLogs: sessionLogs,
+          onRetire: onRetire,
+          onAddChild: onAddChild,
+        ),
+      );
 
   @override
   State<InventoryAssetDetailSheet> createState() => _InventoryAssetDetailSheetState();
 }
 
-class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet>
-    with SingleTickerProviderStateMixin {
-  final _moduleService = ModuleBusinessService();
-
-  late TabController _tabController;
-  late AssetItem _currentAsset;
-  bool _isSaving = false;
-
-  final List<String> _tabLabels = [
-    'Tổng quan tham số',
-    'Tài liệu',
-    'Lịch sử vận hành - sự cố',
-    'Phụ tùng (BOM)',
-    'Kế hoạch bảo trì',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _currentAsset = widget.asset;
-    _tabController = TabController(length: _tabLabels.length, vsync: this);
-  }
+class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> with SingleTickerProviderStateMixin {
+  final _repo = InventoryAssetRepository.instance;
+  late final TabController _tabs = TabController(length: 5, vsync: this);
+  bool _hasMaintenance = false;
+  bool _syncing = false;
+  List<InvMaintenanceOccurrence> _occurrences = [];
+  String? _loadedFor;
+  bool _closing = false;
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabs.dispose();
     super.dispose();
   }
 
-  // Edit Basic Info (Name, Status, Criticality, SerialNumber)
-  void _openEditBasicDialog() {
-    final nameCtrl = TextEditingController(text: _currentAsset.name);
-    final serialCtrl = TextEditingController(text: _currentAsset.serialNumber ?? '');
-    String selectedStatus = _currentAsset.status ?? 'OPERATING';
-    String selectedCriticality = _currentAsset.criticality ?? 'MEDIUM';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlgState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: const Text('Chỉnh sửa thiết bị', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Tên thiết bị *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-                const SizedBox(height: 4),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text('Trạng thái vận hành', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-                const SizedBox(height: 4),
-                DropdownButtonFormField<String>(
-                  value: selectedStatus,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'OPERATING', child: Text('Đang vận hành')),
-                    DropdownMenuItem(value: 'MAINTENANCE', child: Text('Bảo trì')),
-                    DropdownMenuItem(value: 'IDLE', child: Text('Chờ vận hành')),
-                    DropdownMenuItem(value: 'DISPOSED', child: Text('Thanh lý')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setDlgState(() => selectedStatus = val);
-                  },
-                ),
-                const SizedBox(height: 12),
-                const Text('Độ quan trọng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-                const SizedBox(height: 4),
-                DropdownButtonFormField<String>(
-                  value: selectedCriticality,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'CRITICAL', child: Text('Cấp Nghiêm trọng')),
-                    DropdownMenuItem(value: 'HIGH', child: Text('Cấp Cao')),
-                    DropdownMenuItem(value: 'MEDIUM', child: Text('Cấp Trung bình')),
-                    DropdownMenuItem(value: 'LOW', child: Text('Cấp Thấp')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setDlgState(() => selectedCriticality = val);
-                  },
-                ),
-                const SizedBox(height: 12),
-                const Text('Số Serial / Khung', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-                const SizedBox(height: 4),
-                TextField(
-                  controller: serialCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'Tùy chọn',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final newName = nameCtrl.text.trim();
-                if (newName.isEmpty) return;
-                Navigator.pop(ctx);
-                setState(() => _isSaving = true);
-                final ok = await _moduleService.updateAsset(_currentAsset.code, {
-                  'name': newName,
-                  'status': selectedStatus,
-                  'criticality': selectedCriticality,
-                  'serialNumber': serialCtrl.text.trim().isEmpty ? null : serialCtrl.text.trim(),
-                });
-                setState(() => _isSaving = false);
-                if (ok) {
-                  setState(() {
-                    _currentAsset = AssetItem(
-                      id: _currentAsset.id,
-                      code: _currentAsset.code,
-                      name: newName,
-                      parentId: _currentAsset.parentId,
-                      type: _currentAsset.type,
-                      status: selectedStatus,
-                      criticality: selectedCriticality,
-                      serialNumber: serialCtrl.text.trim().isEmpty ? null : serialCtrl.text.trim(),
-                      specs: _currentAsset.specs,
-                      taskTemplate: _currentAsset.taskTemplate,
-                      qrCode: _currentAsset.qrCode,
-                      purchasePrice: _currentAsset.purchasePrice,
-                      manufactureYear: _currentAsset.manufactureYear,
-                      manufacturer: _currentAsset.manufacturer,
-                      supplier: _currentAsset.supplier,
-                    );
-                  });
-                  widget.onSaved();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã cập nhật thông tin thiết bị thành công')),
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1D4ED8),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Lưu thay đổi'),
-            ),
-          ],
-        ),
-      ),
-    );
+  InvAsset? _find(InvAssetWorkspace? ws) {
+    if (ws == null) return null;
+    for (final a in ws.assets) {
+      if (a.id == widget.assetId) return a;
+    }
+    return null;
   }
 
-  // Confirm and Retire Asset
-  void _confirmRetireAsset() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text('Thanh lý ${_currentAsset.name}?', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-        content: Text(
-          'Xác nhận để mở quy trình tháo dỡ và thanh lý hoàn kho cho thiết bị ${_currentAsset.code} (${_currentAsset.name}). Thao tác này không thể hoàn tác.',
-          style: const TextStyle(fontSize: 13.5, color: Color(0xFF334155)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy bỏ', style: TextStyle(color: Color(0xFF64748B))),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              setState(() => _isSaving = true);
-              final ok = await _moduleService.retireAsset(_currentAsset.code);
-              setState(() => _isSaving = false);
-              if (ok) {
-                if (mounted) {
-                  Navigator.pop(context);
-                  widget.onAssetDeleted?.call();
-                  widget.onSaved();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Đã thanh lý thiết bị ${_currentAsset.code} thành công')),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Không thể thanh lý thiết bị, vui lòng thử lại sau.')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Xác nhận thanh lý'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _loadMaintenance(String code) async {
+    _loadedFor = code;
+    setState(() => _syncing = true);
+    final items = await _repo.loadMaintenanceHistory(code);
+    if (!mounted || _loadedFor != code) return;
+    setState(() {
+      _syncing = false;
+      _hasMaintenance = items != null;
+      _occurrences = items ?? const [];
+    });
   }
 
-  // Show QR Modal
-  void _showQrDialog() {
-    final qrCodeStr = _currentAsset.qrCode ?? 'QR-AMM-${_currentAsset.code}';
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
-              ),
-              child: const Center(
-                child: Icon(Icons.qr_code_2_rounded, size: 140, color: Color(0xFF1E293B)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _currentAsset.name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Mã quét: $qrCodeStr',
-              style: const TextStyle(fontSize: 13, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: Color(0xFF1D4ED8)),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
-              ),
-              child: const Text(
-                'Sẵn sàng quét hiện trường',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
+  /// Lưu một phần hồ sơ (web `save`): lỗi hiện toast, trả `true` khi lưu xong.
+  Future<bool> _save(InvAsset asset, Map<String, dynamic> patch) async {
+    try {
+      await _repo.updateAsset(asset.code, patch);
+      await widget.onReload();
+      return true;
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+      if (mounted) invToast(context, inventoryErrorMessage(e, 'inventory.assets.save_error'), error: true);
+      return false;
+    }
+  }
+
+  Future<void> _recordIncident(InvAsset asset) async {
+    final log = await invShowSheet<InvIncidentLog>(context, InventoryIncidentRecordSheet(asset: asset));
+    if (log == null || !mounted) return;
+    setState(() => widget.sessionLogs[asset.code] = [log, ...?widget.sessionLogs[asset.code]]);
+    if (log.syncToMaintenance) {
+      final ok = await _repo.createMaintenanceIncident(
+        assetCode: asset.code,
+        title: log.title,
+        description: log.desc,
+        priority: log.severity == 'CRITICAL' || log.severity == 'HIGH' ? 'High' : 'Normal',
+      );
+      if (ok && mounted) await _loadMaintenance(asset.code);
+    }
+  }
+
+  Future<void> _editBasic(InvAsset asset) async {
+    await invShowSheet<void>(context, _EditBasicSheet(asset: asset, onSave: (patch) => _save(asset, patch)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final maxHeight = mq.size.height * 0.92;
+    return ValueListenableBuilder<InvAssetWorkspace?>(
+      valueListenable: widget.workspace,
+      builder: (context, ws, _) {
+        final asset = _find(ws);
+        if (asset == null || ws == null) {
+          if (!_closing) {
+            _closing = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context).maybePop();
+            });
+          }
+          return const SizedBox.shrink();
+        }
+        if (_loadedFor != asset.code) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _loadedFor != asset.code) _loadMaintenance(asset.code);
+          });
+        }
+        return ValueListenableBuilder<InventoryCapabilities>(
+          valueListenable: InventoryScope.instance.capabilities,
+          builder: (context, caps, _) => _content(asset, ws, caps.canManage),
+        );
+      },
+    );
+  }
 
+  Widget _content(InvAsset asset, InvAssetWorkspace ws, bool canManage) {
+    final mq = MediaQuery.of(context);
+    final childMaterials = ws.childMaterialsOf(asset);
+    final statusTone = asset.status == 'OPERATING'
+        ? InvTone.success
+        : asset.status == 'MAINTENANCE'
+            ? InvTone.warn
+            : InvTone.danger;
+    final tabLabels = [
+      'inventory.assets.tab_overview'.tr(),
+      'inventory.assets.tab_documents'.tr(),
+      'inventory.assets.tab_history'.tr(),
+      'inventory.assets.tab_bom'.tr(),
+      'inventory.assets.tab_plan'.tr(),
+    ];
     return Container(
-      constraints: BoxConstraints(maxHeight: maxHeight),
+      height: mq.size.height * 0.92,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        color: Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          // Drag handle
           Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(2),
+            padding: const EdgeInsets.fromLTRB(16, 12, 6, 8),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
             ),
-          ),
-
-          // HEADER SECTION (Matching Web 1:1)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Badges & Close Button
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFBFDBFE)),
-                      ),
-                      child: Text(
-                        _currentAsset.typeLabel,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFBBF7D0)),
-                      ),
-                      child: Text(
-                        _currentAsset.statusLabel,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Text(
-                        _currentAsset.criticalityLabel,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              InvPill(invAssetTypeLabel(asset.type)),
+                              InvPill(invAssetStatusLabel(asset.status), tone: statusTone),
+                              InvPill('inventory.assets.level'.tr(args: {'label': invAssetCriticalityLabel(asset.criticality)})),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(asset.name,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.slate900)),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${'inventory.assets.device_code'.tr(args: {'code': asset.code})}'
+                            '${asset.serialNumber != null ? ' · Serial: ${asset.serialNumber}' : ''}',
+                            style: const TextStyle(fontSize: 12.5, color: AppColors.slate500),
+                          ),
+                        ],
                       ),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
+                    IconButton(icon: const Icon(Icons.close, color: AppColors.slate500), onPressed: () => Navigator.pop(context)),
                   ],
                 ),
                 const SizedBox(height: 8),
-
-                // Asset Name
-                Text(
-                  _currentAsset.name,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                ),
-                const SizedBox(height: 2),
-
-                // Subtitle: Mã thiết bị & Serial
-                Row(
-                  children: [
-                    const Text('Mã thiết bị: ', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-                    Text(
-                      _currentAsset.code,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                    ),
-                    if (_currentAsset.serialNumber != null && _currentAsset.serialNumber!.isNotEmpty) ...[
-                      const Text(' · Serial: ', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-                      Text(
-                        _currentAsset.serialNumber!,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Action Buttons Row (Chỉnh sửa, + Thêm thiết bị con, In mã QR, Thanh lý)
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      OutlinedButton(
-                        onPressed: _openEditBasicDialog,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      if (canManage) ...[
+                        OutlinedButton.icon(
+                          style: invOutlineStyle(),
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: Text('inventory.assets.edit'.tr()),
+                          onPressed: () => _editBasic(asset),
                         ),
-                        child: const Text('Chỉnh sửa', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          InventoryAssetCreateDialog.show(
-                            context,
-                            parentAsset: _currentAsset,
-                            onCreated: widget.onSaved,
-                          );
-                        },
-                        icon: const Icon(Icons.add, size: 14),
-                        label: const Text('Thêm thiết bị con', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1D4ED8),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          elevation: 0,
+                        const SizedBox(width: 8),
+                      ],
+                      if (widget.onAddChild != null) ...[
+                        ElevatedButton.icon(
+                          style: invPrimaryStyle(),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: Text('inventory.assets.add_child'.tr()),
+                          onPressed: () => widget.onAddChild!(asset),
                         ),
+                        const SizedBox(width: 8),
+                      ],
+                      OutlinedButton.icon(
+                        style: invOutlineStyle(),
+                        icon: const Icon(Icons.qr_code_2, size: 16),
+                        label: Text('inventory.assets.print_qr'.tr()),
+                        onPressed: () => showInvAssetQrLabel(context, asset),
                       ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: _showQrDialog,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      if (widget.onRetire != null) ...[
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          style: invOutlineStyle(color: const Color(0xFFDC2626)),
+                          icon: const Icon(Icons.remove_circle_outline, size: 16),
+                          label: Text('inventory.assets.retire'.tr()),
+                          onPressed: () async {
+                            final cluster = childMaterials.isNotEmpty;
+                            final ok = await invConfirm(
+                              context,
+                              title: (cluster ? 'inventory.assets.retire_cluster_title' : 'inventory.assets.retire_title')
+                                  .tr(args: {'name': asset.name}),
+                              message: cluster
+                                  ? 'inventory.assets.retire_cluster_message'.tr()
+                                  : 'inventory.assets.retire_message'.tr(args: {'code': asset.code}),
+                            );
+                            if (ok && mounted) widget.onRetire!(asset);
+                          },
                         ),
-                        child: const Text('In mã QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: _confirmRetireAsset,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          side: const BorderSide(color: Color(0xFFFCA5A5)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                        child: const Text('Thanh lý', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFDC2626))),
-                      ),
+                      ],
                     ],
                   ),
+                ),
+                TabBar(
+                  controller: _tabs,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  labelColor: const Color(0xFF1D4ED8),
+                  unselectedLabelColor: AppColors.slate600,
+                  indicatorColor: const Color(0xFF1D4ED8),
+                  labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  tabs: tabLabels.map((t) => Tab(text: t)).toList(),
                 ),
               ],
             ),
           ),
-
-          // 5 SUB-TABS NAVIGATION
-          Container(
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              labelColor: const Color(0xFF1D4ED8),
-              unselectedLabelColor: const Color(0xFF64748B),
-              indicatorColor: const Color(0xFF1D4ED8),
-              indicatorWeight: 2.5,
-              labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-              unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              tabs: _tabLabels.map((title) => Tab(text: title)).toList(),
-            ),
-          ),
-
-          // TAB VIEWS
+          const Divider(height: 1, color: AppColors.slate200),
           Expanded(
-            child: _isSaving
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      AssetOverviewTabView(
-                        asset: _currentAsset,
-                        moduleService: _moduleService,
-                        onSaved: widget.onSaved,
-                      ),
-                      AssetDocumentsTabView(
-                        assetCode: _currentAsset.code,
-                        moduleService: _moduleService,
-                      ),
-                      AssetHistoryTabView(
-                        assetCode: _currentAsset.code,
-                        moduleService: _moduleService,
-                      ),
-                      AssetBomTabView(
-                        assetCode: _currentAsset.code,
-                        moduleService: _moduleService,
-                      ),
-                      AssetMaintenancePlanTabView(
-                        taskTemplate: _currentAsset.taskTemplate,
-                      ),
-                    ],
-                  ),
+            child: TabBarView(
+              controller: _tabs,
+              children: [
+                AssetOverviewTabView(
+                  asset: asset,
+                  assets: ws.assets,
+                  canManage: canManage,
+                  onSave: (p) => _save(asset, p),
+                ),
+                AssetDocumentsTabView(assetCode: asset.code, canManage: canManage),
+                AssetHistoryTabView(
+                  asset: asset,
+                  hasMaintenanceModule: _hasMaintenance,
+                  syncing: _syncing,
+                  occurrences: _occurrences,
+                  logs: widget.sessionLogs[asset.code] ?? const [],
+                  canManage: canManage,
+                  onRecordIncident: () => _recordIncident(asset),
+                ),
+                AssetBomTabView(
+                  assetCode: asset.code,
+                  workspace: ws,
+                  childMaterials: childMaterials,
+                  canManage: canManage,
+                ),
+                AssetMaintenancePlanTabView(
+                  asset: asset,
+                  occurrences: _occurrences,
+                  canManage: canManage,
+                  onSave: (p) => _save(asset, p),
+                ),
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sửa thông tin cơ bản (web khối `editingBasic`): tên, trạng thái, độ quan trọng, serial.
+class _EditBasicSheet extends StatefulWidget {
+  final InvAsset asset;
+  final Future<bool> Function(Map<String, dynamic> patch) onSave;
+  const _EditBasicSheet({required this.asset, required this.onSave});
+  @override
+  State<_EditBasicSheet> createState() => _EditBasicSheetState();
+}
+
+class _EditBasicSheetState extends State<_EditBasicSheet> {
+  late final _name = TextEditingController(text: widget.asset.name);
+  late final _serial = TextEditingController(text: widget.asset.serialNumber ?? '');
+  late String _status = widget.asset.status;
+  late String _criticality = widget.asset.criticality;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _serial.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _saving = true);
+    final serial = _serial.text.trim();
+    final ok = await widget.onSave({
+      'name': _name.text.trim(),
+      'status': _status,
+      'criticality': _criticality,
+      if (serial.isNotEmpty) 'serialNumber': serial,
+    });
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+    } else {
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statuses = {...kInvAssetStatuses, _status}.toList();
+    return InvSheetFrame(
+      title: 'inventory.assets.edit_basic_title'.tr(),
+      subtitle: '${invAssetTypeLabel(widget.asset.type)} · ${'inventory.assets.device_code'.tr(args: {'code': widget.asset.code})}',
+      onClose: () {
+        if (!_saving) Navigator.pop(context);
+      },
+      actions: [
+        OutlinedButton(
+          style: invOutlineStyle(),
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text('inventory.assets.cancel'.tr()),
+        ),
+        ElevatedButton(
+          style: invPrimaryStyle(),
+          onPressed: _saving || _name.text.trim().isEmpty ? null : _submit,
+          child: Text(_saving ? 'inventory.assets.saving'.tr() : 'inventory.assets.save_changes'.tr()),
+        ),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InvFieldLabel('inventory.assets.device_name'.tr(), required: true),
+          TextField(controller: _name, decoration: invInputDecoration(), onChanged: (_) => setState(() {})),
+          const SizedBox(height: 14),
+          InvFieldLabel('inventory.assets.operating_status'.tr()),
+          InvSelectField(
+            options: statuses.map((s) => InvOption(s, invAssetStatusLabel(s))).toList(),
+            value: _status,
+            placeholder: 'inventory.assets.operating_status'.tr(),
+            onChanged: (v) => setState(() => _status = v.isEmpty ? _status : v),
+          ),
+          const SizedBox(height: 14),
+          InvFieldLabel('inventory.assets.col_criticality'.tr()),
+          InvSelectField(
+            options: kInvAssetCriticalities.map((c) => InvOption(c, invAssetCriticalityLabel(c))).toList(),
+            value: _criticality,
+            placeholder: 'inventory.assets.col_criticality'.tr(),
+            onChanged: (v) => setState(() => _criticality = v.isEmpty ? _criticality : v),
+          ),
+          const SizedBox(height: 14),
+          InvFieldLabel('inventory.assets.serial_frame'.tr()),
+          TextField(controller: _serial, decoration: invInputDecoration(hint: 'inventory.assets.optional'.tr())),
         ],
       ),
     );

@@ -1,299 +1,153 @@
 import 'package:flutter/material.dart';
-import '../../../../models/inventory_models.dart';
-import '../../../../services/module_business_service.dart';
+import '../../../../core/i18n/app_i18n.dart';
+import '../../../../features/inventory/domain/assets/inventory_asset_models.dart';
+import '../../../../features/inventory/presentation/assets/inventory_asset_ui.dart';
+import '../../../../theme/colors.dart';
 
-class AssetOverviewTabView extends StatelessWidget {
-  final AssetItem asset;
-  final VoidCallback onSaved;
-  final ModuleBusinessService moduleService;
+/// Tab "Tổng quan tham số" (web AssetDetail TAB 1): thông số kỹ thuật (sửa được) và định danh, vị trí.
+class AssetOverviewTabView extends StatefulWidget {
+  final InvAsset asset;
+  final List<InvAsset> assets;
+  final bool canManage;
+  final Future<bool> Function(Map<String, dynamic> patch) onSave;
 
   const AssetOverviewTabView({
     super.key,
     required this.asset,
-    required this.onSaved,
-    required this.moduleService,
+    required this.assets,
+    required this.canManage,
+    required this.onSave,
   });
 
-  void _openEditSpecsDialog(BuildContext context) {
-    final Map<String, String> currentSpecs = {};
-    if (asset.specs != null && asset.specs!.isNotEmpty) {
-      asset.specs!.forEach((k, v) => currentSpecs[k] = v?.toString() ?? '');
-    } else {
-      currentSpecs['Model / Ký hiệu'] = asset.code;
-      currentSpecs['Số Serial'] = asset.serialNumber ?? '2323';
-      currentSpecs['Vật liệu'] = 'Thép hợp kim chống mài mòn / Nitrile Rubber NBR';
-      currentSpecs['Kích thước danh định'] = '120 × 12.9 mm × 15.20 mm';
-      currentSpecs['Nhiệt độ vận hành'] = '-20°C ~ +85°C';
-      currentSpecs['Áp suất định mức'] = '100 Bar / 10 MPa';
-      currentSpecs['Nhà sản xuất'] = 'Siemens AG / SKF Industrial';
-      currentSpecs['Năm lắp đặt & đưa vào vận hành'] = '2024';
-    }
+  @override
+  State<AssetOverviewTabView> createState() => _AssetOverviewTabViewState();
+}
 
-    final keyCtrls = <TextEditingController>[];
-    final valCtrls = <TextEditingController>[];
+class _SpecRow {
+  final TextEditingController key;
+  final TextEditingController value;
+  _SpecRow(String k, String v)
+      : key = TextEditingController(text: k),
+        value = TextEditingController(text: v);
+  void dispose() {
+    key.dispose();
+    value.dispose();
+  }
+}
 
-    currentSpecs.forEach((k, v) {
-      keyCtrls.add(TextEditingController(text: k));
-      valCtrls.add(TextEditingController(text: v));
-    });
+class _AssetOverviewTabViewState extends State<AssetOverviewTabView> {
+  bool _editing = false;
+  bool _saving = false;
+  List<_SpecRow> _rows = [];
 
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlgState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: const Text('Chỉnh sửa thông số kỹ thuật', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ...List.generate(keyCtrls.length, (i) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 5,
-                            child: TextField(
-                              controller: keyCtrls[i],
-                              decoration: const InputDecoration(
-                                hintText: 'Tên thông số',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 5,
-                            child: TextField(
-                              controller: valCtrls[i],
-                              decoration: const InputDecoration(
-                                hintText: 'Giá trị',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
-                            onPressed: () {
-                              setDlgState(() {
-                                keyCtrls.removeAt(i);
-                                valCtrls.removeAt(i);
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                  TextButton.icon(
-                    onPressed: () {
-                      setDlgState(() {
-                        keyCtrls.add(TextEditingController());
-                        valCtrls.add(TextEditingController());
-                      });
-                    },
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('+ Thêm thông số mới'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                final Map<String, String> newSpecs = {};
-                for (int i = 0; i < keyCtrls.length; i++) {
-                  final k = keyCtrls[i].text.trim();
-                  if (k.isNotEmpty) {
-                    newSpecs[k] = valCtrls[i].text.trim();
-                  }
-                }
-                final ok = await moduleService.updateAsset(asset.code, {'specs': newSpecs});
-                if (ok) {
-                  onSaved();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã cập nhật thông số kỹ thuật')),
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1D4ED8),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Lưu thông số'),
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void didUpdateWidget(covariant AssetOverviewTabView old) {
+    super.didUpdateWidget(old);
+    if (old.asset.code != widget.asset.code) _close();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final Map<String, String> specs = {};
-    if (asset.specs != null && asset.specs!.isNotEmpty) {
-      asset.specs!.forEach((k, v) => specs[k] = v?.toString() ?? '');
-    } else {
-      specs['Model / Ký hiệu'] = asset.code;
-      specs['Số Serial'] = (asset.serialNumber != null && asset.serialNumber!.isNotEmpty)
-          ? asset.serialNumber!
-          : '2323';
-      specs['Vật liệu'] = 'Thép hợp kim chống mài mòn / Nitrile Rubber NBR';
-      specs['Kích thước danh định'] = '120 × 12.9 mm × 15.20 mm';
-      specs['Nhiệt độ vận hành'] = '-20°C ~ +85°C';
-      specs['Áp suất định mức'] = '100 Bar / 10 MPa';
-      specs['Nhà sản xuất'] = (asset.manufacturer != null && asset.manufacturer!.isNotEmpty)
-          ? asset.manufacturer!
-          : 'Siemens AG / SKF Industrial';
-      specs['Năm lắp đặt & đưa vào vận hành'] = asset.manufactureYear?.toString() ?? '2024';
+  void dispose() {
+    for (final r in _rows) {
+      r.dispose();
     }
+    super.dispose();
+  }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // CARD 1: Thông số kỹ thuật & Đặc tính danh định
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Thông số kỹ thuật & Đặc tính danh định',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => _openEditSpecsDialog(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                    ),
-                    child: const Text('Chỉnh sửa', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Column(
-                children: specs.entries.map((e) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          flex: 5,
-                          child: Text(
-                            e.key,
-                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: Color(0xFF64748B)),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 5,
-                          child: Text(
-                            e.value,
-                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+  void _open() {
+    setState(() {
+      _rows = widget.asset.specs.entries.map((e) => _SpecRow(e.key, '${e.value}')).toList();
+      _editing = true;
+    });
+  }
+
+  void _close() {
+    for (final r in _rows) {
+      r.dispose();
+    }
+    _rows = [];
+    _editing = false;
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final specs = <String, dynamic>{
+      for (final r in _rows)
+        if (r.key.text.trim().isNotEmpty) r.key.text.trim(): r.value.text,
+    };
+    final ok = await widget.onSave({'specs': specs});
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      if (ok) _close();
+    });
+  }
+
+  Widget _infoTile(String label, String value) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: AppColors.slate50, borderRadius: BorderRadius.circular(8)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label.toUpperCase(),
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.slate500)),
+            const SizedBox(height: 2),
+            Text(value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.slate900)),
+          ],
         ),
-        const SizedBox(height: 16),
+      );
 
-        // CARD 2: Định danh số & Vị trí hiện trường
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          padding: const EdgeInsets.all(14),
+  @override
+  Widget build(BuildContext context) {
+    final asset = widget.asset;
+    final specs = asset.specs.entries.toList();
+    final chain = invAssetLocationChain(asset, widget.assets);
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        InvSectionCard(
+          title: 'inventory.assets.specs_title'.tr(),
+          trailing: !_editing && widget.canManage
+              ? OutlinedButton(
+                  style: invOutlineStyle(),
+                  onPressed: _open,
+                  child: Text(specs.isEmpty ? 'inventory.assets.declare'.tr() : 'inventory.assets.edit'.tr()),
+                )
+              : null,
+          child: _editing ? _editor() : _specList(specs),
+        ),
+        const SizedBox(height: 12),
+        InvSectionCard(
+          title: 'inventory.assets.identity_title'.tr(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Định danh số & Vị trí hiện trường',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
-              const SizedBox(height: 12),
-
               Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: AppColors.slate50, borderRadius: BorderRadius.circular(8)),
                 child: Row(
                   children: [
                     Container(
-                      width: 54,
-                      height: 54,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.slate200),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.qr_code_2_rounded, size: 40, color: Color(0xFF1E293B)),
-                      ),
+                      child: const Icon(Icons.qr_code_2, size: 30, color: AppColors.slate700),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Mã phản hồi nhanh (QR Code)',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(height: 2),
+                          Text('inventory.assets.qr_label'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                           Text(
-                            'Mã quét: ${asset.qrCode ?? 'QR-AMM-${asset.code}'}',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0FDF4),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: const Color(0xFFBBF7D0)),
-                            ),
-                            child: const Text(
-                              'Sẵn sàng quét hiện trường',
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
-                            ),
+                            asset.qrCode != null
+                                ? 'inventory.assets.qr_value'.tr(args: {'code': asset.qrCode!})
+                                : 'inventory.assets.qr_none'.tr(),
+                            style: const TextStyle(fontSize: 12.5, color: AppColors.slate500),
                           ),
                         ],
                       ),
@@ -301,46 +155,16 @@ class AssetOverviewTabView extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-
-              // 2 Location Cards matching Web 1:1
+              const SizedBox(height: 8),
+              _infoTile('inventory.assets.location'.tr(), chain.isNotEmpty ? chain.join(' › ') : 'inventory.assets.location_none'.tr()),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('NHÀ MÁY TRỰC THUỘC', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                          SizedBox(height: 4),
-                          Text('Factory (Plant 1)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('PHÂN KHU LẮP ĐẶT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                          SizedBox(height: 4),
-                          Text('Khu vực Turbine T1', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                        ],
-                      ),
-                    ),
-                  ),
+                  Expanded(child: _infoTile('inventory.assets.manufacturer'.tr(), asset.manufacturer?.trim() ?? '—')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _infoTile('inventory.assets.serial'.tr(), asset.serialNumber?.trim() ?? '—')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _infoTile('inventory.assets.manufacture_year'.tr(), '${asset.manufactureYear ?? '—'}')),
                 ],
               ),
             ],
@@ -349,5 +173,99 @@ class AssetOverviewTabView extends StatelessWidget {
       ],
     );
   }
-}
 
+  Widget _specList(List<MapEntry<String, dynamic>> specs) {
+    if (specs.isEmpty) return InvEmptyText('inventory.assets.specs_empty'.tr());
+    return Column(
+      children: specs
+          .map((e) => Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(color: AppColors.slate50, borderRadius: BorderRadius.circular(6)),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(e.key, style: const TextStyle(fontSize: 13, color: AppColors.slate600))),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text('${e.value}',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.slate900)),
+                    ),
+                  ],
+                ),
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _editor() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.slate50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF93C5FD), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('inventory.assets.specs_edit_mode'.tr(),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
+          const SizedBox(height: 2),
+          Text('inventory.assets.specs_edit_hint'.tr(), style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
+          const SizedBox(height: 10),
+          if (_rows.isEmpty) InvEmptyText('inventory.assets.specs_edit_empty'.tr()),
+          for (var i = 0; i < _rows.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _rows[i].key,
+                      decoration: invInputDecoration(hint: 'inventory.assets.spec_key_hint'.tr()),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: TextField(
+                      controller: _rows[i].value,
+                      decoration: invInputDecoration(hint: 'inventory.assets.spec_value_hint'.tr()),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18, color: Color(0xFFDC2626)),
+                    onPressed: () => setState(() => _rows.removeAt(i).dispose()),
+                  ),
+                ],
+              ),
+            ),
+          TextButton.icon(
+            icon: const Icon(Icons.add, size: 16),
+            label: Text('inventory.assets.spec_add'.tr()),
+            onPressed: () => setState(() => _rows.add(_SpecRow('', ''))),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: invOutlineStyle(),
+                  onPressed: _saving ? null : () => setState(_close),
+                  child: Text('inventory.assets.cancel_edit'.tr()),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: invPrimaryStyle(),
+                  onPressed: _saving ? null : _save,
+                  child: Text(_saving ? 'inventory.assets.saving'.tr() : 'inventory.assets.specs_save'.tr()),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

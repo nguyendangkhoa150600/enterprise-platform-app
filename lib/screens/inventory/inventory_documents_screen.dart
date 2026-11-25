@@ -1,22 +1,40 @@
-import '../../core/utils/formatters.dart';
-import '../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
-import 'package:flutter/material.dart';
-import '../../models/inventory_models.dart';
-import '../../services/module_business_service.dart';
-import '../../theme/colors.dart';
-import 'components/inventory_document_detail_sheet.dart';
-import 'components/inventory_document_create_dialog.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import '../../core/i18n/app_i18n.dart';
+import '../../core/utils/formatters.dart';
+import '../../features/inventory/data/documents/stock_document_api.dart';
+import '../../features/inventory/domain/documents/stock_document_logic.dart';
+import '../../features/inventory/domain/documents/stock_document_models.dart';
+import '../../features/inventory/domain/inventory_capabilities.dart';
+import '../../features/inventory/presentation/documents/document_widgets.dart';
+import '../../features/inventory/presentation/documents/legacy_entry_sheet.dart';
+import '../../features/inventory/presentation/utils/inventory_scope.dart';
+import '../../theme/colors.dart';
+import 'components/inventory_document_create_dialog.dart';
+import 'components/inventory_document_detail_sheet.dart';
+
+/// Tab "Xuất/nhập kho" — góc nhìn "Tất cả" (web `MovementList`: danh sách gộp chứng từ và bút toán cũ từ
+/// `GET /stock-movements`) và "Chờ duyệt" (web `StockDocumentApproval`, khi [initialStatus] = `PENDING`).
 class InventoryDocumentsScreen extends StatefulWidget {
+  /// `PENDING`: góc nhìn Chờ duyệt. Giá trị khác: đặt sẵn bộ lọc trạng thái của danh sách gộp.
   final String? initialStatus;
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
+
+  /// Nhúng trong tab "Xuất/nhập kho" của trang Kho hàng: ẩn thanh tiêu đề riêng.
+  final bool embedded;
+
+  /// Số chứng từ Chờ duyệt server trả kèm danh sách gộp, để hiện trên nhãn góc nhìn.
+  final ValueChanged<int>? onPendingCount;
 
   const InventoryDocumentsScreen({
     super.key,
     this.initialStatus,
-    this.title = 'Chứng từ kho',
-    this.subtitle = 'Danh sách phiếu nhập, xuất & luân chuyển kho',
+    this.embedded = false,
+    this.title,
+    this.subtitle,
+    this.onPendingCount,
   });
 
   @override
@@ -24,757 +42,556 @@ class InventoryDocumentsScreen extends StatefulWidget {
 }
 
 class _InventoryDocumentsScreenState extends State<InventoryDocumentsScreen> {
-  final ModuleBusinessService _service = ModuleBusinessService();
+  static const int _pageSize = 20;
+  final _api = StockDocumentApi.instance;
 
-  bool get isApprovalMode => widget.initialStatus == 'PENDING';
+  bool get _approvalMode => widget.initialStatus == 'PENDING';
 
-  List<StockDocumentItem> _documents = [];
-  List<WarehouseItem> _warehouses = [];
-  bool _isLoading = true;
-  String? _errorMessage;
+  DocRefs _refs = DocRefs.empty;
 
-  String _selectedType = '';
-  String _selectedStatus = '';
-  String _selectedWarehouse = '';
-  DateTime? _fromDate;
-  DateTime? _toDate;
+  // Bộ lọc
+  final _searchCtrl = TextEditingController();
+  Timer? _debounce;
+  String _search = '';
+  String _sourceType = '';
+  String _docType = '';
+  late String _status = _approvalMode ? '' : (widget.initialStatus ?? '');
+  String _warehouseCode = '';
+  String? _fromDate;
+  String? _toDate;
+  bool _filtersOpen = false;
 
-  static const List<Map<String, String>> _typeOptions = [
-    {'value': '', 'label': 'Mọi loại'},
-    {'value': 'RECEIPT_PURCHASE', 'label': 'Nhập mua hàng'},
-    {'value': 'RECEIPT_SALES_RETURN', 'label': 'Nhập trả hàng bán'},
-    {'value': 'RECEIPT_TRANSFER', 'label': 'Nhập điều chuyển'},
-    {'value': 'RECEIPT_OTHER', 'label': 'Nhập khác'},
-    {'value': 'ISSUE_SALES', 'label': 'Xuất bán hàng'},
-    {'value': 'ISSUE_PROJECT', 'label': 'Xuất cho dự án'},
-    {'value': 'ISSUE_WARRANTY', 'label': 'Xuất bảo hành'},
-    {'value': 'ISSUE_TRANSFER', 'label': 'Xuất điều chuyển'},
-    {'value': 'ISSUE_OTHER', 'label': 'Xuất khác'},
-    {'value': 'ADJUSTMENT', 'label': 'Điều chỉnh tồn'},
-    {'value': 'TRANSFER', 'label': 'Điều chuyển kho'},
-  ];
-
-  static const List<Map<String, String>> _statusOptions = [
-    {'value': '', 'label': 'Mọi trạng thái'},
-    {'value': 'POSTED', 'label': 'Đã ghi sổ'},
-    {'value': 'DRAFT', 'label': 'Nháp'},
-    {'value': 'PENDING', 'label': 'Chờ duyệt'},
-    {'value': 'APPROVED', 'label': 'Đã duyệt'},
-    {'value': 'REJECTED', 'label': 'Từ chối'},
-    {'value': 'CANCELLED', 'label': 'Đã huỷ'},
-  ];
+  // Danh sách gộp
+  List<StockMovementRow> _rows = [];
+  // Chờ duyệt
+  List<StockDoc> _pending = [];
+  int _total = 0;
+  bool _loading = true;
+  bool _loadingMore = false;
+  String? _error;
+  int _generation = 0;
 
   @override
   void initState() {
     super.initState();
-    _selectedStatus = widget.initialStatus ?? '';
-    _loadWarehouses();
-    _loadData();
-  }
-
-  Future<void> _loadWarehouses() async {
-    try {
-      final whs = await _service.getWarehouses();
-      if (mounted) setState(() => _warehouses = whs);
-    } catch (_) {}
-  }
-
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final fromStr = _fromDate != null ? '${_fromDate!.year}-${_fromDate!.month.toString().padLeft(2, '0')}-${_fromDate!.day.toString().padLeft(2, '0')}' : null;
-      final toStr = _toDate != null ? '${_toDate!.year}-${_toDate!.month.toString().padLeft(2, '0')}-${_toDate!.day.toString().padLeft(2, '0')}' : null;
-
-      final docs = await _service.getStockDocuments(
-        docType: _selectedType.isNotEmpty ? _selectedType : null,
-        status: _selectedStatus.isNotEmpty ? _selectedStatus : null,
-        warehouseCode: _selectedWarehouse.isNotEmpty ? _selectedWarehouse : null,
-        fromDate: fromStr,
-        toDate: toStr,
-        limit: 100,
-      );
-
-      if (mounted) {
-        setState(() {
-          _documents = docs;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Không tải được danh sách chứng từ: $e';
-        });
-      }
-    }
-  }
-
-    Future<void> _handleApproveDoc(StockDocumentItem doc) async {
-    final ok = await _service.approveStockDocument(doc.id);
-    if (!mounted) return;
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã phê duyệt chứng từ ' + doc.code + ' thành công.'),
-          backgroundColor: const Color(0xFF059669),
-        ),
-      );
-      _loadData();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_service.lastInventoryError ?? 'Phê duyệt chứng từ thất bại.'),
-          backgroundColor: const Color(0xFFDC2626),
-        ),
-      );
-    }
-  }
-
-  Future<void> _handleRejectDoc(StockDocumentItem doc) async {
-    final reasonController = TextEditingController();
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Từ chối chứng từ kho', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Nhập lý do từ chối chứng từ ' + doc.code + ':', style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569))),
-            const SizedBox(height: 10),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                hintText: 'Lý do từ chối (bắt buộc)...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Đóng')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
-            onPressed: () {
-              if (reasonController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng nhập lý do từ chối.')),
-                );
-                return;
-              }
-              Navigator.pop(ctx, true);
-            },
-            child: const Text('Xác nhận từ chối', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-    final ok = await _service.rejectStockDocument(doc.id, reason: reasonController.text.trim());
-    if (!mounted) return;
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã từ chối chứng từ ' + doc.code + '.'),
-          backgroundColor: const Color(0xFF059669),
-        ),
-      );
-      _loadData();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_service.lastInventoryError ?? 'Từ chối chứng từ thất bại.'),
-          backgroundColor: const Color(0xFFDC2626),
-        ),
-      );
-    }
-  }
-
-Future<void> _openCreateDocumentDialog() async {
-    final items = await _service.getInventoryItems();
-    if (!mounted) return;
-    await InventoryDocumentCreateDialog.show(
-      context,
-      items: items,
-      warehouses: _warehouses,
-      onCreated: () => _loadData(),
-    );
-  }
-
-  Future<void> _selectDateRange(bool isFrom) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: (isFrom ? _fromDate : _toDate) ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isFrom) {
-          _fromDate = picked;
-        } else {
-          _toDate = picked;
-        }
-      });
-      _loadData();
-    }
+    InventoryScope.instance.ensureCapabilities();
+    _loadRefs();
+    _reload();
   }
 
   @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRefs() async {
+    try {
+      final refs = await _api.refs();
+      if (!mounted) return;
+      setState(() => _refs = refs);
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+    }
+  }
+
+  Future<void> _reload() async {
+    final gen = ++_generation;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      if (_approvalMode) {
+        final page = await _api.loadDocuments(
+          status: 'PENDING',
+          docType: _docType.isEmpty ? null : _docType,
+          warehouseCode: _warehouseCode.isEmpty ? null : _warehouseCode,
+          limit: 100,
+        );
+        if (!mounted || gen != _generation) return;
+        setState(() {
+          _pending = page.items;
+          _total = page.total;
+          _loading = false;
+        });
+      } else {
+        final page = await _fetchMovements(0);
+        if (!mounted || gen != _generation) return;
+        setState(() {
+          _rows = page.rows;
+          _total = page.total;
+          _loading = false;
+        });
+        widget.onPendingCount?.call(page.pendingCount);
+      }
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _loading = false;
+        _error = inventoryErrorMessage(
+            e, _approvalMode ? 'inventory.documents.error.load_documents' : 'inventory.documents.error.load_movements');
+      });
+    }
+  }
+
+  Future<StockMovementPage> _fetchMovements(int offset) => _api.loadMovements(
+        search: _search,
+        sourceType: _sourceType,
+        docType: _docType,
+        status: _status,
+        warehouseCode: _warehouseCode,
+        fromDate: _fromDate,
+        toDate: _toDate,
+        limit: _pageSize,
+        offset: offset,
+      );
+
+  Future<void> _loadMore() async {
+    if (_approvalMode || _loading || _loadingMore || _rows.length >= _total) return;
+    final gen = _generation;
+    setState(() => _loadingMore = true);
+    try {
+      final page = await _fetchMovements(_rows.length);
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _rows = [..._rows, ...page.rows];
+        _total = page.total;
+        _loadingMore = false;
+      });
+      widget.onPendingCount?.call(page.pendingCount);
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _loadingMore = false;
+        _error = inventoryErrorMessage(e, 'inventory.documents.error.load_movements');
+      });
+    }
+  }
+
+  void _filterChanged(VoidCallback apply) {
+    setState(apply);
+    _reload();
+  }
+
+  void _onSearch(String text) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final next = text.trim();
+      if (next == _search) return;
+      _search = next;
+      _reload();
+    });
+  }
+
+  // ---------------------------------------------------------------- Chứng từ: mở, sửa, lập
+
+  Future<void> _openDocument(String id) async {
+    try {
+      final doc = await _api.load(id);
+      if (!mounted) return;
+      await _showDetail(doc);
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+      if (!mounted) return;
+      showDocSnack(context, inventoryErrorMessage(e, 'inventory.documents.error.open_document'), error: true);
+    }
+  }
+
+  Future<void> _showDetail(StockDoc doc) async {
+    final toEdit = await InventoryDocumentDetailSheet.show(
+      context,
+      doc,
+      allowEdit: !_approvalMode,
+      closeOnChange: _approvalMode,
+      onChanged: (_, _) => _reload(),
+    );
+    if (toEdit == null || !mounted) return;
+    await _openForm(DocumentDraft.fromDocument(toEdit), documentId: toEdit.id);
+  }
+
+  Future<void> _openForm(DocumentDraft draft, {String? documentId}) async {
+    var refs = _refs;
+    if (refs.warehouses.isEmpty && refs.materials.isEmpty) {
+      try {
+        refs = await _api.refs(force: true);
+        if (!mounted) return;
+        setState(() => _refs = refs);
+      } catch (e) {
+        InventoryScope.instance.onError(e);
+        if (!mounted) return;
+        showDocSnack(context, inventoryErrorMessage(e), error: true);
+        return;
+      }
+    }
+    if (!mounted) return;
+    final result = await InventoryDocumentCreateDialog.show(context, initial: draft, refs: refs, documentId: documentId);
+    if (result == null || !mounted) return;
+    showDocSnack(context, result.message);
+    _reload();
+    await _showDetail(result.document);
+  }
+
+  void _createDocument() {
+    final firstActive = _refs.warehouses.where((w) => w.isActive).firstOrNull?.code ?? '';
+    _openForm(DocumentDraft.empty('RECEIPT_PURCHASE', firstActive));
+  }
+
+  // ---------------------------------------------------------------- Giao diện
+
+  List<DocOption> get _warehouseOptions => [
+        DocOption('', 'inventory.documents.filter.all_warehouses'.tr()),
+        for (final w in _refs.warehouses) DocOption(w.code, w.label),
+      ];
+
+  List<DocOption> get _typeOptions => [
+        DocOption('', 'inventory.documents.filter.all_types'.tr()),
+        for (final t in kStockDocumentTypes) DocOption(t, docTypeLabel(t)),
+      ];
+
+  @override
   Widget build(BuildContext context) {
+    final body = ValueListenableBuilder<InventoryCapabilities>(
+      valueListenable: InventoryScope.instance.capabilities,
+      builder: (context, caps, _) => Column(children: [
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: _approvalMode ? _approvalHeader(caps) : _movementHeader(caps),
+        ),
+        const Divider(height: 1, color: kDocBorder),
+        Expanded(child: _listBody()),
+      ]),
+    );
+    if (widget.embedded) return Container(color: AppColors.slate50, child: body);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.slate50,
       appBar: AppBar(
         backgroundColor: AppColors.slate900,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              widget.subtitle,
-              style: const TextStyle(fontSize: 11, color: AppColors.slate400),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Làm mới',
-            onPressed: _loadData,
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+            widget.title ??
+                (_approvalMode ? 'inventory.documents.pending.title'.tr() : 'inventory.documents.movements.title'.tr()),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
+          if (widget.subtitle != null)
+            Text(widget.subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.slate400)),
+        ]),
+      ),
+      body: body,
+    );
+  }
+
+  Widget _titleRow(String title, String count, List<Widget> actions) => Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.slate900)),
+            const SizedBox(height: 2),
+            Text(count, style: const TextStyle(fontSize: 12.5, color: AppColors.slate500)),
+          ]),
+        ),
+        ...actions,
+      ]);
+
+  Widget _reloadButton() => IconButton(
+        tooltip: 'inventory.documents.common.reload'.tr(),
+        onPressed: _loading ? null : _reload,
+        icon: const Icon(Icons.refresh, size: 20, color: AppColors.slate600),
+      );
+
+  Widget _movementHeader(InventoryCapabilities caps) {
+    final activeFilters = [_sourceType, _docType, _status, _warehouseCode, _fromDate ?? '', _toDate ?? '']
+        .where((v) => v.isNotEmpty)
+        .length;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _titleRow(
+        'inventory.documents.movements.title'.tr(),
+        'inventory.documents.movements.count'.tr(args: {'n': formatQty(_total)}),
+        [
+          _reloadButton(),
+          if (caps.canWriteTransactions)
+            ElevatedButton.icon(
+              style: docButtonStyle(primary: true),
+              onPressed: _createDocument,
+              icon: const Icon(Icons.note_add_outlined, size: 16),
+              label: Text('inventory.documents.movements.create'.tr()),
+            ),
         ],
       ),
-      body: Column(
-        children: [
-          // Filter & Action Header
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top Header: Title, Count hint, Buttons (Matching Web 1:1)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    if (isApprovalMode)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Chứng từ chờ duyệt',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${_documents.length} chứng từ đang chờ',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                          ),
-                        ],
-                      )
-                    else
-                      Text(
-                        '${_documents.length} chứng từ',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                      ),
-                    Row(
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _isLoading ? null : _loadData,
-                          icon: const Icon(Icons.refresh, size: 14),
-                          label: const Text('Tải lại', style: TextStyle(fontSize: 11.5)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          ),
-                        ),
-                        if (!isApprovalMode) ...[
-                          const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: _openCreateDocumentDialog,
-                            icon: const Icon(Icons.note_add_outlined, size: 15),
-                            label: const Text('Lập chứng từ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF021E73),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              elevation: 0,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(
+          child: TextField(
+            controller: _searchCtrl,
+            textInputAction: TextInputAction.search,
+            decoration: docInputDecoration(hint: 'inventory.documents.filter.search_hint'.tr()).copyWith(
+              prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.slate400),
+              prefixIconConstraints: const BoxConstraints(minWidth: 34),
+            ),
+            onChanged: _onSearch,
+          ),
+        ),
+        const SizedBox(width: 8),
+        OutlinedButton.icon(
+          onPressed: () => setState(() => _filtersOpen = !_filtersOpen),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.slate300),
+            foregroundColor: AppColors.slate700,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          ),
+          icon: const Icon(Icons.tune, size: 16),
+          label: Text(activeFilters > 0
+              ? 'inventory.documents.filter.toggle_count'.tr(args: {'n': activeFilters})
+              : 'inventory.documents.filter.toggle'.tr()),
+        ),
+      ]),
+      if (_filtersOpen) ...[
+        const SizedBox(height: 10),
+        _pairRow(
+          DocSelect(
+            label: 'inventory.documents.field.source_origin'.tr(),
+            options: [
+              DocOption('', 'inventory.documents.filter.all_sources'.tr()),
+              for (final s in kMovementSourceCodes) DocOption(s, sourceTypeLabel(s)),
+            ],
+            value: _sourceType,
+            onChanged: (v) => _filterChanged(() => _sourceType = v),
+          ),
+          DocSelect(
+            label: 'inventory.documents.field.type'.tr(),
+            options: _typeOptions,
+            value: _docType,
+            onChanged: (v) => _filterChanged(() => _docType = v),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _pairRow(
+          DocSelect(
+            label: 'inventory.documents.field.status'.tr(),
+            options: [
+              DocOption('', 'inventory.documents.filter.all_statuses'.tr()),
+              for (final s in kStockDocumentStatuses) DocOption(s, docStatusLabel(s)),
+            ],
+            value: _status,
+            onChanged: (v) => _filterChanged(() => _status = v),
+          ),
+          DocSelect(
+            label: 'inventory.documents.field.warehouse'.tr(),
+            options: _warehouseOptions,
+            value: _warehouseCode,
+            onChanged: (v) => _filterChanged(() => _warehouseCode = v),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _pairRow(
+          DocDateField(
+            label: 'inventory.documents.filter.from_date'.tr(),
+            value: _fromDate,
+            onChanged: (v) => _filterChanged(() => _fromDate = v),
+          ),
+          DocDateField(
+            label: 'inventory.documents.filter.to_date'.tr(),
+            value: _toDate,
+            onChanged: (v) => _filterChanged(() => _toDate = v),
+          ),
+        ),
+      ],
+    ]);
+  }
 
-                // Filters (Matching Web: On approval mode, only Loại & Kho)
-                if (isApprovalMode) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Filter Loại
-                      Expanded(
-                        child: SearchableDropdownField<Map<String, String>>(
-                          value: _typeOptions.firstWhere(
-                            (opt) => opt['value'] == _selectedType,
-                            orElse: () => _typeOptions.first,
-                          ),
-                          items: _typeOptions,
-                          hintText: 'Mọi loại',
-                          itemLabel: (opt) => opt['label'] ?? '',
-                          showClear: _selectedType.isNotEmpty,
-                          onClear: () {
-                            setState(() => _selectedType = '');
-                            _loadData();
-                          },
-                          onChanged: (opt) {
-                            setState(() => _selectedType = opt['value'] ?? '');
-                            _loadData();
-                          },
-                          maxHeight: 240,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
+  Widget _pairRow(Widget a, Widget b) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: a),
+        const SizedBox(width: 8),
+        Expanded(child: b),
+      ]);
 
-                      // Filter Kho
-                      Expanded(
-                        child: SearchableDropdownField<String>(
-                          value: _selectedWarehouse,
-                          items: ['', ..._warehouses.map((wh) => wh.code)],
-                          hintText: 'Mọi kho',
-                          itemLabel: (code) {
-                            if (code.isEmpty) return 'Mọi kho';
-                            final wh = _warehouses.firstWhere(
-                              (w) => w.code == code,
-                              orElse: () => WarehouseItem(id: '', code: code, name: code),
-                            );
-                            return '${wh.code} - ${wh.name}';
-                          },
-                          itemSubtitle: (code) {
-                            if (code.isEmpty) return null;
-                            final wh = _warehouses.firstWhere(
-                              (w) => w.code == code,
-                              orElse: () => WarehouseItem(id: '', code: code, name: code),
-                            );
-                            return wh.location;
-                          },
-                          showClear: _selectedWarehouse.isNotEmpty,
-                          onClear: () {
-                            setState(() => _selectedWarehouse = '');
-                            _loadData();
-                          },
-                          onChanged: (code) {
-                            setState(() => _selectedWarehouse = code);
-                            _loadData();
-                          },
-                          maxHeight: 240,
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  // Standard Filters Row 1: Loại & Trạng thái
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: SearchableDropdownField<Map<String, String>>(
-                          value: _typeOptions.firstWhere(
-                            (opt) => opt['value'] == _selectedType,
-                            orElse: () => _typeOptions.first,
-                          ),
-                          items: _typeOptions,
-                          hintText: 'Mọi loại',
-                          itemLabel: (opt) => opt['label'] ?? '',
-                          showClear: _selectedType.isNotEmpty,
-                          onClear: () {
-                            setState(() => _selectedType = '');
-                            _loadData();
-                          },
-                          onChanged: (opt) {
-                            setState(() => _selectedType = opt['value'] ?? '');
-                            _loadData();
-                          },
-                          maxHeight: 240,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SearchableDropdownField<Map<String, String>>(
-                          value: _statusOptions.firstWhere(
-                            (opt) => opt['value'] == _selectedStatus,
-                            orElse: () => _statusOptions.first,
-                          ),
-                          items: _statusOptions,
-                          hintText: 'Mọi trạng thái',
-                          itemLabel: (opt) => opt['label'] ?? '',
-                          showClear: _selectedStatus.isNotEmpty,
-                          onClear: () {
-                            setState(() => _selectedStatus = '');
-                            _loadData();
-                          },
-                          onChanged: (opt) {
-                            setState(() => _selectedStatus = opt['value'] ?? '');
-                            _loadData();
-                          },
-                          maxHeight: 240,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+  Widget _approvalHeader(InventoryCapabilities caps) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _titleRow(
+        'inventory.documents.pending.title'.tr(),
+        'inventory.documents.pending.count'.tr(args: {'n': formatQty(_total)}),
+        [_reloadButton()],
+      ),
+      if (!caps.canApproveDocuments) ...[
+        const SizedBox(height: 8),
+        DocBanner('inventory.documents.pending.view_only'.tr()),
+      ],
+      const SizedBox(height: 10),
+      _pairRow(
+        DocSelect(
+          label: 'inventory.documents.field.type'.tr(),
+          options: _typeOptions,
+          value: _docType,
+          onChanged: (v) => _filterChanged(() => _docType = v),
+        ),
+        DocSelect(
+          label: 'inventory.documents.field.warehouse'.tr(),
+          options: _warehouseOptions,
+          value: _warehouseCode,
+          onChanged: (v) => _filterChanged(() => _warehouseCode = v),
+        ),
+      ),
+    ]);
+  }
 
-                  // Standard Filters Row 2: Kho & Khoảng ngày
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: SearchableDropdownField<String>(
-                          value: _selectedWarehouse,
-                          items: ['', ..._warehouses.map((wh) => wh.code)],
-                          hintText: 'Mọi kho',
-                          itemLabel: (code) {
-                            if (code.isEmpty) return 'Mọi kho';
-                            final wh = _warehouses.firstWhere(
-                              (w) => w.code == code,
-                              orElse: () => WarehouseItem(id: '', code: code, name: code),
-                            );
-                            return '${wh.code} - ${wh.name}';
-                          },
-                          itemSubtitle: (code) {
-                            if (code.isEmpty) return null;
-                            final wh = _warehouses.firstWhere(
-                              (w) => w.code == code,
-                              orElse: () => WarehouseItem(id: '', code: code, name: code),
-                            );
-                            return wh.location;
-                          },
-                          showClear: _selectedWarehouse.isNotEmpty,
-                          onClear: () {
-                            setState(() => _selectedWarehouse = '');
-                            _loadData();
-                          },
-                          onChanged: (code) {
-                            setState(() => _selectedWarehouse = code);
-                            _loadData();
-                          },
-                          maxHeight: 240,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _selectDateRange(true),
-                                child: Container(
-                                  height: 38,
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    _fromDate != null ? '${_fromDate!.day}/${_fromDate!.month}/${_fromDate!.year}' : 'Từ ngày',
-                                    style: TextStyle(fontSize: 11, color: _fromDate != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _selectDateRange(false),
-                                child: Container(
-                                  height: 38,
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    _toDate != null ? '${_toDate!.day}/${_toDate!.month}/${_toDate!.year}' : 'Đến ngày',
-                                    style: TextStyle(fontSize: 11, color: _toDate != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (_fromDate != null || _toDate != null) ...[
-                              IconButton(
-                                icon: const Icon(Icons.clear, size: 16, color: Color(0xFF64748B)),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: () {
-                                  setState(() {
-                                    _fromDate = null;
-                                    _toDate = null;
-                                  });
-                                  _loadData();
-                                },
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
+  Widget _listBody() {
+    final count = _approvalMode ? _pending.length : _rows.length;
+    if (_loading && count == 0) return const Center(child: CircularProgressIndicator());
+    final children = <Widget>[
+      if (_error != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: DocBanner(
+            _error!,
+            error: true,
+            trailing: _approvalMode
+                ? null
+                : TextButton(onPressed: _reload, child: Text('inventory.documents.common.retry'.tr())),
+          ),
+        ),
+      if (_loading) const LinearProgressIndicator(minHeight: 2),
+      if (count == 0 && !_loading && _error == null)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Center(
+            child: Text(
+              _approvalMode ? 'inventory.documents.pending.empty'.tr() : 'inventory.documents.movements.empty'.tr(),
+              style: const TextStyle(fontSize: 13, color: AppColors.slate500),
+              textAlign: TextAlign.center,
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-          // List Body
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.error_outline, size: 48, color: Color(0xFFDC2626)),
-                              const SizedBox(height: 12),
-                              Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: _loadData,
-                                icon: const Icon(Icons.refresh, size: 18),
-                                label: const Text('Thử lại'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _documents.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.receipt_long_outlined, size: 48, color: Color(0xFFCBD5E1)),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    isApprovalMode
-                                        ? 'Không có chứng từ nào chờ duyệt.'
-                                        : 'Không có chứng từ nào phù hợp với bộ lọc.',
-                                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _loadData,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.all(12),
-                              itemCount: _documents.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 8),
-                              itemBuilder: (ctx, index) {
-                                final doc = _documents[index];
-                                return _buildDocumentCard(doc);
-                              },
-                            ),
-                          ),
-          ),
-        ],
+        ),
+      if (_approvalMode)
+        for (final doc in _pending) ...[_pendingCard(doc), const SizedBox(height: 8)]
+      else
+        for (final row in _rows) ...[_movementCard(row), const SizedBox(height: 8)],
+      if (_loadingMore)
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+        ),
+    ];
+    return RefreshIndicator(
+      onRefresh: _reload,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (n.metrics.extentAfter < 300) _loadMore();
+          return false;
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(12),
+          children: children,
+        ),
       ),
     );
   }
 
-  Widget _buildDocumentCard(StockDocumentItem doc) {
-    Color badgeBg;
-    Color badgeFg;
-    Color badgeBorder;
+  BoxDecoration get _cardDecoration => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: kDocBorder),
+      );
 
-    switch (doc.status) {
-      case 'POSTED':
-        badgeBg = const Color(0xFFF0FDF4);
-        badgeFg = const Color(0xFF15803D);
-        badgeBorder = const Color(0xFFBBF7D0);
-        break;
-      case 'PENDING':
-        badgeBg = const Color(0xFFFFFBEB);
-        badgeFg = const Color(0xFFB45309);
-        badgeBorder = const Color(0xFFFDE68A);
-        break;
-      case 'DRAFT':
-        badgeBg = const Color(0xFFF5F3FF);
-        badgeFg = const Color(0xFF6D28D9);
-        badgeBorder = const Color(0xFFDDD6FE);
-        break;
-      case 'APPROVED':
-        badgeBg = const Color(0xFFEFF6FF);
-        badgeFg = const Color(0xFF1D4ED8);
-        badgeBorder = const Color(0xFFBFDBFE);
-        break;
-      case 'REJECTED':
-        badgeBg = const Color(0xFFFEF2F2);
-        badgeFg = const Color(0xFFB91C1C);
-        badgeBorder = const Color(0xFFFECACA);
-        break;
-      default:
-        badgeBg = const Color(0xFFF8FAFC);
-        badgeFg = const Color(0xFF64748B);
-        badgeBorder = const Color(0xFFE2E8F0);
-    }
+  static const _muted = TextStyle(fontSize: 12, color: AppColors.slate500);
 
+  Widget _movementCard(StockMovementRow row) {
     return InkWell(
-      onTap: () => InventoryDocumentDetailSheet.show(context, doc, allDocuments: _documents, onChanged: _loadData),
       borderRadius: BorderRadius.circular(10),
+      onTap: () => row.isLegacy ? showLegacyEntrySheet(context, row) : _openDocument(row.id),
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: const [
-            BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 1)),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Row 1: Code & Status Badge
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  doc.code,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1D4ED8),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-                  decoration: BoxDecoration(
-                    color: badgeBg,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: badgeBorder),
-                  ),
-                  child: Text(
-                    '• ${doc.statusLabel}',
-                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: badgeFg),
-                  ),
-                ),
-              ],
+        decoration: _cardDecoration,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(row.code,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                if (row.isLegacy) Text('inventory.documents.movements.legacy'.tr(), style: _muted),
+              ]),
             ),
-            const SizedBox(height: 6),
+            DocStatusBadge(row.status),
+          ]),
+          const SizedBox(height: 6),
+          Row(children: [
+            Expanded(
+              child: Text(movementTypeLabel(row),
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.slate900)),
+            ),
+            Text(warehousePairLabel(row.warehouseCode, row.targetWarehouseCode),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.slate700)),
+          ]),
+          const SizedBox(height: 4),
+          Text(movementMaterialLabel(row),
+              style: const TextStyle(fontSize: 12.5, color: AppColors.slate700), maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          Row(children: [
+            Text(Formatters.formatDate(row.movementDate), style: _muted),
+            const Text('  ·  ', style: _muted),
+            Text(sourceTypeLabel(row.sourceType), style: _muted),
+            const Spacer(),
+            Text(
+              'inventory.documents.movements.quantity'.tr(args: {'n': formatQty(row.quantityTotal)}),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate900),
+            ),
+          ]),
+          const SizedBox(height: 2),
+          UserNameText(row.createdBy, prefix: 'inventory.documents.movements.created_by'.tr(), style: _muted),
+        ]),
+      ),
+    );
+  }
 
-            // Row 2: Type & Warehouse
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  doc.docTypeLabel,
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    doc.warehouseDisplay,
-                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                  ),
-                ),
-              ],
+  Widget _pendingCard(StockDoc doc) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => _showDetail(doc),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: _cardDecoration,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: Text(doc.code,
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
             ),
-            const SizedBox(height: 6),
-
-            // Row 3: Date, Lines & Source
-            Row(
-              children: [
-                Text(
-                  Formatters.formatDate(doc.documentDate),
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                ),
-                const Text(' • ', style: TextStyle(color: Color(0xFFCBD5E1))),
-                Text(
-                  '${doc.lines.length} dòng / ${Formatters.formatCurrency(doc.totalQuantity, showSymbol: false)}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                ),
-                const Spacer(),
-                Text(
-                  doc.sourceLabel,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                ),
-              ],
+            Text(warehousePairLabel(doc.warehouseCode, doc.targetWarehouseCode),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.slate700)),
+          ]),
+          const SizedBox(height: 4),
+          Text(docTypeLabel(doc.docType),
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.slate900)),
+          const SizedBox(height: 4),
+          Row(children: [
+            Text(Formatters.formatDate(doc.documentDate), style: _muted),
+            const Spacer(),
+            Text(
+              'inventory.documents.pending.lines'.tr(args: {'n': doc.lines.length, 'qty': formatQty(doc.totalQuantity)}),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate900),
             ),
-            if (doc.note != null && doc.note!.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Ghi chú: ${doc.note}',
-                style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            if (isApprovalMode) ...[
-              const SizedBox(height: 10),
-              const Divider(height: 1, color: Color(0xFFE2E8F0)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => _handleRejectDoc(doc),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFDC2626),
-                      side: const BorderSide(color: Color(0xFFFECACA)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      visualDensity: VisualDensity.compact,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                    ),
-                    child: const Text('Từ chối', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => _handleApproveDoc(doc),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF059669),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      visualDensity: VisualDensity.compact,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Phê duyệt', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
+          ]),
+          const SizedBox(height: 4),
+          Text('inventory.documents.field.note_value'.tr(args: {'note': doc.note ?? '—'}),
+              style: _muted, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 8),
+          DocumentActionBar(
+            key: ValueKey('${doc.id}:${doc.status}'),
+            document: doc,
+            exclude: const [DocAction.cancel, DocAction.edit],
+            onChanged: (_, message) {
+              showDocSnack(context, message);
+              _reload();
+            },
+          ),
+        ]),
       ),
     );
   }
 }
-

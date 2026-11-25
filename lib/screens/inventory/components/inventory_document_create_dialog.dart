@@ -1,56 +1,62 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
-import '../../../models/inventory_models.dart';
-import '../../../services/module_business_service.dart';
+import '../../../features/inventory/data/documents/stock_document_api.dart';
+import '../../../features/inventory/domain/documents/stock_document_logic.dart';
+import '../../../features/inventory/domain/documents/stock_document_models.dart';
+import '../../../features/inventory/presentation/documents/document_widgets.dart';
+import '../../../features/inventory/presentation/documents/lot_serial_pickers.dart';
+import '../../../features/inventory/presentation/utils/inventory_scope.dart';
+import '../../../theme/colors.dart';
 
-class _DocumentLineDraft {
-  InventoryItem? selectedItem;
-  final TextEditingController quantityController = TextEditingController(text: '1');
-  final TextEditingController priceController = TextEditingController();
-  final TextEditingController lotController = TextEditingController();
-  final TextEditingController serialController = TextEditingController();
-  final TextEditingController noteController = TextEditingController();
+class _LineCtrls {
+  final TextEditingController quantity = TextEditingController();
+  final TextEditingController unitCost = TextEditingController();
+  final TextEditingController lotNo = TextEditingController();
+  final TextEditingController note = TextEditingController();
 
   void dispose() {
-    quantityController.dispose();
-    priceController.dispose();
-    lotController.dispose();
-    serialController.dispose();
-    noteController.dispose();
+    quantity.dispose();
+    unitCost.dispose();
+    lotNo.dispose();
+    note.dispose();
   }
 }
 
+String _plain(double? v) {
+  if (v == null || !v.isFinite) return '';
+  return v == v.truncateToDouble() ? v.toInt().toString() : v.toString();
+}
+
+double? _parse(String text) {
+  final t = text.trim().replaceAll(' ', '');
+  if (t.isEmpty) return null;
+  return double.tryParse(t.replaceAll(',', '.'));
+}
+
+/// Form chứng từ kho nhiều dòng (web `StockDocumentForm`): phần đầu (loại, kho, kho đến khi điều chuyển,
+/// ngày, nguồn, ghi chú) và các dòng. Dòng xuất chọn lô FEFO và serial; dòng nhập ghi số lô, hạn dùng, đơn giá.
+/// Lưu ra Nháp; "Lưu và gửi duyệt" hoặc "Lưu và ghi sổ" tuỳ loại. [show] trả chứng từ đã lưu và câu thông báo.
 class InventoryDocumentCreateDialog extends StatefulWidget {
-  final List<InventoryItem> items;
-  final List<WarehouseItem> warehouses;
-  final StockDocumentItem? documentToEdit;
-  final VoidCallback? onCreated;
+  final DocumentDraft initial;
+  final String? documentId;
+  final DocRefs refs;
 
-  const InventoryDocumentCreateDialog({
-    super.key,
-    required this.items,
-    required this.warehouses,
-    this.documentToEdit,
-    this.onCreated,
-  });
+  const InventoryDocumentCreateDialog({super.key, required this.initial, required this.refs, this.documentId});
 
-  static Future<void> show(
+  static Future<({StockDoc document, String message})?> show(
     BuildContext context, {
-    required List<InventoryItem> items,
-    required List<WarehouseItem> warehouses,
-    StockDocumentItem? documentToEdit,
-    VoidCallback? onCreated,
+    required DocumentDraft initial,
+    required DocRefs refs,
+    String? documentId,
   }) {
-    return showDialog<void>(
+    return showModalBottomSheet<({StockDoc document, String message})>(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => InventoryDocumentCreateDialog(
-        items: items,
-        warehouses: warehouses,
-        documentToEdit: documentToEdit,
-        onCreated: onCreated,
-      ),
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => InventoryDocumentCreateDialog(initial: initial, refs: refs, documentId: documentId),
     );
   }
 
@@ -59,766 +65,486 @@ class InventoryDocumentCreateDialog extends StatefulWidget {
 }
 
 class _InventoryDocumentCreateDialogState extends State<InventoryDocumentCreateDialog> {
-  final ModuleBusinessService _service = ModuleBusinessService();
-  final ScrollController _scrollController = ScrollController();
+  late DocumentDraft _draft = widget.initial;
+  final Map<String, _LineCtrls> _ctrls = {};
+  late final TextEditingController _sourceCtrl = TextEditingController(text: widget.initial.sourceType ?? '');
+  late final TextEditingController _noteCtrl = TextEditingController(text: widget.initial.note ?? '');
+  late final Map<String, DocMaterial> _materialByCode = widget.refs.materialByCode;
+  bool _busy = false;
+  String? _serverError;
+  String? _showErrors; // 'save' | 'post'
 
-  static const List<Map<String, String>> _typeOptions = [
-    {'value': 'RECEIPT_PURCHASE', 'label': 'Nhập mua hàng'},
-    {'value': 'RECEIPT_SALES_RETURN', 'label': 'Nhập trả hàng bán'},
-    {'value': 'RECEIPT_TRANSFER', 'label': 'Nhập điều chuyển'},
-    {'value': 'RECEIPT_OTHER', 'label': 'Nhập khác'},
-    {'value': 'ISSUE_SALES', 'label': 'Xuất bán hàng'},
-    {'value': 'ISSUE_PROJECT', 'label': 'Xuất cho dự án'},
-    {'value': 'ISSUE_WARRANTY', 'label': 'Xuất bảo hành'},
-    {'value': 'ISSUE_TRANSFER', 'label': 'Xuất điều chuyển'},
-    {'value': 'ISSUE_OTHER', 'label': 'Xuất khác'},
-    {'value': 'ADJUSTMENT', 'label': 'Điều chỉnh tồn'},
-    {'value': 'TRANSFER', 'label': 'Điều chuyển kho'},
-  ];
-
-  late String _selectedType;
-  late String _selectedWarehouse;
-  String _selectedTargetWarehouse = '';
-  DateTime _documentDate = DateTime.now();
-  final TextEditingController _sourceController = TextEditingController();
-  final TextEditingController _noteController = TextEditingController();
-
-  final List<_DocumentLineDraft> _lines = [];
-  bool _isSubmitting = false;
-  String? _errorMessage;
+  bool get _editing => widget.documentId != null;
+  bool get _lockedSource => (widget.initial.sourceId ?? '').isNotEmpty;
 
   @override
   void initState() {
     super.initState();
-    if (widget.documentToEdit != null) {
-      final doc = widget.documentToEdit!;
-      _selectedType = doc.docType;
-      _selectedWarehouse = doc.warehouseCode;
-      _selectedTargetWarehouse = doc.targetWarehouseCode ?? '';
-      _documentDate = DateTime.tryParse(doc.documentDate) ?? DateTime.now();
-      _sourceController.text = doc.sourceType ?? '';
-      _noteController.text = doc.note ?? '';
-
-      for (final line in doc.lines) {
-        final draft = _DocumentLineDraft();
-        draft.selectedItem = widget.items.firstWhere(
-          (it) => it.code == line.materialCode,
-          orElse: () => InventoryItem(
-            code: line.materialCode,
-            name: line.materialName,
-            unit: line.unit,
-            available: 0.0,
-          ),
-        );
-        draft.quantityController.text = line.quantity.toString();
-        if (line.unitPrice != null && line.unitPrice! > 0) {
-          draft.priceController.text = line.unitPrice.toString();
-        }
-        if (line.lotNumber != null && line.lotNumber!.isNotEmpty) {
-          draft.lotController.text = line.lotNumber!;
-        }
-        _lines.add(draft);
-      }
-      if (_lines.isEmpty) {
-        _addNewLine();
-      }
-    } else {
-      _selectedType = _typeOptions.first['value']!;
-      _selectedWarehouse = widget.warehouses.isNotEmpty ? widget.warehouses.first.code : 'KHO-1';
-      if (widget.warehouses.length > 1) {
-        _selectedTargetWarehouse = widget.warehouses[1].code;
-      }
-      _addNewLine();
+    for (final l in _draft.lines) {
+      _sync(l);
     }
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
-    _sourceController.dispose();
-    _noteController.dispose();
-    for (final line in _lines) {
-      line.dispose();
+    _sourceCtrl.dispose();
+    _noteCtrl.dispose();
+    for (final c in _ctrls.values) {
+      c.dispose();
     }
     super.dispose();
   }
 
-  void _addNewLine() {
+  /// Đặt lại ô nhập của dòng theo giá trị bản nháp (khi tạo dòng, đổi loại/kho, tách lô).
+  void _sync(DraftLine l) {
+    final c = _ctrls.putIfAbsent(l.key, _LineCtrls.new);
+    c.quantity.text = _plain(l.quantity);
+    c.unitCost.text = _plain(l.unitCost);
+    c.lotNo.text = l.lotNo ?? '';
+    c.note.text = l.note ?? '';
+  }
+
+  void _patchLine(String key, DraftLine Function(DraftLine) update, {bool sync = false}) {
     setState(() {
-      _lines.add(_DocumentLineDraft());
+      _draft = _draft.copyWith(lines: [
+        for (final l in _draft.lines) l.key == key ? update(l) : l,
+      ]);
     });
+    if (sync) {
+      final line = _draft.lines.firstWhere((l) => l.key == key);
+      _sync(line);
+    }
   }
 
-  void _removeLine(int index) {
-    if (_lines.length <= 1) return;
+  void _resetLines(DraftLine Function(DraftLine) update) {
+    setState(() => _draft = _draft.copyWith(lines: _draft.lines.map(update).toList()));
+    for (final l in _draft.lines) {
+      _ctrls[l.key]?.lotNo.text = l.lotNo ?? '';
+    }
+  }
+
+  List<DocOption> get _typeOptions {
+    final types = {...kManualDocumentTypes, widget.initial.docType};
+    return [
+      for (final t in types)
+        DocOption(
+          t,
+          docTypeLabel(t),
+          requiresApproval(t, widget.initial.sourceId)
+              ? 'inventory.documents.form.needs_approval'.tr()
+              : 'inventory.documents.form.no_approval'.tr(),
+        ),
+    ];
+  }
+
+  List<DocOption> get _warehouseOptions =>
+      [for (final w in widget.refs.warehouses.where((w) => w.isActive)) DocOption(w.code, w.label)];
+
+  List<DocOption> get _materialOptions => [
+        for (final m in widget.refs.materials.where((m) => m.kind != 'SERVICE' && m.isActive))
+          DocOption(
+            m.code,
+            '${m.code} - ${m.name}',
+            m.isSerialized ? 'inventory.documents.form.unit_serial'.tr(args: {'unit': m.unit}) : m.unit,
+          ),
+      ];
+
+  Future<void> _save([String? then]) async {
+    setState(() => _showErrors = then == 'post' ? 'post' : 'save');
+    final check = validateDraft(_draft, _materialByCode, forPosting: then == 'post');
+    if (!check.valid) return;
     setState(() {
-      final removed = _lines.removeAt(index);
-      removed.dispose();
+      _busy = true;
+      _serverError = null;
     });
-  }
-
-  double get _totalQuantity {
-    double total = 0.0;
-    for (final l in _lines) {
-      total += double.tryParse(l.quantityController.text.trim()) ?? 0.0;
-    }
-    return total;
-  }
-
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _documentDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-    );
-    if (picked != null) {
-      setState(() => _documentDate = picked);
-    }
-  }
-
-  void _showError(String message) {
-    setState(() {
-      _errorMessage = message;
-    });
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
-  Future<void> _handleSubmit({required bool postImmediately}) async {
-    setState(() => _errorMessage = null);
-
-    // 1. Validate warehouse
-    if (_selectedWarehouse.isEmpty) {
-      _showError('Vui lòng chọn kho lưu trữ.');
-      return;
-    }
-
-    if (_selectedType == 'TRANSFER') {
-      if (_selectedTargetWarehouse.isEmpty) {
-        _showError('Chứng từ điều chuyển phải có kho đến.');
-        return;
-      }
-      if (_selectedTargetWarehouse == _selectedWarehouse) {
-        _showError('Kho xuất và kho đến phải khác nhau.');
-        return;
-      }
-    }
-
-    // 2. Validate lines
-    final List<Map<String, dynamic>> payloadLines = [];
-    for (int i = 0; i < _lines.length; i++) {
-      final line = _lines[i];
-      final lineNo = i + 1;
-
-      if (line.selectedItem == null) {
-        _showError('Dòng $lineNo: Vui lòng chọn mặt hàng.');
-        return;
-      }
-
-      final qty = double.tryParse(line.quantityController.text.trim()) ?? 0.0;
-      if (qty <= 0) {
-        _showError('Dòng $lineNo: Số lượng phải lớn hơn 0.');
-        return;
-      }
-
-      final lotText = line.lotController.text.trim();
-
-      double? unitCost;
-      if (line.priceController.text.trim().isNotEmpty) {
-        unitCost = double.tryParse(line.priceController.text.trim().replaceAll(',', ''));
-        if (unitCost != null && unitCost < 0) {
-          _showError('Dòng $lineNo: Đơn giá không được âm.');
+    final api = StockDocumentApi.instance;
+    try {
+      var saved = widget.documentId != null
+          ? await api.update(widget.documentId!, {
+              'warehouseCode': _draft.warehouseCode,
+              if (_draft.docType == 'TRANSFER') 'targetWarehouseCode': _draft.targetWarehouseCode ?? '',
+              'documentDate': _draft.documentDate,
+              'note': _draft.note ?? '',
+              'lines': _draft.lines.map((l) => draftLineToInput(_draft.docType, l)).toList(),
+            })
+          : await api.create(draftToCreateRequest(_draft));
+      var message = 'inventory.documents.msg.draft_saved'.tr(args: {'code': saved.code});
+      if (then == 'submit') {
+        saved = await api.submit(saved.id);
+        message = 'inventory.documents.msg.saved_submitted'.tr(args: {'code': saved.code});
+      } else if (then == 'post') {
+        try {
+          saved = await api.post(saved.id);
+          message = 'inventory.documents.msg.saved_posted'.tr(args: {'code': saved.code});
+        } catch (e) {
+          InventoryScope.instance.onError(e);
+          // Nháp đã lưu; báo lỗi ghi sổ để người dùng sửa tiếp trên chứng từ đã có.
+          if (!mounted) return;
+          Navigator.of(context).pop((
+            document: saved,
+            message: 'inventory.documents.msg.saved_not_posted'
+                .tr(args: {'code': saved.code, 'error': inventoryErrorMessage(e)}),
+          ));
           return;
         }
       }
-
-      final Map<String, dynamic> lineMap = {
-        'materialCode': line.selectedItem!.code,
-        'quantity': qty,
-      };
-
-      if (unitCost != null) {
-        lineMap['unitCost'] = unitCost;
-      }
-
-      if (lotText.isNotEmpty) {
-        lineMap['lot'] = {'lotNo': lotText};
-      }
-
-      // Serial tạm ẩn không gửi
-
-      final noteText = line.noteController.text.trim();
-      if (noteText.isNotEmpty) {
-        lineMap['note'] = noteText;
-      }
-
-      payloadLines.add(lineMap);
+      if (!mounted) return;
+      Navigator.of(context).pop((document: saved, message: message));
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _serverError = inventoryErrorMessage(e, 'inventory.documents.error.save_failed');
+      });
     }
+  }
 
-    setState(() => _isSubmitting = true);
+  Future<void> _pickSerials(DraftLine line) async {
+    final material = _materialByCode[line.materialCode];
+    final result = await showSerialPicker(
+      context,
+      materialCode: line.materialCode,
+      materialName: material?.name,
+      warehouse: widget.refs.warehouse(_draft.warehouseCode),
+      quantity: line.quantity,
+      value: line.serials,
+      inbound: lineDirection(_draft.docType, line.direction) == 'IN',
+    );
+    if (result == null || !mounted) return;
+    _patchLine(line.key, (l) => l.copyWith(serials: result));
+  }
 
-    final dateStr =
-        '${_documentDate.year}-${_documentDate.month.toString().padLeft(2, '0')}-${_documentDate.day.toString().padLeft(2, '0')}';
-
-    final StockDocumentItem? res;
-    if (widget.documentToEdit != null) {
-      res = await _service.updateStockDocument(
-        widget.documentToEdit!.id,
-        warehouseCode: _selectedWarehouse,
-        targetWarehouseCode: _selectedType == 'TRANSFER' ? _selectedTargetWarehouse : null,
-        documentDate: dateStr,
-        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
-        lines: payloadLines,
-      );
-      if (res != null && postImmediately) {
-        await _service.postStockDocument(widget.documentToEdit!.id);
-      }
-    } else {
-      res = await _service.createStockDocument(
-        docType: _selectedType,
-        warehouseCode: _selectedWarehouse,
-        targetWarehouseCode: _selectedType == 'TRANSFER' ? _selectedTargetWarehouse : null,
-        documentDate: dateStr,
-        sourceType: _sourceController.text.trim().isNotEmpty ? _sourceController.text.trim() : null,
-        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
-        postImmediately: postImmediately,
-        lines: payloadLines,
-      );
-    }
-
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
-
-    if (res != null) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            postImmediately
-                ? 'Đã lập và ghi sổ chứng từ ${res.code} thành công.'
-                : 'Đã lưu nháp chứng từ ${res.code} thành công.',
-          ),
-          backgroundColor: const Color(0xFF059669),
-        ),
-      );
-      widget.onCreated?.call();
-    } else {
-      _showError(_service.lastInventoryError ?? 'Không thể tạo chứng từ. Vui lòng kiểm tra lại thông tin.');
+  Future<void> _pickLot(DraftLine line) async {
+    final result = await showLotPicker(
+      context,
+      materialCode: line.materialCode,
+      warehouseCode: _draft.warehouseCode,
+      quantity: line.quantity.isFinite ? line.quantity : 0,
+      unit: _materialByCode[line.materialCode]?.unit,
+      current: line.lotNo,
+    );
+    if (result == null || !mounted) return;
+    final replacement = splitLineByLots(line, result);
+    setState(() {
+      _draft = _draft.copyWith(lines: [
+        for (final l in _draft.lines)
+          if (l.key == line.key) ...replacement else l,
+      ]);
+    });
+    for (final l in replacement) {
+      _sync(l);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      backgroundColor: Colors.white,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.90,
-          maxWidth: 680,
+    final validation = validateDraft(_draft, _materialByCode, forPosting: _showErrors == 'post');
+    final messages = _showErrors != null ? validation.messages : const <String>[];
+    final approval = requiresApproval(_draft.docType, _draft.sourceId);
+    final total = _draft.lines.fold<double>(0, (s, l) => s + (l.quantity.isFinite ? l.quantity : 0));
+    final isTransfer = _draft.docType == 'TRANSFER';
+
+    return PopScope(
+      canPop: !_busy,
+      child: DocSheetFrame(
+        closable: !_busy,
+        title: Text(
+          _editing ? 'inventory.documents.form.edit_title'.tr() : 'inventory.documents.form.create_title'.tr(),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.slate900),
         ),
-        child: Column(
+        body: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            // Header Bar matching Web: X  Lập chứng từ kho
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 14, 12),
-              child: Row(
-                children: [
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.documentToEdit != null ? 'Sửa chứng từ \${widget.documentToEdit!.code}' : 'Lập chứng từ kho',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            DocSelect(
+              label: 'inventory.documents.form.doc_type'.tr(),
+              options: _typeOptions,
+              value: _draft.docType,
+              enabled: !_editing,
+              onChanged: (v) {
+                setState(() => _draft = _draft.copyWith(docType: v));
+                _resetLines((l) => l.copyWith(direction: null, serials: const [], lotNo: null));
+              },
             ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-            // Form Body
-            Expanded(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // IN-DIALOG PROMINENT ERROR BANNER
-                    if (_errorMessage != null) ...[
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.error_outline, size: 20, color: Color(0xFFDC2626)),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  color: Color(0xFFDC2626),
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () => setState(() => _errorMessage = null),
-                              child: const Padding(
-                                padding: EdgeInsets.all(2),
-                                child: Icon(Icons.close, size: 16, color: Color(0xFFDC2626)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    // 1. Loại chứng từ
-                    _buildFieldLabel('Loại chứng từ', isRequired: true),
-                    const SizedBox(height: 5),
-                    SearchableDropdownField<Map<String, String>>(
-                      value: _typeOptions.firstWhere(
-                        (opt) => opt['value'] == _selectedType,
-                        orElse: () => _typeOptions.first,
-                      ),
-                      items: _typeOptions,
-                      hintText: 'Chọn loại chứng từ...',
-                      itemLabel: (opt) => opt['label'] ?? '',
-                      showClear: false,
-                      onChanged: (opt) => setState(() => _selectedType = opt['value']!),
-                      maxHeight: 240,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // 2. Kho & Ngày chứng từ
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Kho
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFieldLabel('Kho', isRequired: true),
-                              const SizedBox(height: 5),
-                              SearchableDropdownField<String>(
-                                value: _selectedWarehouse,
-                                items: widget.warehouses.map((w) => w.code).toList(),
-                                hintText: 'Chọn kho...',
-                                itemLabel: (code) {
-                                  final wh = widget.warehouses.firstWhere(
-                                    (w) => w.code == code,
-                                    orElse: () => WarehouseItem(id: '', code: code, name: code),
-                                  );
-                                  return '${wh.code} - ${wh.name}';
-                                },
-                                showClear: false,
-                                onChanged: (code) => setState(() => _selectedWarehouse = code),
-                                maxHeight: 220,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-
-                        // Ngày chứng từ
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFieldLabel('Ngày chứng từ', isRequired: true),
-                              const SizedBox(height: 5),
-                              InkWell(
-                                onTap: _selectDate,
-                                borderRadius: BorderRadius.circular(6),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          Formatters.formatDate(_documentDate),
-                                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                      const Icon(Icons.calendar_today_outlined, size: 15, color: Color(0xFF64748B)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Nếu là điều chuyển kho, hiện thêm Kho đến
-                    if (_selectedType == 'TRANSFER') ...[
-                      _buildFieldLabel('Kho đến (kho tiếp nhận)', isRequired: true),
-                      const SizedBox(height: 5),
-                      SearchableDropdownField<String>(
-                        value: _selectedTargetWarehouse,
-                        items: widget.warehouses.map((w) => w.code).toList(),
-                        hintText: 'Chọn kho đến...',
-                        itemLabel: (code) {
-                          final wh = widget.warehouses.firstWhere(
-                            (w) => w.code == code,
-                            orElse: () => WarehouseItem(id: '', code: code, name: code),
-                          );
-                          return '${wh.code} - ${wh.name}';
-                        },
-                        showClear: false,
-                        onChanged: (code) => setState(() => _selectedTargetWarehouse = code),
-                        maxHeight: 220,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    // 3. Nguồn (loại chứng từ gốc)
-                    _buildFieldLabel('Nguồn (loại chứng từ gốc)'),
-                    const SizedBox(height: 5),
-                    TextField(
-                      controller: _sourceController,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                      decoration: _inputDecoration('Ví dụ: đơn mua PO-001, lệnh xuất PX-002...'),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // 4. Ghi chú
-                    _buildFieldLabel('Ghi chú'),
-                    const SizedBox(height: 5),
-                    TextField(
-                      controller: _noteController,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                      decoration: _inputDecoration('Nhập ghi chú cho chứng từ này...'),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 5. Dòng chứng từ Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Dòng chứng từ',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                        ),
-                        TextButton.icon(
-                          onPressed: _addNewLine,
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text('Thêm dòng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF1D4ED8),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Lines List
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _lines.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (ctx, idx) {
-                        final line = _lines[idx];
-
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Row Top: # Line & Delete Button
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 10,
-                                    backgroundColor: const Color(0xFFE2E8F0),
-                                    child: Text(
-                                      '${idx + 1}',
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Dòng #${idx + 1}',
-                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                                  ),
-                                  const Spacer(),
-                                  if (_lines.length > 1)
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFDC2626)),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      onPressed: () => _removeLine(idx),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-
-                              // Item Selector (SearchableDropdownField matching Web)
-                              _buildFieldLabel('Mặt hàng', isRequired: true),
-                              const SizedBox(height: 5),
-                              SearchableDropdownField<InventoryItem>(
-                                value: line.selectedItem,
-                                items: widget.items,
-                                hintText: 'Chọn mặt hàng...',
-                                itemLabel: (item) => '${item.code} - ${item.name}',
-                                itemSubtitle: (item) => 'ĐVT: ${item.unit}',
-                                showClear: false,
-                                onChanged: (item) {
-                                  setState(() {
-                                    line.selectedItem = item;
-                                  });
-                                },
-                                maxHeight: 220,
-                              ),
-                              const SizedBox(height: 10),
-
-                              // Quantity & Unit Price Row
-                              Row(
-                                children: [
-                                  // Số lượng
-                                  Expanded(
-                                    flex: 3,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildFieldLabel('Số lượng', isRequired: true),
-                                        const SizedBox(height: 5),
-                                        TextField(
-                                          controller: line.quantityController,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                          style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                                          decoration: _inputDecoration('1').copyWith(
-                                            suffixText: line.selectedItem?.unit ?? 'Đơn vị',
-                                            suffixStyle: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                                          ),
-                                          onChanged: (_) => setState(() {}),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-
-                                  // Đơn giá
-                                  Expanded(
-                                    flex: 3,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildFieldLabel('Đơn giá'),
-                                        const SizedBox(height: 5),
-                                        TextField(
-                                          controller: line.priceController,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                          style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                                          decoration: _inputDecoration('Bình quân'),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-
-                              // Lot & Serial Row (Serial tạm disable)
-                              Row(
-                                children: [
-                                  // Lô
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildFieldLabel('Lô'),
-                                        const SizedBox(height: 5),
-                                        TextField(
-                                          controller: line.lotController,
-                                          style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                                          decoration: _inputDecoration('Mã lô (để trống nếu không dùng)'),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-
-                                  // Serial (Tạm disable)
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildFieldLabel('Serial'),
-                                        const SizedBox(height: 5),
-                                        TextField(
-                                          controller: line.serialController,
-                                          enabled: false,
-                                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
-                                          decoration: _inputDecoration('Tạm khóa nhập serial').copyWith(
-                                            fillColor: const Color(0xFFF1F5F9),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-
-                              // Ghi chú dòng
-                              _buildFieldLabel('Ghi chú dòng'),
-                              const SizedBox(height: 5),
-                              TextField(
-                                controller: line.noteController,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
-                                decoration: _inputDecoration('Ghi chú riêng cho mặt hàng này...'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(height: 10),
+            DocSelect(
+              label: isTransfer ? 'inventory.documents.form.warehouse_from'.tr() : 'inventory.documents.field.warehouse'.tr(),
+              options: _warehouseOptions,
+              value: _draft.warehouseCode,
+              hint: 'inventory.documents.form.choose_warehouse'.tr(),
+              enabled: !_lockedSource,
+              onChanged: (v) {
+                setState(() => _draft = _draft.copyWith(warehouseCode: v));
+                _resetLines((l) => l.copyWith(serials: const [], lotNo: null));
+              },
             ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-            // Footer Matching Web: [N dòng - tổng số lượng X]   [Đóng] [Lưu nháp] [Lưu và ghi sổ]
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${_lines.length} dòng - tổng số lượng ${Formatters.formatCurrency(_totalQuantity, showSymbol: false)}',
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  OutlinedButton(
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF475569),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text('Đóng', style: TextStyle(fontSize: 12.5)),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: _isSubmitting ? null : () => _handleSubmit(postImmediately: false),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1D4ED8),
-                      side: const BorderSide(color: Color(0xFFBFDBFE)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Lưu nháp', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _isSubmitting ? null : () => _handleSubmit(postImmediately: true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1D4ED8),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Lưu và ghi sổ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                  ),
-                ],
+            if (isTransfer) ...[
+              const SizedBox(height: 10),
+              DocSelect(
+                label: 'inventory.documents.form.warehouse_to'.tr(),
+                options: _warehouseOptions.where((o) => o.value != _draft.warehouseCode).toList(),
+                value: _draft.targetWarehouseCode,
+                hint: 'inventory.documents.form.choose_target'.tr(),
+                onChanged: (v) => setState(() => _draft = _draft.copyWith(targetWarehouseCode: v)),
               ),
+            ],
+            const SizedBox(height: 10),
+            DocDateField(
+              label: 'inventory.documents.field.document_date'.tr(),
+              value: _draft.documentDate,
+              clearable: false,
+              onChanged: (v) => setState(() => _draft = _draft.copyWith(documentDate: v ?? _draft.documentDate)),
             ),
+            const SizedBox(height: 10),
+            DocFieldLabel('inventory.documents.form.source_label'.tr()),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _sourceCtrl,
+              enabled: !(_lockedSource || _editing),
+              decoration: docInputDecoration(hint: 'inventory.documents.form.source_hint'.tr()),
+              onChanged: (v) => _draft = _draft.copyWith(sourceType: v),
+            ),
+            const SizedBox(height: 10),
+            DocFieldLabel('inventory.documents.field.note'.tr()),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _noteCtrl,
+              decoration: docInputDecoration(),
+              onChanged: (v) => _draft = _draft.copyWith(note: v),
+            ),
+            if (approval) ...[
+              const SizedBox(height: 8),
+              Text('inventory.documents.form.approval_hint'.tr(),
+                  style: const TextStyle(fontSize: 12.5, color: AppColors.slate500)),
+            ],
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(
+                child: Text('inventory.documents.form.lines'.tr(),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.slate900)),
+              ),
+              ElevatedButton.icon(
+                style: docButtonStyle(),
+                onPressed: () {
+                  final line = DraftLine.empty();
+                  setState(() => _draft = _draft.copyWith(lines: [..._draft.lines, line]));
+                  _sync(line);
+                },
+                icon: const Icon(Icons.add, size: 16),
+                label: Text('inventory.documents.form.add_line'.tr()),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            for (var i = 0; i < _draft.lines.length; i++) ...[
+              _lineCard(i, _draft.lines[i], _showErrors != null && validation.lines.containsKey(_draft.lines[i].key)),
+              const SizedBox(height: 10),
+            ],
+            if (messages.isNotEmpty || _serverError != null)
+              DocMessages([if (_serverError != null) _serverError!, ...messages]),
           ],
         ),
+        footer: Column(mainAxisSize: MainAxisSize.min, children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'inventory.documents.form.summary'.tr(args: {'n': _draft.lines.length, 'total': formatQty(total)}),
+              style: const TextStyle(fontSize: 12.5, color: AppColors.slate500),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 6, children: [
+            ElevatedButton(
+              style: docButtonStyle(),
+              onPressed: _busy ? null : () => Navigator.of(context).pop(),
+              child: Text('inventory.documents.common.close'.tr()),
+            ),
+            ElevatedButton(
+              style: docButtonStyle(),
+              onPressed: _busy ? null : () => _save(),
+              child: Text('inventory.documents.form.save_draft'.tr()),
+            ),
+            ElevatedButton(
+              style: docButtonStyle(primary: true),
+              onPressed: _busy ? null : () => _save(approval ? 'submit' : 'post'),
+              child: _busy
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(approval
+                      ? 'inventory.documents.form.save_submit'.tr()
+                      : 'inventory.documents.form.save_post'.tr()),
+            ),
+          ]),
+        ]),
       ),
     );
   }
 
-  Widget _buildFieldLabel(String label, {bool isRequired = false}) {
-    return Row(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+  Widget _lineCard(int index, DraftLine line, bool hasError) {
+    final c = _ctrls.putIfAbsent(line.key, _LineCtrls.new);
+    final material = _materialByCode[line.materialCode];
+    final direction = lineDirection(_draft.docType, line.direction);
+    final inbound = direction == 'IN';
+    final reservedLocked = _lockedSource && (line.reservationId ?? '').isNotEmpty;
+    final need = line.quantity.isFinite && line.quantity > 0 ? line.quantity.truncate() : 0;
+    const muted = TextStyle(fontSize: 12.5, color: AppColors.slate500);
+
+    Widget lotWidget;
+    if (material == null) {
+      lotWidget = const Text('—', style: muted);
+    } else if (material.isSerialized) {
+      lotWidget = Text('inventory.documents.form.by_serial'.tr(), style: muted);
+    } else if (inbound) {
+      lotWidget = Row(children: [
+        Expanded(
+          child: TextField(
+            controller: c.lotNo,
+            textCapitalization: TextCapitalization.characters,
+            decoration: docInputDecoration(hint: 'inventory.documents.form.lot_no'.tr()),
+            onChanged: (v) {
+              final upper = v.toUpperCase();
+              if (upper != v) {
+                c.lotNo.value = c.lotNo.value.copyWith(text: upper);
+              }
+              _patchLine(line.key, (l) => l.copyWith(lotNo: upper));
+            },
+          ),
         ),
-        if (isRequired) ...[
-          const SizedBox(width: 4),
-          const Text('*', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
-        ],
-      ],
-    );
-  }
+        const SizedBox(width: 8),
+        Expanded(
+          child: DocDateField(
+            value: line.lotExpiresOn,
+            placeholder: 'inventory.documents.form.expiry'.tr(),
+            onChanged: (v) => _patchLine(line.key, (l) => l.copyWith(lotExpiresOn: v)),
+          ),
+        ),
+      ]);
+    } else {
+      lotWidget = Align(
+        alignment: Alignment.centerLeft,
+        child: DocPickButton(
+          (line.lotNo ?? '').isNotEmpty
+              ? '${line.lotNo}${(line.lotExpiresOn ?? '').isNotEmpty ? ' · ${'inventory.documents.field.expiry_short'.tr(args: {'date': Formatters.formatDate(line.lotExpiresOn)})}' : ''}'
+              : 'inventory.documents.form.pick_lot'.tr(),
+          onTap: _draft.warehouseCode.isEmpty ? null : () => _pickLot(line),
+        ),
+      );
+    }
 
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-      filled: true,
-      fillColor: Colors.white,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: hasError ? const Color(0xFFFEF2F2) : AppColors.slate50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: hasError ? const Color(0xFFFECACA) : kDocBorder),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
-      ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text('#${index + 1}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.slate700)),
+          const Spacer(),
+          IconButton(
+            tooltip: 'inventory.documents.form.remove_line'.tr(),
+            icon: const Icon(Icons.delete_outline, size: 18),
+            color: const Color(0xFFB91C1C),
+            visualDensity: VisualDensity.compact,
+            onPressed: _draft.lines.length <= 1 || reservedLocked
+                ? null
+                : () => setState(() => _draft = _draft.copyWith(
+                    lines: _draft.lines.where((l) => l.key != line.key).toList())),
+          ),
+        ]),
+        DocSelect(
+          label: 'inventory.documents.field.material'.tr(),
+          options: _materialOptions,
+          value: line.materialCode,
+          hint: 'inventory.documents.form.choose_material'.tr(),
+          enabled: !reservedLocked,
+          onChanged: (code) {
+            _patchLine(line.key, (l) => l.copyWith(materialCode: code, serials: const [], lotNo: null));
+            c.lotNo.text = '';
+          },
+        ),
+        if (_draft.docType == 'ADJUSTMENT') ...[
+          const SizedBox(height: 8),
+          DocSelect(
+            label: 'inventory.documents.form.direction'.tr(),
+            options: [
+              DocOption('IN', 'inventory.documents.form.dir_in'.tr()),
+              DocOption('OUT', 'inventory.documents.form.dir_out'.tr()),
+            ],
+            value: line.direction,
+            hint: 'inventory.documents.form.dir_hint'.tr(),
+            onChanged: (v) {
+              _patchLine(line.key, (l) => l.copyWith(direction: v, serials: const [], lotNo: null));
+              c.lotNo.text = '';
+            },
+          ),
+        ],
+        const SizedBox(height: 8),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              DocFieldLabel('inventory.documents.field.quantity'.tr()),
+              const SizedBox(height: 4),
+              TextField(
+                controller: c.quantity,
+                textAlign: TextAlign.right,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: docInputDecoration().copyWith(suffixText: material?.unit),
+                onChanged: (v) => _patchLine(line.key, (l) => l.copyWith(quantity: _parse(v) ?? double.nan)),
+              ),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              DocFieldLabel('inventory.documents.field.unit_cost'.tr()),
+              const SizedBox(height: 4),
+              if (inbound)
+                TextField(
+                  controller: c.unitCost,
+                  textAlign: TextAlign.right,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: docInputDecoration(hint: 'inventory.documents.form.avg_cost'.tr()),
+                  onChanged: (v) => _patchLine(line.key, (l) => l.copyWith(unitCost: _parse(v))),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('inventory.documents.form.cost_on_post'.tr(), style: muted),
+                ),
+            ]),
+          ),
+        ]),
+        if (inbound)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text('inventory.documents.form.avg_cost_hint'.tr(),
+                style: const TextStyle(fontSize: 11, color: AppColors.slate400)),
+          ),
+        const SizedBox(height: 8),
+        DocFieldLabel('inventory.documents.field.lot'.tr()),
+        const SizedBox(height: 4),
+        lotWidget,
+        if (material?.isSerialized ?? false) ...[
+          const SizedBox(height: 8),
+          DocFieldLabel('inventory.documents.field.serial'.tr()),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: DocPickButton(
+              'inventory.documents.form.serial_count'.tr(args: {'n': line.serials.length, 'need': need}),
+              onTap: _draft.warehouseCode.isEmpty || need == 0 ? null : () => _pickSerials(line),
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        DocFieldLabel('inventory.documents.form.line_note'.tr()),
+        const SizedBox(height: 4),
+        TextField(
+          controller: c.note,
+          decoration: docInputDecoration(),
+          onChanged: (v) => _patchLine(line.key, (l) => l.copyWith(note: v)),
+        ),
+      ]),
     );
   }
 }

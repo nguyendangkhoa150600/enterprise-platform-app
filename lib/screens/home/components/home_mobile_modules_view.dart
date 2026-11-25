@@ -12,9 +12,6 @@ import '../../fleet_schedule_screen.dart';
 import '../../maintenance_screen.dart';
 import '../../inventory/inventory_overview_screen.dart';
 import '../../inventory/inventory_items_screen.dart';
-import '../../inventory/inventory_transactions_screen.dart';
-import '../../inventory/inventory_documents_screen.dart';
-import '../../inventory/inventory_issue_requests_screen.dart';
 import '../../inventory/inventory_assets_screen.dart';
 import '../../inventory/inventory_reports_screen.dart';
 import '../../inventory/inventory_settings_screen.dart';
@@ -411,58 +408,21 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryOverviewScreen())),
                 },
+                // Web: Tổng quan · Kho hàng (Hàng hóa / Nhà kho / Xuất/nhập kho / Lịch sử xuất nhập / Lịch sử kiểm đếm)
+                // · Cây tài sản · Tài sản · Báo cáo kho. Chứng từ kho, Duyệt chứng từ, Yêu cầu xuất từ đơn bán đã gộp
+                // vào tab "Xuất/nhập kho" của Kho hàng.
                 {
-                  'title': 'Kho & Danh mục',
+                  'title': 'Kho hàng',
                   'visible': canShowInventory,
-                  'icon': Icons.inventory_2_outlined,
+                  'icon': Icons.warehouse_outlined,
                   'imageAsset': 'assets/images/icons/sidebar_inventory_stock.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryItemsScreen())),
                 },
                 {
-                  'title': 'Giao dịch & Nhập xuất',
-                  'visible': canShowInventory,
-                  'icon': Icons.swap_horiz_rounded,
-                  'imageAsset': 'assets/images/icons/sidebar_inventory_issue_requests.png',
-                  'bg': const Color(0xFFF0F9FF), // Sky 50
-                  'iconColor': const Color(0xFF0284C7),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen())),
-                },
-                {
-                  'title': 'Chứng từ kho',
-                  'visible': canShowInventory,
-                  'icon': Icons.receipt_long_outlined,
-                  'imageAsset': 'assets/images/icons/sidebar_inventory_documents.png',
-                  'bg': const Color(0xFFFAF5FF), // Purple 50
-                  'iconColor': const Color(0xFF9333EA),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen())),
-                },
-                {
-                  'title': 'Duyệt chứng từ',
-                  'visible': canShowInventory,
-                  'icon': Icons.assignment_turned_in_outlined,
-                  'imageAsset': 'assets/images/icons/dashboard_approvals.png',
-                  'bg': const Color(0xFFFEF3C7), // Amber 50
-                  'iconColor': const Color(0xFFD97706),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen(
-                    initialStatus: 'PENDING',
-                    title: 'Duyệt chứng từ',
-                    subtitle: 'Phê duyệt các chứng từ xuất nhập kho',
-                  ))),
-                },
-                {
-                  'title': 'Yêu cầu xuất từ đơn bán',
-                  'visible': canShowInventory,
-                  'icon': Icons.outbox_rounded,
-                  'imageAsset': 'assets/images/icons/sidebar_inventory_issue_requests.png',
-                  'bg': const Color(0xFFFFF7ED), // Orange 50
-                  'iconColor': const Color(0xFFEA580C),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryIssueRequestsScreen())),
-                },
-                {
                   'title': 'Cây tài sản',
-                  'visible': false,
+                  'visible': canShowInventory,
                   'icon': Icons.account_tree_outlined,
                   'imageAsset': 'assets/images/icons/sidebar_inventory_assets_tree.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
@@ -471,7 +431,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 },
                 {
                   'title': 'Tài sản',
-                  'visible': false,
+                  'visible': canShowInventory,
                   'icon': Icons.devices_other_rounded,
                   'imageAsset': 'assets/images/icons/sidebar_inventory_custody.png',
                   'bg': const Color(0xFFEEF2FF), // Indigo 50
@@ -480,7 +440,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 },
                 {
                   'title': 'Báo cáo kho',
-                  'visible': false,
+                  'visible': canShowInventory,
                   'icon': Icons.bar_chart_rounded,
                   'imageAsset': 'assets/images/icons/nav_reports.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50

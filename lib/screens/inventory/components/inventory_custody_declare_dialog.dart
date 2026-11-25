@@ -1,352 +1,141 @@
 import 'package:flutter/material.dart';
-import '../../../services/module_business_service.dart';
-import '../../../theme/colors.dart';
-import '../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/inventory/presentation/assets/inventory_asset_ui.dart';
+import '../../../features/inventory/presentation/utils/inventory_scope.dart';
 
+/// Khai báo tài sản mới ở tab Tài sản (web `CustodyDeclareDialog`): vào sổ ở trạng thái tồn kho, chưa cấp cho ai.
+/// [onSubmit] nhận payload `CreateAssetRequest`, ném lỗi để form hiện lý do và giữ dữ liệu.
 class InventoryCustodyDeclareDialog extends StatefulWidget {
-  final VoidCallback? onDeclared;
-
-  const InventoryCustodyDeclareDialog({
-    super.key,
-    this.onDeclared,
-  });
+  final Future<void> Function(Map<String, dynamic> input) onSubmit;
+  const InventoryCustodyDeclareDialog({super.key, required this.onSubmit});
 
   @override
   State<InventoryCustodyDeclareDialog> createState() => _InventoryCustodyDeclareDialogState();
 }
 
 class _InventoryCustodyDeclareDialogState extends State<InventoryCustodyDeclareDialog> {
-  final ModuleBusinessService _service = ModuleBusinessService();
-  final _codeController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _serialController = TextEditingController();
-  final _unitController = TextEditingController(text: 'Cái');
-  final _priceController = TextEditingController();
+  final _code = TextEditingController();
+  final _name = TextEditingController();
+  final _serial = TextEditingController();
+  late final TextEditingController _unit = TextEditingController(text: 'inventory.assets.default_unit'.tr());
+  final _price = TextEditingController();
+  String _category = 'IT_OFFICE';
+  bool _busy = false;
+  String? _error;
+  late final String _initial = _snapshot;
 
-  String _selectedCategory = 'IT_OFFICE';
-  bool _isSubmitting = false;
-
-  static const Map<String, String> _categories = {
-    'IT_OFFICE': 'Thiết bị CNTT, văn phòng',
-    'INDUSTRIAL': 'Thiết bị công nghiệp',
-    'TOOL_PPE': 'Dụng cụ, bảo hộ',
-    'VEHICLE': 'Phương tiện',
-  };
+  String get _snapshot => [_code.text, _name.text, _category, _serial.text, _unit.text, _price.text].join('|');
 
   @override
   void dispose() {
-    _codeController.dispose();
-    _nameController.dispose();
-    _serialController.dispose();
-    _unitController.dispose();
-    _priceController.dispose();
+    for (final c in [_code, _name, _serial, _unit, _price]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _handleSubmit() async {
-    final code = _codeController.text.trim().toUpperCase();
-    final name = _nameController.text.trim();
-    if (code.isEmpty || name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ Mã tài sản và Tên tài sản.'),
-          backgroundColor: Color(0xFFDC2626),
-        ),
-      );
-      return;
-    }
+  double? get _priceValue => _price.text.trim().isEmpty ? null : double.tryParse(_price.text.trim().replaceAll(',', '.'));
+  bool get _priceInvalid => _price.text.trim().isNotEmpty && (_priceValue == null || !_priceValue!.isFinite || _priceValue! < 0);
 
-    double? priceValue;
-    if (_priceController.text.trim().isNotEmpty) {
-      priceValue = double.tryParse(_priceController.text.trim().replaceAll(',', ''));
-      if (priceValue == null || priceValue < 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đơn giá mua không hợp lệ.'),
-            backgroundColor: Color(0xFFDC2626),
-          ),
-        );
-        return;
-      }
-    }
-
-    setState(() => _isSubmitting = true);
+  Future<void> _submit() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final price = _priceValue;
+    final serial = _serial.text.trim();
+    final unit = _unit.text.trim();
     try {
-      final success = await _service.createAsset({
-        'code': code,
-        'name': name,
+      await widget.onSubmit({
+        'code': _code.text.trim().toUpperCase(),
+        'name': _name.text.trim(),
         'type': 'EQUIPMENT',
         'status': 'OPERATING',
-        'assetCategory': _selectedCategory,
-        'serialNumber': _serialController.text.trim().isNotEmpty ? _serialController.text.trim() : null,
-        'unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Cái',
-        'purchasePrice': priceValue,
-        'currency': priceValue != null ? 'VND' : null,
+        'assetCategory': _category,
+        if (serial.isNotEmpty) 'serialNumber': serial,
+        if (unit.isNotEmpty) 'unit': unit,
+        'purchasePrice': ?price,
+        if (price != null) 'currency': 'VND',
       });
-
       if (!mounted) return;
-      if (success) {
-        Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã khai báo tài sản mới: $code - $name'),
-            backgroundColor: const Color(0xFF059669),
-          ),
-        );
-        widget.onDeclared?.call();
-      } else {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể tạo tài sản. Vui lòng kiểm tra lại mã tài sản.'),
-            backgroundColor: Color(0xFFDC2626),
-          ),
-        );
-      }
+      Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: $e'),
-            backgroundColor: const Color(0xFFDC2626),
-          ),
-        );
-      }
+      InventoryScope.instance.onError(e);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = inventoryErrorMessage(e, 'inventory.assets.declare_error');
+      });
     }
   }
+
+  Widget _field(String label, TextEditingController c, {bool required = false, String? hint, bool numeric = false, bool error = false}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InvFieldLabel(label, required: required),
+            TextField(
+              controller: c,
+              enabled: !_busy,
+              keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+              decoration: invInputDecoration(hint: hint, error: error),
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 480),
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Khai báo tài sản mới',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          'Khai báo thiết bị, dụng cụ hoặc phương tiện vào sổ tài sản.',
-                          style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Divider(height: 1, color: Color(0xFFE2E8F0)),
-              const SizedBox(height: 16),
-
-              // Form fields
-              // 1. Mã SKU & Tên
-              _buildFieldLabel('Mã tài sản / SKU', isRequired: true),
-              const SizedBox(height: 5),
-              TextField(
-                controller: _codeController,
-                textCapitalization: TextCapitalization.characters,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                  hintText: 'VD: TS-LAPTOP-01, TS-OTO-02...',
-                  hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              _buildFieldLabel('Tên tài sản', isRequired: true),
-              const SizedBox(height: 5),
-              TextField(
-                controller: _nameController,
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'VD: Máy tính xách tay Dell XPS 15, Xe bán tải Ranger...',
-                  hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 2. Nhóm tài sản & Đơn vị tính
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildFieldLabel('Nhóm tài sản', isRequired: true),
-                        const SizedBox(height: 5),
-                        SearchableDropdownField<String>(
-                          value: _selectedCategory,
-                          items: _categories.keys.toList(),
-                          hintText: 'Chọn nhóm tài sản...',
-                          itemLabel: (key) => _categories[key] ?? key,
-                          showClear: false,
-                          onChanged: (val) => setState(() => _selectedCategory = val),
-                          maxHeight: 200,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildFieldLabel('Đơn vị tính'),
-                        const SizedBox(height: 5),
-                        TextField(
-                          controller: _unitController,
-                          style: const TextStyle(fontSize: 13),
-                          decoration: InputDecoration(
-                            hintText: 'Cái, Bộ...',
-                            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // 3. Số sê-ri & Giá mua
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildFieldLabel('Số sê-ri'),
-                        const SizedBox(height: 5),
-                        TextField(
-                          controller: _serialController,
-                          style: const TextStyle(fontSize: 13),
-                          decoration: InputDecoration(
-                            hintText: 'S/N nếu có...',
-                            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildFieldLabel('Đơn giá mua (VNĐ)'),
-                        const SizedBox(height: 5),
-                        TextField(
-                          controller: _priceController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(fontSize: 13),
-                          decoration: InputDecoration(
-                            hintText: 'Giá nguyên tệ...',
-                            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Action buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text('Hủy', style: TextStyle(color: Color(0xFF475569))),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: _isSubmitting ? null : _handleSubmit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Lưu tài sản', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ],
+    final ready = _code.text.trim().isNotEmpty && _name.text.trim().isNotEmpty && !_priceInvalid;
+    final dirty = _snapshot != _initial;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) invGuardedClose(context, dirty: dirty, busy: _busy);
+      },
+      child: InvSheetFrame(
+        title: 'inventory.assets.declare_title'.tr(),
+        subtitle: 'inventory.assets.declare_subtitle'.tr(),
+        onClose: () => invGuardedClose(context, dirty: dirty, busy: _busy),
+        actions: [
+          OutlinedButton(
+            style: invOutlineStyle(),
+            onPressed: _busy ? null : () => invGuardedClose(context, dirty: dirty, busy: _busy),
+            child: Text('inventory.assets.cancel'.tr()),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFieldLabel(String label, {bool isRequired = false}) {
-    return Text.rich(
-      TextSpan(
-        text: label,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF334155),
-        ),
-        children: [
-          if (isRequired)
-            const TextSpan(
-              text: ' *',
-              style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold),
-            ),
+          ElevatedButton(
+            style: invPrimaryStyle(),
+            onPressed: _busy || !ready ? null : _submit,
+            child: Text(_busy ? 'inventory.assets.saving'.tr() : 'inventory.assets.declare_submit'.tr()),
+          ),
         ],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _field('inventory.assets.declare_code'.tr(), _code, required: true, hint: 'inventory.assets.declare_code_hint'.tr()),
+            _field('inventory.assets.declare_name'.tr(), _name, required: true, hint: 'inventory.assets.declare_name_hint'.tr()),
+            InvFieldLabel('inventory.assets.declare_category'.tr()),
+            InvSelectField(
+              options: kInvAssetCategories.map((c) => InvOption(c, invAssetCategoryLabel(c))).toList(),
+              value: _category,
+              placeholder: 'inventory.assets.declare_category_hint'.tr(),
+              enabled: !_busy,
+              onChanged: (v) => setState(() => _category = v.isEmpty ? 'IT_OFFICE' : v),
+            ),
+            const SizedBox(height: 14),
+            _field('inventory.assets.declare_serial'.tr(), _serial, hint: 'inventory.assets.declare_serial_hint'.tr()),
+            _field('inventory.assets.declare_unit'.tr(), _unit, hint: 'inventory.assets.declare_unit_hint'.tr()),
+            _field('inventory.assets.declare_price'.tr(), _price,
+                hint: 'inventory.assets.declare_price_hint'.tr(), numeric: true, error: _priceInvalid),
+            if (_priceInvalid)
+              Text('inventory.assets.declare_price_invalid'.tr(), style: const TextStyle(fontSize: 12.5, color: Color(0xFFDC2626))),
+            if (_error != null) ...[const SizedBox(height: 12), InvErrorBox(_error!)],
+          ],
+        ),
       ),
     );
   }
 }
-

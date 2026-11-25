@@ -1,281 +1,283 @@
 import 'package:flutter/material.dart';
-import '../../../../services/module_business_service.dart';
+import '../../../../core/i18n/app_i18n.dart';
+import '../../../../features/inventory/domain/assets/inventory_asset_models.dart';
+import '../../../../features/inventory/presentation/assets/inventory_asset_ui.dart';
+import '../../../../theme/colors.dart';
 
-class AssetHistoryTabView extends StatefulWidget {
-  final String assetCode;
-  final ModuleBusinessService moduleService;
+class _TimelineItem {
+  final String id;
+  final String date;
+  final String title;
+  final String badge;
+  final String badgeType;
+  final String desc;
+  final String actor;
+  final bool fromMaintenance;
+  final String? code;
+  const _TimelineItem(this.id, this.date, this.title, this.badge, this.badgeType, this.desc, this.actor, this.fromMaintenance, this.code);
+}
+
+/// Tab "Lịch sử vận hành - sự cố" (web AssetDetail TAB 3): gộp lệnh từ module Bảo trì và nhật ký ghi trong phiên.
+class AssetHistoryTabView extends StatelessWidget {
+  final InvAsset asset;
+  final bool hasMaintenanceModule;
+  final bool syncing;
+  final List<InvMaintenanceOccurrence> occurrences;
+  final List<InvIncidentLog> logs;
+  final bool canManage;
+  final VoidCallback onRecordIncident;
 
   const AssetHistoryTabView({
     super.key,
-    required this.assetCode,
-    required this.moduleService,
+    required this.asset,
+    required this.hasMaintenanceModule,
+    required this.syncing,
+    required this.occurrences,
+    required this.logs,
+    required this.canManage,
+    required this.onRecordIncident,
   });
 
-  @override
-  State<AssetHistoryTabView> createState() => _AssetHistoryTabViewState();
-}
-
-class _AssetHistoryTabViewState extends State<AssetHistoryTabView> {
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _historyEvents = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadHistory();
-  }
-
-  Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
-    try {
-      final history = await widget.moduleService.getAssetMaintenanceHistory(widget.assetCode);
-      if (mounted) {
-        setState(() {
-          _historyEvents = history;
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+  List<_TimelineItem> _merged() {
+    final list = <_TimelineItem>[];
+    for (final o in occurrences) {
+      final isIncident = o.kind == 'incident';
+      final badgeType = o.status == 'failed'
+          ? 'danger'
+          : o.status == 'completed'
+              ? 'success'
+              : isIncident
+                  ? 'warn'
+                  : 'info';
+      list.add(_TimelineItem(
+        'maint-${o.id}',
+        invFormatDate(o.completedAt ?? o.dueAt),
+        o.title,
+        isIncident ? 'inventory.assets.badge_incident_cmms'.tr() : 'inventory.assets.badge_preventive'.tr(),
+        badgeType,
+        o.description ??
+            (o.code != null
+                ? 'inventory.assets.maint_ticket'.tr(args: {'code': o.code!})
+                : 'inventory.assets.maint_auto'.tr()),
+        o.assigneeName ?? o.createdByName ?? 'inventory.assets.maint_team'.tr(),
+        true,
+        o.code,
+      ));
     }
-  }
-
-  void _openIncidentRecordDialog() {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Ghi nhận sự cố & bảo trì', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Tiêu đề sự cố / Hiện tượng *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-            const SizedBox(height: 4),
-            TextField(
-              controller: titleCtrl,
-              decoration: const InputDecoration(
-                hintText: 'VD: Rò rỉ dầu phớt chặn, nhiệt độ tăng cao...',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text('Mô tả chi tiết', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-            const SizedBox(height: 4),
-            TextField(
-              controller: descCtrl,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Mô tả nguyên nhân ban đầu và biện pháp khắc phục...',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.all(10),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final t = titleCtrl.text.trim();
-              if (t.isEmpty) return;
-              Navigator.pop(ctx);
-              final ok = await widget.moduleService.createAssetIncident(
-                assetCode: widget.assetCode,
-                title: t,
-                description: descCtrl.text.trim(),
-              );
-              if (ok) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã ghi nhận sự cố thành công')),
-                  );
-                }
-                _loadHistory();
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white),
-            child: const Text('Ghi nhận'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKpiBox(String title, String value, Color valueColor, {String? sub}) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-              if (sub != null) ...[
-                const SizedBox(width: 4),
-                Text(sub, style: const TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8))),
-              ],
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: valueColor)),
-        ],
-      ),
-    );
+    for (final l in logs) {
+      list.add(_TimelineItem(l.id, l.date, l.title, l.badge, l.badgeType, l.desc, l.actor, false, l.workOrderRef));
+    }
+    return list;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    final timeline = _merged();
+    final incidentCount = timeline
+        .where((i) => i.badgeType == 'danger' || i.badgeType == 'warn' || i.badge.contains('inventory.assets.incident_word'.tr()))
+        .length;
+    final raw = asset.specs['operatingHours'];
+    final meterHours = raw is num ? raw : 0;
+    final mtbf = incidentCount > 0
+        ? 'inventory.assets.hours'.tr(args: {'n': invFormatQty((meterHours / incidentCount).round())})
+        : 'inventory.assets.mtbf_none'.tr();
+    final modeTone = hasMaintenanceModule
+        ? const InvTone(Color(0xFF166534), Color(0xFFF0FDF4), Color(0xFFBBF7D0))
+        : const InvTone(AppColors.slate600, AppColors.slate50, AppColors.slate200);
 
-    final incidentCount = _historyEvents.where((e) => e['kind'] == 'incident').length;
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Mode Banner matching Web: Chế độ Tích hợp CMMS
-        Container(
+    Widget kpi(String label, String hint, String value, Color color) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0FDF4),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFBBF7D0)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.link_rounded, size: 16, color: Color(0xFF166534)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Chế độ Tích hợp CMMS: Tự động đồng bộ với module Bảo trì thiết bị | Tổng cộng: ${_historyEvents.length} bản ghi ($incidentCount sự cố)',
-                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF166534)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // 4 KPI Cards Grid matching Web screenshot 3
-        Row(
-          children: [
-            Expanded(
-              child: _buildKpiBox('GIỜ CHẠY TÍCH LŨY', '0 giờ', const Color(0xFF0F172A), sub: 'Mã số máy'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildKpiBox('TỶ LỆ SẴN SÀNG', '100%', const Color(0xFF15803D), sub: 'Availability'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildKpiBox('CHỈ SỐ MTBF', '— (Chưa có sự cố)', const Color(0xFF0F172A), sub: 'Giữa 2 sự cố'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildKpiBox('CHỈ SỐ MTTR', '—', const Color(0xFF64748B), sub: 'Thời gian sửa'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Section: Nhật ký vận hành, bảo dưỡng & Lịch sử sự cố
-        Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: AppColors.slate200),
           ),
-          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.slate600),
+                  ),
+                  Text(
+                    hint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10.5, color: AppColors.slate500),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: value.length > 12 ? 14.5 : 17,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: modeTone.bg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: modeTone.border),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Nhật ký vận hành, bảo dưỡng & Lịch sử sự cố',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'Theo dõi toàn bộ vòng đời vận hành, các lần đại tu, sửa chữa và thay thế vật tư phụ tùng.',
-                style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _openIncidentRecordDialog,
-                icon: const Icon(Icons.add, size: 14, color: Color(0xFF0F172A)),
-                label: const Text('Ghi nhận sự cố', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              if (_historyEvents.isEmpty)
-                Container(
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: const Text(
-                    'Chưa có sự kiện hoặc nhật ký vận hành nào được ghi nhận cho thiết bị này.',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                    textAlign: TextAlign.center,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(hasMaintenanceModule ? Icons.link : Icons.folder_outlined, size: 16, color: modeTone.fg),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      (hasMaintenanceModule ? 'inventory.assets.mode_cmms' : 'inventory.assets.mode_standalone').tr() +
+                          (syncing ? ' ${'inventory.assets.syncing'.tr()}' : ''),
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: modeTone.fg),
+                    ),
                   ),
-                )
-              else
-                ..._historyEvents.map((item) {
-                  final title = item['title']?.toString() ?? 'Sự cố';
-                  final date = item['dueAt']?.toString() ?? item['completedAt']?.toString() ?? item['date']?.toString() ?? '';
-                  final desc = item['description']?.toString() ?? item['desc']?.toString() ?? '';
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(date, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                        if (desc.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(desc, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
-                        ],
-                      ],
-                    ),
-                  );
-                }),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text.rich(TextSpan(
+                style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+                children: [
+                  TextSpan(text: 'inventory.assets.total_records'.tr(args: {'n': timeline.length})),
+                  TextSpan(
+                    text: ' ${'inventory.assets.incident_count'.tr(args: {'n': incidentCount})}',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: incidentCount > 0 ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
+                  ),
+                ],
+              )),
             ],
           ),
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 1.6,
+          children: [
+            kpi('inventory.assets.kpi_hours'.tr(), 'inventory.assets.kpi_hours_hint'.tr(),
+                'inventory.assets.hours'.tr(args: {'n': invFormatQty(meterHours)}), const Color(0xFF2563EB)),
+            kpi('inventory.assets.kpi_availability'.tr(), 'Availability', '—', const Color(0xFF15803D)),
+            kpi('inventory.assets.kpi_mtbf'.tr(), 'inventory.assets.kpi_mtbf_hint'.tr(), mtbf, AppColors.slate900),
+            kpi('inventory.assets.kpi_mttr'.tr(), 'inventory.assets.kpi_mttr_hint'.tr(), '—', AppColors.slate900),
+          ],
+        ),
+        const SizedBox(height: 10),
+        InvSectionCard(
+          title: 'inventory.assets.timeline_title'.tr(),
+          subtitle: 'inventory.assets.timeline_subtitle'.tr(),
+          trailing: OutlinedButton.icon(
+            style: invOutlineStyle(),
+            icon: const Icon(Icons.add, size: 16),
+            label: Text('inventory.assets.record_incident'.tr()),
+            onPressed: canManage ? onRecordIncident : null,
+          ),
+          child: timeline.isEmpty
+              ? InvEmptyText('inventory.assets.timeline_empty'.tr())
+              : Column(
+                  children: [
+                    for (var i = 0; i < timeline.length; i++) _timelineRow(timeline[i], i == timeline.length - 1),
+                  ],
+                ),
         ),
       ],
     );
   }
-}
 
+  Widget _timelineRow(_TimelineItem item, bool last) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 18,
+            child: Column(
+              children: [
+                const SizedBox(height: 4),
+                Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: const [BoxShadow(color: Color(0xFFBFDBFE), spreadRadius: 2)],
+                  ),
+                ),
+                if (!last) Expanded(child: Container(width: 2, color: AppColors.slate200)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: last ? 0 : 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(item.date, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                      Text(item.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      InvPill(item.badge, tone: InvTone.of(item.badgeType)),
+                      InvPill(
+                        item.fromMaintenance ? 'inventory.assets.source_cmms'.tr() : 'inventory.assets.source_local'.tr(),
+                        tone: item.fromMaintenance ? InvTone.info : InvTone.muted,
+                      ),
+                      if (item.code != null)
+                        Text(item.code!,
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0284C7))),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(item.desc, style: const TextStyle(fontSize: 12.5, color: AppColors.slate600)),
+                  const SizedBox(height: 2),
+                  Text('inventory.assets.actor'.tr(args: {'name': item.actor}),
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.slate500)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

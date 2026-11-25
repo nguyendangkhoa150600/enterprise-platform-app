@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
 import '../../../models/inventory_models.dart';
 import '../../../services/module_business_service.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/inventory/data/goods/goods_repository.dart';
 
 /// Sub-dialog: Khai báo vật tư mới vào danh mục (Khớp 1:1 với Web MovementForm)
 class InventoryQuickMaterialDialog extends StatefulWidget {
@@ -34,25 +36,23 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _minStockController = TextEditingController(text: '0');
 
-  String _selectedUnit = 'Cái';
+  String _selectedUnit = '';
   bool _isSubmitting = false;
 
-  static const List<String> _units = [
-    'Cái',
-    'Bộ',
-    'Mét',
-    'Cuộn',
-    'Kg',
-    'Lít',
-    'Thùng',
-    'Hộp',
-    'Tấm',
-    'Bao',
-    'Chiếc',
-    'Ống',
-    'Cây',
-    'Gói',
-  ];
+  // Đơn vị tính lấy từ danh mục Cài đặt (`catalog.unit`), như web `unitOptions`.
+  List<String> _units = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    GoodsRepository.instance.loadCatalog().then((c) {
+      if (!mounted) return;
+      setState(() {
+        _units = c.units;
+        if (_selectedUnit.isEmpty && _units.isNotEmpty) _selectedUnit = _units.first;
+      });
+    }).catchError((_) {});
+  }
 
   @override
   void dispose() {
@@ -69,8 +69,8 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
 
     if (code.isEmpty || name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ Mã SKU và Tên vật tư.'),
+        SnackBar(
+          content: Text('inventory.goods.qm_required'.tr()),
           backgroundColor: Colors.orange,
         ),
       );
@@ -110,8 +110,8 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
           SnackBar(
             content: Text(
               success
-                  ? 'Đã tạo "$name" ($code) và thêm vào phiếu.'
-                  : 'Vật tư ($code) đã được thêm vào phiếu.',
+                  ? 'inventory.goods.qm_created'.tr(args: {'name': name, 'code': code})
+                  : 'inventory.goods.qm_added'.tr(args: {'code': code}),
             ),
             backgroundColor: const Color(0xFF15803D),
           ),
@@ -122,7 +122,7 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: $e'),
+            content: Text('inventory.goods.qm_error'.tr(args: {'error': e})),
             backgroundColor: Colors.red,
           ),
         );
@@ -132,7 +132,9 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
 
   @override
   Widget build(BuildContext context) {
-    final canSubmit = _codeController.text.trim().isNotEmpty && _nameController.text.trim().isNotEmpty;
+    final canSubmit = _codeController.text.trim().isNotEmpty &&
+        _nameController.text.trim().isNotEmpty &&
+        _selectedUnit.trim().isNotEmpty;
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -153,19 +155,19 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          'Khai báo vật tư mới vào danh mục',
-                          style: TextStyle(
+                          'inventory.goods.qm_title'.tr(),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF0F172A),
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          'Vật tư này sẽ được tạo trong danh mục và tự động thêm vào phiếu hiện tại.',
-                          style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                          'inventory.goods.qm_subtitle'.tr(),
+                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                         ),
                       ],
                     ),
@@ -188,7 +190,7 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildFieldLabel('Mã SKU vật tư', isRequired: true),
+                        _buildFieldLabel('inventory.goods.qm_code'.tr(), isRequired: true),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _codeController,
@@ -205,12 +207,19 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildFieldLabel('Đơn vị tính', isRequired: true),
+                        _buildFieldLabel('inventory.goods.qm_unit'.tr(), isRequired: true),
                         const SizedBox(height: 6),
+                        if (_units.isEmpty)
+                          TextField(
+                            style: const TextStyle(fontSize: 13.5, color: Color(0xFF0F172A)),
+                            decoration: _inputDecoration('inventory.goods.ph_unit_free'.tr()),
+                            onChanged: (v) => setState(() => _selectedUnit = v.trim()),
+                          )
+                        else
                         SearchableDropdownField<String>(
-                          value: _selectedUnit,
+                          value: _selectedUnit.isEmpty ? null : _selectedUnit,
                           items: _units,
-                          hintText: 'Chọn ĐVT...',
+                          hintText: 'inventory.goods.qm_unit_ph'.tr(),
                           itemLabel: (u) => u,
                           showClear: false,
                           onChanged: (u) => setState(() => _selectedUnit = u),
@@ -223,18 +232,18 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
               const SizedBox(height: 14),
 
               // Row 2: Tên đầy đủ của vật tư
-              _buildFieldLabel('Tên đầy đủ của vật tư', isRequired: true),
+              _buildFieldLabel('inventory.goods.qm_name'.tr(), isRequired: true),
               const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
                 style: const TextStyle(fontSize: 13.5, color: Color(0xFF0F172A)),
-                decoration: _inputDecoration('VD: Dầu làm mát máy biến áp tiêu chuẩn IEC'),
+                decoration: _inputDecoration('inventory.goods.qm_name_ph'.tr()),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 14),
 
               // Row 3: Mức tồn kho an toàn tối thiểu
-              _buildFieldLabel('Mức tồn kho an toàn tối thiểu'),
+              _buildFieldLabel('inventory.goods.qm_min_stock'.tr()),
               const SizedBox(height: 6),
               TextField(
                 controller: _minStockController,
@@ -256,7 +265,7 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Huỷ'),
+                    child: Text('inventory.goods.cancel'.tr()),
                   ),
                   const SizedBox(width: 10),
                   ElevatedButton(
@@ -276,7 +285,7 @@ class _InventoryQuickMaterialDialogState extends State<InventoryQuickMaterialDia
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('+ Thêm vào phiếu', style: TextStyle(fontWeight: FontWeight.w600)),
+                        : Text('inventory.goods.qm_submit'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
