@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../core/utils/file_download_helper.dart';
 import '../../../domain/models/correspondence_models.dart';
 import '../../../domain/repositories/i_correspondence_repository.dart';
 import '../../../data/repositories/correspondence_repository_impl.dart';
 import '../correspondence_letter_detail_bottom_sheet.dart';
+import '../../utils/correspondence_error.dart';
 
 /// BottomSheet hiển thị chi tiết hồ sơ lưu trữ và danh sách tệp đính kèm (matching Web DossierView 1:1)
 class ArchiveDossierSheet extends StatelessWidget {
@@ -88,8 +90,8 @@ class ArchiveDossierSheet extends StatelessWidget {
                         ),
                         child: Text(
                           dossier.archiveCode != null && dossier.archiveCode!.isNotEmpty
-                              ? 'Hồ sơ ${dossier.archiveCode}'
-                              : (dossier.stageLabel.isNotEmpty ? dossier.stageLabel : 'Đang xử lý'),
+                              ? 'correspondence.archive.dossier_code'.tr(args: {'code': dossier.archiveCode})
+                              : (dossier.stageLabel.isNotEmpty ? dossier.stageLabel : 'correspondence.archive.in_progress'.tr()),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -113,7 +115,7 @@ class ArchiveDossierSheet extends StatelessWidget {
 
                       // Meta info
                       Text(
-                        '${isIncoming ? "Công văn đến" : "Công văn đi"} ${dossier.displayNo}${dossier.partner != null && dossier.partner!.isNotEmpty ? " · ${dossier.partner}" : ""} · ${CorrespondenceDateUtils.formatDay(dossier.receivedOn)}',
+                        '${(isIncoming ? 'correspondence.archive.dossier_meta_incoming' : 'correspondence.archive.dossier_meta_outgoing').tr(args: {'no': dossier.displayNo})}${dossier.partner != null && dossier.partner!.isNotEmpty ? " · ${dossier.partner}" : ""} · ${CorrespondenceDateUtils.formatDay(dossier.receivedOn)}',
                         style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -136,9 +138,9 @@ class ArchiveDossierSheet extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: () => _openLetterDetail(context),
                 icon: const Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xFF0284C7)),
-                label: const Text(
-                  'Mở công văn',
-                  style: TextStyle(
+                label: Text(
+                  'correspondence.archive.open_letter'.tr(),
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF0284C7),
@@ -158,12 +160,12 @@ class ArchiveDossierSheet extends StatelessWidget {
           // File List
           Flexible(
             child: dossier.files.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(32),
+                ? Padding(
+                    padding: const EdgeInsets.all(32),
                     child: Center(
                       child: Text(
-                        'Hồ sơ chưa có tệp nào.',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                        'correspondence.archive.dossier_no_files'.tr(),
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                       ),
                     ),
                   )
@@ -280,12 +282,12 @@ class ArchiveDossierSheet extends StatelessWidget {
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.download_rounded, size: 14, color: Color(0xFF475569)),
-                      SizedBox(width: 4),
+                    children: [
+                      const Icon(Icons.download_rounded, size: 14, color: Color(0xFF475569)),
+                      const SizedBox(width: 4),
                       Text(
-                        'Tải về',
-                        style: TextStyle(
+                        'correspondence.archive.download'.tr(),
+                        style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF334155),
@@ -308,9 +310,9 @@ class ArchiveDossierSheet extends StatelessWidget {
 
     try {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Đang mở chi tiết công văn...'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text('correspondence.archive.opening_letter'.tr()),
+          duration: const Duration(seconds: 1),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -323,7 +325,7 @@ class ArchiveDossierSheet extends StatelessWidget {
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Không mở được công văn: $e'),
+          content: Text('correspondence.archive.open_letter_failed'.tr(args: {'error': correspondenceErrorMessage(e, 'common.error_generic'.tr())})),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -341,12 +343,12 @@ class ArchiveDossierSheet extends StatelessWidget {
       if (uri != null && await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        throw Exception('Không mở được liên kết xem tệp.');
+        throw Exception('correspondence.archive.preview_link_failed'.tr());
       }
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Không thể xem trước tệp: $e'),
+          content: Text('correspondence.archive.preview_failed'.tr(args: {'error': correspondenceErrorMessage(e, 'common.error_generic'.tr())})),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),

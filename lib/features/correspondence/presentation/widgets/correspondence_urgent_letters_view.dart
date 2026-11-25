@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../domain/models/correspondence_models.dart';
 import 'correspondence_letter_detail_bottom_sheet.dart';
 
@@ -31,11 +32,11 @@ class CorrespondenceUrgentLettersView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Text(
-              'Cần xử lý gấp',
-              style: TextStyle(
+              'correspondence.list.urgent_title'.tr(),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF0F172A),
@@ -47,12 +48,12 @@ class CorrespondenceUrgentLettersView extends StatelessWidget {
 
           // Letter Items or Empty State
           if (letters.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
               child: Center(
                 child: Text(
-                  'Không còn công văn nào đang mở.',
-                  style: TextStyle(
+                  'correspondence.list.urgent_empty'.tr(),
+                  style: const TextStyle(
                     fontSize: 13.5,
                     color: Color(0xFF94A3B8),
                   ),
@@ -81,7 +82,7 @@ class CorrespondenceUrgentLettersView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    'Hiển thị ${letters.length} công văn',
+                    'correspondence.list.showing_count'.tr(args: {'count': letters.length}),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -137,7 +138,7 @@ class CorrespondenceUrgentLettersView extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${isIncoming ? 'Đến' : 'Đi'} · $dateStr',
+                        '${isIncoming ? 'correspondence.list.direction_in'.tr() : 'correspondence.list.direction_out'.tr()} · $dateStr',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF64748B),

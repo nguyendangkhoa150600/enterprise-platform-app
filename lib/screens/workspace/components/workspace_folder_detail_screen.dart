@@ -14,6 +14,8 @@ class WorkspaceFolderDetailScreen extends StatefulWidget {
   final List<ProjectItem> projects;
   final WorkspaceRemoteDataSource remote;
   final Future<void> Function() onRefresh;
+  /// Quyền ghi thư mục/tài liệu (web `folder.projectId ? canWrite : canDelete`); mặc định giữ hành vi cũ.
+  final bool canWrite;
 
   const WorkspaceFolderDetailScreen({
     super.key,
@@ -23,6 +25,7 @@ class WorkspaceFolderDetailScreen extends StatefulWidget {
     required this.projects,
     required this.remote,
     required this.onRefresh,
+    this.canWrite = true,
   });
 
   @override
@@ -324,11 +327,12 @@ class _WorkspaceFolderDetailScreenState extends State<WorkspaceFolderDetailScree
             tooltip: 'Làm mới',
             onPressed: _reload,
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20),
-            tooltip: 'Xoá thư mục',
-            onPressed: () => _deleteFolder(_currentFolder),
-          ),
+          if (widget.canWrite)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              tooltip: 'Xoá thư mục',
+              onPressed: () => _deleteFolder(_currentFolder),
+            ),
         ],
       ),
       body: _isLoading
@@ -427,6 +431,7 @@ class _WorkspaceFolderDetailScreenState extends State<WorkspaceFolderDetailScree
                   // Hàng nút [+ Thư mục con] và [Tải lên tài liệu]
                   Row(
                     children: [
+                      if (widget.canWrite) ...[
                       OutlinedButton.icon(
                         icon: const Icon(Icons.create_new_folder_outlined, size: 15),
                         label: const Text('Thư mục con', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
@@ -470,6 +475,7 @@ class _WorkspaceFolderDetailScreenState extends State<WorkspaceFolderDetailScree
                           if (ok == true) _reload();
                         },
                       ),
+                      ],
                       const Spacer(),
                       Text(
                         '${directDocs.length} tệp tin',
@@ -649,13 +655,14 @@ class _WorkspaceFolderDetailScreenState extends State<WorkspaceFolderDetailScree
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                 ),
               ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFF94A3B8)),
-              tooltip: 'Xoá',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              onPressed: () => _deleteFolder(folder),
-            ),
+            if (widget.canWrite)
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFF94A3B8)),
+                tooltip: 'Xoá',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => _deleteFolder(folder),
+              ),
             const Icon(Icons.chevron_right, size: 18, color: Color(0xFF94A3B8)),
           ],
         ),

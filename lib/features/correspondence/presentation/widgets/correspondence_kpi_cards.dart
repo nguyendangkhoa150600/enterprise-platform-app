@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../domain/models/correspondence_models.dart';
 
 class CorrespondenceKpiCards extends StatelessWidget {
@@ -15,7 +16,7 @@ class CorrespondenceKpiCards extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _KpiItem(
-        label: 'Cần tôi xử lý',
+        label: 'correspondence.kpi.awaiting_me'.tr(),
         value: overview.awaitingMe,
         icon: Icons.assignment_ind_outlined,
         iconColor: const Color(0xFFD97706),
@@ -24,7 +25,7 @@ class CorrespondenceKpiCards extends StatelessWidget {
         isUrgent: overview.awaitingMe > 0,
       ),
       _KpiItem(
-        label: 'Đến đang xử lý',
+        label: 'correspondence.kpi.incoming_open'.tr(),
         value: overview.incomingOpen,
         icon: Icons.move_to_inbox_rounded,
         iconColor: const Color(0xFF2563EB),
@@ -32,7 +33,7 @@ class CorrespondenceKpiCards extends StatelessWidget {
         filterKey: 'incoming',
       ),
       _KpiItem(
-        label: 'Đi đang xử lý',
+        label: 'correspondence.kpi.outgoing_open'.tr(),
         value: overview.outgoingOpen,
         icon: Icons.send_rounded,
         iconColor: const Color(0xFF4F46E5),
@@ -40,7 +41,7 @@ class CorrespondenceKpiCards extends StatelessWidget {
         filterKey: 'outgoing',
       ),
       _KpiItem(
-        label: 'Đang trình duyệt',
+        label: 'correspondence.kpi.awaiting_approval'.tr(),
         value: overview.awaitingApproval,
         icon: Icons.hourglass_top_rounded,
         iconColor: const Color(0xFFEA580C),
@@ -48,7 +49,7 @@ class CorrespondenceKpiCards extends StatelessWidget {
         filterKey: 'awaiting_approval',
       ),
       _KpiItem(
-        label: 'Quá hạn',
+        label: 'correspondence.kpi.overdue'.tr(),
         value: overview.overdue,
         icon: Icons.warning_amber_rounded,
         iconColor: const Color(0xFFDC2626),
@@ -57,7 +58,7 @@ class CorrespondenceKpiCards extends StatelessWidget {
         isUrgent: overview.overdue > 0,
       ),
       _KpiItem(
-        label: 'Đã lưu trữ',
+        label: 'correspondence.kpi.archived'.tr(),
         value: overview.archived,
         icon: Icons.inventory_2_outlined,
         iconColor: const Color(0xFF16A34A),

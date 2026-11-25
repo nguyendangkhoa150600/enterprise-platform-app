@@ -11,6 +11,7 @@ void showWorkspaceProjectDetailSheet(
   BuildContext context, {
   required ProjectItem project,
   required WorkspaceService service,
+  VoidCallback? onProjectsChanged,
 }) {
   showModalBottomSheet(
     context: context,
@@ -19,6 +20,7 @@ void showWorkspaceProjectDetailSheet(
     builder: (ctx) => ProjectDetailSheet(
       project: project,
       service: service,
+      onProjectsChanged: onProjectsChanged,
     ),
   );
 }
@@ -412,6 +414,7 @@ class TaskStatusSheet extends StatelessWidget {
                       workItemCode: task.code,
                       workItemTitle: task.title,
                       service: service,
+                      isProjectTask: task.isProjectTask,
                     );
                     if (cancelled && context.mounted) {
                       Navigator.pop(context);
@@ -427,13 +430,19 @@ class TaskStatusSheet extends StatelessWidget {
   }
 
   Future<void> _updateStatus(BuildContext context, String newStatus) async {
-    bool ok = await service.updateWorkItemStatus(task.id, newStatus);
+    // Việc dự án dùng API work-item, việc lẻ dùng API standalone — không gọi chéo.
+    final ok = task.isProjectTask
+        ? await service.updateWorkItemStatus(task.id, newStatus)
+        : await service.changeStandaloneTaskStatus(task.id, newStatus);
+    if (!context.mounted) return;
     if (!ok) {
-      ok = await service.changeStandaloneTaskStatus(task.id, newStatus);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(service.lastError ?? 'workspace.complete_item.failed'.tr()),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
     }
-    if (context.mounted) {
-      Navigator.pop(context);
-      onStatusChanged();
-    }
+    Navigator.pop(context);
+    onStatusChanged();
   }
 }

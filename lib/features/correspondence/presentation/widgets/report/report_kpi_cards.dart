@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/correspondence_models.dart';
 
 /// 5 thẻ KPI thống kê Báo cáo Văn thư (khớp 1:1 với Web)
@@ -18,31 +19,31 @@ class ReportKpiCards extends StatelessWidget {
     // stat-danger: border-left #dc2626 (Red 600)
     final items = [
       {
-        'label': 'Công văn đến',
+        'label': 'correspondence.report.kpi_incoming'.tr(),
         'value': totals.incoming,
         'borderColor': const Color(0xFF2563EB),
         'valueColor': const Color(0xFF0F172A),
       },
       {
-        'label': 'Công văn đi',
+        'label': 'correspondence.report.kpi_outgoing'.tr(),
         'value': totals.outgoing,
         'borderColor': const Color(0xFF2563EB),
         'valueColor': const Color(0xFF0F172A),
       },
       {
-        'label': 'Đã hoàn tất, lưu trữ',
+        'label': 'correspondence.report.kpi_completed'.tr(),
         'value': totals.completed,
         'borderColor': const Color(0xFF16A34A),
         'valueColor': const Color(0xFF0F172A),
       },
       {
-        'label': 'Đang xử lý',
+        'label': 'correspondence.report.kpi_open'.tr(),
         'value': totals.open,
         'borderColor': const Color(0xFF2563EB),
         'valueColor': const Color(0xFF0F172A),
       },
       {
-        'label': 'Trễ hạn',
+        'label': 'correspondence.report.kpi_late'.tr(),
         'value': totals.late,
         'borderColor': const Color(0xFFDC2626),
         'valueColor': const Color(0xFF0F172A),

@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
 import '../widgets/detail/letter_detail_header_card.dart';
 import '../widgets/detail/letter_flow_stepper_view.dart';
 import '../widgets/detail/letter_action_panel_view.dart';
+import '../widgets/detail/letter_assignments_section_view.dart';
 import '../widgets/detail/letter_metadata_grid_view.dart';
 import '../widgets/detail/letter_steps_review_view.dart';
 import '../widgets/detail/letter_comments_view.dart';
 import '../widgets/detail/letter_attachments_view.dart';
 import '../widgets/detail/letter_history_timeline_view.dart';
 import '../widgets/correspondence_outgoing_dialog.dart';
+import '../utils/correspondence_error.dart';
+import '../../../../core/i18n/app_i18n.dart';
 
 /// Full-detail screen for an Incoming or Outgoing Letter with 3 sub-tabs matching Savina Web
 class CorrespondenceLetterDetailScreen extends StatefulWidget {
@@ -45,6 +49,7 @@ class _CorrespondenceLetterDetailScreenState
   String? _errorMessage;
   LetterDetail? _letter;
   CorrespondenceDirectory _directory = const CorrespondenceDirectory();
+  CorrespondenceConfig _config = const CorrespondenceConfig();
   late final String _today;
 
   @override
@@ -61,28 +66,44 @@ class _CorrespondenceLetterDetailScreenState
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  /// [silent]: làm mới dữ liệu mà không thay toàn bộ màn bằng spinner
+  /// (giữ nguyên state các widget con như ô nhập kết quả xử lý).
+  Future<void> _loadData({bool silent = false}) async {
+    if (!mounted) return;
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final results = await Future.wait([
         _repository.getLetter(widget.letterId),
         _repository.getDirectory(),
+        _repository.getConfig(),
       ]);
 
       if (!mounted) return;
       setState(() {
         _letter = results[0] as LetterDetail;
         _directory = results[1] as CorrespondenceDirectory;
+        _config = results[2] as CorrespondenceConfig;
         _isLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
+      if (silent) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('correspondence.detail.refresh_failed'.tr()),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
       setState(() {
-        _errorMessage = 'Không tải được chi tiết công văn. Vui lòng thử lại.';
+        _errorMessage = 'correspondence.detail_screen.load_failed'.tr();
         _isLoading = false;
       });
     }
@@ -94,15 +115,16 @@ class _CorrespondenceLetterDetailScreenState
       if (!mounted) return;
       setState(() => _letter = updated);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã giao phòng ban xử lý thành công.'),
+        SnackBar(
+          content: Text('correspondence.detail_screen.dispatch_success'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể giao phòng ban. Vui lòng thử lại.'),
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.dispatch_failed'.tr())),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -115,15 +137,16 @@ class _CorrespondenceLetterDetailScreenState
       if (!mounted) return;
       setState(() => _letter = updated);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã duyệt công văn thành công.'),
+        SnackBar(
+          content: Text('correspondence.detail_screen.approve_success'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể duyệt công văn. Vui lòng thử lại.'),
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.approve_failed'.tr())),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -136,18 +159,341 @@ class _CorrespondenceLetterDetailScreenState
       if (!mounted) return;
       setState(() => _letter = updated);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã trả lại công văn.'),
+        SnackBar(
+          content: Text('correspondence.detail_screen.return_success'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể trả lại công văn. Vui lòng thử lại.'),
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.return_failed'.tr())),
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _handleSendToClerk(Map<String, dynamic> body) async {
+    try {
+      final updated = await _repository.sendToClerk(widget.letterId, body);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.send_to_clerk_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.send_to_clerk_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleSubmitLetter(Map<String, dynamic> body) async {
+    try {
+      final updated = await _repository.submitLetter(widget.letterId, body);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.advance_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.advance_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handlePublishLetter(Map<String, dynamic> body) async {
+    try {
+      final updated = await _repository.publishLetter(widget.letterId, body);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.issue_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.issue_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleCompleteLetter(Map<String, dynamic> body) async {
+    try {
+      final updated = await _repository.completeLetter(widget.letterId, body);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.complete_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.complete_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleCancelLetter(String reason) async {
+    try {
+      await _repository.cancelLetter(widget.letterId, reason);
+      await _loadData(silent: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.cancel_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.cancel_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleUpdateDelivery(Map<String, dynamic> body) async {
+    try {
+      final updated = await _repository.updateDelivery(widget.letterId, body);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.delivery_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.delivery_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRequestRevoke(Map<String, dynamic> body) async {
+    try {
+      final updated = await _repository.requestRevoke(widget.letterId, body);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(updated.stage == 'cancelled' ? 'correspondence.detail_screen.cancel_success'.tr() : 'correspondence.detail_screen.revoke_request_sent'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.revoke_request_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleDecideRevoke(bool approve, String? note) async {
+    try {
+      final updated = await _repository.decideRevoke(widget.letterId, approve: approve, note: note);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(approve ? 'correspondence.detail_screen.revoke_approved'.tr() : 'correspondence.detail_screen.revoke_rejected'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.revoke_decide_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleWithdrawRevoke() async {
+    try {
+      final updated = await _repository.withdrawRevoke(widget.letterId);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.revoke_withdrawn'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.revoke_withdraw_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRemoveLetter() async {
+    try {
+      await _repository.removeLetter(widget.letterId);
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.delete_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.delete_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleAssignAssignmentHandler(String assignmentId, String handlerUserId) async {
+    try {
+      final updated = await _repository.assignAssignmentHandler(widget.letterId, assignmentId, handlerUserId);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.assign_handler_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.assign_handler_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRespondAssignment(String assignmentId, String note) async {
+    try {
+      final updated = await _repository.respondAssignment(widget.letterId, assignmentId, note);
+      if (!mounted) return;
+      setState(() => _letter = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('correspondence.detail_screen.submit_result_success'.tr()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.submit_result_failed'.tr())),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      rethrow; // để LetterAssignmentsSectionView giữ lại nội dung đã nhập
+    }
+  }
+
+  Future<void> _handleUploadResultFile(String assignmentId, dynamic file) async {
+    // Không reload ở đây: section gọi onFilesChanged một lần sau khi tải xong.
+    await _repository.uploadLetterAttachment(
+      widget.letterId,
+      file,
+      'draft',
+      assignmentId: assignmentId,
+    );
+  }
+
+  Future<void> _handleUploadAttachment(String kind) async {
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'],
+      );
+      if (files.isEmpty) return;
+
+      // Như web: tệp lỗi thì báo riêng tệp đó và vẫn tải tiếp các tệp còn lại.
+      int count = 0;
+      for (final f in files) {
+        try {
+          await _repository.uploadLetterAttachment(widget.letterId, f, kind);
+          count++;
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(correspondenceErrorMessage(e, 'correspondence.attachments.upload_file_failed'.tr(args: {'name': f.name}))),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+
+      if (count > 0 && mounted) {
+        await _loadData(silent: true);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('correspondence.detail_screen.upload_success'.tr(args: {'count': count})),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.upload_failed'.tr())),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -163,15 +509,16 @@ class _CorrespondenceLetterDetailScreenState
       if (mentionedUserIds.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã gửi trao đổi, báo ${mentionedUserIds.length} người được nhắc.'),
+            content: Text('correspondence.detail_screen.comment_sent_mentions'.tr(args: {'count': mentionedUserIds.length})),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể gửi trao đổi. Vui lòng thử lại.'),
+        SnackBar(
+          content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.comment_failed'.tr())),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -183,17 +530,17 @@ class _CorrespondenceLetterDetailScreenState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Đôn đốc xử lý', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text('correspondence.detail_screen.remind_title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         content: TextField(
           controller: noteCtrl,
           maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Nhập nội dung nhắc nhở đôn đốc...',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: 'correspondence.detail_screen.remind_hint'.tr(),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -201,17 +548,17 @@ class _CorrespondenceLetterDetailScreenState
                 await _repository.remindLetter(widget.letterId, 'urgent', noteCtrl.text.trim());
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã gửi thông báo đôn đốc thành công.'), behavior: SnackBarBehavior.floating),
+                  SnackBar(content: Text('correspondence.detail_screen.remind_success'.tr()), behavior: SnackBarBehavior.floating),
                 );
-              } catch (_) {
+              } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Không thể gửi đôn đốc.'), behavior: SnackBarBehavior.floating),
+                  SnackBar(content: Text(correspondenceErrorMessage(e, 'correspondence.detail_screen.remind_failed'.tr())), behavior: SnackBarBehavior.floating),
                 );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
-            child: const Text('Gửi đôn đốc'),
+            child: Text('correspondence.detail_screen.remind_submit'.tr()),
           ),
         ],
       ),
@@ -229,9 +576,9 @@ class _CorrespondenceLetterDetailScreenState
           icon: const Icon(Icons.close_rounded, color: Color(0xFF1E293B)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Chi tiết công văn',
-          style: TextStyle(
+        title: Text(
+          'correspondence.detail_screen.title'.tr(),
+          style: const TextStyle(
             fontSize: 16.5,
             fontWeight: FontWeight.w800,
             color: Color(0xFF0F172A),
@@ -250,13 +597,13 @@ class _CorrespondenceLetterDetailScreenState
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
-            SizedBox(height: 14),
-            Text('Đang tải chi tiết công văn...', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+            const CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
+            const SizedBox(height: 14),
+            Text('correspondence.detail_screen.loading'.tr(), style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
           ],
         ),
       );
@@ -272,7 +619,7 @@ class _CorrespondenceLetterDetailScreenState
               const Icon(Icons.error_outline_rounded, size: 48, color: Color(0xFFEF4444)),
               const SizedBox(height: 12),
               Text(
-                _errorMessage ?? 'Không tìm thấy thông tin công văn.',
+                _errorMessage ?? 'correspondence.detail_screen.not_found'.tr(),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: Color(0xFF475569)),
               ),
@@ -280,7 +627,7 @@ class _CorrespondenceLetterDetailScreenState
               ElevatedButton.icon(
                 onPressed: _loadData,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Thử lại'),
+                label: Text('common.retry'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
                   foregroundColor: Colors.white,
@@ -307,12 +654,12 @@ class _CorrespondenceLetterDetailScreenState
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 child: LetterDetailHeaderCard(
                   letter: letter,
-                  onReply: () => CorrespondenceOutgoingDialog.show(context, onCreated: _loadData),
+                  onReply: () => CorrespondenceOutgoingDialog.show(context, onCreated: _loadData, replyTo: letter),
                   onRemind: _handleRemind,
                   onEdit: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Chức năng sửa thông tin đang được cập nhật.'),
+                      SnackBar(
+                        content: Text('correspondence.detail_screen.edit_coming_soon'.tr()),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -346,14 +693,14 @@ class _CorrespondenceLetterDetailScreenState
                   labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                   tabs: [
-                    const Tab(text: 'Xử lý'),
-                    const Tab(text: 'Thông tin'),
+                    Tab(text: 'correspondence.detail_screen.tab_processing'.tr()),
+                    Tab(text: 'correspondence.detail_screen.tab_info'.tr()),
                     Tab(
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('Trao đổi'),
+                          Text('correspondence.detail_screen.tab_comments'.tr()),
                           if (letter.comments.isNotEmpty) ...[
                             const SizedBox(width: 4),
                             Container(
@@ -414,15 +761,38 @@ class _CorrespondenceLetterDetailScreenState
         // 2. Thao tác bước hiện tại (Action Panel)
         LetterActionPanelView(
           letter: letter,
-          units: _directory.units,
+          config: _config,
+          directory: _directory,
           onDispatch: _handleDispatch,
           onApprove: _handleApprove,
           onReturn: _handleReturn,
+          onSendToClerk: _handleSendToClerk,
+          onSubmit: _handleSubmitLetter,
+          onPublish: _handlePublishLetter,
+          onComplete: _handleCompleteLetter,
+          onCancel: _handleCancelLetter,
+          onUpdateDelivery: _handleUpdateDelivery,
+          onRequestRevoke: _handleRequestRevoke,
+          onDecideRevoke: _handleDecideRevoke,
+          onWithdrawRevoke: _handleWithdrawRevoke,
+          onRemoveLetter: _handleRemoveLetter,
         ),
-        if (letter.actions.dispatch || letter.actions.approve)
-          const SizedBox(height: 14),
+        const SizedBox(height: 14),
 
-        // 3. Ý kiến các bước duyệt
+        // 3. Phòng ban xử lý (đồng bộ 1:1 với Web)
+        if (letter.assignments.isNotEmpty) ...[
+          LetterAssignmentsSectionView(
+            letter: letter,
+            directory: _directory,
+            onAssignHandler: _handleAssignAssignmentHandler,
+            onRespond: _handleRespondAssignment,
+            onUploadResultFile: _handleUploadResultFile,
+            onFilesChanged: () => _loadData(silent: true),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // 4. Ý kiến các bước duyệt
         LetterStepsReviewView(
           steps: letter.steps,
         ),
@@ -443,25 +813,23 @@ class _CorrespondenceLetterDetailScreenState
         ),
         const SizedBox(height: 14),
 
+        // 1.5. Phòng ban xử lý (nếu có đơn vị được giao)
+        if (letter.assignments.isNotEmpty) ...[
+          LetterAssignmentsSectionView(
+            letter: letter,
+            directory: _directory,
+            onAssignHandler: _handleAssignAssignmentHandler,
+            onRespond: _handleRespondAssignment,
+            onUploadResultFile: _handleUploadResultFile,
+            onFilesChanged: () => _loadData(silent: true),
+          ),
+          const SizedBox(height: 14),
+        ],
+
         // 2. Tệp của hồ sơ
         LetterAttachmentsView(
-          attachments: letter.attachments,
-          onUploadScan: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Đang chuẩn bị tải bản quét công văn đến...'),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
-          onUploadRef: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Đang chuẩn bị tải tài liệu kèm theo...'),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
+          letter: letter,
+          onUpload: _handleUploadAttachment,
         ),
         const SizedBox(height: 14),
 

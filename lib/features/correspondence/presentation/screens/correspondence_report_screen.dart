@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
@@ -65,7 +66,7 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Không tải được số liệu báo cáo. Vui lòng thử lại.';
+        _errorMessage = 'correspondence.report.load_failed'.tr();
         _isLoading = false;
       });
     }
@@ -93,9 +94,9 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
     final years = List.generate(6, (index) => DateTime.now().year - index);
 
     final tabs = [
-      {'key': 'stats', 'label': 'Thống kê'},
-      {'key': 'incoming', 'label': 'Sổ công văn đến'},
-      {'key': 'outgoing', 'label': 'Sổ công văn đi'},
+      {'key': 'stats', 'label': 'correspondence.report.tab_stats'.tr()},
+      {'key': 'incoming', 'label': 'correspondence.report.tab_incoming_register'.tr()},
+      {'key': 'outgoing', 'label': 'correspondence.report.tab_outgoing_register'.tr()},
     ];
 
     return Scaffold(
@@ -111,21 +112,21 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Báo cáo',
-              style: TextStyle(
+            Text(
+              'correspondence.report.title'.tr(),
+              style: const TextStyle(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
               ),
             ),
             Row(
-              children: const [
-                Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
-                SizedBox(width: 4),
+              children: [
+                const Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
+                const SizedBox(width: 4),
                 Text(
-                  'Văn thư > Báo cáo',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  'correspondence.report.breadcrumb'.tr(),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -136,7 +137,7 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
           if (canCreateOutgoing)
             IconButton(
               icon: const Icon(Icons.edit_document, color: Color(0xFF0284C7)),
-              tooltip: 'Soạn công văn đi',
+              tooltip: 'correspondence.overview.action_compose_outgoing'.tr(),
               onPressed: () => CorrespondenceOutgoingDialog.show(
                 context,
                 onCreated: _loadData,
@@ -146,7 +147,7 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
           if (canRegister)
             IconButton(
               icon: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF059669)),
-              tooltip: 'Tiếp nhận công văn đến',
+              tooltip: 'correspondence.overview.action_register_incoming'.tr(),
               onPressed: () => CorrespondenceIntakeDialog.show(
                 context,
                 onCreated: _loadData,
@@ -154,7 +155,7 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
             ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF64748B)),
-            tooltip: 'Làm mới',
+            tooltip: 'common.refresh'.tr(),
             onPressed: _loadData,
           ),
         ],
@@ -195,7 +196,7 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
                         items: years.map((y) {
                           return DropdownMenuItem<int>(
                             value: y,
-                            child: Text('Năm $y'),
+                            child: Text('correspondence.report.year_option'.tr(args: {'year': y})),
                           );
                         }).toList(),
                       ),
@@ -267,11 +268,11 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
                   const SizedBox(height: 14),
 
                   // Theo loại văn bản
-                  ReportDataTable(title: 'Theo loại văn bản', rows: _report!.byType),
+                  ReportDataTable(title: 'correspondence.report.by_type'.tr(), rows: _report!.byType),
                   const SizedBox(height: 14),
 
                   // Theo phòng ban
-                  ReportDataTable(title: 'Theo phòng ban', rows: _report!.byUnit),
+                  ReportDataTable(title: 'correspondence.report.by_unit'.tr(), rows: _report!.byUnit),
                   const SizedBox(height: 20),
                 ],
               ] else ...[
@@ -308,7 +309,7 @@ class _CorrespondenceReportScreenState extends State<CorrespondenceReportScreen>
             ElevatedButton.icon(
               onPressed: _loadData,
               icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Thử lại'),
+              label: Text('common.retry'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0284C7),
                 foregroundColor: Colors.white,

@@ -25,6 +25,14 @@ import '../../assistant_chat_screen.dart';
 import '../../enterprise_applications_screen.dart';
 import '../../../features/correspondence/presentation/screens/correspondence_overview_screen.dart';
 import '../../../features/correspondence/presentation/screens/correspondence_mine_screen.dart';
+import '../../../features/correspondence/presentation/screens/correspondence_tracking_screen.dart';
+import '../../../features/correspondence/presentation/screens/correspondence_incoming_screen.dart';
+import '../../../features/correspondence/presentation/screens/correspondence_outgoing_screen.dart';
+import '../../../features/correspondence/presentation/screens/correspondence_archive_screen.dart';
+import '../../../features/correspondence/presentation/screens/correspondence_report_screen.dart';
+import '../../../features/finance/presentation/finance_routes.dart';
+import '../../../features/finance/presentation/utils/finance_scope.dart';
+import '../../../features/finance/presentation/widgets/common/finance_page_guard.dart';
 import 'package:provider/provider.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../core/permissions/hrm_permissions.dart';
@@ -58,7 +66,26 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   String _selectedCategory = 'APPS'; // 'APPS' (Grid), 'LIST'
 
   @override
+  void initState() {
+    super.initState();
+    // Ô Tài chính hiện theo quyền (web `canOpenPage`): tải quyền một lần, đổi thì dựng lại.
+    FinanceScope.instance.capabilities.addListener(_onFinanceCapsChanged);
+    if (_modFinance) FinanceScope.instance.ensureCapabilities();
+  }
+
+  void _onFinanceCapsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Mục Tài chính theo quyền (web `canOpenPage`); chưa tải được quyền thì ẩn cả Dashboard.
+  bool _financeVisible(FinancePage page) {
+    if (!_modFinance) return false;
+    return page.canOpen(FinanceScope.instance.capabilities.value);
+  }
+
+  @override
   void dispose() {
+    FinanceScope.instance.capabilities.removeListener(_onFinanceCapsChanged);
     _moduleSearchController.dispose();
     super.dispose();
   }
@@ -87,6 +114,12 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   }
 
   bool get _modProcedure => _mod('procedure-engine') || _mod('procedure');
+  bool get _modFinance =>
+      _mod('finance') ||
+      _mod('financial') ||
+      _mod('tai-chinh') ||
+      _mod('taichinh') ||
+      widget.modules.isEmpty;
   bool get _modInventory =>
       _mod('inventory') ||
       _mod('warehouse') ||
@@ -300,6 +333,67 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 1))),
+                },
+              ],
+            ),
+
+            // 3. TÀI CHÍNH (FINANCE)
+            _buildMenuSection(
+              title: 'TÀI CHÍNH',
+              items: [
+                {
+                  'title': 'finance.nav.dashboard'.tr(),
+                  'visible': _financeVisible(FinancePage.dashboard),
+                  'icon': Icons.dashboard_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_overview.png',
+                  'bg': const Color(0xFFF5F3FF), // Violet 50
+                  'iconColor': const Color(0xFF7C3AED), // Violet 600
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.dashboard),
+                },
+                {
+                  'title': 'finance.nav.receipts'.tr(),
+                  'visible': _financeVisible(FinancePage.receipts),
+                  'icon': Icons.arrow_downward_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_receipts.png',
+                  'bg': const Color(0xFFECFDF5), // Emerald 50
+                  'iconColor': const Color(0xFF059669), // Emerald 600
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.receipts),
+                },
+                {
+                  'title': 'finance.nav.payments'.tr(),
+                  'visible': _financeVisible(FinancePage.payments),
+                  'icon': Icons.arrow_upward_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_payments.png',
+                  'bg': const Color(0xFFFFF1F2), // Rose 50
+                  'iconColor': const Color(0xFFE11D48), // Rose 600
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.payments),
+                },
+                {
+                  'title': 'finance.nav.transfers'.tr(),
+                  'visible': _financeVisible(FinancePage.transfers),
+                  'icon': Icons.swap_horiz_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_transfers.png',
+                  'bg': const Color(0xFFF0F9FF), // Sky 50
+                  'iconColor': const Color(0xFF0284C7), // Sky 600
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.transfers),
+                },
+                {
+                  'title': 'finance.nav.accounts'.tr(),
+                  'visible': _financeVisible(FinancePage.accounts),
+                  'icon': Icons.account_balance_wallet_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_accounts.png',
+                  'bg': const Color(0xFFEEF2FF), // Indigo 50
+                  'iconColor': const Color(0xFF4F46E5), // Indigo 600
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.accounts),
+                },
+                {
+                  'title': 'finance.nav.reports'.tr(),
+                  'visible': _financeVisible(FinancePage.reports),
+                  'icon': Icons.pie_chart_outline_rounded,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_reports.png',
+                  'bg': const Color(0xFFFFFBEB), // Amber 50
+                  'iconColor': const Color(0xFFD97706), // Amber 600
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.reports),
                 },
               ],
             ),
@@ -571,7 +665,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'imageAsset': 'assets/images/icons/sidebar_correspondence_tracking.png',
                   'bg': const Color(0xFFFFFBEB), // Amber 50
                   'iconColor': const Color(0xFFD97706),
-                  'onTap': () => widget.onOpenModule('correspondence/tracking'),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceTrackingScreen())),
                 },
                 {
                   'title': 'Công văn đến',
@@ -580,7 +674,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'imageAsset': 'assets/images/icons/sidebar_correspondence_incoming.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
                   'iconColor': const Color(0xFF2563EB),
-                  'onTap': () => widget.onOpenModule('correspondence/incoming'),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceIncomingScreen())),
                 },
                 {
                   'title': 'Công văn đi',
@@ -589,7 +683,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'imageAsset': 'assets/images/icons/sidebar_correspondence_outgoing.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
-                  'onTap': () => widget.onOpenModule('correspondence/outgoing'),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceOutgoingScreen())),
                 },
                 {
                   'title': 'Kho lưu trữ',
@@ -598,7 +692,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'imageAsset': 'assets/images/icons/sidebar_correspondence_archive.png',
                   'bg': const Color(0xFFFAF5FF), // Purple 50
                   'iconColor': const Color(0xFF9333EA),
-                  'onTap': () => widget.onOpenModule('correspondence/archive'),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceArchiveScreen())),
                 },
                 {
                   'title': 'Báo cáo',
@@ -607,7 +701,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'imageAsset': 'assets/images/icons/sidebar_correspondence_reports.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50
                   'iconColor': const Color(0xFF16A34A),
-                  'onTap': () => widget.onOpenModule('correspondence/reports'),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceReportScreen())),
                 },
               ],
             ),

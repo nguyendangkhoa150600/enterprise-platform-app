@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../services/api_client_helper.dart';
+import '../../domain/errors/correspondence_exception.dart';
+import 'correspondence_error_mapper.dart';
 
 /// Remote DataSource giao tiếp trực tiếp với Correspondence API: /api/correspondence/v1
 class CorrespondenceRemoteDataSource {
@@ -96,7 +98,12 @@ class CorrespondenceRemoteDataSource {
   }
 
   /// Tải tệp đính kèm theo luồng ký trước (Signed upload ticket)
-  Future<void> uploadAttachmentRaw(String letterId, dynamic file, String kind) async {
+  Future<void> uploadAttachmentRaw(
+    String letterId,
+    dynamic file,
+    String kind, {
+    String? assignmentId,
+  }) async {
     if (file == null) return;
     String fileName = '';
     int sizeBytes = 0;
@@ -117,7 +124,9 @@ class CorrespondenceRemoteDataSource {
       }
     }
 
-    if (fileName.isEmpty || bytes == null || bytes.isEmpty) return;
+    if (fileName.isEmpty || bytes == null || bytes.isEmpty) {
+      throw const CorrespondenceException();
+    }
 
     // 1. Lấy vé tải lên (ticket)
     String contentType = 'application/octet-stream';
@@ -138,6 +147,7 @@ class CorrespondenceRemoteDataSource {
       '/api/correspondence/v1/letters/${Uri.encodeComponent(letterId)}/attachments',
       data: {
         'kind': kind,
+        if (assignmentId != null && assignmentId.isNotEmpty) 'assignmentId': assignmentId,
         'fileName': fileName,
         'contentType': contentType,
         'sizeBytes': sizeBytes,
@@ -145,29 +155,32 @@ class CorrespondenceRemoteDataSource {
     );
 
     final ticketData = ticketRes.data;
-    if (ticketData == null) return;
-    final uploadUrl = ticketData['uploadUrl']?.toString();
-    final attId = (ticketData['attachment'] is Map ? ticketData['attachment']['id'] : null)?.toString();
-
-    if (uploadUrl != null && uploadUrl.isNotEmpty && attId != null && attId.isNotEmpty) {
-      // 2. Gửi tệp lên uploadUrl
-      await Dio().put(
-        uploadUrl,
-        data: Stream.fromIterable([bytes]),
-        options: Options(
-          headers: {
-            'Content-Type': contentType,
-            'Content-Length': bytes.length,
-          },
-        ),
-      );
-
-      // 3. Hoàn tất tệp đính kèm
-      await _dio.post(
-        '/api/correspondence/v1/letters/${Uri.encodeComponent(letterId)}/attachments/${Uri.encodeComponent(attId)}/complete',
-        data: {'sizeBytes': sizeBytes},
-      );
+    final uploadUrl = ticketData is Map ? ticketData['uploadUrl']?.toString() : null;
+    final attId = (ticketData is Map && ticketData['attachment'] is Map
+            ? ticketData['attachment']['id']
+            : null)
+        ?.toString();
+    if (uploadUrl == null || uploadUrl.isEmpty || attId == null || attId.isEmpty) {
+      throw const CorrespondenceException();
     }
+
+    // 2. Gửi tệp lên uploadUrl
+    await Dio().put(
+      uploadUrl,
+      data: Stream.fromIterable([bytes]),
+      options: Options(
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': bytes.length,
+        },
+      ),
+    );
+
+    // 3. Hoàn tất tệp đính kèm
+    await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(letterId)}/attachments/${Uri.encodeComponent(attId)}/complete',
+      data: {'sizeBytes': sizeBytes},
+    );
   }
 
   /// POST /api/correspondence/v1/catalog/quick
@@ -185,7 +198,7 @@ class CorrespondenceRemoteDataSource {
       '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}',
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
-    return res.data;
+    return ensureCorrespondenceOk(res);
   }
 
   /// POST /api/correspondence/v1/letters/:id/dispatch
@@ -195,7 +208,7 @@ class CorrespondenceRemoteDataSource {
       data: body,
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
-    return res.data;
+    return ensureCorrespondenceOk(res);
   }
 
   /// POST /api/correspondence/v1/letters/:id/approve
@@ -205,7 +218,7 @@ class CorrespondenceRemoteDataSource {
       data: body,
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
-    return res.data;
+    return ensureCorrespondenceOk(res);
   }
 
   /// POST /api/correspondence/v1/letters/:id/return
@@ -215,7 +228,126 @@ class CorrespondenceRemoteDataSource {
       data: body,
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
-    return res.data;
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/send-to-clerk
+  Future<dynamic> sendToClerkRaw(String id, Map<String, dynamic> body) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/send-to-clerk',
+      data: body,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/submit
+  Future<dynamic> submitLetterRaw(String id, Map<String, dynamic> body) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/submit',
+      data: body,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/publish
+  Future<dynamic> publishLetterRaw(String id, Map<String, dynamic> body) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/publish',
+      data: body,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/complete
+  Future<dynamic> completeLetterRaw(String id, Map<String, dynamic> body) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/complete',
+      data: body,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/delivery
+  Future<dynamic> updateDeliveryRaw(String id, Map<String, dynamic> body) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/delivery',
+      data: body,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/assignments/:assignmentId/handler
+  Future<dynamic> assignAssignmentHandlerRaw(String id, String assignmentId, String handlerUserId) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/assignments/${Uri.encodeComponent(assignmentId)}/handler',
+      data: {'handlerUserId': handlerUserId},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/assignments/:assignmentId/respond
+  Future<dynamic> respondAssignmentRaw(String id, String assignmentId, String note) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/assignments/${Uri.encodeComponent(assignmentId)}/respond',
+      data: {'note': note},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/revoke
+  Future<dynamic> requestRevokeRaw(String id, Map<String, dynamic> body) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/revoke',
+      data: body,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/revoke/decision
+  Future<dynamic> decideRevokeRaw(String id, Map<String, dynamic> body) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/revoke/decision',
+      data: body,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/revoke/withdraw
+  Future<dynamic> withdrawRevokeRaw(String id) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/revoke/withdraw',
+      data: {},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// DELETE /api/correspondence/v1/letters/:id
+  Future<dynamic> removeLetterRaw(String id) async {
+    final res = await _dio.delete(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
+  }
+
+  /// POST /api/correspondence/v1/letters/:id/cancel
+  Future<dynamic> cancelLetterRaw(String id, String reason) async {
+    final res = await _dio.post(
+      '/api/correspondence/v1/letters/${Uri.encodeComponent(id)}/cancel',
+      data: {'reason': reason},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return ensureCorrespondenceOk(res);
   }
 
   /// POST /api/correspondence/v1/letters/:id/comments
@@ -225,7 +357,7 @@ class CorrespondenceRemoteDataSource {
       data: body,
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
-    return res.data;
+    return ensureCorrespondenceOk(res);
   }
 
   /// POST /api/correspondence/v1/letters/:id/remind
@@ -235,7 +367,7 @@ class CorrespondenceRemoteDataSource {
       data: body,
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
-    return res.data;
+    return ensureCorrespondenceOk(res);
   }
 
   /// GET /api/correspondence/v1/archive-tree

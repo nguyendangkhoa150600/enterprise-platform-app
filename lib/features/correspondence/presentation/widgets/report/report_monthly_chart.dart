@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/correspondence_models.dart';
 
 /// Biểu đồ phân bổ công văn đến và đi theo từng tháng (T1 - T12)
@@ -43,9 +44,9 @@ class ReportMonthlyChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Theo tháng',
-                style: TextStyle(
+              Text(
+                'correspondence.report.chart.title'.tr(),
+                style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A),
@@ -53,9 +54,9 @@ class ReportMonthlyChart extends StatelessWidget {
               ),
               Row(
                 children: [
-                  _buildLegendItem(const Color(0xFF2563EB), 'Đến'),
+                  _buildLegendItem(const Color(0xFF2563EB), 'correspondence.report.chart.legend_incoming'.tr()),
                   const SizedBox(width: 12),
-                  _buildLegendItem(const Color(0xFFF59E0B), 'Đi'),
+                  _buildLegendItem(const Color(0xFFF59E0B), 'correspondence.report.chart.legend_outgoing'.tr()),
                 ],
               ),
             ],
@@ -70,14 +71,14 @@ class ReportMonthlyChart extends StatelessWidget {
               children: List.generate(12, (index) {
                 final row = index < byMonth.length
                     ? byMonth[index]
-                    : CorrespondenceReportRow(label: 'T${index + 1}');
+                    : CorrespondenceReportRow(label: 'correspondence.report.chart.month_short'.tr(args: {'month': index + 1}));
 
                 final incomingHeight = maxTotal > 0 ? (row.incoming / maxTotal) * 110 : 0.0;
                 final outgoingHeight = maxTotal > 0 ? (row.outgoing / maxTotal) * 110 : 0.0;
 
                 return Expanded(
                   child: Tooltip(
-                    message: '${row.label}: ${row.incoming} đến, ${row.outgoing} đi',
+                    message: 'correspondence.report.chart.tooltip'.tr(args: {'label': row.label, 'incoming': row.incoming, 'outgoing': row.outgoing}),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2.5),
                       child: Column(
@@ -125,7 +126,7 @@ class ReportMonthlyChart extends StatelessWidget {
 
                           // Month Label
                           Text(
-                            'T${index + 1}',
+                            'correspondence.report.chart.month_short'.tr(args: {'month': index + 1}),
                             style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: (row.incoming > 0 || row.outgoing > 0)

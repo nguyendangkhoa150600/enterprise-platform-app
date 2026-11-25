@@ -7,6 +7,7 @@ import '../reports/workspace_report_filter_bar.dart';
 import '../reports/workspace_report_filter_dropdowns.dart';
 import '../reports/workspace_report_groups_section.dart';
 import '../reports/workspace_report_items_sheet.dart';
+import '../../../../../screens/workspace/components/workspace_standalone_task_detail_sheet.dart';
 import '../reports/workspace_report_kpi_section.dart';
 import '../reports/workspace_report_performance_section.dart';
 import '../reports/workspace_report_projects_progress_section.dart';
@@ -98,8 +99,8 @@ class _WorkspaceReportsTabViewState extends State<WorkspaceReportsTabView> {
 
     try {
       // Chuẩn hoá tham số ngày
-      final fromIso = _fromDate.isNotEmpty ? '${_fromDate}T00:00:00.000Z' : null;
-      final toIso = _toDate.isNotEmpty ? '${_toDate}T23:59:59.000Z' : null;
+      final fromIso = _dayStartIso(_fromDate);
+      final toIso = _dayEndIso(_toDate);
 
       final res = await _service.getWorkspaceReports(
         from: fromIso,
@@ -149,9 +150,31 @@ class _WorkspaceReportsTabViewState extends State<WorkspaceReportsTabView> {
     _loadReport();
   }
 
+  /// Web: ngày tính theo giờ máy người dùng, đầu ngày tới cuối ngày (`new Date('YYYY-MM-DDT00:00:00').toISOString()`).
+  static String? _dayStartIso(String day) =>
+      day.isEmpty ? null : DateTime.parse('${day}T00:00:00').toUtc().toIso8601String();
+  static String? _dayEndIso(String day) =>
+      day.isEmpty ? null : DateTime.parse('${day}T23:59:59').toUtc().toIso8601String();
+
+  /// Web `onOpenItem(projectId, workItemId)`: mở chi tiết công việc. Sheet chi tiết tự tải lại đủ dữ liệu theo id,
+  /// nên chỉ cần dựng bản tối thiểu từ dòng báo cáo.
+  void _openItem(ReportItemRow row) {
+    final task = StandaloneTaskItem.fromJson({
+      'id': row.workItemId,
+      'projectId': row.projectId,
+      'code': row.code,
+      'title': row.title,
+      'status': row.status,
+      'priority': row.priority,
+      'assigneeUserId': row.assigneeUserId,
+    });
+    showWorkspaceStandaloneTaskDetailSheet(context, task: task, service: _service, onRefresh: _loadReport);
+  }
+
   void _drillDown(String title, String kind, {Map<String, String>? extra}) {
-    final fromIso = _fromDate.isNotEmpty ? '${_fromDate}T00:00:00.000Z' : null;
-    final toIso = _toDate.isNotEmpty ? '${_toDate}T23:59:59.000Z' : null;
+    // Ô được bấm có khoảng ngày riêng (cột xu hướng) thì dùng khoảng đó, không thì cả kỳ đang xem (web `open(..., extra)`).
+    final fromIso = extra?['from'] ?? _dayStartIso(_fromDate);
+    final toIso = extra?['to'] ?? _dayEndIso(_toDate);
 
     final targetProjectIds = extra?['projectIds'] != null
         ? [extra!['projectIds']!]
@@ -174,6 +197,9 @@ class _WorkspaceReportsTabViewState extends State<WorkspaceReportsTabView> {
     WorkspaceReportItemsSheet.show(
       context,
       title: title,
+      subtitle: extra?['subtitle'],
+      userNames: _userNames,
+      onOpenItem: _openItem,
       loader: () => _service.getWorkspaceReportItems(
         kind: kind,
         from: fromIso,
@@ -289,6 +315,8 @@ class _WorkspaceReportsTabViewState extends State<WorkspaceReportsTabView> {
             WorkspaceReportChartsSection(
               bundle: _bundle!,
               onDrillDown: _drillDown,
+              rangeFrom: _fromDate,
+              rangeTo: _toDate,
             ),
             const SizedBox(height: 8),
 

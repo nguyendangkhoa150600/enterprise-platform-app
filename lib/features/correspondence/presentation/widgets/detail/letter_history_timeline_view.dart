@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Section 7: Lịch sử xử lý (History / Audit Timeline) matching Savina Web 1:1
 class LetterHistoryTimelineView extends StatelessWidget {
@@ -34,9 +35,9 @@ class LetterHistoryTimelineView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Lịch sử xử lý',
-            style: TextStyle(
+          Text(
+            'correspondence.detail_view.history_title'.tr(),
+            style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w700,
               color: Color(0xFF0F172A),
@@ -106,7 +107,7 @@ class LetterHistoryTimelineView extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${entry.actorName ?? "Người dùng"} lúc ${CorrespondenceDateUtils.formatDateTime(entry.at)}',
+                    'correspondence.detail_view.actor_at'.tr(args: {'actor': entry.actorName ?? 'correspondence.detail_view.user_fallback'.tr(), 'time': CorrespondenceDateUtils.formatDateTime(entry.at)}),
                     style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                   ),
                   if (entry.note != null && entry.note!.isNotEmpty) ...[

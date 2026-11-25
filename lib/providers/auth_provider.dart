@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import '../services/push_notification_service.dart';
+import '../features/finance/presentation/utils/finance_scope.dart';
 
 class AuthProvider extends ChangeNotifier {
   static AuthProvider? instance;
@@ -292,6 +293,7 @@ class AuthProvider extends ChangeNotifier {
 
   // Clear tenant selection
   Future<void> clearTenant() async {
+    FinanceScope.instance.reset();
     _tenantSlug = null;
     _errorMessage = null;
     final prefs = await SharedPreferences.getInstance();
@@ -325,6 +327,7 @@ class AuthProvider extends ChangeNotifier {
     }
 
     HrmCapabilities.instance.clear();
+    FinanceScope.instance.reset();
     _isLoggedIn = false;
     _kind = null;
     _fullName = null;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
 import '../../../utils/app_toast.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 /// Hộp thoại xác nhận hoàn thành công việc kèm kiểm tra điều kiện
 /// Đồng bộ 1:1 với Web React complete-work-item-dialog.tsx
@@ -98,7 +99,7 @@ class _CompleteWorkItemDialogState extends State<_CompleteWorkItemDialog> {
         if (mounted) {
           setState(() {
             _isSubmitting = false;
-            _error = 'Không thể cập nhật trạng thái công việc. Vui lòng thử lại.';
+            _error = widget.service.lastError ?? 'workspace.complete_item.failed'.tr();
           });
         }
       }

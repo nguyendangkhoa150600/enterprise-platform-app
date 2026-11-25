@@ -58,7 +58,9 @@ enum NotificationModule {
   workspace,
   hrm,
   inventory,
-  maintenance;
+  maintenance,
+  correspondence,
+  finance;
 
   static NotificationModule fromString(String? val) {
     switch (val?.toLowerCase()) {
@@ -72,6 +74,11 @@ enum NotificationModule {
         return NotificationModule.inventory;
       case 'maintenance':
         return NotificationModule.maintenance;
+      case 'correspondence':
+      case 'letter':
+        return NotificationModule.correspondence;
+      case 'finance':
+        return NotificationModule.finance;
       case 'hrm':
       default:
         return NotificationModule.hrm;
@@ -92,6 +99,10 @@ enum NotificationModule {
         return 'models.notif.cat_inventory'.tr();
       case NotificationModule.identity:
         return 'models.notif.cat_security'.tr();
+      case NotificationModule.correspondence:
+        return 'models.notif.cat_correspondence'.tr();
+      case NotificationModule.finance:
+        return 'models.notif.cat_finance'.tr();
     }
   }
 
@@ -109,6 +120,10 @@ enum NotificationModule {
         return Icons.inventory_2_outlined;
       case NotificationModule.identity:
         return Icons.security_outlined;
+      case NotificationModule.correspondence:
+        return Icons.mark_email_read_outlined;
+      case NotificationModule.finance:
+        return Icons.account_balance_wallet_outlined;
     }
   }
 
@@ -126,6 +141,10 @@ enum NotificationModule {
         return const Color(0xFF059669);
       case NotificationModule.identity:
         return const Color(0xFFDC2626);
+      case NotificationModule.correspondence:
+        return const Color(0xFF2563EB);
+      case NotificationModule.finance:
+        return const Color(0xFF7C3AED);
     }
   }
 }
@@ -182,8 +201,15 @@ class NotificationRecord {
 
     final dLink = json['deep_link']?.toString() ?? json['deepLink']?.toString();
 
+    final meta = json['metadata'] ?? json['payload'] ?? json['data'];
+    if (meta is Map) {
+      final metaLetterId = (meta['letterId'] ?? meta['letter_id'])?.toString();
+      if (metaLetterId != null && metaLetterId.isNotEmpty) {
+        extractedSourceId = metaLetterId;
+      }
+    }
+
     if (extractedSourceId.isEmpty) {
-      final meta = json['metadata'] ?? json['payload'] ?? json['data'];
       if (meta is Map) {
         extractedSourceId = (meta['id'] ??
             meta['source_id'] ??
@@ -197,12 +223,27 @@ class NotificationRecord {
       }
     }
 
+    if (extractedSourceId.contains(':') &&
+        (json['module']?.toString().toLowerCase() == 'correspondence' ||
+            json['sourceType']?.toString().contains('correspondence') == true ||
+            json['source_type']?.toString().contains('correspondence') == true)) {
+      extractedSourceId = extractedSourceId.split(':').first;
+    }
+
     if (extractedSourceId.isEmpty && dLink != null && dLink.isNotEmpty) {
-      final segments = dLink.split('/').where((s) => s.isNotEmpty).toList();
-      if (segments.isNotEmpty) {
-        final last = segments.last;
-        if (!['requests', 'approvals', 'hrm', 'overview', 'details'].contains(last.toLowerCase())) {
-          extractedSourceId = last;
+      if (dLink.contains('#letters/')) {
+        final match = RegExp(r'#letters/([a-zA-Z0-9_\-]+)').firstMatch(dLink);
+        if (match != null) {
+          extractedSourceId = match.group(1) ?? '';
+        }
+      }
+      if (extractedSourceId.isEmpty) {
+        final segments = dLink.split('/').where((s) => s.isNotEmpty).toList();
+        if (segments.isNotEmpty) {
+          final last = segments.last;
+          if (!['requests', 'approvals', 'hrm', 'overview', 'details', 'correspondence'].contains(last.toLowerCase())) {
+            extractedSourceId = last;
+          }
         }
       }
     }
@@ -241,6 +282,19 @@ class NotificationRecord {
 
   String get categoryVietnamese {
     switch (category) {
+      case 'deadline':
+      case 'procedure_task_deadline':
+        return 'models.notif.type_deadline'.tr();
+      case 'assignment':
+        return 'models.notif.type_assignment'.tr();
+      case 'approval':
+        return 'models.notif.type_approval'.tr();
+      case 'result':
+        return 'models.notif.type_result'.tr();
+      case 'mention':
+        return 'models.notif.type_mention'.tr();
+      case 'comment':
+        return 'models.notif.type_comment'.tr();
       case 'hrm_approval_required':
       case 'leave_request_submitted':
       case 'request_submitted':
@@ -260,8 +314,6 @@ class NotificationRecord {
         return 'models.notif.type_payslip'.tr();
       case 'procedure_instance_assigned':
         return 'models.notif.type_procedure'.tr();
-      case 'procedure_task_deadline':
-        return 'models.notif.type_deadline'.tr();
       case 'maintenance_incident_reported':
         return 'models.notif.type_incident'.tr();
       case 'inventory_stock_alert':

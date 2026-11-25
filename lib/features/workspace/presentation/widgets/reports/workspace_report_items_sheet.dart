@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/workspace_report_models.dart';
 
 /// BottomSheet hiển thị danh sách công việc chi tiết khi bấm vào con số trên Báo cáo
@@ -12,10 +13,18 @@ class WorkspaceReportItemsSheet extends StatefulWidget {
   final String? initialStatus;
   final Future<ReportItemList?> Function(String? status)? statusLoader;
 
+  /// Tên người phụ trách theo userId (cột "Người phụ trách" của web).
+  final Map<String, String> userNames;
+
+  /// Bấm tên công việc: mở chi tiết công việc (web `onOpenItem(projectId, workItemId)`).
+  final void Function(ReportItemRow item)? onOpenItem;
+
   const WorkspaceReportItemsSheet({
     super.key,
     required this.title,
     this.subtitle,
+    this.userNames = const {},
+    this.onOpenItem,
     required this.loader,
     this.statusBreakdown,
     this.initialStatus,
@@ -26,6 +35,8 @@ class WorkspaceReportItemsSheet extends StatefulWidget {
     BuildContext context, {
     required String title,
     String? subtitle,
+    Map<String, String> userNames = const {},
+    void Function(ReportItemRow item)? onOpenItem,
     required Future<ReportItemList?> Function() loader,
     List<ReportCount>? statusBreakdown,
     String? initialStatus,
@@ -38,6 +49,8 @@ class WorkspaceReportItemsSheet extends StatefulWidget {
       builder: (ctx) => WorkspaceReportItemsSheet(
         title: title,
         subtitle: subtitle,
+        userNames: userNames,
+        onOpenItem: onOpenItem,
         loader: loader,
         statusBreakdown: statusBreakdown,
         initialStatus: initialStatus,
@@ -279,6 +292,23 @@ class _WorkspaceReportItemsSheetState extends State<WorkspaceReportItemsSheet> {
     );
   }
 
+  /// Web: "khoảng ngày · n[+] công việc" khi đã tải xong, trước đó chỉ khoảng ngày.
+  String get _subtitleText {
+    final base = widget.subtitle ?? '';
+    final data = _data;
+    if (data == null) return base;
+    final count = 'workspace.report.items_count'.tr(args: {'count': '${data.items.length}${data.truncated ? '+' : ''}'});
+    return base.isEmpty ? count : '$base · $count';
+  }
+
+  static String _dmy(String? value) {
+    if (value == null || value.length < 10) return value ?? '';
+    final d = DateTime.tryParse(value);
+    if (d == null) return value;
+    final local = value.length > 10 ? d.toLocal() : d;
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
@@ -320,10 +350,10 @@ class _WorkspaceReportItemsSheetState extends State<WorkspaceReportItemsSheet> {
                             : widget.title,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
-                      if (widget.subtitle != null && widget.subtitle!.isNotEmpty) ...[
+                      if (_subtitleText.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          widget.subtitle!,
+                          _subtitleText,
                           style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -473,27 +503,54 @@ class _WorkspaceReportItemsSheetState extends State<WorkspaceReportItemsSheet> {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                item.title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
-              if (item.plannedEnd != null && item.plannedEnd!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF64748B)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Hạn: ${item.plannedEnd}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              // Web: tên công việc là nút link "Mở chi tiết công việc".
+              widget.onOpenItem == null
+                  ? Text(
+                      item.title,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    )
+                  : InkWell(
+                      onTap: () => widget.onOpenItem!(item),
+                      child: Text(
+                        item.title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1D4ED8),
+                          decoration: TextDecoration.underline,
+                          decorationColor: Color(0xFF1D4ED8),
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 6),
+              // Cột Người phụ trách / Hạn / Ngày xong của web.
+              Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                children: [
+                  _meta(Icons.person_outline,
+                      item.assigneeUserId == null || item.assigneeUserId!.isEmpty
+                          ? 'workspace.report.item_unassigned'.tr()
+                          : (widget.userNames[item.assigneeUserId] ?? item.assigneeUserId!)),
+                  if ((item.plannedEnd ?? '').isNotEmpty)
+                    _meta(Icons.calendar_today_outlined, 'workspace.report.item_due'.tr(args: {'date': _dmy(item.plannedEnd)})),
+                  if ((item.actualEnd ?? '').isNotEmpty)
+                    _meta(Icons.check_circle_outline, 'workspace.report.item_done'.tr(args: {'date': _dmy(item.actualEnd)})),
+                ],
+              ),
             ],
           ),
         );
       },
     );
   }
+
+  Widget _meta(IconData icon, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: const Color(0xFF64748B)),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+        ],
+      );
 }

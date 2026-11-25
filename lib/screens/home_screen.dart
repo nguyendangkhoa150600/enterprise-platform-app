@@ -25,6 +25,7 @@ import '../providers/chat_provider.dart';
 import '../features/crm/presentation/screens/crm_hub_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_overview_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_mine_screen.dart';
+import '../features/correspondence/presentation/screens/correspondence_tracking_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_incoming_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_outgoing_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_archive_screen.dart';
@@ -219,6 +220,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceOverviewScreen()));
     } else if (key == 'correspondence/mine') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceMineScreen()));
+    } else if (key == 'correspondence/tracking' || key == 'theo-doi-don-doc') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceTrackingScreen()));
     } else if (key == 'correspondence/incoming' || key == 'cong-van-den') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const CorrespondenceIncomingScreen()));
     } else if (key == 'correspondence/outgoing' || key == 'cong-van-di') {
