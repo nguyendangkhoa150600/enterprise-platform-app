@@ -52,12 +52,12 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
             ),
             margin: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.slate800.withOpacity(0.4),
+              color: AppColors.slate800.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.slate700.withOpacity(0.5)),
+              border: Border.all(color: AppColors.slate700.withValues(alpha: 0.5)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 30,
                   offset: const Offset(0, 15),
                 ),
@@ -107,9 +107,9 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: const Text(
               'Enterprise Platform',
@@ -135,7 +135,7 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
           Text(
             'tenant.hero.desc'.tr(),
             style: TextStyle(
-              color: AppColors.slate300.withOpacity(0.8),
+              color: AppColors.slate300.withValues(alpha: 0.8),
               fontSize: 14,
               height: 1.5,
             ),
@@ -161,9 +161,9 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.slate900.withOpacity(0.5),
+        color: AppColors.slate900.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.slate700.withOpacity(0.5)),
+        border: Border.all(color: AppColors.slate700.withValues(alpha: 0.5)),
       ),
       child: Text(
         text,
@@ -181,7 +181,7 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Icon(
         Icons.chevron_right,
-        color: AppColors.slate500.withOpacity(0.5),
+        color: AppColors.slate500.withValues(alpha: 0.5),
         size: 16,
       ),
     );
@@ -190,7 +190,7 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
   Widget _buildRightInputPanel(AuthProvider provider) {
     return Container(
       padding: const EdgeInsets.all(40),
-      color: AppColors.slate800.withOpacity(0.3),
+      color: AppColors.slate800.withValues(alpha: 0.3),
       child: Form(
         key: _formKey,
         child: Column(
@@ -233,12 +233,12 @@ class _TenantInputScreenState extends State<TenantInputScreen> {
                 hintText: 'tenant.form.url_hint'.tr(),
                 hintStyle: const TextStyle(color: AppColors.slate500, fontSize: 13),
                 floatingLabelBehavior: FloatingLabelBehavior.always,
-                fillColor: AppColors.slate900.withOpacity(0.5),
+                fillColor: AppColors.slate900.withValues(alpha: 0.5),
                 filled: true,
                 prefixIcon: const Icon(Icons.business, color: AppColors.slate400),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.slate700.withOpacity(0.7)),
+                  borderSide: BorderSide(color: AppColors.slate700.withValues(alpha: 0.7)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),

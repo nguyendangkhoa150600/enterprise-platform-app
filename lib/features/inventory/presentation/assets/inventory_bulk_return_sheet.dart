@@ -145,6 +145,7 @@ class _InventoryBulkReturnSheetState extends State<InventoryBulkReturnSheet> {
   Widget _row(int idx, InvBulkReturnEntry item) {
     final missing = item.warehouseCode.isEmpty;
     return Container(
+      key: ObjectKey(item),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -178,9 +179,12 @@ class _InventoryBulkReturnSheetState extends State<InventoryBulkReturnSheet> {
                 icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.slate400),
                 onPressed: _busy
                     ? null
-                    : () => setState(() {
-                          _items.removeAt(idx).note.dispose();
-                        }),
+                    : () {
+                        final removed = _items[idx];
+                        setState(() => _items.removeAt(idx));
+                        // Huỷ controller sau khung hình kế tiếp: TextField còn giữ nó đến khi bị gỡ khỏi cây.
+                        WidgetsBinding.instance.addPostFrameCallback((_) => removed.note.dispose());
+                      },
               ),
             ],
           ),

@@ -53,7 +53,8 @@ class _InventoryIncidentRecordSheetState extends State<InventoryIncidentRecordSh
       InvIncidentLog(
         id: 'incident-${now.millisecondsSinceEpoch}',
         date: date,
-        title: '[${'inventory.assets.incident_cat_$_category'.tr()}] ${_title.text.trim()}',
+        // Web ghi GIÁ TRỊ phân loại vào tiêu đề; hai mục có giá trị khác nhãn hiển thị.
+        title: '[${(_category == 'thermal' || _category == 'sensor' ? 'inventory.assets.incident_cat_value_$_category' : 'inventory.assets.incident_cat_$_category').tr()}] ${_title.text.trim()}',
         badge: badgeKey.tr(),
         badgeType: badgeType,
         desc: _desc.text.trim(),

@@ -20,6 +20,53 @@ List<Map<String, dynamic>> invList(dynamic res, [String? key]) {
   return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
 }
 
+/// Bảng chữ cái tiếng Việt (kèm f, j, w, z) theo thứ tự từ điển; mỗi nhóm là chữ gốc rồi 5 dấu
+/// huyền, hỏi, ngã, sắc, nặng — xấp xỉ `localeCompare(x, 'vi')` của web.
+const List<String> _kViLetters = [
+  'aàảãáạ', 'ăằẳẵắặ', 'âầẩẫấậ', 'b', 'c', 'd', 'đ', 'eèẻẽéẹ', 'êềểễếệ', 'f', 'g', 'h', 'iìỉĩíị', 'j', 'k',
+  'l', 'm', 'n', 'oòỏõóọ', 'ôồổỗốộ', 'ơờởỡớợ', 'p', 'q', 'r', 's', 't', 'uùủũúụ', 'ưừửữứự', 'v', 'w', 'x',
+  'yỳỷỹýỵ', 'z',
+];
+
+final Map<int, (int, int)> _kViWeights = () {
+  final map = <int, (int, int)>{};
+  for (var i = 0; i < _kViLetters.length; i++) {
+    final group = _kViLetters[i].runes.toList();
+    for (var t = 0; t < group.length; t++) {
+      map[group[t]] = (10000 + i, t);
+    }
+  }
+  return map;
+}();
+
+/// Trọng số cấp 1 (chữ, bỏ dấu thanh), cấp 2 (dấu thanh), cấp 3 (hoa/thường) của một ký tự.
+(int, int, int) _viWeight(int rune) {
+  final lower = String.fromCharCode(rune).toLowerCase().runes.first;
+  final caseWeight = lower == rune ? 0 : 1;
+  final w = _kViWeights[lower];
+  if (w != null) return (w.$1, w.$2, caseWeight);
+  if (lower >= 0x30 && lower <= 0x39) return (5000 + lower, 0, 0); // chữ số trước chữ cái
+  if (lower < 0x80) return (lower, 0, 0); // khoảng trắng, dấu câu trước chữ số
+  return (20000 + lower, 0, caseWeight);
+}
+
+/// So sánh chuỗi theo thứ tự tiếng Việt (web `a.localeCompare(b, 'vi')`): không phân biệt hoa/thường
+/// và dấu thanh ở cấp đầu, rồi mới xét dấu thanh, rồi hoa/thường.
+int invViCompare(String a, String b) {
+  final ra = a.runes.map(_viWeight).toList();
+  final rb = b.runes.map(_viWeight).toList();
+  for (var level = 0; level < 3; level++) {
+    final n = ra.length < rb.length ? ra.length : rb.length;
+    for (var i = 0; i < n; i++) {
+      final x = ra[i], y = rb[i];
+      final cmp = switch (level) { 0 => x.$1 - y.$1, 1 => x.$2 - y.$2, _ => x.$3 - y.$3 };
+      if (cmp != 0) return cmp;
+    }
+    if (level == 0 && ra.length != rb.length) return ra.length - rb.length;
+  }
+  return 0;
+}
+
 /// Số lượng theo kiểu VN: bỏ phần thập phân thừa (web `formatNumber`).
 String invFormatQty(num value) {
   final v = value.toDouble();
@@ -525,7 +572,7 @@ List<InvTreeNode> invBuildAssetTree(List<InvAsset> assets, Set<String> visibleId
       cursor = pid != null ? byId[pid] : null;
     }
   }
-  int byCode(InvAsset a, InvAsset b) => a.code.compareTo(b.code);
+  int byCode(InvAsset a, InvAsset b) => invViCompare(a.code, b.code);
   final flat = <InvTreeNode>[];
   void emit(InvAsset asset, int depth) {
     if (!keep.contains(asset.id)) return;

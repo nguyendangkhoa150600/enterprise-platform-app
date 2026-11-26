@@ -219,7 +219,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -251,7 +251,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                   border: Border.all(color: const Color(0xFFEFF6FF), width: 4),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF2563EB).withOpacity(0.25),
+                                      color: const Color(0xFF2563EB).withValues(alpha: 0.25),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -303,9 +303,13 @@ class _AccountScreenState extends State<AccountScreen> {
                           alignment: WrapAlignment.center,
                           children: roles.map((r) {
                             String label = r;
-                            if (r == 'tenant-admin') label = 'account.role.tenant_admin'.tr();
-                            else if (r == 'tenant-user') label = 'account.user'.tr();
-                            else if (r == 'platform-admin') label = 'account.role.platform_admin'.tr();
+                            if (r == 'tenant-admin') {
+                              label = 'account.role.tenant_admin'.tr();
+                            } else if (r == 'tenant-user') {
+                              label = 'account.user'.tr();
+                            } else if (r == 'platform-admin') {
+                              label = 'account.role.platform_admin'.tr();
+                            }
 
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -355,7 +359,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),

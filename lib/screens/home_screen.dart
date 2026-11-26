@@ -22,7 +22,8 @@ import './my_requests_screen.dart';
 import './workspace_screen.dart';
 import './communication_hub_screen.dart';
 import '../providers/chat_provider.dart';
-import '../features/crm/presentation/screens/crm_hub_screen.dart';
+import '../features/crm/presentation/crm_nav.dart';
+import '../features/crm/presentation/crm_routes.dart';
 import '../features/correspondence/presentation/screens/correspondence_overview_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_mine_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_tracking_screen.dart';
@@ -213,7 +214,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } else if (key == 'workspace-reports' || key == 'bao-cao-cong-viec') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 5)));
     } else if (key == 'crm' || key == 'sales' || key == 'ban-hang' || key == 'khach-hang-crm') {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const CrmHubScreen()));
+      // Web: vào `/modules/crm` không hash thì mở trang mặc định (Khách hàng).
+      CrmRoutes.open(context, kCrmDefaultView);
     } else if (key == 'assistant' || key == 'savina-agent' || key == 'ai' || key == 'tro-ly') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationHubScreen(initialIndex: 1)));
     } else if (key == 'correspondence' || key == 'van-thu' || key == 'correspondence/overview') {

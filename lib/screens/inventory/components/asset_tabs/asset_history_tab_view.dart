@@ -123,7 +123,7 @@ class AssetHistoryTabView extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       value,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: value.length > 12 ? 14.5 : 17,
@@ -188,7 +188,7 @@ class AssetHistoryTabView extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 8,
           crossAxisSpacing: 8,
-          childAspectRatio: 1.6,
+          childAspectRatio: 1.35,
           children: [
             kpi('inventory.assets.kpi_hours'.tr(), 'inventory.assets.kpi_hours_hint'.tr(),
                 'inventory.assets.hours'.tr(args: {'n': invFormatQty(meterHours)}), const Color(0xFF2563EB)),

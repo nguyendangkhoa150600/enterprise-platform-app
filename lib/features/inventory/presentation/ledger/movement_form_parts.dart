@@ -7,6 +7,7 @@ import '../../../workspace/presentation/widgets/searchable_dropdown_field.dart';
 import '../../domain/ledger/ledger_models.dart';
 import '../../domain/ledger/movement_models.dart';
 import 'ledger_format.dart';
+import '../utils/inventory_number.dart';
 
 /// Các hộp con của phiếu nhập/xuất/chuyển (web movement-form.tsx: modal Sê-ri, Lô, Vật tư mới).
 
@@ -403,7 +404,7 @@ class _MovementLotSheetState extends State<MovementLotSheet> {
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: movementInputDecoration(hint: '0'),
                         onChanged: (v) {
-                          final n = double.tryParse(v.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+                          final n = parseVnNumber(v) ?? 0;
                           _draft[c.lot.id] = n.clamp(0, c.available).toDouble();
                         },
                       ),

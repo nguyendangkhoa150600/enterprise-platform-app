@@ -79,7 +79,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   int get _activeCount => _users.where((u) => u.isActive).length;
   int get _disabledCount => _users.where((u) => !u.isActive).length;
-  int get _adminCount => _users.where((u) => u.systemRole == 'tenant-admin' || u.systemRole == 'platform-admin').length;
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +153,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
+                            color: Colors.black.withValues(alpha: 0.02),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -202,7 +201,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
+                            color: Colors.black.withValues(alpha: 0.02),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -449,7 +448,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final user = filtered[index];
                           final isAdmin = user.systemRole == 'tenant-admin' || user.systemRole == 'platform-admin';
@@ -468,7 +467,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               border: Border.all(color: const Color(0xFFE2E8F0)),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.02),
+                                  color: Colors.black.withValues(alpha: 0.02),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),
@@ -523,7 +522,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                               color: Colors.white,
                                               surfaceTintColor: Colors.transparent,
                                               elevation: 8,
-                                              shadowColor: Colors.black.withOpacity(0.12),
+                                              shadowColor: Colors.black.withValues(alpha: 0.12),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(12),
                                                 side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1361,7 +1360,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   );
                                   if (mounted) {
                                     if (res.success) {
-                                      Navigator.pop(ctx);
+                                      if (ctx.mounted) Navigator.pop(ctx);
                                       _showToast('users.toast_updated'.tr());
                                       _loadUsers();
                                     } else {
@@ -1379,7 +1378,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   );
                                   if (mounted) {
                                     if (res.success) {
-                                      Navigator.pop(ctx);
+                                      if (ctx.mounted) Navigator.pop(ctx);
                                       _showToast('users.toast_added'.tr());
                                       _loadUsers();
                                     } else {

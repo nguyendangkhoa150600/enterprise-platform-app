@@ -14,7 +14,10 @@ import 'inventory_asset_ui.dart';
 class InventoryCustodyTab extends StatefulWidget {
   /// Báo số tài sản cho tiêu đề tab.
   final ValueChanged<int>? onCount;
-  const InventoryCustodyTab({super.key, this.onCount});
+
+  /// Sau khi khai báo / cấp phát: web `perform` nạp lại cả workspace (cây tài sản) chứ không chỉ sổ tài sản.
+  final Future<void> Function()? onChanged;
+  const InventoryCustodyTab({super.key, this.onCount, this.onChanged});
 
   @override
   State<InventoryCustodyTab> createState() => InventoryCustodyTabState();
@@ -98,6 +101,7 @@ class InventoryCustodyTabState extends State<InventoryCustodyTab> with Automatic
             await reload();
           }
           if (mounted) invToast(context, 'inventory.assets.assigned_toast'.tr(args: {'code': asset.code}));
+          await widget.onChanged?.call();
         },
       ),
     );
@@ -115,6 +119,7 @@ class InventoryCustodyTabState extends State<InventoryCustodyTab> with Automatic
             await reload();
           }
           if (mounted) invToast(context, 'inventory.assets.declared_toast'.tr(args: {'code': code}));
+          await widget.onChanged?.call();
         },
       ),
     );

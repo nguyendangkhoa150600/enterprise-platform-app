@@ -8,6 +8,7 @@ import '../../data/ledger/ledger_repository.dart';
 import '../../domain/ledger/ledger_models.dart';
 import '../utils/inventory_scope.dart';
 import 'ledger_format.dart';
+import '../utils/inventory_number.dart';
 
 /// Tách ô serial thành danh sách (web `parseSerialText`).
 List<String> parseSerialText(String value) =>
@@ -555,8 +556,7 @@ class _BatchRequisitionSheetState extends State<BatchRequisitionSheet> {
   }
 
   static double _parseVn(String v) {
-    final cleaned = v.replaceAll('.', '').replaceAll(',', '.');
-    return double.tryParse(cleaned) ?? 0;
+    return parseVnNumber(v) ?? 0;
   }
 
   Widget _footer() {

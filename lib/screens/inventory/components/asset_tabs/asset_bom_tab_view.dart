@@ -106,11 +106,19 @@ class _AssetBomTabViewState extends State<AssetBomTabView> {
   }
 
   void _cancel() {
-    for (final d in _drafts) {
-      d.qty.dispose();
-    }
+    _disposeLater(_drafts);
     _drafts = [];
     _editing = false;
+  }
+
+  /// Huỷ controller sau khung hình kế tiếp: các TextField còn giữ chúng đến khi bị gỡ khỏi cây.
+  void _disposeLater(List<_Draft> drafts) {
+    if (drafts.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final d in drafts) {
+        d.qty.dispose();
+      }
+    });
   }
 
   Future<void> _addOption() async {
@@ -325,6 +333,7 @@ class _AssetBomTabViewState extends State<AssetBomTabView> {
     final name = mat?.name ?? node?.materialName ?? d.materialCode;
     final unit = mat?.unit ?? node?.unit ?? '';
     return Container(
+      key: ObjectKey(d),
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -358,7 +367,9 @@ class _AssetBomTabViewState extends State<AssetBomTabView> {
                     message: 'inventory.assets.bom_delete_message'.tr(args: {'name': name, 'code': d.materialCode}),
                     okText: 'inventory.assets.confirm_delete'.tr(),
                   );
-                  if (ok && mounted) setState(() => _drafts.removeAt(index).qty.dispose());
+                  if (!ok || !mounted || !_drafts.contains(d)) return;
+                  setState(() => _drafts.remove(d));
+                  _disposeLater([d]);
                 },
                 child: Text('inventory.assets.delete'.tr()),
               ),

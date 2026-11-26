@@ -7,6 +7,7 @@ import '../../domain/documents/stock_document_logic.dart';
 import '../../domain/documents/stock_document_models.dart';
 import '../utils/inventory_scope.dart';
 import 'document_widgets.dart';
+import '../utils/inventory_number.dart';
 
 /// Chọn serial cho một dòng (web `SerialPickerDrawer`). Dòng xuất: chỉ serial đang ở kho xuất, Trong kho, Đạt.
 /// Dòng nhập: gõ hoặc quét serial mới. Trả danh sách đã chọn khi bấm Áp dụng, `null` khi đóng.
@@ -331,7 +332,7 @@ class _LotPickerSheetState extends State<_LotPickerSheet> {
   }
 
   double _amount(String lotNo) {
-    final v = double.tryParse((_ctrls[lotNo]?.text ?? '').replaceAll(',', '.')) ?? 0;
+    final v = parseVnNumber(_ctrls[lotNo]?.text) ?? 0;
     return v < 0 ? 0 : v;
   }
 

@@ -28,6 +28,13 @@ class InventoryDocumentsScreen extends StatefulWidget {
   /// Số chứng từ Chờ duyệt server trả kèm danh sách gộp, để hiện trên nhãn góc nhìn.
   final ValueChanged<int>? onPendingCount;
 
+  /// Web `onStockChanged`: gọi khi một chứng từ chuyển sang Đã ghi sổ để trang Kho hàng nạp lại tồn.
+  final VoidCallback? onStockChanged;
+
+  /// Id hoặc số chứng từ cần mở thẳng chi tiết (web `initialDocumentKey`: link `#stock/movements/<id>`,
+  /// `#vouchers/<id>` từ thông báo). Chỉ dùng ở danh sách gộp.
+  final String? initialDocumentKey;
+
   const InventoryDocumentsScreen({
     super.key,
     this.initialStatus,
@@ -35,6 +42,8 @@ class InventoryDocumentsScreen extends StatefulWidget {
     this.title,
     this.subtitle,
     this.onPendingCount,
+    this.onStockChanged,
+    this.initialDocumentKey,
   });
 
   @override
@@ -77,6 +86,12 @@ class _InventoryDocumentsScreenState extends State<InventoryDocumentsScreen> {
     InventoryScope.instance.ensureCapabilities();
     _loadRefs();
     _reload();
+    final key = widget.initialDocumentKey?.trim() ?? '';
+    if (!_approvalMode && key.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openDocument(key);
+      });
+    }
   }
 
   @override
@@ -207,7 +222,10 @@ class _InventoryDocumentsScreenState extends State<InventoryDocumentsScreen> {
       doc,
       allowEdit: !_approvalMode,
       closeOnChange: _approvalMode,
-      onChanged: (_, _) => _reload(),
+      onChanged: (changed, _) {
+        _reload();
+        if (changed.status == 'POSTED') widget.onStockChanged?.call();
+      },
     );
     if (toEdit == null || !mounted) return;
     await _openForm(DocumentDraft.fromDocument(toEdit), documentId: toEdit.id);
@@ -232,12 +250,27 @@ class _InventoryDocumentsScreenState extends State<InventoryDocumentsScreen> {
     if (result == null || !mounted) return;
     showDocSnack(context, result.message);
     _reload();
+    if (result.document.status == 'POSTED') widget.onStockChanged?.call();
     await _showDetail(result.document);
   }
 
-  void _createDocument() {
+  /// Kho mặc định là kho đang hoạt động đầu tiên (web `emptyDraft`): nạp kho trước nếu chưa có, để bản nháp
+  /// không bị trống kho khi người dùng bấm "Lập chứng từ" lúc danh mục còn đang tải.
+  Future<void> _createDocument() async {
+    if (_refs.warehouses.isEmpty) {
+      try {
+        final refs = await _api.refs(force: true);
+        if (!mounted) return;
+        setState(() => _refs = refs);
+      } catch (e) {
+        InventoryScope.instance.onError(e);
+        if (!mounted) return;
+        showDocSnack(context, inventoryErrorMessage(e), error: true);
+        return;
+      }
+    }
     final firstActive = _refs.warehouses.where((w) => w.isActive).firstOrNull?.code ?? '';
-    _openForm(DocumentDraft.empty('RECEIPT_PURCHASE', firstActive));
+    await _openForm(DocumentDraft.empty('RECEIPT_PURCHASE', firstActive));
   }
 
   // ---------------------------------------------------------------- Giao diện
@@ -585,9 +618,10 @@ class _InventoryDocumentsScreenState extends State<InventoryDocumentsScreen> {
             key: ValueKey('${doc.id}:${doc.status}'),
             document: doc,
             exclude: const [DocAction.cancel, DocAction.edit],
-            onChanged: (_, message) {
+            onChanged: (changed, message) {
               showDocSnack(context, message);
               _reload();
+              if (changed.status == 'POSTED') widget.onStockChanged?.call();
             },
           ),
         ]),

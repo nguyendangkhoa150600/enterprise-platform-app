@@ -118,7 +118,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                   ),
                                   Switch(
                                     value: p.feedEnabled,
-                                    activeColor: const Color(0xFF2563EB),
+                                    activeThumbColor: const Color(0xFF2563EB),
                                     onChanged: (val) {
                                       setModalState(() {
                                         prefs[i] = NotificationPreference(

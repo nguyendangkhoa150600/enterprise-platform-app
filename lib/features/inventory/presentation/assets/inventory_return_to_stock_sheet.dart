@@ -5,6 +5,7 @@ import '../../domain/assets/inventory_asset_models.dart';
 import '../utils/inventory_scope.dart';
 import 'inventory_asset_ui.dart';
 import 'inventory_serial_lot_pickers.dart';
+import '../utils/inventory_number.dart';
 
 /// Dữ liệu form tháo dỡ / thanh lý về kho (web `ReturnToStockInput`).
 class InvReturnInput {
@@ -107,7 +108,7 @@ class _InventoryReturnToStockSheetState extends State<InventoryReturnToStockShee
   Widget build(BuildContext context) {
     final unit = widget.unit;
     final max = widget.maxQuantity;
-    final amount = double.tryParse(_qty.text.trim().replaceAll(',', '.')) ?? double.nan;
+    final amount = parseVnNumber(_qty.text) ?? double.nan;
     final valid = amount.isFinite && amount > 0;
     final over = max != null && valid && amount > max;
     final serialsMissing = widget.serialMaterialCode != null && _serials.length != (valid ? amount : 0);

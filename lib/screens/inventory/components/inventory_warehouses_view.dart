@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../models/inventory_models.dart';
-import '../../../theme/colors.dart';
 
 class InventoryWarehousesView extends StatefulWidget {
   final List<WarehouseItem> warehouses;
@@ -68,7 +67,7 @@ class _InventoryWarehousesViewState extends State<InventoryWarehousesView> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   return _buildWarehouseCard(filtered[index]);
                 },

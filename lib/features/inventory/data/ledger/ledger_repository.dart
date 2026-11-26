@@ -234,7 +234,7 @@ class LedgerRepository {
 
     if (movement.kind == MovementKind.receipt) {
       for (final l in lines) {
-        // Web: VAT riêng từng dòng (nạp từ Excel) ghi vào ghi chú; dòng có kho riêng thì nhập vào kho đó.
+        // Web: VAT riêng từng dòng (nạp từ Excel) ghi vào ghi chú.
         final vat = l.vatRate;
         final base = [
           movement.note,
@@ -244,9 +244,10 @@ class LedgerRepository {
           if (vat != null) 'VAT: ${vat == vat.truncateToDouble() ? vat.toInt() : vat}%',
         ].where((s) => s.isNotEmpty).join(' | ');
         final note = l.lineNote.isNotEmpty ? '$base (${l.lineNote})' : base;
-        final lineWh = l.warehouseCode;
+        // Web submit chốt `items.map(item => ({...item, warehouseCode}))`: một phiếu một kho,
+        // dòng nạp từ Excel mang kho cũ (trước khi đổi kho phiếu) vẫn ghi vào kho của phiếu.
         final res = await _api.post('/receipts', {
-          'warehouseCode': (lineWh != null && lineWh.isNotEmpty) ? lineWh : wh,
+          'warehouseCode': wh,
           'materialCode': l.materialCode,
           'quantity': l.quantity,
           if (l.unitCost != null) 'unitCost': l.unitCost,

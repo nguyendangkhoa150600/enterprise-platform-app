@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/i18n/app_i18n.dart';
 import '../../../../theme/colors.dart';
 import 'inventory_overview_format.dart';
 
@@ -11,15 +12,15 @@ class OverviewChartSlice {
   const OverviewChartSlice(this.label, this.value);
 }
 
+/// Bảng màu chung của web `charts.tsx` (`PALETTE`), xoay vòng theo thứ tự.
 const List<Color> _palette = [
-  Color(0xFF2563EB),
-  Color(0xFF10B981),
-  Color(0xFFF59E0B),
-  Color(0xFFF43F5E),
-  Color(0xFF8B5CF6),
-  Color(0xFF06B6D4),
-  Color(0xFF84CC16),
-  Color(0xFFEC4899),
+  Color(0xFF2F6FED),
+  Color(0xFF16845E),
+  Color(0xFFE0A83A),
+  Color(0xFFB23B3B),
+  Color(0xFF7B5EA7),
+  Color(0xFF3AA0A8),
+  Color(0xFF8494A8),
 ];
 
 Color _colorAt(int i) => _palette[i % _palette.length];
@@ -129,20 +130,33 @@ class _DonutPainter extends CustomPainter {
   bool shouldRepaint(covariant _DonutPainter old) => old.values != values || old.total != total;
 }
 
-/// Biểu đồ cột ngang (web `BarChart`).
+/// Biểu đồ cột ngang (web `BarChart`): bỏ giá trị ≤ 0, xếp giảm dần, tối đa [max] cột,
+/// phần còn lại gộp vào một cột "Khác".
 class InventoryBarChart extends StatelessWidget {
   final List<OverviewChartSlice> slices;
   final String emptyHint;
+  final int max;
 
-  const InventoryBarChart({super.key, required this.slices, required this.emptyHint});
+  const InventoryBarChart({super.key, required this.slices, required this.emptyHint, this.max = 6});
 
   @override
   Widget build(BuildContext context) {
-    if (slices.isEmpty) return _emptyHint(emptyHint);
-    final maxValue = slices.fold<double>(0, (m, s) => math.max(m, s.value));
+    final all = slices.where((s) => s.value.isFinite && s.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    if (all.isEmpty) return _emptyHint(emptyHint);
+    final rest = all.skip(max).toList();
+    final bars = [
+      ...all.take(max),
+      if (rest.isNotEmpty)
+        OverviewChartSlice(
+          'inventory.overview.chart.other'.tr(),
+          rest.fold<double>(0, (sum, s) => sum + s.value),
+        ),
+    ];
+    final maxValue = bars.fold<double>(0, (m, s) => math.max(m, s.value));
     return Column(
       children: [
-        for (var i = 0; i < slices.length; i++)
+        for (var i = 0; i < bars.length; i++)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
@@ -152,7 +166,7 @@ class InventoryBarChart extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        slices[i].label,
+                        bars[i].label,
                         style: const TextStyle(fontSize: 12.5, color: AppColors.slate700),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -160,7 +174,7 @@ class InventoryBarChart extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      InventoryOverviewFormat.quantity(slices[i].value),
+                      InventoryOverviewFormat.quantity(bars[i].value),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.slate900),
                     ),
                   ],
@@ -168,7 +182,7 @@ class InventoryBarChart extends StatelessWidget {
                 const SizedBox(height: 4),
                 LayoutBuilder(
                   builder: (context, c) {
-                    final ratio = maxValue > 0 ? (slices[i].value / maxValue).clamp(0.0, 1.0) : 0.0;
+                    final ratio = maxValue > 0 ? (bars[i].value / maxValue).clamp(0.0, 1.0) : 0.0;
                     return Stack(
                       children: [
                         Container(
@@ -183,7 +197,7 @@ class InventoryBarChart extends StatelessWidget {
                           height: 8,
                           width: c.maxWidth * ratio,
                           decoration: BoxDecoration(
-                            color: _colorAt(0),
+                            color: _colorAt(i),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),

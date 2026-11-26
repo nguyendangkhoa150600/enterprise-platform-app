@@ -351,7 +351,7 @@ class AnalysisProvider extends ChangeNotifier {
     // Filter output media files for target download
     _downloadableFiles = details.media.where((m) {
       final name = m.mediaName?.toLowerCase() ?? '';
-      return name.contains('_${_targetIndex}') || name.contains('_target${_targetIndex}');
+      return name.contains('_$_targetIndex') || name.contains('_target$_targetIndex');
     }).toList();
 
     // Attempt to download and parse the main analysis Excel output file

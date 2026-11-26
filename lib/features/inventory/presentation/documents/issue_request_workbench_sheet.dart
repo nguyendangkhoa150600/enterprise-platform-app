@@ -255,7 +255,7 @@ class _WorkbenchState extends State<_Workbench> {
             if (problems.isNotEmpty && !_showErrors) DocBanner(problems.join(' ')),
             if (messages.isNotEmpty || _error != null) ...[
               const SizedBox(height: 8),
-              DocMessages([if (_error != null) _error!, ...messages]),
+              DocMessages([?_error, ...messages]),
             ],
             if (!widget.canWrite) ...[
               const SizedBox(height: 8),

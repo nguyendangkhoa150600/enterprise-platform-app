@@ -65,7 +65,6 @@ class _InventoryAssetsScreenState extends State<InventoryAssetsScreen> with Sing
       setState(() {
         _loading = false;
         _loadError = null;
-        _selectedAssetId ??= ws.assets.isNotEmpty ? ws.assets.first.id : null;
         _partialError = res.installedError == null
             ? null
             : 'inventory.assets.partial_load_error'.tr(args: {'detail': inventoryErrorMessage(res.installedError)});
@@ -342,6 +341,7 @@ class _InventoryAssetsScreenState extends State<InventoryAssetsScreen> with Sing
         children: [
           InventoryCustodyTab(
             key: _custodyKey,
+            onChanged: _reload,
             onCount: (n) {
               if (mounted && n != _custodyCount) setState(() => _custodyCount = n);
             },

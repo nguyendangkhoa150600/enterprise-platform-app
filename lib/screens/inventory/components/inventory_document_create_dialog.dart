@@ -8,6 +8,7 @@ import '../../../features/inventory/presentation/documents/document_widgets.dart
 import '../../../features/inventory/presentation/documents/lot_serial_pickers.dart';
 import '../../../features/inventory/presentation/utils/inventory_scope.dart';
 import '../../../theme/colors.dart';
+import '../../../features/inventory/presentation/utils/inventory_number.dart';
 
 class _LineCtrls {
   final TextEditingController quantity = TextEditingController();
@@ -29,9 +30,7 @@ String _plain(double? v) {
 }
 
 double? _parse(String text) {
-  final t = text.trim().replaceAll(' ', '');
-  if (t.isEmpty) return null;
-  return double.tryParse(t.replaceAll(',', '.'));
+  return parseVnNumber(text);
 }
 
 /// Form chứng từ kho nhiều dòng (web `StockDocumentForm`): phần đầu (loại, kho, kho đến khi điều chuyển,
@@ -340,7 +339,7 @@ class _InventoryDocumentCreateDialogState extends State<InventoryDocumentCreateD
               const SizedBox(height: 10),
             ],
             if (messages.isNotEmpty || _serverError != null)
-              DocMessages([if (_serverError != null) _serverError!, ...messages]),
+              DocMessages([?_serverError, ...messages]),
           ],
         ),
         footer: Column(mainAxisSize: MainAxisSize.min, children: [

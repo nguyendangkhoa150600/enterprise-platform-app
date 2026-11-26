@@ -42,7 +42,6 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
   List<HrmFleetVehicle> _vehicles = [];
   final List<PlatformFile> _selectedFiles = [];
 
-  bool _isLoadingData = true;
   bool _isSubmitting = false;
 
   @override
@@ -98,13 +97,10 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
           _procedures = procWs.definitions.where((d) => d.status == 'published').toList();
           _vehicles = vehicles;
           _employees = employeeMapList;
-          _isLoadingData = false;
         });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _isLoadingData = false);
-      }
+      // Load failure: keep the current (empty) option lists.
     }
   }
 

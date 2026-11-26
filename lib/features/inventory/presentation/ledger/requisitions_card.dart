@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/i18n/app_i18n.dart';
+import '../../../../screens/procedure_screen.dart';
 import '../../../../theme/colors.dart';
 import '../../domain/ledger/ledger_models.dart';
 import '../utils/inventory_csv_exporter.dart';
@@ -270,8 +271,25 @@ class _LedgerRequisitionsCardState extends State<LedgerRequisitionsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('inventory.ledger.req_detail_heading'.tr(args: {'n': req.lines.length}),
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.slate700)),
+          Row(children: [
+            Expanded(
+              child: Text('inventory.ledger.req_detail_heading'.tr(args: {'n': req.lines.length}),
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.slate700)),
+            ),
+            // Web: liên kết "Xem hồ sơ gốc" mở Không gian làm việc của module Quy trình.
+            TextButton.icon(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute<void>(builder: (_) => const ProcedureScreen(initialTab: 0))),
+              icon: const Icon(Icons.open_in_new, size: 13),
+              label: Text('inventory.ledger.req_view_origin'.tr()),
+              style: TextButton.styleFrom(
+                foregroundColor: _blue,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                minimumSize: const Size(0, 28),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ]),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             OutlinedButton.icon(

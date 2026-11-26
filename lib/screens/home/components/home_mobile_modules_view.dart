@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../workspace_screen.dart';
 import '../../procedure_screen.dart';
+import '../../../features/procedure/rcsi/presentation/screens/rcsi_screen.dart';
 import '../../hrm_hub_screen.dart';
 import '../../attendance_monitor_screen.dart';
 import '../../attendance_screen.dart';
@@ -12,9 +13,6 @@ import '../../fleet_schedule_screen.dart';
 import '../../maintenance_screen.dart';
 import '../../inventory/inventory_overview_screen.dart';
 import '../../inventory/inventory_items_screen.dart';
-import '../../inventory/inventory_transactions_screen.dart';
-import '../../inventory/inventory_documents_screen.dart';
-import '../../inventory/inventory_issue_requests_screen.dart';
 import '../../inventory/inventory_assets_screen.dart';
 import '../../inventory/inventory_reports_screen.dart';
 import '../../inventory/inventory_settings_screen.dart';
@@ -30,7 +28,12 @@ import '../../../features/correspondence/presentation/screens/correspondence_inc
 import '../../../features/correspondence/presentation/screens/correspondence_outgoing_screen.dart';
 import '../../../features/correspondence/presentation/screens/correspondence_archive_screen.dart';
 import '../../../features/correspondence/presentation/screens/correspondence_report_screen.dart';
-import '../../../features/finance/presentation/screens/finance_screen.dart';
+import '../../../features/crm/presentation/crm_nav.dart';
+import '../../../features/crm/presentation/crm_routes.dart';
+import '../../../features/crm/presentation/utils/crm_scope.dart';
+import '../../../features/finance/presentation/finance_routes.dart';
+import '../../../features/finance/presentation/utils/finance_scope.dart';
+import '../../../features/finance/presentation/widgets/common/finance_page_guard.dart';
 import 'package:provider/provider.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../core/permissions/hrm_permissions.dart';
@@ -64,7 +67,40 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
   String _selectedCategory = 'APPS'; // 'APPS' (Grid), 'LIST'
 
   @override
+  void initState() {
+    super.initState();
+    // Ô Tài chính hiện theo quyền (web `canOpenPage`): tải quyền một lần, đổi thì dựng lại.
+    FinanceScope.instance.capabilities.addListener(_onFinanceCapsChanged);
+    if (_modFinance) FinanceScope.instance.ensureCapabilities();
+    // Ô CRM hiện theo quyền `GET /api/crm/v1/status` (web: menu chỉ hiện khi đã biết quyền).
+    CrmScope.instance.status.addListener(_onCrmStatusChanged);
+    if (_modCrm) CrmScope.instance.ensureStatus();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeMobileModulesView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_modCrm && CrmScope.instance.status.value == null) CrmScope.instance.ensureStatus();
+  }
+
+  void _onFinanceCapsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onCrmStatusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Mục Tài chính theo quyền (web `canOpenPage`); chưa tải được quyền thì ẩn cả Dashboard.
+  bool _financeVisible(FinancePage page) {
+    if (!_modFinance) return false;
+    return page.canOpen(FinanceScope.instance.capabilities.value);
+  }
+
+  @override
   void dispose() {
+    FinanceScope.instance.capabilities.removeListener(_onFinanceCapsChanged);
+    CrmScope.instance.status.removeListener(_onCrmStatusChanged);
     _moduleSearchController.dispose();
     super.dispose();
   }
@@ -105,6 +141,29 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
       _mod('kho') ||
       _mod('supply-chain') ||
       widget.modules.isEmpty;
+
+  bool get _modCrm => _mod('crm') || _mod('sales');
+
+  /// Ô CRM (web `visibleCrmPages` + menu ẩn tới khi biết quyền): module CRM có, đã tải được trạng thái, trang được
+  /// thấy theo quyền và màn mobile đã dựng ([CrmRoutes.isReady]).
+  bool _crmVisible(CrmView view) {
+    if (!_modCrm || !CrmRoutes.isReady(view)) return false;
+    final status = CrmScope.instance.status.value;
+    return status != null && isCrmViewVisible(view, status.capabilities);
+  }
+
+  Map<String, dynamic> _crmItem(CrmView view) {
+    final page = crmPageOf(view);
+    return {
+      'title': page.label,
+      'visible': _crmVisible(view),
+      'icon': page.icon,
+      'imageAsset': page.imageAsset,
+      'bg': page.tint,
+      'iconColor': page.iconColor,
+      'onTap': () => CrmRoutes.open(context, view),
+    };
+  }
 
   /// HRM menu item: the HRM module is available AND the user holds a permission of that web page.
   bool _hrm(String path) => _mod('hrm') && HrmCapabilities.instance.pageAllowed(path);
@@ -313,6 +372,15 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 1))),
                 },
+                {
+                  'title': 'procedure.rcsi.title'.tr(),
+                  'visible': _modProcedure,
+                  'icon': Icons.table_chart_outlined,
+                  'imageAsset': 'assets/images/icons/sidebar_procedure_raci.png',
+                  'bg': const Color(0xFFF5F3FF), // Violet 50
+                  'iconColor': const Color(0xFF7C3AED),
+                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RcsiScreen())),
+                },
               ],
             ),
 
@@ -321,58 +389,58 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
               title: 'TÀI CHÍNH',
               items: [
                 {
-                  'title': 'Dashboard',
-                  'visible': _modFinance,
+                  'title': 'finance.nav.dashboard'.tr(),
+                  'visible': _financeVisible(FinancePage.dashboard),
                   'icon': Icons.dashboard_outlined,
-                  'imageAsset': 'assets/images/icons/module_finance.png',
+                  'imageAsset': 'assets/images/icons/sidebar_finance_overview.png',
                   'bg': const Color(0xFFF5F3FF), // Violet 50
                   'iconColor': const Color(0xFF7C3AED), // Violet 600
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen(initialTab: 0))),
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.dashboard),
                 },
                 {
-                  'title': 'Phiếu thu',
-                  'visible': _modFinance,
+                  'title': 'finance.nav.receipts'.tr(),
+                  'visible': _financeVisible(FinancePage.receipts),
                   'icon': Icons.arrow_downward_rounded,
-                  'imageAsset': null,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_receipts.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669), // Emerald 600
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen(initialTab: 1))),
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.receipts),
                 },
                 {
-                  'title': 'Phiếu chi',
-                  'visible': _modFinance,
+                  'title': 'finance.nav.payments'.tr(),
+                  'visible': _financeVisible(FinancePage.payments),
                   'icon': Icons.arrow_upward_rounded,
-                  'imageAsset': null,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_payments.png',
                   'bg': const Color(0xFFFFF1F2), // Rose 50
                   'iconColor': const Color(0xFFE11D48), // Rose 600
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen(initialTab: 2))),
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.payments),
                 },
                 {
-                  'title': 'Chuyển tiền',
-                  'visible': _modFinance,
+                  'title': 'finance.nav.transfers'.tr(),
+                  'visible': _financeVisible(FinancePage.transfers),
                   'icon': Icons.swap_horiz_rounded,
-                  'imageAsset': null,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_transfers.png',
                   'bg': const Color(0xFFF0F9FF), // Sky 50
                   'iconColor': const Color(0xFF0284C7), // Sky 600
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen(initialTab: 3))),
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.transfers),
                 },
                 {
-                  'title': 'Tài khoản',
-                  'visible': _modFinance,
+                  'title': 'finance.nav.accounts'.tr(),
+                  'visible': _financeVisible(FinancePage.accounts),
                   'icon': Icons.account_balance_wallet_outlined,
-                  'imageAsset': null,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_accounts.png',
                   'bg': const Color(0xFFEEF2FF), // Indigo 50
                   'iconColor': const Color(0xFF4F46E5), // Indigo 600
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen(initialTab: 4))),
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.accounts),
                 },
                 {
-                  'title': 'Báo cáo',
-                  'visible': _modFinance,
+                  'title': 'finance.nav.reports'.tr(),
+                  'visible': _financeVisible(FinancePage.reports),
                   'icon': Icons.pie_chart_outline_rounded,
-                  'imageAsset': null,
+                  'imageAsset': 'assets/images/icons/sidebar_finance_reports.png',
                   'bg': const Color(0xFFFFFBEB), // Amber 50
                   'iconColor': const Color(0xFFD97706), // Amber 600
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen(initialTab: 5))),
+                  'onTap': () => FinanceRoutes.openPage(context, FinancePage.reports),
                 },
               ],
             ),
@@ -390,58 +458,21 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                   'iconColor': const Color(0xFF2563EB),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryOverviewScreen())),
                 },
+                // Web: Tổng quan · Kho hàng (Hàng hóa / Nhà kho / Xuất/nhập kho / Lịch sử xuất nhập / Lịch sử kiểm đếm)
+                // · Cây tài sản · Tài sản · Báo cáo kho. Chứng từ kho, Duyệt chứng từ, Yêu cầu xuất từ đơn bán đã gộp
+                // vào tab "Xuất/nhập kho" của Kho hàng.
                 {
-                  'title': 'Kho & Danh mục',
+                  'title': 'Kho hàng',
                   'visible': canShowInventory,
-                  'icon': Icons.inventory_2_outlined,
+                  'icon': Icons.warehouse_outlined,
                   'imageAsset': 'assets/images/icons/sidebar_inventory_stock.png',
                   'bg': const Color(0xFFECFDF5), // Emerald 50
                   'iconColor': const Color(0xFF059669),
                   'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryItemsScreen())),
                 },
                 {
-                  'title': 'Giao dịch & Nhập xuất',
-                  'visible': canShowInventory,
-                  'icon': Icons.swap_horiz_rounded,
-                  'imageAsset': 'assets/images/icons/sidebar_inventory_issue_requests.png',
-                  'bg': const Color(0xFFF0F9FF), // Sky 50
-                  'iconColor': const Color(0xFF0284C7),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryTransactionsScreen())),
-                },
-                {
-                  'title': 'Chứng từ kho',
-                  'visible': canShowInventory,
-                  'icon': Icons.receipt_long_outlined,
-                  'imageAsset': 'assets/images/icons/sidebar_inventory_documents.png',
-                  'bg': const Color(0xFFFAF5FF), // Purple 50
-                  'iconColor': const Color(0xFF9333EA),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen())),
-                },
-                {
-                  'title': 'Duyệt chứng từ',
-                  'visible': canShowInventory,
-                  'icon': Icons.assignment_turned_in_outlined,
-                  'imageAsset': 'assets/images/icons/dashboard_approvals.png',
-                  'bg': const Color(0xFFFEF3C7), // Amber 50
-                  'iconColor': const Color(0xFFD97706),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen(
-                    initialStatus: 'PENDING',
-                    title: 'Duyệt chứng từ',
-                    subtitle: 'Phê duyệt các chứng từ xuất nhập kho',
-                  ))),
-                },
-                {
-                  'title': 'Yêu cầu xuất từ đơn bán',
-                  'visible': canShowInventory,
-                  'icon': Icons.outbox_rounded,
-                  'imageAsset': 'assets/images/icons/sidebar_inventory_issue_requests.png',
-                  'bg': const Color(0xFFFFF7ED), // Orange 50
-                  'iconColor': const Color(0xFFEA580C),
-                  'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryIssueRequestsScreen())),
-                },
-                {
                   'title': 'Cây tài sản',
-                  'visible': false,
+                  'visible': canShowInventory,
                   'icon': Icons.account_tree_outlined,
                   'imageAsset': 'assets/images/icons/sidebar_inventory_assets_tree.png',
                   'bg': const Color(0xFFEFF6FF), // Blue 50
@@ -450,7 +481,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 },
                 {
                   'title': 'Tài sản',
-                  'visible': false,
+                  'visible': canShowInventory,
                   'icon': Icons.devices_other_rounded,
                   'imageAsset': 'assets/images/icons/sidebar_inventory_custody.png',
                   'bg': const Color(0xFFEEF2FF), // Indigo 50
@@ -459,7 +490,7 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 },
                 {
                   'title': 'Báo cáo kho',
-                  'visible': false,
+                  'visible': canShowInventory,
                   'icon': Icons.bar_chart_rounded,
                   'imageAsset': 'assets/images/icons/nav_reports.png',
                   'bg': const Color(0xFFF0FDF4), // Green 50
@@ -477,6 +508,13 @@ class _HomeMobileModulesViewState extends State<HomeMobileModulesView> {
                 },
               ],
             ),
+
+            // 3b. CRM: hai phần như web `CRM_SECTIONS` (Quản lý khách hàng · Bán hàng).
+            for (final section in kCrmSections)
+              _buildMenuSection(
+                title: 'crm.home.section_${section.id.name}'.tr(),
+                items: [for (final view in section.views) _crmItem(view)],
+              ),
 
             // 3. QUẢN TRỊ NHÂN SỰ
             _buildMenuSection(

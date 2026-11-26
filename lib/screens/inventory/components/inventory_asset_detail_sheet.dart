@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../features/inventory/data/assets/inventory_asset_repository.dart';
@@ -15,9 +17,15 @@ import 'asset_tabs/asset_overview_tab_view.dart';
 
 /// Hồ sơ một thiết bị trên cây (web `AssetDetail`): đầu trang + 5 tab con.
 /// Đọc thiết bị từ [workspace] (nạp lại sau mỗi lần lưu); thiết bị biến mất (đã tháo về kho) thì tự đóng.
+///
+/// Chế độ "hồ sơ theo mã" ([showProfile], web `ItemProfileDialog`): nạp mã bằng `GET /items/:code`
+/// (kho hay đã lắp đều mở được) và tự nạp workspace để hiện vị trí theo chuỗi cha.
 class InventoryAssetDetailSheet extends StatefulWidget {
   final String assetId;
-  final ValueNotifier<InvAssetWorkspace?> workspace;
+
+  /// Mã mở ở chế độ hồ sơ theo mã; `null` = mở từ cây tài sản.
+  final String? profileCode;
+  final ValueNotifier<InvAssetWorkspace?>? workspace;
   final Future<void> Function() onReload;
   final void Function(InvAsset asset)? onRetire;
   final void Function(InvAsset asset)? onAddChild;
@@ -33,7 +41,16 @@ class InventoryAssetDetailSheet extends StatefulWidget {
     required this.sessionLogs,
     this.onRetire,
     this.onAddChild,
-  });
+  }) : profileCode = null;
+
+  const InventoryAssetDetailSheet._profile({
+    required String this.profileCode,
+    required this.onReload,
+  })  : assetId = '',
+        workspace = null,
+        sessionLogs = const {},
+        onRetire = null,
+        onAddChild = null;
 
   static Future<void> show(
     BuildContext context, {
@@ -58,6 +75,20 @@ class InventoryAssetDetailSheet extends StatefulWidget {
         ),
       );
 
+  /// Hồ sơ đầy đủ của một mã (web `ItemProfileDialog`); [onSaved] chạy sau mỗi lần lưu (web nạp lại workspace).
+  /// Như web: không có "Thêm thiết bị con" / "Thanh lý" (chỉ có nghĩa với thiết bị trên cây).
+  static Future<void> showProfile(
+    BuildContext context, {
+    required String code,
+    required Future<void> Function() onSaved,
+  }) =>
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => InventoryAssetDetailSheet._profile(profileCode: code, onReload: onSaved),
+      );
+
   @override
   State<InventoryAssetDetailSheet> createState() => _InventoryAssetDetailSheetState();
 }
@@ -71,10 +102,64 @@ class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> w
   String? _loadedFor;
   bool _closing = false;
 
+  // Chế độ hồ sơ theo mã (web `ItemProfileDialog`).
+  bool get _isProfile => widget.profileCode != null;
+  late final ValueNotifier<InvAssetWorkspace?> _workspace = widget.workspace ?? ValueNotifier(null);
+  InvAsset? _profile;
+  String? _profileError;
+  final Map<String, List<InvIncidentLog>> _profileLogs = {};
+
+  Map<String, List<InvIncidentLog>> get _logs => _isProfile ? _profileLogs : widget.sessionLogs;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isProfile) {
+      _loadProfile();
+      _loadProfileWorkspace();
+    }
+  }
+
   @override
   void dispose() {
     _tabs.dispose();
+    if (widget.workspace == null) _workspace.dispose();
     super.dispose();
+  }
+
+  /// Web `reload`: nạp lại hồ sơ từ server (dòng trên bảng là bản rút gọn).
+  Future<void> _loadProfile() async {
+    try {
+      final asset = await _repo.loadItemProfile(widget.profileCode!);
+      if (!mounted) return;
+      setState(() {
+        _profile = asset;
+        _profileError = null;
+      });
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+      if (!mounted) return;
+      setState(() => _profileError = inventoryErrorMessage(e, 'inventory.assets.profile_error'));
+    }
+  }
+
+  /// Workspace (vị trí theo chuỗi cha, vật tư, tồn); lỗi thì dùng workspace rỗng như web `assets = []`.
+  Future<void> _loadProfileWorkspace() async {
+    InvAssetWorkspace ws;
+    try {
+      ws = (await _repo.loadWorkspace()).workspace;
+    } catch (_) {
+      ws = InvAssetWorkspace(warehouses: const [], materials: const [], assets: const [], stock: const [], installed: const []);
+    }
+    if (!mounted) return;
+    _workspace.value = ws;
+  }
+
+  /// Sau khi lưu: cây → nạp lại workspace của màn cha; hồ sơ → nạp lại hồ sơ + báo nơi mở (web `onSaved`).
+  Future<void> _afterSave() async {
+    if (!_isProfile) return widget.onReload();
+    unawaited(widget.onReload());
+    await Future.wait([_loadProfile(), _loadProfileWorkspace()]);
   }
 
   InvAsset? _find(InvAssetWorkspace? ws) {
@@ -100,8 +185,13 @@ class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> w
   /// Lưu một phần hồ sơ (web `save`): lỗi hiện toast, trả `true` khi lưu xong.
   Future<bool> _save(InvAsset asset, Map<String, dynamic> patch) async {
     try {
-      await _repo.updateAsset(asset.code, patch);
-      await widget.onReload();
+      // Hồ sơ theo mã (mở từ kho): lưu qua `/items/:code` — web dùng `/assets/:code` nên mã không phải ASSET bị 404.
+      if (_isProfile) {
+        await _repo.updateItemProfile(asset.code, patch);
+      } else {
+        await _repo.updateAsset(asset.code, patch);
+      }
+      await _afterSave();
       return true;
     } catch (e) {
       InventoryScope.instance.onError(e);
@@ -113,7 +203,7 @@ class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> w
   Future<void> _recordIncident(InvAsset asset) async {
     final log = await invShowSheet<InvIncidentLog>(context, InventoryIncidentRecordSheet(asset: asset));
     if (log == null || !mounted) return;
-    setState(() => widget.sessionLogs[asset.code] = [log, ...?widget.sessionLogs[asset.code]]);
+    setState(() => _logs[asset.code] = [log, ...?_logs[asset.code]]);
     if (log.syncToMaintenance) {
       final ok = await _repo.createMaintenanceIncident(
         assetCode: asset.code,
@@ -132,9 +222,10 @@ class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> w
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<InvAssetWorkspace?>(
-      valueListenable: widget.workspace,
+      valueListenable: _workspace,
       builder: (context, ws, _) {
-        final asset = _find(ws);
+        final asset = _isProfile ? _profile : _find(ws);
+        if (_isProfile && (asset == null || ws == null)) return _profilePlaceholder();
         if (asset == null || ws == null) {
           if (!_closing) {
             _closing = true;
@@ -156,6 +247,60 @@ class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> w
       },
     );
   }
+
+  /// Web: lỗi "Không đọc được hồ sơ vật tư." hoặc "Đang tải hồ sơ…" dưới tiêu đề "Hồ sơ {mã}".
+  Widget _profilePlaceholder() {
+    final error = _profileError;
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.92,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 6, 8),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _profileTitle()),
+                IconButton(icon: const Icon(Icons.close, color: AppColors.slate500), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.slate200),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: error != null
+                ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Text(error, style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13)),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text('inventory.assets.profile_loading'.tr(),
+                        textAlign: TextAlign.center, style: const TextStyle(color: AppColors.slate500)),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileTitle() => Text(
+        'inventory.assets.profile_title'.tr(args: {'code': widget.profileCode ?? ''}),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.slate900),
+      );
 
   Widget _content(InvAsset asset, InvAssetWorkspace ws, bool canManage) {
     final mq = MediaQuery.of(context);
@@ -196,6 +341,7 @@ class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> w
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (_isProfile) ...[_profileTitle(), const SizedBox(height: 8)],
                           Wrap(
                             spacing: 6,
                             runSpacing: 4,
@@ -302,7 +448,7 @@ class _InventoryAssetDetailSheetState extends State<InventoryAssetDetailSheet> w
                   hasMaintenanceModule: _hasMaintenance,
                   syncing: _syncing,
                   occurrences: _occurrences,
-                  logs: widget.sessionLogs[asset.code] ?? const [],
+                  logs: _logs[asset.code] ?? const [],
                   canManage: canManage,
                   onRecordIncident: () => _recordIncident(asset),
                 ),

@@ -67,12 +67,12 @@ class _InventoryAssetListSheetState extends State<InventoryAssetListSheet> {
     final out = [...list]
       ..sort((a, b) {
         final cmp = switch (_sortField) {
-          _SortField.code => a.code.compareTo(b.code),
-          _SortField.name => a.name.compareTo(b.name),
-          _SortField.type => a.type.compareTo(b.type),
-          _SortField.parent => parentName(a).compareTo(parentName(b)),
-          _SortField.status => a.status.compareTo(b.status),
-          _SortField.criticality => a.criticality.compareTo(b.criticality),
+          _SortField.code => invViCompare(a.code, b.code),
+          _SortField.name => invViCompare(a.name, b.name),
+          _SortField.type => invViCompare(a.type, b.type),
+          _SortField.parent => invViCompare(parentName(a), parentName(b)),
+          _SortField.status => invViCompare(a.status, b.status),
+          _SortField.criticality => invViCompare(a.criticality, b.criticality),
         };
         return _sortAsc ? cmp : -cmp;
       });

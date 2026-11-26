@@ -64,11 +64,19 @@ class _AssetMaintenancePlanTabViewState extends State<AssetMaintenancePlanTabVie
       });
 
   void _close() {
-    for (final r in _rows) {
-      r.dispose();
-    }
+    _disposeLater(_rows);
     _rows = [];
     _editing = false;
+  }
+
+  /// Huỷ controller sau khung hình kế tiếp: các TextField còn giữ chúng đến khi bị gỡ khỏi cây.
+  void _disposeLater(List<_TaskRow> rows) {
+    if (rows.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final r in rows) {
+        r.dispose();
+      }
+    });
   }
 
   Future<void> _save() async {
@@ -214,6 +222,7 @@ class _AssetMaintenancePlanTabViewState extends State<AssetMaintenancePlanTabVie
           if (_rows.isEmpty) InvEmptyText('inventory.assets.task_edit_empty'.tr()),
           for (var i = 0; i < _rows.length; i++)
             Container(
+              key: ObjectKey(_rows[i]),
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -242,7 +251,11 @@ class _AssetMaintenancePlanTabViewState extends State<AssetMaintenancePlanTabVie
                       ),
                       IconButton(
                         icon: const Icon(Icons.close, size: 18, color: Color(0xFFDC2626)),
-                        onPressed: () => setState(() => _rows.removeAt(i).dispose()),
+                        onPressed: () {
+                          final removed = _rows[i];
+                          setState(() => _rows.removeAt(i));
+                          _disposeLater([removed]);
+                        },
                       ),
                     ],
                   ),

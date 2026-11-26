@@ -5,6 +5,7 @@ import '../../domain/assets/inventory_asset_models.dart';
 import '../utils/inventory_scope.dart';
 import 'inventory_asset_ui.dart';
 import 'inventory_serial_lot_pickers.dart';
+import '../utils/inventory_number.dart';
 
 /// Lắp vật tư từ kho vào một thiết bị — một lệnh XUẤT (web `InstallMaterialDialog`).
 /// [parent] trống = xuất làm thiết bị / cụm gốc. [onConfirm] ném lỗi để form hiện lý do, giữ dữ liệu.
@@ -110,7 +111,7 @@ class _InventoryInstallMaterialSheetState extends State<InventoryInstallMaterial
         ? ws.warehouses
         : ws.warehouses.where((w) => ws.availableAt(_materialCode, w.code) > 0).toList();
     final available = _materialCode.isNotEmpty && _warehouseCode.isNotEmpty ? ws.availableAt(_materialCode, _warehouseCode) : null;
-    final amount = double.tryParse(_qty.text.trim().replaceAll(',', '.')) ?? double.nan;
+    final amount = parseVnNumber(_qty.text) ?? double.nan;
     final valid = amount.isFinite && amount > 0;
     final short = available != null && valid && amount > available;
     final serialized = picked?.isSerialized ?? false;

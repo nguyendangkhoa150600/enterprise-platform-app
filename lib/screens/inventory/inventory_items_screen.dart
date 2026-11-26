@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/inventory_models.dart';
-import '../../services/module_business_service.dart';
 import '../../theme/colors.dart';
 import 'components/inventory_items_view.dart';
 import 'components/inventory_trade_items_view.dart';
@@ -15,10 +13,16 @@ class InventoryItemsScreen extends StatefulWidget {
   final String? initialWarehouseFilter;
   final int initialTabIndex;
 
+  /// Mở tab "Xuất/nhập kho" ở góc nhìn này (`all`/`pending`/`requests`) và mở sẵn chứng từ (link thông báo, web `movementHashTarget`).
+  final String? initialMovementView;
+  final String? initialDocumentKey;
+
   const InventoryItemsScreen({
     super.key,
     this.initialWarehouseFilter,
     this.initialTabIndex = 0,
+    this.initialMovementView,
+    this.initialDocumentKey,
   });
 
   @override
@@ -27,11 +31,9 @@ class InventoryItemsScreen extends StatefulWidget {
 
 class _InventoryItemsScreenState extends State<InventoryItemsScreen>
     with SingleTickerProviderStateMixin {
-  final ModuleBusinessService _service = ModuleBusinessService();
   late TabController _tabController;
 
   // Data states
-  List<InventoryItem> _items = [];
   // Tab Hàng hóa và Nhà kho (đọc thẳng Inventory API như web `loadInventoryWorkspace`).
   final GoodsStore _goods = GoodsStore();
 
@@ -58,23 +60,8 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
     super.dispose();
   }
 
-  Future<void> _loadAllData() async {
-    await Future.wait([
-      _goods.reload(),
-      _loadItems(),
-    ]);
-  }
+  Future<void> _loadAllData() => _goods.reload();
 
-  Future<void> _loadItems() async {
-    try {
-      final overview = await _service.getInventoryOverview();
-      if (mounted) {
-        setState(() {
-          _items = overview.items;
-        });
-      }
-    } catch (_) {}
-  }
 
 
 
@@ -187,22 +174,29 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
           // Tab 2: Nhà kho (web WarehouseStockTab)
           InventoryItemsView(
             store: _goods,
-            movementItems: _items,
+            // Form phiếu tự nạp danh mục qua Inventory API (web `workspace.materials`).
+            movementItems: const [],
             initialWarehouseCode: _warehouseFilter,
-            onMovementSubmitted: () => Future.wait([_goods.reload(), _loadItems()]),
+            onMovementSubmitted: () => _goods.reload(),
+            // Web: tạo đợt kiểm kê xong chuyển sang tab con "Lịch sử kiểm đếm".
+            onStocktakeCreated: () => _tabController.animateTo(4),
           ),
 
           // Tab 3: Xuất/nhập kho (Tất cả / Chờ duyệt / Yêu cầu xuất từ đơn bán)
-          const InventoryStockMovementTab(),
+          InventoryStockMovementTab(
+            initialView: widget.initialMovementView,
+            initialDocumentKey: widget.initialDocumentKey,
+            onStockChanged: () => _goods.reload(),
+          ),
 
           // Tab 4: Lịch sử xuất nhập
           // Tab tự nạp sổ cái; onRefresh chỉ làm mới dữ liệu dùng chung sau khi ghi phiếu.
           InventoryHistoryView(
             transactions: const [],
-            items: _items,
+            items: const [],
             warehouses: const [],
             isLoading: false,
-            onRefresh: () => Future.wait([_goods.reload(), _loadItems()]),
+            onRefresh: () => _goods.reload(),
           ),
 
           // Tab 5: Lịch sử kiểm đếm

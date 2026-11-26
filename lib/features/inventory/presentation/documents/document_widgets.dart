@@ -97,7 +97,7 @@ class DocInfoCell extends StatelessWidget {
           Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.slate900)),
           if (small != null && small!.isNotEmpty)
             Text(small!, style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
-          if (smallWidget != null) smallWidget!,
+          ?smallWidget,
         ],
       );
 }
@@ -135,7 +135,7 @@ class DocBanner extends StatelessWidget {
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8), border: Border.all(color: border)),
       child: Row(children: [
         Expanded(child: Text(text, style: TextStyle(fontSize: 12.5, color: fg, height: 1.35))),
-        if (trailing != null) trailing!,
+        ?trailing,
       ]),
     );
   }

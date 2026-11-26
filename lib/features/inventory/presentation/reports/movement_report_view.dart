@@ -273,7 +273,10 @@ class _MovementReportViewState extends State<MovementReportView> {
   ];
 
   List<Widget> _content(StockMovementReport report) {
-    final bStart = (_breakdownPage - 1) * _breakdownPageSize;
+    // Tải lại có thể làm danh sách ngắn đi: giữ trang trong phạm vi (antd tự kẹp trang).
+    final bPages = (report.breakdown.length / _breakdownPageSize).ceil().clamp(1, 1 << 30);
+    final bPage = _breakdownPage.clamp(1, bPages);
+    final bStart = (bPage - 1) * _breakdownPageSize;
     final breakdown = report.breakdown.skip(bStart).take(_breakdownPageSize).toList();
     return [
       ReportSectionTitle(_t('movements.by_group')),
@@ -295,7 +298,7 @@ class _MovementReportViewState extends State<MovementReportView> {
       ),
       if (report.breakdown.length > _breakdownPageSize)
         ReportPager(
-          page: _breakdownPage,
+          page: bPage,
           pageSize: _breakdownPageSize,
           total: report.breakdown.length,
           totalLabel: '',

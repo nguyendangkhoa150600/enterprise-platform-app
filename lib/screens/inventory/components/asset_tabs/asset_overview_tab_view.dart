@@ -62,11 +62,19 @@ class _AssetOverviewTabViewState extends State<AssetOverviewTabView> {
   }
 
   void _close() {
-    for (final r in _rows) {
-      r.dispose();
-    }
+    _disposeLater(_rows);
     _rows = [];
     _editing = false;
+  }
+
+  /// Huỷ controller sau khung hình kế tiếp: các TextField còn giữ chúng đến khi bị gỡ khỏi cây.
+  void _disposeLater(List<_SpecRow> rows) {
+    if (rows.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final r in rows) {
+        r.dispose();
+      }
+    });
   }
 
   Future<void> _save() async {
@@ -81,6 +89,12 @@ class _AssetOverviewTabViewState extends State<AssetOverviewTabView> {
       _saving = false;
       if (ok) _close();
     });
+  }
+
+  /// Web `value?.trim() || '—'`: chuỗi rỗng cũng hiện gạch.
+  static String _orDash(String? v) {
+    final t = v?.trim() ?? '';
+    return t.isEmpty ? '—' : t;
   }
 
   Widget _infoTile(String label, String value) => Container(
@@ -160,9 +174,9 @@ class _AssetOverviewTabViewState extends State<AssetOverviewTabView> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: _infoTile('inventory.assets.manufacturer'.tr(), asset.manufacturer?.trim() ?? '—')),
+                  Expanded(child: _infoTile('inventory.assets.manufacturer'.tr(), _orDash(asset.manufacturer))),
                   const SizedBox(width: 8),
-                  Expanded(child: _infoTile('inventory.assets.serial'.tr(), asset.serialNumber?.trim() ?? '—')),
+                  Expanded(child: _infoTile('inventory.assets.serial'.tr(), _orDash(asset.serialNumber))),
                   const SizedBox(width: 8),
                   Expanded(child: _infoTile('inventory.assets.manufacture_year'.tr(), '${asset.manufactureYear ?? '—'}')),
                 ],
@@ -217,6 +231,7 @@ class _AssetOverviewTabViewState extends State<AssetOverviewTabView> {
           if (_rows.isEmpty) InvEmptyText('inventory.assets.specs_edit_empty'.tr()),
           for (var i = 0; i < _rows.length; i++)
             Padding(
+              key: ObjectKey(_rows[i]),
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 children: [
@@ -235,7 +250,11 @@ class _AssetOverviewTabViewState extends State<AssetOverviewTabView> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 18, color: Color(0xFFDC2626)),
-                    onPressed: () => setState(() => _rows.removeAt(i).dispose()),
+                    onPressed: () {
+                      final removed = _rows[i];
+                      setState(() => _rows.removeAt(i));
+                      _disposeLater([removed]);
+                    },
                   ),
                 ],
               ),

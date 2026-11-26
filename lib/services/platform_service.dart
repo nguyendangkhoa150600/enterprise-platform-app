@@ -233,7 +233,7 @@ class PlatformService {
           'nodeTypeId': nodeTypeId,
           'code': code,
           'name': name,
-          if (description != null) 'description': description,
+          'description': ?description,
           'sortOrder': sortOrder,
           'status': status,
         },
@@ -369,7 +369,7 @@ class PlatformService {
         data: {
           'name': name,
           'key': key,
-          if (description != null) 'description': description,
+          'description': ?description,
           'actionKeys': actionKeys,
           'roleIds': roleIds,
         },
@@ -442,7 +442,7 @@ class PlatformService {
         data: {
           'name': name,
           'key': key,
-          if (description != null) 'description': description,
+          'description': ?description,
           'moduleKeys': moduleKeys,
           'actionKeys': actionKeys,
           'permissionIds': permissionIds,

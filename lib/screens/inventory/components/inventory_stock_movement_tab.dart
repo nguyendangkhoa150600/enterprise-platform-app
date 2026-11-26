@@ -8,7 +8,16 @@ import '../inventory_issue_requests_screen.dart';
 /// Tab "Xuất/nhập kho" của trang Kho hàng (web `StockMovementHub`): ba góc nhìn Tất cả (danh sách gộp),
 /// Chờ duyệt (kèm số lượng do server trả cùng danh sách gộp), Yêu cầu xuất từ đơn bán.
 class InventoryStockMovementTab extends StatefulWidget {
-  const InventoryStockMovementTab({super.key});
+  /// Góc nhìn mở sẵn (web `MovementHashTarget.view`): `all`, `pending` hoặc `requests`.
+  final String? initialView;
+
+  /// Chứng từ mở thẳng chi tiết ở góc nhìn Tất cả (web `MovementHashTarget.documentKey`).
+  final String? initialDocumentKey;
+
+  /// Web `onStockChanged`: chứng từ được ghi sổ → trang Kho hàng nạp lại tồn.
+  final VoidCallback? onStockChanged;
+
+  const InventoryStockMovementTab({super.key, this.initialView, this.initialDocumentKey, this.onStockChanged});
 
   @override
   State<InventoryStockMovementTab> createState() => _InventoryStockMovementTabState();
@@ -17,7 +26,10 @@ class InventoryStockMovementTab extends StatefulWidget {
 enum _MovementView { all, pending, requests }
 
 class _InventoryStockMovementTabState extends State<InventoryStockMovementTab> {
-  _MovementView _view = _MovementView.all;
+  late _MovementView _view = _MovementView.values.firstWhere(
+    (v) => v.name == widget.initialView,
+    orElse: () => _MovementView.all,
+  );
   int? _pendingCount;
 
   String _label(_MovementView v) => switch (v) {
@@ -57,10 +69,18 @@ class _InventoryStockMovementTabState extends State<InventoryStockMovementTab> {
                 key: const ValueKey('all'),
                 embedded: true,
                 onPendingCount: _onPendingCount,
+                initialDocumentKey: widget.initialDocumentKey,
+                onStockChanged: widget.onStockChanged,
               ),
             _MovementView.pending =>
-              const InventoryDocumentsScreen(key: ValueKey('pending'), initialStatus: 'PENDING', embedded: true),
-            _MovementView.requests => const InventoryIssueRequestsScreen(embedded: true),
+              InventoryDocumentsScreen(
+                key: const ValueKey('pending'),
+                initialStatus: 'PENDING',
+                embedded: true,
+                onStockChanged: widget.onStockChanged,
+              ),
+            _MovementView.requests =>
+              InventoryIssueRequestsScreen(embedded: true, onStockChanged: widget.onStockChanged),
           },
         ),
       ],

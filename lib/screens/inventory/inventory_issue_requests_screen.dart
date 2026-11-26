@@ -15,7 +15,10 @@ class InventoryIssueRequestsScreen extends StatefulWidget {
   /// Nhúng trong tab "Xuất/nhập kho" của trang Kho hàng: ẩn thanh tiêu đề riêng.
   final bool embedded;
 
-  const InventoryIssueRequestsScreen({super.key, this.embedded = false});
+  /// Web `onStockChanged`: gọi khi một yêu cầu được ghi sổ để trang Kho hàng nạp lại tồn.
+  final VoidCallback? onStockChanged;
+
+  const InventoryIssueRequestsScreen({super.key, this.embedded = false, this.onStockChanged});
 
   @override
   State<InventoryIssueRequestsScreen> createState() => _InventoryIssueRequestsScreenState();
@@ -114,9 +117,11 @@ class _InventoryIssueRequestsScreenState extends State<InventoryIssueRequestsScr
       reservations: _reservations,
       refs: refs,
       canWrite: InventoryScope.instance.capabilities.value.canWriteTransactions,
-      onSaved: (_, message) {
+      onSaved: (saved, message) {
+        if (!mounted) return;
         showDocSnack(context, message);
         _reload();
+        if (saved.status == 'POSTED') widget.onStockChanged?.call();
       },
     );
   }

@@ -43,7 +43,9 @@ class StockImportWarehouseFlow {
       final result = await StockImportService.instance.applyBulkImport(
         lines,
         fallbackWarehouseCode: firstWarehouseCode,
-        defaultNote: 'inventory.stock_import.bulk_default_note'.tr(),
+        // Ghi chú lưu vào sổ cái (dữ liệu, không phải nhãn): giữ nguyên văn như web để sổ
+        // không đổi ngôn ngữ theo máy người nhập.
+        defaultNote: 'Bổ sung dữ liệu đa kho từ tệp Excel',
       );
       navigator.pop();
       if (!context.mounted) return;

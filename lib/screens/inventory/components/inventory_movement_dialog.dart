@@ -14,6 +14,7 @@ import '../../../features/inventory/presentation/utils/inventory_scope.dart';
 import '../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
 import '../../../models/inventory_models.dart';
 import '../../../theme/colors.dart';
+import '../../../features/inventory/presentation/utils/inventory_number.dart';
 
 /// Phiếu nhập / xuất / chuyển kho đa vật tư — web movement-form.tsx (MovementForm, isDialog)
 /// + cách ghi sổ của inventory-screen.tsx (`runMovement`).
@@ -562,6 +563,9 @@ class _InventoryMovementDialogState extends State<InventoryMovementDialog> {
       await widget.onSubmitted?.call();
     } catch (e) {
       InventoryScope.instance.onError(e);
+      // Web `showInLedger`: các dòng ghi xong trước dòng lỗi phải hiện ngay trên sổ, không thì
+      // thủ kho tưởng chưa ghi và nhập lại. Nạp lại màn dưới, phiếu vẫn mở để hiện lý do.
+      if (e is! MovementPermissionException) widget.onSubmitted?.call().catchError((_) {});
       if (!mounted) return;
       setState(() {
         _submitting = false;
@@ -1111,7 +1115,7 @@ class _InventoryMovementDialogState extends State<InventoryMovementDialog> {
     return (overdraw: overdraw, badgeType: 'empty', badgeLabel: 'inventory.ledger.badge_empty'.tr(args: {'n': LedgerFormat.number(totalAll)}));
   }
 
-  double _parseVn(String v) => double.tryParse(v.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+  double _parseVn(String v) => parseVnNumber(v) ?? 0;
 
   Widget _lineCard(int index, MovementLine l) {
     final a = _analysis(l);

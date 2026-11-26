@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/i18n/app_i18n.dart';
 import '../utils/app_toast.dart';
+import '../features/workspace/data/datasources/workspace_links_api.dart';
 
 import '../models/chat_models.dart';
 import '../models/hrm_models.dart';
@@ -17,16 +18,23 @@ import '../screens/chat/chat_thread_screen.dart';
 import '../screens/fleet_schedule_screen.dart';
 import '../screens/hrm_hub_screen.dart';
 import '../screens/inventory/inventory_assets_screen.dart';
-import '../screens/inventory/inventory_documents_screen.dart';
+import '../screens/inventory/inventory_items_screen.dart';
+import '../screens/inventory/inventory_reports_screen.dart';
 import '../screens/inventory_screen.dart';
 import '../screens/leave_balances_screen.dart';
 import '../screens/maintenance_screen.dart';
 import '../screens/my_requests_screen.dart';
 import '../screens/notification_center_screen.dart';
 import '../screens/procedure_screen.dart';
+import '../screens/enterprise_applications_screen.dart';
+import '../screens/procedure/components/procedure_modals.dart';
+import '../screens/social/social_feed_view.dart';
+import '../screens/social/social_post_screen.dart';
+import 'module_business_service.dart';
 import '../screens/profile_income_screen.dart';
 import '../screens/workspace_screen.dart';
-import '../features/crm/presentation/screens/crm_hub_screen.dart';
+import '../features/crm/presentation/crm_nav.dart';
+import '../features/crm/presentation/crm_routes.dart';
 import '../features/correspondence/presentation/screens/correspondence_letter_detail_screen.dart';
 import '../features/correspondence/presentation/screens/correspondence_overview_screen.dart';
 import '../features/finance/presentation/finance_routes.dart';
@@ -49,7 +57,7 @@ class NotificationRouter {
     for (int i = 0; i < 25; i++) {
       final state = navigatorKey.currentState;
       final context = navigatorKey.currentContext;
-      if (state != null && context != null) {
+      if (state != null && context != null && context.mounted) {
         await navigateFromPayload(context, data);
         return;
       }
@@ -85,7 +93,11 @@ class NotificationRouter {
     final module = (data['module'] ?? '').toString().toLowerCase();
     final category = (data['category'] ?? '').toString().toLowerCase();
     final sourceType = (data['sourceType'] ?? data['source_type'] ?? '').toString().toLowerCase();
-    final webLink = (data['webLink'] ?? data['web_link'] ?? '').toString().trim();
+    final rawDeepLink = (data['deepLink'] ?? data['deep_link'] ?? data['link'] ?? data['url'] ?? '').toString().trim();
+    final givenWebLink = (data['webLink'] ?? data['web_link'] ?? '').toString().trim();
+    // Server lưu deepLink dạng gốc (`/procedures/instances/<id>`, `/workspace/chat/<kênh>?message=`...); web đổi sang
+    // đường dẫn màn hình bằng `notificationDeepLink` trước khi mở. Mobile đổi y như vậy rồi định tuyến theo link đó.
+    final webLink = givenWebLink.isNotEmpty ? givenWebLink : (resolveWebLink(rawDeepLink) ?? '');
     final deepLink = (data['deepLink'] ?? data['deep_link'] ?? data['link'] ?? data['url'] ?? '').toString().toLowerCase();
     final body = (data['body'] ?? '').toString();
 
@@ -137,6 +149,12 @@ class NotificationRouter {
       return;
     }
 
+    // Mạng xã hội (web `/modules/social/...`): bài viết, nhóm, bài chờ duyệt.
+    if (webLink.contains('/modules/social') || module == 'social' || rawDeepLink.contains('/modules/social')) {
+      _openSocial(nav, webLink.contains('/modules/social') ? webLink : rawDeepLink);
+      return;
+    }
+
     // =========================================================================
     // 1b. TÀI CHÍNH (phiếu cần duyệt, kết quả xử lý phiếu, phiếu chưa ghi sổ được).
     // Đặt TRƯỚC HRM: thông báo duyệt phiếu có category 'approval' nên trước đây bị mở nhầm sang Duyệt đơn HRM.
@@ -150,6 +168,16 @@ class NotificationRouter {
 
     if (isFinance) {
       await _openFinance(context, targetId, webLink.isNotEmpty ? webLink : deepLink);
+      return;
+    }
+
+    // =========================================================================
+    // 1c. CRM (web `crm-screen.tsx`): deepLink `/modules/crm#<view>/<id>` — quotes (duyệt báo giá), opportunities
+    // (hồ sơ thầu), activities (nhắc hạn), contracts (sắp hết hạn), orders (giao trễ), receivables, warranty.
+    // Đặt TRƯỚC HRM: thông báo duyệt báo giá có category 'approval'.
+    // =========================================================================
+    if (module == 'crm' || webLink.contains('/modules/crm') || deepLink.contains('/modules/crm')) {
+      await _openCrm(context, data);
       return;
     }
 
@@ -243,7 +271,7 @@ class NotificationRouter {
         deepLink.contains('/procedure');
 
     if (isProcedure) {
-      nav.push(MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 1)));
+      await _openProcedure(nav, webLink);
       return;
     }
 
@@ -257,7 +285,9 @@ class NotificationRouter {
         deepLink.contains('/maintenance');
 
     if (isMaintenance) {
-      final view = (category.contains('incident') ||
+      final view = webLink.contains('#history')
+          ? 'history'
+          : (category.contains('incident') ||
               category.contains('occurrence') ||
               sourceType.contains('incident') ||
               linkForMatching.contains('/occurrences') ||
@@ -283,19 +313,7 @@ class NotificationRouter {
         deepLink.contains('/inventory');
 
     if (isInventory) {
-      if (category.contains('document') ||
-          category.contains('voucher') ||
-          sourceType.contains('document') ||
-          linkForMatching.contains('/documents') ||
-          linkForMatching.contains('/vouchers')) {
-        nav.push(MaterialPageRoute(builder: (_) => const InventoryDocumentsScreen()));
-      } else if (category.contains('asset') ||
-          sourceType.contains('asset') ||
-          linkForMatching.contains('/assets')) {
-        nav.push(MaterialPageRoute(builder: (_) => const InventoryAssetsScreen()));
-      } else {
-        nav.push(MaterialPageRoute(builder: (_) => const InventoryScreen()));
-      }
+      _openInventory(nav, webLink.isNotEmpty ? webLink : deepLink, category, sourceType, linkForMatching);
       return;
     }
 
@@ -336,6 +354,42 @@ class NotificationRouter {
         linkForMatching.contains('/posts');
 
     if (isWorkspace) {
+      // Nhắc tên trong trao đổi dự án: deepLink `/modules/workspace?project=<id>&message=<id>#projects/chat`
+      // → mở dự án › tab Trao đổi và cuộn tới đúng tin. Thông báo cũ không có `project` thì mở tab Dự án.
+      final rawLink = (data['webLink'] ?? data['web_link'] ?? data['deepLink'] ?? data['deep_link'] ?? '').toString();
+      final linkUri = rawLink.contains('#projects/chat') ? Uri.tryParse(rawLink) : null;
+      final chatProjectId = linkUri?.queryParameters['project'];
+      if (chatProjectId != null && chatProjectId.isNotEmpty) {
+        nav.push(MaterialPageRoute(
+          builder: (_) => WorkspaceScreen(
+            initialTab: 2,
+            initialProjectId: chatProjectId,
+            initialMessageId: linkUri?.queryParameters['message'],
+          ),
+        ));
+        return;
+      }
+      // Link mới của web: `#my-work/mention/{messageId}` (hoặc `/workspace/chat/{kênh}?message={id}`) — hỏi server
+      // tin nằm ở dự án nào (web `getChatMessageLocation`) rồi mở dự án ở tab Trao đổi, cuộn tới tin.
+      final mentionId = _mentionMessageId(rawLink);
+      if (mentionId != null) {
+        final place = await WorkspaceLinksApi().chatMessageLocation(mentionId);
+        final projectId = place.ok ? place.data!['projectId']?.toString() : null;
+        if (projectId == null || projectId.isEmpty) {
+          if (context.mounted) AppToast.error(context, 'workspace.mention.open_failed'.tr());
+          nav.push(MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 2)));
+          return;
+        }
+        nav.push(MaterialPageRoute(
+          builder: (_) => WorkspaceScreen(initialTab: 2, initialProjectId: projectId, initialMessageId: mentionId),
+        ));
+        return;
+      }
+      if (await _openWorkspaceTarget(nav, webLink)) return;
+      if (category == 'mention' && sourceType == 'workspace_chat_message') {
+        nav.push(MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 2)));
+        return;
+      }
       nav.push(MaterialPageRoute(builder: (_) => const WorkspaceScreen(initialTab: 0)));
       return;
     }
@@ -354,10 +408,7 @@ class NotificationRouter {
         deepLink.contains('/crm');
 
     if (isCrm) {
-      final tabIndex = linkForMatching.contains('quote')
-          ? 3
-          : (linkForMatching.contains('customer') ? 1 : (linkForMatching.contains('opportunity') ? 2 : 0));
-      nav.push(MaterialPageRoute(builder: (_) => CrmHubScreen(initialTab: tabIndex)));
+      await _openCrm(context, data);
       return;
     }
 
@@ -380,10 +431,196 @@ class NotificationRouter {
       return;
     }
 
+    // Đổi gói phân hệ (`/settings/modules` → web `/applications`): mở danh sách ứng dụng doanh nghiệp.
+    if (webLink.startsWith('/applications') || module == 'platform' || category == 'entitlement') {
+      nav.push(MaterialPageRoute(builder: (_) => const EnterpriseApplicationsScreen()));
+      return;
+    }
+
     // =========================================================================
     // 13. FALLBACK: TRUNG TÂM THÔNG BÁO (Notification Center)
     // =========================================================================
     nav.push(MaterialPageRoute(builder: (_) => const NotificationCenterScreen()));
+  }
+
+  /// Web `notificationDeepLink` (contracts/realtime): đổi deepLink gốc của server sang đường dẫn màn hình web.
+  /// Trả null khi link không hợp lệ hoặc không thuộc màn nào.
+  static String? resolveWebLink(String value) {
+    if (!value.startsWith('/') || value.startsWith('//') || RegExp(r'\\|%5c', caseSensitive: false).hasMatch(value)) {
+      return null;
+    }
+    final url = Uri.tryParse('https://notification.invalid$value');
+    if (url == null || url.host != 'notification.invalid') return null;
+    final path = url.path;
+    final routes = <(RegExp, String Function(String))>[
+      (RegExp(r'^/procedures/instances/([^/]+)$'), (id) => '/modules/procedure#workspace/$id'),
+      (RegExp(r'^/workspace/work-items/([^/]+)$'), (id) => '/modules/workspace#my-work/work-item/$id'),
+      (RegExp(r'^/workspace/calendar/([^/]+)$'), (id) => '/modules/workspace#my-work/calendar/$id'),
+      (RegExp(r'^/workspace/projects/([^/]+)$'), (id) => '/modules/workspace?project=$id#projects'),
+      (RegExp(r'^/workspace/documents/([^/]+)$'), (id) => '/modules/workspace#documents/$id'),
+      (
+        RegExp(r'^/workspace/chat/([^/]+)$'),
+        (id) => '/modules/workspace#my-work/mention/${Uri.encodeComponent(url.queryParameters['message'] ?? Uri.decodeComponent(id))}'
+      ),
+      (RegExp(r'^/hrm/requests/([^/]+)$'), (id) => '/modules/hrm/requests?request=$id'),
+      (RegExp(r'^/hrm/payslips/([^/]+)$'), (id) => '/modules/hrm/payslips?selected=$id'),
+      (RegExp(r'^/maintenance/occurrences/([^/]+)$'), (id) => '/modules/maintenance#history/$id'),
+      (RegExp(r'^/inventory/materials/([^/]+)$'), (id) => '/modules/inventory#stock/$id'),
+      (RegExp(r'^/chat/([^/]+)$'), (id) => '/dashboard#chat/$id'),
+    ];
+    for (final (pattern, route) in routes) {
+      final match = pattern.firstMatch(path);
+      if (match != null) {
+        try {
+          return route(Uri.encodeComponent(Uri.decodeComponent(match.group(1)!)));
+        } catch (_) {
+          return null;
+        }
+      }
+    }
+    final rest = '${url.hasQuery ? '?${url.query}' : ''}${url.hasFragment ? '#${url.fragment}' : ''}';
+    if (path == '/account/security') return '/login';
+    if (path == '/settings/modules') return '/applications';
+    if (path == '/dashboard') return '$path$rest';
+    if (const ['/workspace', '/inventory', '/maintenance'].contains(path)) return '/modules$path$rest';
+    if (RegExp(r'^/modules/(procedure|workspace|hrm|finance|inventory|maintenance|social|crm|correspondence)(/|$)')
+            .hasMatch(path) ||
+        const ['/applications', '/login'].contains(path)) {
+      return '$path$rest';
+    }
+    return null;
+  }
+
+  /// Quy trình: `#workspace/<instanceId>` → mở danh sách hồ sơ rồi mở luôn chi tiết hồ sơ đó (web mở hồ sơ).
+  static Future<void> _openProcedure(NavigatorState nav, String link) async {
+    nav.push(MaterialPageRoute(builder: (_) => const ProcedureScreen(initialTab: 1)));
+    final match = RegExp(r'#workspace/([^/?#]+)').firstMatch(link);
+    if (match == null) return;
+    final id = Uri.decodeComponent(match.group(1)!);
+    final service = ModuleBusinessService();
+    final instance = await service.getProcedureInstance(id);
+    final context = nav.context;
+    if (!context.mounted) return;
+    if (instance == null) {
+      AppToast.error(context, 'procedure.notification.open_failed'.tr());
+      return;
+    }
+    showProcedureDetailSheet(context: context, initialItem: instance, service: service, onDataChanged: () {});
+  }
+
+  /// Workspace theo hash của link web: `#projects/work-item/<id>` (kèm `?project=`), `#my-work/work-item/<id>`,
+  /// `#tasks/<id>`, `#projects/project/<id>`, `#projects/calendar/<id>`, `?project=<id>#projects`, `#documents/...`.
+  /// Trả true khi đã mở.
+  static Future<bool> _openWorkspaceTarget(NavigatorState nav, String link) async {
+    final uri = Uri.tryParse(link);
+    if (uri == null || !link.contains('/modules/workspace')) return false;
+    final parts = uri.fragment.split('/');
+    String? at(int i) {
+      if (parts.length <= i || parts[i].isEmpty) return null;
+      try {
+        return Uri.decodeComponent(parts[i]);
+      } catch (_) {
+        return parts[i];
+      }
+    }
+
+    final project = uri.queryParameters['project'];
+    void push(WorkspaceScreen screen) => nav.push(MaterialPageRoute(builder: (_) => screen));
+    final view = at(0);
+    final kind = at(1);
+    if ((view == 'projects' || view == 'my-work') && kind == 'work-item' && at(2) != null) {
+      push(WorkspaceScreen(initialTab: view == 'projects' ? 2 : 0, initialProjectId: project, initialWorkItemId: at(2)));
+      return true;
+    }
+    if (view == 'tasks' && at(1) != null) {
+      push(WorkspaceScreen(initialTab: 1, initialStandaloneTaskId: at(1)));
+      return true;
+    }
+    if (view == 'tasks') {
+      push(const WorkspaceScreen(initialTab: 1));
+      return true;
+    }
+    if ((view == 'projects' || view == 'my-work') && kind == 'calendar' && at(2) != null) {
+      push(WorkspaceScreen(initialTab: view == 'projects' ? 2 : 0, initialProjectId: project, initialCalendarEventId: at(2)));
+      return true;
+    }
+    if (view == 'projects') {
+      final projectId = kind == 'project' ? at(2) : project;
+      push(WorkspaceScreen(initialTab: 2, initialProjectId: projectId, openProjectChat: false));
+      return true;
+    }
+    if (view == 'documents') {
+      push(const WorkspaceScreen(initialTab: 4));
+      return true;
+    }
+    if (view == 'my-work' && kind != 'mention') {
+      push(const WorkspaceScreen(initialTab: 0));
+      return true;
+    }
+    return false;
+  }
+
+  /// Mạng xã hội theo link web: `/posts/<id>[/comments/<id>]` → mở bài (kèm bình luận);
+  /// `/groups/<id>[/requests]`, `/groups/<id>/reports` → bảng tin của nhóm; `/pending` → bài chờ duyệt;
+  /// còn lại → bảng tin.
+  static void _openSocial(NavigatorState nav, String link) {
+    final path = Uri.tryParse(link)?.path ?? '';
+    final seg = path.split('/').where((p) => p.isNotEmpty).toList();
+    final i = seg.indexOf('social');
+    final rest = i < 0 ? const <String>[] : seg.sublist(i + 1);
+    String? at(int k) {
+      if (rest.length <= k) return null;
+      try {
+        return Uri.decodeComponent(rest[k]);
+      } catch (_) {
+        return rest[k];
+      }
+    }
+
+    if (rest.isNotEmpty && rest[0] == 'posts' && at(1) != null) {
+      nav.push(MaterialPageRoute(
+        builder: (_) => SocialPostScreen(postId: at(1)!, openComments: at(2) == 'comments'),
+      ));
+      return;
+    }
+    Widget feed(SocialFeedView view) =>
+        Scaffold(appBar: AppBar(title: Text('home_shell.nav.social'.tr())), body: view);
+    if (rest.isNotEmpty && rest[0] == 'groups' && at(1) != null) {
+      nav.push(MaterialPageRoute(builder: (_) => feed(SocialFeedView(initialGroupId: at(1)))));
+      return;
+    }
+    if (rest.isNotEmpty && rest[0] == 'pending') {
+      nav.push(MaterialPageRoute(builder: (_) => feed(const SocialFeedView(initialSection: 'pending'))));
+      return;
+    }
+    nav.push(MaterialPageRoute(builder: (_) => feed(const SocialFeedView())));
+  }
+
+  /// Id tin trong link nhắc tên/tin mới của Workspace: `#my-work/mention/{id}` hoặc `/workspace/chat/{kênh}?message={id}`.
+  static String? _mentionMessageId(String link) {
+    final hash = RegExp(r'#my-work/mention/([^/?#]+)').firstMatch(link);
+    if (hash != null) return Uri.decodeComponent(hash.group(1)!);
+    if (link.contains('/workspace/chat/')) {
+      final id = Uri.tryParse(link)?.queryParameters['message'];
+      if (id != null && id.isNotEmpty) return id;
+    }
+    return null;
+  }
+
+  /// Mở màn CRM theo liên kết web `/modules/crm#<view>/<sub>` (giữ nguyên hoa/thường của id); không có hash hợp lệ
+  /// thì mở trang mặc định (Khách hàng) như web vào `/modules/crm` không hash.
+  static Future<void> _openCrm(BuildContext context, Map<String, dynamic> data) async {
+    final links = [data['webLink'], data['web_link'], data['deepLink'], data['deep_link'], data['link'], data['url']]
+        .where((v) => v != null)
+        .map((v) => v.toString().trim())
+        .where((v) => v.isNotEmpty);
+    for (final link in links) {
+      if (link.contains('/modules/crm') && CrmLink.parse(link).view != null) {
+        await CrmRoutes.openLink(context, link);
+        return;
+      }
+    }
+    await CrmRoutes.open(context, kCrmDefaultView);
   }
 
   /// Mở phiếu Tài chính (chi tiết phiếu); không xác định được phiếu thì mở Dashboard Tài chính.
@@ -583,4 +820,64 @@ class NotificationRouter {
       ),
     );
   }
+
+  /// Kho & Vật tư: đọc hash của link web như `InventoryScreen` (web `movementHashTarget` + `LEGACY_TAB`):
+  /// `#stock/movements[/<id>]`, `#documents`, `#vouchers[/<id>]` → Kho hàng › Xuất/nhập kho (Tất cả, mở sẵn chứng từ);
+  /// `#approvals` → Chờ duyệt; `#issue-requests` → Yêu cầu xuất; `#transactions` → Lịch sử xuất nhập;
+  /// `#assets` → Cây tài sản; `#custody` → Tài sản; `#reports` → Báo cáo kho. Không có hash thì đoán theo loại thông báo.
+  static void _openInventory(NavigatorState nav, String link, String category, String sourceType, String linkForMatching) {
+    final hashIndex = link.indexOf('#');
+    final parts = hashIndex < 0 ? const <String>[] : link.substring(hashIndex + 1).split('/');
+    final head = parts.isNotEmpty ? parts[0] : '';
+    String? decoded(int i) {
+      if (parts.length <= i || parts[i].trim().isEmpty) return null;
+      try {
+        return Uri.decodeComponent(parts[i]).trim();
+      } catch (_) {
+        return parts[i].trim();
+      }
+    }
+
+    void push(Widget screen) => nav.push(MaterialPageRoute(builder: (_) => screen));
+    void movements(String view, [String? documentKey]) => push(InventoryItemsScreen(
+          initialTabIndex: 2,
+          initialMovementView: view,
+          initialDocumentKey: documentKey,
+        ));
+
+    if (head == 'stock' && parts.length > 1 && parts[1] == 'movements') return movements('all', decoded(2));
+    switch (head) {
+      case 'documents':
+      case 'vouchers':
+        return movements('all', decoded(1));
+      case 'approvals':
+        return movements('pending');
+      case 'issue-requests':
+        return movements('requests');
+      case 'transactions':
+        return push(const InventoryItemsScreen(initialTabIndex: 3));
+      case 'stock':
+      case 'items':
+      case 'trade-items':
+        return push(const InventoryItemsScreen());
+      case 'assets':
+        return push(const InventoryAssetsScreen(initialTab: 1));
+      case 'custody':
+        return push(const InventoryAssetsScreen(initialTab: 0));
+      case 'reports':
+        return push(const InventoryReportsScreen());
+    }
+    if (category.contains('document') ||
+        category.contains('voucher') ||
+        sourceType.contains('document') ||
+        linkForMatching.contains('/documents') ||
+        linkForMatching.contains('/vouchers')) {
+      return movements('all');
+    }
+    if (category.contains('asset') || sourceType.contains('asset') || linkForMatching.contains('/assets')) {
+      return push(const InventoryAssetsScreen(initialTab: 1));
+    }
+    push(const InventoryScreen());
+  }
+
 }

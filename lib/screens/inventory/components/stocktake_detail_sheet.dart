@@ -204,9 +204,10 @@ class _StocktakeDetailSheetState extends State<StocktakeDetailSheet> {
   }
 
   Future<void> _submitApproval() async {
+    // Như web `handleSubmitApproval`: lưu nháp lỗi chỉ báo lỗi rồi vẫn gửi duyệt tiếp.
     if (_dirty) {
-      final ok = await _saveDraft(notify: true);
-      if (!ok || !mounted) return;
+      await _saveDraft(notify: true);
+      if (!mounted) return;
     }
     final uncounted = _lines.where((l) => l.actualQuantity == null).length;
     if (uncounted > 0) {

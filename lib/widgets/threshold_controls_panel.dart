@@ -70,7 +70,7 @@ class ThresholdControlsPanel extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: provider.voltageLevel,
+                initialValue: provider.voltageLevel,
                 disabledHint: Text(provider.voltageLevel),
                 decoration: InputDecoration(
                   fillColor: Colors.white,
@@ -277,7 +277,7 @@ class ThresholdControlsPanel extends StatelessWidget {
           if (isLocked)
             Positioned.fill(
               child: Container(
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withValues(alpha: 0.85),
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

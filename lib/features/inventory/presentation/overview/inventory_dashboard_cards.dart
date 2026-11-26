@@ -263,12 +263,10 @@ final List<InventoryDashboardCard> inventoryDashboardCards = [
         final name = d.workspace.materialByCode[code]?.name ?? code;
         byMaterial[name] = (byMaterial[name] ?? 0) + row.available;
       }
-      // Sáu mã có tồn khả dụng lớn nhất.
-      final slices = byMaterial.entries.map((e) => OverviewChartSlice(e.key, e.value)).toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+      // Biểu đồ tự xếp giảm dần, giữ sáu cột lớn nhất và gộp phần còn lại vào "Khác" (như web).
       return InventoryBarChart(
         emptyHint: 'inventory.overview.chart.stock_empty'.tr(),
-        slices: slices.take(6).toList(),
+        slices: byMaterial.entries.map((e) => OverviewChartSlice(e.key, e.value)).toList(),
       );
     },
   ),

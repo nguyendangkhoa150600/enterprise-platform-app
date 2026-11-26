@@ -6,12 +6,12 @@ import '../../../features/inventory/data/ledger/ledger_repository.dart';
 import '../../../features/inventory/domain/inventory_capabilities.dart';
 import '../../../features/inventory/domain/ledger/ledger_models.dart';
 import '../../../features/inventory/presentation/ledger/batch_requisition_sheet.dart';
-import '../../../features/inventory/presentation/ledger/item_profile_sheet.dart';
 import '../../../features/inventory/presentation/ledger/ledger_format.dart';
 import '../../../features/inventory/presentation/ledger/requisitions_card.dart';
 import '../../../features/inventory/presentation/utils/inventory_scope.dart';
 import '../../../models/inventory_models.dart';
 import '../../../theme/colors.dart';
+import 'inventory_asset_detail_sheet.dart';
 import 'inventory_movement_dialog.dart';
 import 'movement_detail_sheet.dart';
 
@@ -249,7 +249,15 @@ class _InventoryHistoryViewState extends State<InventoryHistoryView> with Single
 
   void _openProfile(String code) {
     if (code.isEmpty) return;
-    LedgerItemProfileSheet.show(context, code: code, workspace: _ws);
+    // Web `ItemProfileDialog`: hồ sơ đầy đủ, sửa được; lưu xong nạp lại như web `reload()`.
+    InventoryAssetDetailSheet.showProfile(
+      context,
+      code: code,
+      onSaved: () async {
+        await _reload();
+        await widget.onRefresh();
+      },
+    );
   }
 
   // ---- Giao diện ----

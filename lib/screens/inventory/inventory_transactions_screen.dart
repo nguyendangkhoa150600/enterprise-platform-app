@@ -192,7 +192,7 @@ class _InventoryTransactionsScreenState extends State<InventoryTransactionsScree
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           return _buildTransactionCard(filtered[index]);
                         },

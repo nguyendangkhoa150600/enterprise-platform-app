@@ -36,12 +36,16 @@ class InventoryItemsView extends StatefulWidget {
   /// Gọi sau khi ghi phiếu nhập/xuất xong.
   final Future<void> Function() onMovementSubmitted;
 
+  /// Gọi sau khi tạo đợt kiểm kê xong: web chuyển sang tab con "Lịch sử kiểm đếm".
+  final VoidCallback? onStocktakeCreated;
+
   const InventoryItemsView({
     super.key,
     required this.store,
     required this.movementItems,
     required this.onMovementSubmitted,
     this.initialWarehouseCode,
+    this.onStocktakeCreated,
   });
 
   @override
@@ -130,7 +134,8 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
         onSubmitted: widget.onMovementSubmitted,
       );
 
-  /// Web "Tạo đợt kiểm kê": mở form tạo đợt, chọn sẵn kho đang lọc; tạo xong chỉ báo như web.
+  /// Web "Tạo đợt kiểm kê": mở form tạo đợt, chọn sẵn kho đang lọc; tạo xong (đã bắt đầu phiên đếm) thì báo
+  /// và chuyển sang tab "Lịch sử kiểm đếm" như web `setStockSubTab('stocktakes')`.
   Future<void> _openStocktake(GoodsWorkspace ws) async {
     final selected = ws.warehouses.where((w) => w.id == _warehouseId).firstOrNull;
     final created = await CreateStocktakeSheet.show(
@@ -140,6 +145,7 @@ class _InventoryItemsViewState extends State<InventoryItemsView> {
     );
     if (created == null || !mounted) return;
     AppToast.success(context, 'inventory.stocktake.notice_created'.tr(args: {'code': created.code}));
+    widget.onStocktakeCreated?.call();
   }
 
   void _open(GoodsWarehouseRow r) {

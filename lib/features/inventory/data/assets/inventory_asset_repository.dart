@@ -74,6 +74,20 @@ class InventoryAssetRepository {
 
   Future<void> updateAsset(String code, Map<String, dynamic> patch) => _api.patch('/assets/${_enc(code)}', patch);
 
+  /// Lưu hồ sơ của mọi loại mã (`PATCH /items/:code`, backend `updateItemProfile`). `/assets/:code` chỉ ghi được
+  /// mã loại ASSET (view `assets`), nên hồ sơ của vật tư còn trong kho phải lưu qua đường này.
+  Future<void> updateItemProfile(String code, Map<String, dynamic> patch) =>
+      _api.patch('/items/${_enc(code)}', patch);
+
+  /// Web `loadItemProfile`: hồ sơ đầy đủ của một mã BẤT KỲ (kho hay đã lắp) — `GET /items/:code`.
+  Future<InvAsset> loadItemProfile(String code) async {
+    final res = await _api.get('/items/${_enc(code)}');
+    if (res is! Map) throw const InventoryException();
+    final asset = InvAsset.fromJson(Map<String, dynamic>.from(res));
+    if (asset.code.isEmpty) throw const InventoryException();
+    return asset;
+  }
+
   Future<String> createAsset(Map<String, dynamic> body) async {
     final res = await _api.post('/assets', body);
     return res is Map ? res['code']?.toString() ?? '' : '';
@@ -236,26 +250,57 @@ class InventoryAssetRepository {
     try {
       final list = invList(await _api.getAbsolute('/api/hrm/v1/employees', query: {'page_size': 100}));
       if (list.isNotEmpty) {
-        return _employeesCache = list
-            .map((e) => InvEmployeeOption(
-                  id: (e['employeeId'] ?? e['id'] ?? e['employeeCode'])?.toString() ?? '',
-                  name: (e['fullName'] ?? e['name'])?.toString() ?? '',
-                  code: invStr(e['employeeCode'] ?? e['code']),
-                ))
-            .toList();
+        return _employeesCache = _warehouseFirst(list.map((e) => (
+              InvEmployeeOption(
+                id: (e['employeeId'] ?? e['id'] ?? e['employeeCode'])?.toString() ?? '',
+                name: (e['fullName'] ?? e['name'])?.toString() ?? '',
+                code: invStr(e['employeeCode'] ?? e['code']),
+              ),
+              _isWarehouseStaff(
+                (e['departmentName'] ?? e['department'])?.toString() ?? '',
+                (e['positionTitle'] ?? e['position'])?.toString() ?? '',
+              ),
+            )));
       }
     } catch (_) {}
     try {
       final list = invList(await _api.getAbsolute('/api/workspace/v1/directory'), 'people');
       if (list.isNotEmpty) {
-        return _employeesCache = list
-            .map((p) => InvEmployeeOption(
-                  id: p['userId']?.toString() ?? '',
-                  name: (p['displayName'] ?? p['name'])?.toString() ?? '',
-                ))
-            .toList();
+        return _employeesCache = _warehouseFirst(list.map((p) => (
+              InvEmployeeOption(
+                id: p['userId']?.toString() ?? '',
+                name: (p['displayName'] ?? p['name'])?.toString() ?? '',
+              ),
+              _isWarehouseStaff(
+                p['unitNames'] is List ? (p['unitNames'] as List).join(', ') : '',
+                p['positionName']?.toString() ?? '',
+              ),
+            )));
       }
     } catch (_) {}
     return const [];
+  }
+
+  /// Web: đơn vị/chức danh có chữ kho, vật tư, hậu cần, logistics... được coi là nhân viên kho.
+  static bool _isWarehouseStaff(String department, String position) {
+    final d = department.toLowerCase();
+    final p = position.toLowerCase();
+    return d.contains('kho') ||
+        d.contains('vật tư') ||
+        d.contains('hậu cần') ||
+        d.contains('logistics') ||
+        p.contains('kho') ||
+        p.contains('vật tư');
+  }
+
+  /// Web sắp nhân viên kho lên trước (sort ổn định, giữ thứ tự còn lại).
+  static List<InvEmployeeOption> _warehouseFirst(Iterable<(InvEmployeeOption, bool)> rows) {
+    final all = rows.toList();
+    return [
+      for (final r in all)
+        if (r.$2) r.$1,
+      for (final r in all)
+        if (!r.$2) r.$1,
+    ];
   }
 }

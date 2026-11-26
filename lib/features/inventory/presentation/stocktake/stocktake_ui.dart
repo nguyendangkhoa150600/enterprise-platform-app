@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/i18n/app_i18n.dart';
 import '../../../../theme/colors.dart';
 import '../../domain/stocktake/stocktake_models.dart';
+import '../utils/inventory_number.dart';
 
 /// Tiện ích hiển thị dùng chung cho khu vực kiểm kê.
 class StocktakeUi {
@@ -50,9 +51,7 @@ class StocktakeUi {
 
   /// Đọc số người dùng gõ (chấp nhận `,` là dấu thập phân); rỗng → null.
   static double? parseQty(String text) {
-    final t = text.trim().replaceAll(' ', '');
-    if (t.isEmpty) return null;
-    return double.tryParse(t.replaceAll(',', '.'));
+    return parseVnNumber(text);
   }
 
   /// Số gõ vào ô nhập (không phân tách hàng nghìn).

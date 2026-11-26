@@ -31,7 +31,7 @@ class LanguageSelectorTile extends StatelessWidget {
       builder: (sheetContext) => SafeArea(
         child: ListenableBuilder(
           listenable: AppI18n.instance,
-          builder: (_, __) {
+          builder: (_, _) {
             final current = AppI18n.instance.locale.languageCode;
             return Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
@@ -131,7 +131,7 @@ class LanguageSelectorTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _cyan.withOpacity(0.14),
+                    color: _cyan.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.language_rounded, color: _cyan, size: 22),
@@ -156,9 +156,9 @@ class LanguageSelectorTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
-                    color: _cyan.withOpacity(0.10),
+                    color: _cyan.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _cyan.withOpacity(0.4)),
+                    border: Border.all(color: _cyan.withValues(alpha: 0.4)),
                   ),
                   child: Text(
                     '${o.flag} ${o.code}',
