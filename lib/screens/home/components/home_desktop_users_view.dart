@@ -7,6 +7,7 @@ import '../../../services/platform_service.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/assign_role_modal.dart';
 import '../../org_chart_workspace_screen.dart';
+import '../../../widgets/user_avatar.dart';
 
 class HomeDesktopUsersView extends StatefulWidget {
   final List<TenantUser> users;
@@ -296,17 +297,13 @@ class _HomeDesktopUsersViewState extends State<HomeDesktopUsersView> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: isAdmin ? Colors.purple.shade100 : Colors.blue.shade100,
-                      child: Text(
-                        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                        style: TextStyle(
-                          color: isAdmin ? Colors.purple.shade800 : Colors.blue.shade800,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
+                    UserAvatar(
+                      userId: user.id,
+                      name: user.fullName,
+                      size: 36,
+                      background: isAdmin ? Colors.purple.shade100 : Colors.blue.shade100,
+                      foreground: isAdmin ? Colors.purple.shade800 : Colors.blue.shade800,
+                      fontSize: 13,
                     ),
                     const SizedBox(width: 12),
                     Expanded(

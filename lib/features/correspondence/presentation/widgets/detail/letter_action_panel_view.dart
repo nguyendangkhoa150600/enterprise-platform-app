@@ -1,22 +1,54 @@
 import 'package:flutter/material.dart';
-import '../../../../workspace/presentation/widgets/searchable_dropdown_field.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/correspondence_models.dart';
+import 'approve_letter_panel.dart';
+import 'archived_letter_panel.dart';
+import 'cancel_letter_dialog.dart';
+import 'cancelled_letter_panel.dart';
+import 'dispatch_letter_panel.dart';
+import 'letter_action_buttons.dart';
+import 'publish_letter_panel.dart';
+import 'revoking_letter_panel.dart';
+import 'send_to_clerk_panel.dart';
+import '../dialogs/return_letter_dialog.dart';
 
-/// Section 2: Action Panel for the active step matching Savina Web 1:1
+/// Bộ điều phối hiển thị ô thao tác cho bước hiện tại đồng bộ 1:1 với Savina Web LetterActionPanel
 class LetterActionPanelView extends StatefulWidget {
   final LetterDetail letter;
-  final List<OrgUnitModel> units;
+  final CorrespondenceConfig config;
+  final CorrespondenceDirectory directory;
   final Future<void> Function(Map<String, dynamic> body) onDispatch;
   final Future<void> Function(Map<String, dynamic> body) onApprove;
   final Future<void> Function(Map<String, dynamic> body) onReturn;
+  final Future<void> Function(Map<String, dynamic> body) onSendToClerk;
+  final Future<void> Function(Map<String, dynamic> body) onSubmit;
+  final Future<void> Function(Map<String, dynamic> body) onPublish;
+  final Future<void> Function(Map<String, dynamic> body) onComplete;
+  final Future<void> Function(String reason) onCancel;
+  final Future<void> Function(Map<String, dynamic> body) onUpdateDelivery;
+  final Future<void> Function(Map<String, dynamic> body) onRequestRevoke;
+  final Future<void> Function(bool approve, String? note)? onDecideRevoke;
+  final Future<void> Function()? onWithdrawRevoke;
+  final Future<void> Function()? onRemoveLetter;
 
   const LetterActionPanelView({
     super.key,
     required this.letter,
-    required this.units,
+    required this.config,
+    required this.directory,
     required this.onDispatch,
     required this.onApprove,
     required this.onReturn,
+    required this.onSendToClerk,
+    required this.onSubmit,
+    required this.onPublish,
+    required this.onComplete,
+    required this.onCancel,
+    required this.onUpdateDelivery,
+    required this.onRequestRevoke,
+    this.onDecideRevoke,
+    this.onWithdrawRevoke,
+    this.onRemoveLetter,
   });
 
   @override
@@ -25,14 +57,19 @@ class LetterActionPanelView extends StatefulWidget {
 
 class _LetterActionPanelViewState extends State<LetterActionPanelView> {
   final TextEditingController _noteController = TextEditingController();
-  OrgUnitModel? _selectedUnit;
-  String? _dueDate;
   bool _isSubmitting = false;
 
+  /// Đổi khi công văn sang bước mới: buộc các panel con tạo lại state
+  /// (đơn vị, hạn, ghi chú) thay vì giữ dữ liệu của bước trước.
+  String _stepKeyOf(LetterDetail l) =>
+      '${l.id}|${l.stage}|${l.currentStepName ?? ''}|${l.steps.length}';
+
   @override
-  void initState() {
-    super.initState();
-    _dueDate = widget.letter.dueOn ?? CorrespondenceDateUtils.localToday();
+  void didUpdateWidget(covariant LetterActionPanelView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_stepKeyOf(oldWidget.letter) != _stepKeyOf(widget.letter)) {
+      _noteController.clear();
+    }
   }
 
   @override
@@ -41,113 +78,31 @@ class _LetterActionPanelViewState extends State<LetterActionPanelView> {
     super.dispose();
   }
 
-  bool _isDispatchOrAssign() {
-    final actions = widget.letter.actions;
-    if (actions.dispatch) return true;
-
-    final currentStep = widget.letter.currentStepName?.toLowerCase() ?? '';
-    if (currentStep.contains('giao phòng ban') || currentStep.contains('phòng ban')) {
-      return true;
-    }
-
-    final currentFlowIndex = widget.letter.flow.indexWhere((n) => n.state == 'current');
-    if (currentFlowIndex >= 0 && currentFlowIndex + 1 < widget.letter.flow.length) {
-      final nextNode = widget.letter.flow[currentFlowIndex + 1];
-      if (nextNode.kind == 'process' || nextNode.label.toLowerCase().contains('phòng ban')) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  String _panelTitle() {
-    if (widget.letter.currentStepName != null && widget.letter.currentStepName!.isNotEmpty) {
-      return widget.letter.currentStepName!;
-    }
-    return widget.letter.actions.dispatch ? 'Giao phòng ban' : 'Phê duyệt';
-  }
-
-  Future<void> _handleSubmit(bool isDispatchOrAssign) async {
-    if (isDispatchOrAssign && _selectedUnit == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng chọn phòng ban cho bước "Phòng ban xử lý".'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
+  Future<void> _handleReturn() async {
+    // Nơi trả về, bước, phòng ban làm lại và lý do: chọn trong hộp thoại dùng chung (như web).
+    final body = await ReturnLetterDialog.show(context, widget.letter);
+    if (body == null || !mounted) return;
     setState(() => _isSubmitting = true);
     try {
-      final body = <String, dynamic>{
-        'kind': widget.letter.kind,
-        'urgency': widget.letter.urgency,
-        'note': _noteController.text.trim(),
-        'dueOn': _dueDate,
-        if (_selectedUnit != null)
-          'units': [
-            {'unitId': _selectedUnit!.id, 'role': 'lead'},
-          ],
-      };
-
-      if (widget.letter.actions.dispatch) {
-        await widget.onDispatch(body);
-      } else {
-        await widget.onApprove(body);
-      }
+      await widget.onReturn(body);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  Future<void> _handleReturn() async {
-    final reasonController = TextEditingController();
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Trả lại công văn', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: reasonController,
-          autofocus: true,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Nhập lý do trả lại...',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, reasonController.text.trim()),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD97706), foregroundColor: Colors.white),
-            child: const Text('Xác nhận trả lại'),
-          ),
-        ],
-      ),
-    );
-
+  Future<void> _handleCancel() async {
+    final reason = await CancelLetterDialog.show(context, displayNo: widget.letter.displayNo);
     if (reason != null && reason.isNotEmpty) {
       setState(() => _isSubmitting = true);
       try {
-        await widget.onReturn({'note': reason});
+        await widget.onCancel(reason);
       } finally {
         if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final actions = widget.letter.actions;
-    if (!actions.dispatch && !actions.approve) {
-      return const SizedBox.shrink();
-    }
-
-    final isDispatchOrAssign = _isDispatchOrAssign();
-    final title = _panelTitle();
-
+  Widget _buildCardContainer({required String title, required List<Widget> children, Color? titleColor}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -165,157 +120,314 @@ class _LetterActionPanelViewState extends State<LetterActionPanelView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Step Action Title (Matching Web: Blue bold title)
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF2563EB), // Blue 600
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // 1. Ý kiến, chỉ đạo
-          Text(
-            isDispatchOrAssign
-                ? 'Ý kiến, chỉ đạo cho phòng ban (nếu có)'
-                : 'Ý kiến kèm theo khi duyệt (nếu có)',
-            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _noteController,
-            maxLines: 3,
-            style: const TextStyle(fontSize: 13),
-            decoration: InputDecoration(
-              hintText: isDispatchOrAssign
-                  ? 'Ví dụ: Phòng Kinh doanh chủ trì, Kế toán phối hợp, trả lời trước hạn'
-                  : 'Ý kiến kèm theo khi duyệt',
-              hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              color: titleColor ?? const Color(0xFF2563EB),
             ),
           ),
           const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
 
-          // 2. Phòng ban cho bước "Phòng ban xử lý" (SearchableDropdownField - Rule 5.2)
-          if (isDispatchOrAssign) ...[
-            RichText(
-              text: const TextSpan(
-                text: 'Phòng ban cho bước "Phòng ban xử lý"',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                children: [
-                  TextSpan(text: ' *', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            SearchableDropdownField<OrgUnitModel>(
-              value: _selectedUnit,
-              items: widget.units,
-              onChanged: (u) => setState(() => _selectedUnit = u),
-              itemLabel: (u) => u.name,
-              hintText: 'Tìm và thêm phòng ban theo sơ đồ tổ chức',
-              icon: Icons.search,
-              showClear: true,
-              onClear: () => setState(() => _selectedUnit = null),
-            ),
-            const SizedBox(height: 12),
-          ],
+  @override
+  Widget build(BuildContext context) {
+    final actions = widget.letter.actions;
+    final panelKey = ValueKey(_stepKeyOf(widget.letter));
 
-          // 3. Thời hạn hoàn thành
-          const Text(
-            'Thời hạn hoàn thành',
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-          ),
-          const SizedBox(height: 6),
-          InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
-              );
-              if (picked != null) {
-                setState(() {
-                  _dueDate = CorrespondenceDateUtils.localToday(picked);
-                });
-              }
-            },
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _dueDate != null ? CorrespondenceDateUtils.formatDay(_dueDate) : 'Chọn hạn...',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
-                  ),
-                  const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF64748B)),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+    if (widget.letter.stage == 'archived') {
+      return ArchivedLetterPanel(
+        key: panelKey,
+        letter: widget.letter,
+        onUpdateDelivery: widget.onUpdateDelivery,
+        onRequestRevoke: widget.onRequestRevoke,
+      );
+    }
 
-          // 4. Action Buttons (Trả lại & Giao phòng ban / Duyệt)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+    if (widget.letter.stage == 'revoking') {
+      return RevokingLetterPanel(
+        key: panelKey,
+        letter: widget.letter,
+        onDecideRevoke: widget.onDecideRevoke ?? (approve, note) async {},
+        onWithdrawRevoke: widget.onWithdrawRevoke ?? () async {},
+      );
+    }
+
+    if (widget.letter.stage == 'cancelled') {
+      return CancelledLetterPanel(
+        key: panelKey,
+        letter: widget.letter,
+        onRemoveLetter: widget.onRemoveLetter,
+      );
+    }
+
+    // 1. Soạn thảo công văn đi: Gửi văn thư kiểm tra
+    if (actions.sendToClerk) {
+      return SendToClerkPanel(
+        key: panelKey,
+        letter: widget.letter,
+        config: widget.config,
+        directory: widget.directory,
+        onSendToClerk: widget.onSendToClerk,
+        onCancel: widget.onCancel,
+      );
+    }
+
+    // 2. Văn thư giao phòng ban (Công văn đến)
+    if (actions.dispatch) {
+      return DispatchLetterPanel(
+        key: panelKey,
+        letter: widget.letter,
+        directory: widget.directory,
+        onDispatch: widget.onDispatch,
+        onReturn: widget.onReturn,
+        onCancel: widget.onCancel,
+      );
+    }
+
+    // 3. Văn thư kiểm tra / Chuyển bước kế tiếp (Submit)
+    if (actions.submit) {
+      return _buildSubmitPanel();
+    }
+
+    // 4. Lãnh đạo phê duyệt / Giao phòng ban (Approve)
+    if (actions.approve) {
+      return ApproveLetterPanel(
+        key: panelKey,
+        letter: widget.letter,
+        config: widget.config,
+        directory: widget.directory,
+        onApprove: widget.onApprove,
+        onReturn: widget.onReturn,
+        onCancel: widget.onCancel,
+      );
+    }
+
+    // 5. Hoàn tất & lưu trữ (Complete)
+    if (actions.complete) {
+      return _buildCompletePanel();
+    }
+
+    // 6. Ban hành công văn đi (Publish)
+    if (actions.publish) {
+      return PublishLetterPanel(
+        key: panelKey,
+        letter: widget.letter,
+        config: widget.config,
+        directory: widget.directory,
+        onPublish: widget.onPublish,
+        onReturn: widget.onReturn,
+      );
+    }
+
+    // 7. Chờ người khác xử lý (Waiting Note)
+    return _buildWaitingNotePanel();
+  }
+
+  /// 3. Submit Panel (Văn thư kiểm tra)
+  Widget _buildSubmitPanel() {
+    final curIdx = widget.letter.flow.indexWhere((n) => n.state == 'current');
+    final nextNode = curIdx >= 0 && curIdx + 1 < widget.letter.flow.length ? widget.letter.flow[curIdx + 1] : null;
+    final nextName = nextNode?.label ?? widget.letter.flow.lastOrNull?.label ?? 'correspondence.panel.next_step_fallback'.tr();
+
+    return _buildCardContainer(
+      title: widget.letter.currentStepName ?? 'correspondence.panel.clerk_check_step'.tr(),
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+          child: Row(
             children: [
-              // Nút Trả lại
-              OutlinedButton.icon(
-                onPressed: _isSubmitting ? null : _handleReturn,
-                icon: const Icon(Icons.undo_rounded, size: 16, color: Color(0xFFD97706)),
-                label: const Text(
-                  'Trả lại',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFD97706)),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFFF59E0B)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  backgroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 10),
+              Text('correspondence.panel.next_step_label'.tr(), style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+              Text(nextName, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text('common.note'.tr(), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _noteController,
+          maxLines: 2,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'correspondence.panel.check_note_hint'.tr(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+        ),
+        const SizedBox(height: 16),
+        LetterActionButtons(
+          cancelButton: widget.letter.actions.cancel
+              ? OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _handleCancel,
+                  icon: const Icon(Icons.block_outlined, size: 15, color: Color(0xFFDC2626)),
+                  label: Text('correspondence.panel.cancel_letter'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xFFDC2626))),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFFCA5A5)), backgroundColor: Colors.white),
+                )
+              : null,
+          returnButton: widget.letter.actions.returnTargets.isNotEmpty
+              ? OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _handleReturn,
+                  icon: const Icon(Icons.undo_rounded, size: 15, color: Color(0xFFD97706)),
+                  label: Text('correspondence.panel.return'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xFFD97706))),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFF59E0B)), backgroundColor: Colors.white),
+                )
+              : null,
+          primaryButton: ElevatedButton(
+            onPressed: _isSubmitting
+                ? null
+                : () async {
+                    setState(() => _isSubmitting = true);
+                    try {
+                      await widget.onSubmit({'note': _noteController.text.trim()});
+                    } finally {
+                      if (mounted) setState(() => _isSubmitting = false);
+                    }
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0284C7),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: _isSubmitting
+                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text(
+                    'correspondence.panel.pass_forward'.tr(args: {'name': nextName}),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
 
-              // Nút Giao phòng ban xử lý / Đồng ý duyệt
-              ElevatedButton.icon(
-                onPressed: _isSubmitting ? null : () => _handleSubmit(isDispatchOrAssign),
-                icon: _isSubmitting
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check_circle_outline_rounded, size: 16, color: Colors.white),
-                label: Text(
-                  isDispatchOrAssign ? 'Giao phòng ban xử lý' : 'Đồng ý duyệt',
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white),
+  /// 5. Complete Panel (Hoàn tất & lưu trữ)
+  Widget _buildCompletePanel() {
+    final title = widget.letter.flow.isNotEmpty ? widget.letter.flow.last.label : 'correspondence.workflow.end_incoming'.tr();
+    return _buildCardContainer(
+      title: title,
+      children: [
+        Text('correspondence.panel.close_note_label'.tr(), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _noteController,
+          maxLines: 2,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'correspondence.panel.note_hint_short'.tr(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+        ),
+        const SizedBox(height: 16),
+        LetterActionButtons(
+          returnButton: widget.letter.actions.returnTargets.isNotEmpty
+              ? OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _handleReturn,
+                  icon: const Icon(Icons.undo_rounded, size: 15, color: Color(0xFFD97706)),
+                  label: Text('correspondence.panel.return'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xFFD97706))),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFF59E0B)), backgroundColor: Colors.white),
+                )
+              : null,
+          primaryButton: ElevatedButton(
+            onPressed: _isSubmitting
+                ? null
+                : () async {
+                    setState(() => _isSubmitting = true);
+                    try {
+                      await widget.onComplete({'note': _noteController.text.trim()});
+                    } finally {
+                      if (mounted) setState(() => _isSubmitting = false);
+                    }
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF16A34A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('correspondence.panel.complete_archive'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 7. Waiting Note Panel
+  Widget _buildWaitingNotePanel() {
+    final pending = widget.letter.assignments.where((a) => a.status == 'pending').toList();
+    final who = widget.letter.currentAssigneeNames.isNotEmpty
+        ? widget.letter.currentAssigneeNames.join(', ')
+        : 'correspondence.panel.assignee_fallback'.tr();
+
+    String noteText = '';
+    switch (widget.letter.stage) {
+      case 'received':
+        noteText = 'correspondence.panel.waiting.received'.tr();
+        break;
+      case 'processing':
+        noteText = pending.isNotEmpty
+            ? 'correspondence.panel.waiting.processing'.tr(args: {'units': pending.map((p) => p.handlerName != null ? "${p.unitName} (${p.handlerName})" : p.unitName).join(", ")})
+            : 'correspondence.panel.waiting.processing_done'.tr();
+        break;
+      case 'drafting':
+        noteText = 'correspondence.panel.waiting.drafting'.tr(args: {'name': widget.letter.authorName ?? 'correspondence.panel.author_fallback'.tr()});
+        break;
+      case 'checking':
+        noteText = 'correspondence.panel.waiting.checking'.tr(args: {'step': widget.letter.currentStepName ?? 'correspondence.panel.clerk_check_step'.tr()});
+        break;
+      case 'reviewing':
+        noteText = 'correspondence.panel.waiting.reviewing'.tr(args: {'step': widget.letter.currentStepName ?? '', 'who': who});
+        break;
+      case 'closing':
+        noteText = 'correspondence.panel.waiting.closing'.tr();
+        break;
+      case 'publishing':
+        noteText = 'correspondence.panel.waiting.publishing'.tr();
+        break;
+      default:
+        noteText = 'correspondence.panel.waiting.default'.tr();
+    }
+
+    return _buildCardContainer(
+      title: 'correspondence.panel.current_step'.tr(),
+      titleColor: const Color(0xFF64748B),
+      children: [
+        Text(noteText, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4)),
+        if (widget.letter.actions.cancel || widget.letter.actions.returnTargets.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
+            children: [
+              if (widget.letter.actions.cancel)
+                OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _handleCancel,
+                  icon: const Icon(Icons.block_outlined, size: 15, color: Color(0xFFDC2626)),
+                  label: Text('correspondence.panel.cancel_letter'.tr(), style: const TextStyle(fontSize: 12.5, color: Color(0xFFDC2626))),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFFCA5A5)), backgroundColor: Colors.white),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0284C7),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  elevation: 0,
+              if (widget.letter.actions.returnTargets.isNotEmpty)
+                OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _handleReturn,
+                  icon: const Icon(Icons.undo_rounded, size: 15, color: Color(0xFFD97706)),
+                  label: Text('correspondence.panel.return_to_clerk'.tr(), style: const TextStyle(fontSize: 12.5, color: Color(0xFFD97706))),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFF59E0B)), backgroundColor: Colors.white),
                 ),
-              ),
             ],
           ),
         ],
-      ),
+      ],
     );
   }
 }

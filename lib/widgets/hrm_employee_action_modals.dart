@@ -3,6 +3,7 @@ import '../models/hrm_models.dart';
 import '../services/hrm_service.dart';
 import 'hrm_profile_modals.dart';
 import '../core/i18n/app_i18n.dart';
+import 'user_avatar.dart';
 
 /// Reusable Modals for HRM Employee Actions, Decisions, Quick Sheets, and Requests
 class HrmEmployeeActionModals {
@@ -45,13 +46,13 @@ class HrmEmployeeActionModals {
             // Header Info
             Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color(0xFFEFF6FF),
-                  child: Text(
-                    emp.avatarInitials,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8)),
-                  ),
+                UserAvatar(
+                  userId: emp.userId,
+                  name: emp.fullName,
+                  size: 40,
+                  background: const Color(0xFFEFF6FF),
+                  foreground: const Color(0xFF1D4ED8),
+                  fontSize: 13,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -166,7 +167,7 @@ class HrmEmployeeActionModals {
                 const SizedBox(height: 14),
 
                 DropdownButtonFormField<String>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
                   items: [
@@ -388,7 +389,7 @@ class HrmEmployeeActionModals {
                 Text('hrm_modals.employee_action.tao_don_tu_yeu_cau_moi'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<HrmRequestType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
                   items: [

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
-import '../theme/colors.dart';
 import 'chat/chat_internal_view.dart';
 import 'assistant_chat_screen.dart';
 
@@ -107,7 +106,7 @@ class _CommunicationHubScreenState extends State<CommunicationHubScreen> with Si
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),

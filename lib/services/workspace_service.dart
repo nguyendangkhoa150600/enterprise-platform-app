@@ -13,11 +13,9 @@ class WorkspaceService {
       : _repository = repository ?? WorkspaceRepositoryImpl();
 
   // Static Fallback Helpers (Backward Compatibility)
-  static List<CustomerItem> getFallbackCustomers() =>
-      WorkspaceRepositoryImpl.getFallbackCustomers();
+  static List<CustomerItem> getFallbackCustomers() => const [];
 
-  static List<ProjectItem> getFallbackProjects([Map<String, String>? customerMap]) =>
-      WorkspaceRepositoryImpl.getFallbackProjects(customerMap);
+  static List<ProjectItem> getFallbackProjects([Map<String, String>? customerMap]) => const [];
 
   // 1. Customers
   Future<List<CustomerItem>> getCustomers({String? query}) =>
@@ -212,6 +210,60 @@ class WorkspaceService {
   Future<Map<String, dynamic>?> getStandaloneTaskDetail(String taskId) =>
       _repository.getStandaloneTaskDetail(taskId);
 
+  Future<Map<String, dynamic>?> getWorkItemDetail(String workItemId) =>
+      _repository.getWorkItemDetail(workItemId);
+
+  Future<Map<String, dynamic>?> getUnifiedTaskDetail(
+    String taskId, {
+    String? projectId,
+    bool isProjectTask = false,
+  }) =>
+      _repository.getUnifiedTaskDetail(
+        taskId,
+        projectId: projectId,
+        isProjectTask: isProjectTask,
+      );
+
+  Future<bool> deleteWorkItem(String workItemId) =>
+      _repository.deleteWorkItem(workItemId);
+
+  Future<bool> reverseWorkItem(String workItemId, String reason) =>
+      _repository.reverseWorkItem(workItemId, reason);
+
+  Future<bool> reportWorkItemProgress(
+    String workItemId, {
+    required double percent,
+    double? actualHours,
+    String? note,
+  }) =>
+      _repository.reportWorkItemProgress(
+        workItemId,
+        percent: percent,
+        actualHours: actualHours,
+        note: note,
+      );
+
+  Future<List<Map<String, dynamic>>> getWorkItemChecklist(String workItemId) =>
+      _repository.getWorkItemChecklist(workItemId);
+
+  Future<bool> addWorkItemChecklist(String workItemId, List<String> titles) =>
+      _repository.addWorkItemChecklist(workItemId, titles);
+
+  Future<bool> updateWorkItemChecklist(String workItemId, String itemId, {String? title, bool? done}) =>
+      _repository.updateWorkItemChecklist(workItemId, itemId, title: title, done: done);
+
+  Future<bool> removeWorkItemChecklist(String workItemId, String itemId) =>
+      _repository.removeWorkItemChecklist(workItemId, itemId);
+
+  Future<bool> moveWorkItem(String workItemId, {String? parentId}) =>
+      _repository.moveWorkItem(workItemId, parentId: parentId);
+
+  Future<List<Map<String, dynamic>>> getWorkItemProgressReports(String workItemId) =>
+      _repository.getWorkItemProgressReports(workItemId);
+
+  Future<List<Map<String, dynamic>>> getWorkItemDependencies(String workItemId) =>
+      _repository.getWorkItemDependencies(workItemId);
+
   Future<bool> changeStandaloneTaskStatus(String id, String status, {String? note}) =>
       _repository.updateStandaloneTaskStatus(id, status, note: note);
 
@@ -227,22 +279,58 @@ class WorkspaceService {
     String? assigneeUserId,
     DateTime? startDate,
     DateTime? dueDate,
-    int? estimatedHours,
+    num? estimatedHours,
     String? executionMethod,
     String? parentTaskId,
     String? coAssignee,
     String? label,
+    List<String>? participantUserIds,
+    String? progressMethod,
+    double? quantityTarget,
+    String? quantityUnit,
+    bool? equalChildWeight,
+    List<String>? tagIds,
+    List<String>? checklistTitles,
+    String? procedureDefinitionId,
+    Map<String, dynamic>? completion,
+    String? reopenPolicy,
+    bool reopenParent = false,
   }) =>
       _repository.createWorkItem(
         projectId: projectId,
         title: title,
         description: description,
         priority: priority,
+        itemType: type,
         assigneeUserId: assigneeUserId,
+        startDate: startDate?.toIso8601String().substring(0, 10),
         dueDate: dueDate?.toIso8601String().substring(0, 10),
         estimatedHours: estimatedHours?.toDouble(),
         parentId: parentTaskId,
+        executionType: executionMethod,
+        participantUserIds: participantUserIds,
+        progressMethod: progressMethod,
+        quantityTarget: quantityTarget,
+        quantityUnit: quantityUnit,
+        equalChildWeight: equalChildWeight,
+        tagIds: tagIds,
+        checklistTitles: checklistTitles,
+        procedureDefinitionId: procedureDefinitionId,
+        completion: completion,
+        reopenPolicy: reopenPolicy,
+        reopenParent: reopenParent,
       );
+
+  String? get lastError => _repository.lastError;
+
+  /// Bản ghi vừa tạo ở lần [createWorkItem] / [createStandaloneTask] thành công gần nhất.
+  Map<String, dynamic>? get lastCreated => _repository.lastCreated;
+
+  Future<List<Map<String, dynamic>>> getTags() => _repository.getTags();
+
+  Future<Map<String, dynamic>?> createTag(String name) => _repository.createTag(name);
+
+  Future<List<String>> getRecentWorkItemTitles() => _repository.getRecentWorkItemTitles();
 
   Future<bool> updateWorkItemStatus(
     String workItemId,
@@ -256,6 +344,12 @@ class WorkspaceService {
         note: note,
         confirmedConditionIds: confirmedConditionIds,
       );
+
+  Future<bool> updateStandaloneTask(String taskId, Map<String, dynamic> data) =>
+      _repository.updateStandaloneTask(taskId, data);
+
+  Future<bool> updateWorkItem(String workItemId, Map<String, dynamic> data) =>
+      _repository.updateWorkItem(workItemId, data);
 
   Future<WorkItemCompletionPolicy?> getWorkItemCompletionPolicy(String workItemId) =>
       _repository.getWorkItemCompletionPolicy(workItemId);
@@ -288,6 +382,28 @@ class WorkspaceService {
     String? before,
   }) =>
       _repository.getProjectChatFeedThread(projectId, workItemId, before: before);
+
+  Future<ProjectChatThread> getChatThread(
+    String entityType,
+    String entityId, {
+    String? before,
+  }) =>
+      _repository.getChatThread(entityType, entityId, before: before);
+
+  Future<bool> sendChatMessage({
+    required String entityType,
+    required String entityId,
+    required String body,
+    List<String>? mentions,
+    List<String>? attachmentDocumentIds,
+  }) =>
+      _repository.sendChatMessage(
+        entityType: entityType,
+        entityId: entityId,
+        body: body,
+        mentions: mentions,
+        attachmentDocumentIds: attachmentDocumentIds,
+      );
 
   // 7. Báo cáo & Phân tích (Reports)
   Future<ReportBundle?> getWorkspaceReports({

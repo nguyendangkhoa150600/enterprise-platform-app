@@ -51,17 +51,47 @@ abstract class IWorkspaceRepository {
   /// Lấy cây công việc của dự án: GET /projects/{id}/work-items
   Future<List<StandaloneTaskItem>> getProjectWorkItems(String projectId);
 
+  /// Thông điệp lỗi gần nhất (nếu có)
+  String? get lastError;
+
+  /// Bản ghi server trả về ở lần tạo thành công gần nhất ([createWorkItem]: công việc; [createStandaloneTask]: `task`).
+  Map<String, dynamic>? get lastCreated;
+
   /// Tạo công việc trong dự án: POST /work-items
   Future<bool> createWorkItem({
     required String projectId,
     required String title,
     String? description,
     String priority = 'normal',
+    String itemType = 'task',
     String? assigneeUserId,
+    String? startDate,
     String? dueDate,
     double? estimatedHours,
     String? parentId,
+    String? executionType,
+    List<String>? participantUserIds,
+    String? progressMethod,
+    double? quantityTarget,
+    String? quantityUnit,
+    bool? equalChildWeight,
+    List<String>? tagIds,
+    List<String>? checklistTitles,
+    String? procedureDefinitionId,
+    Map<String, dynamic>? completion,
+    String? reopenPolicy,
+    /// Việc cha đã hoàn thành: mở lại cha rồi tạo (web `reopenParent`).
+    bool reopenParent = false,
   });
+
+  /// Lấy danh sách nhãn (tags): GET /tags
+  Future<List<Map<String, dynamic>>> getTags();
+
+  /// Tạo nhãn mới: POST /tags
+  Future<Map<String, dynamic>?> createTag(String name);
+
+  /// Lấy danh sách tên công việc đã dùng gần đây (gợi ý): GET /work-item-titles
+  Future<List<String>> getRecentWorkItemTitles();
 
   /// Cập nhật trạng thái công việc dự án: PATCH /work-items/{id}/status
   Future<bool> updateWorkItemStatus(
@@ -71,8 +101,59 @@ abstract class IWorkspaceRepository {
     List<String>? confirmedConditionIds,
   });
 
+  /// Chỉnh sửa thông tin công việc (tiêu đề, mô tả, ưu tiên, phụ trách, giờ ước lượng): PATCH /work-items/{id}
+  Future<bool> updateWorkItem(String workItemId, Map<String, dynamic> data);
+
+  /// Sửa "Công việc khác" (việc ngoài dự án); lỗi server ở [lastError].
+  Future<bool> updateStandaloneTask(String taskId, Map<String, dynamic> data);
+
   /// Lấy cấu hình điều kiện hoàn thành của công việc: GET /work-items/{id}
   Future<WorkItemCompletionPolicy?> getWorkItemCompletionPolicy(String workItemId);
+
+  /// Chi tiết công việc dự án: GET /work-items/{id}
+  Future<Map<String, dynamic>?> getWorkItemDetail(String workItemId);
+
+  /// Lấy chi tiết công việc thống nhất (tự động nhận diện công việc dự án hoặc việc ngoài dự án)
+  Future<Map<String, dynamic>?> getUnifiedTaskDetail(
+    String taskId, {
+    String? projectId,
+    bool isProjectTask = false,
+  });
+
+  /// Xoá công việc dự án: DELETE /work-items/{id}
+  Future<bool> deleteWorkItem(String workItemId);
+
+  /// Huỷ hiệu lực công việc dự án: POST /work-items/{id}/reverse
+  Future<bool> reverseWorkItem(String workItemId, String reason);
+
+  /// Báo cáo tiến độ công việc dự án: POST /work-items/{id}/progress-reports
+  Future<bool> reportWorkItemProgress(
+    String workItemId, {
+    required double percent,
+    double? actualHours,
+    String? note,
+  });
+
+  /// Lấy danh sách checklist tiến độ của công việc: GET /work-items/{id}/checklist
+  Future<List<Map<String, dynamic>>> getWorkItemChecklist(String workItemId);
+
+  /// Thêm các mục checklist tiến độ: POST /work-items/{id}/checklist
+  Future<bool> addWorkItemChecklist(String workItemId, List<String> titles);
+
+  /// Cập nhật trạng thái mục checklist: PATCH /work-items/{id}/checklist/{itemId}
+  Future<bool> updateWorkItemChecklist(String workItemId, String itemId, {String? title, bool? done});
+
+  /// Xoá mục checklist: DELETE /work-items/{id}/checklist/{itemId}
+  Future<bool> removeWorkItemChecklist(String workItemId, String itemId);
+
+  /// Di chuyển công việc sang cha khác hoặc về gốc: POST /work-items/{id}/move
+  Future<bool> moveWorkItem(String workItemId, {String? parentId});
+
+  /// Lấy danh sách báo cáo tiến độ: GET /work-items/{id}/progress-reports
+  Future<List<Map<String, dynamic>>> getWorkItemProgressReports(String workItemId);
+
+  /// Lấy danh sách phụ thuộc: GET /work-items/{id}/dependencies
+  Future<List<Map<String, dynamic>>> getWorkItemDependencies(String workItemId);
 
   /// Lấy danh sách việc ngoài dự án (việc giao lẻ): GET /standalone-tasks
   Future<List<StandaloneTaskItem>> getStandaloneTasks({
@@ -161,6 +242,22 @@ abstract class IWorkspaceRepository {
     String projectId,
     String workItemId, {
     String? before,
+  });
+
+  /// Lấy luồng tin trao đổi trực tiếp: GET /chat/{entityType}/{entityId}
+  Future<ProjectChatThread> getChatThread(
+    String entityType,
+    String entityId, {
+    String? before,
+  });
+
+  /// Gửi tin nhắn trao đổi: POST /chat/messages
+  Future<bool> sendChatMessage({
+    required String entityType,
+    required String entityId,
+    required String body,
+    List<String>? mentions,
+    List<String>? attachmentDocumentIds,
   });
 
   /// Tải gói báo cáo tổng hợp: GET /reports

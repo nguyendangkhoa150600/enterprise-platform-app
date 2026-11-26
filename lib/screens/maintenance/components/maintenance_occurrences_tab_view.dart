@@ -323,7 +323,7 @@ class _MaintenanceOccurrencesTabViewState extends State<MaintenanceOccurrencesTa
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: severityColor.withOpacity(0.12),
+                  color: severityColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(

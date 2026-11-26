@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
-import '../../models/inventory_models.dart';
-import '../../services/module_business_service.dart';
 import '../../theme/colors.dart';
 import 'components/inventory_items_view.dart';
 import 'components/inventory_trade_items_view.dart';
 import 'components/inventory_history_view.dart';
 import 'components/inventory_stocktakes_view.dart';
+import 'components/inventory_stock_movement_tab.dart';
+import '../../core/i18n/app_i18n.dart';
+import '../../features/inventory/presentation/goods/goods_store.dart';
+import '../../features/inventory/presentation/utils/inventory_scope.dart';
 
 class InventoryItemsScreen extends StatefulWidget {
   final String? initialWarehouseFilter;
   final int initialTabIndex;
 
+  /// Mở tab "Xuất/nhập kho" ở góc nhìn này (`all`/`pending`/`requests`) và mở sẵn chứng từ (link thông báo, web `movementHashTarget`).
+  final String? initialMovementView;
+  final String? initialDocumentKey;
+
   const InventoryItemsScreen({
     super.key,
     this.initialWarehouseFilter,
     this.initialTabIndex = 0,
+    this.initialMovementView,
+    this.initialDocumentKey,
   });
 
   @override
@@ -23,19 +31,11 @@ class InventoryItemsScreen extends StatefulWidget {
 
 class _InventoryItemsScreenState extends State<InventoryItemsScreen>
     with SingleTickerProviderStateMixin {
-  final ModuleBusinessService _service = ModuleBusinessService();
   late TabController _tabController;
 
   // Data states
-  List<InventoryItem> _items = [];
-  List<MaterialItem> _materials = [];
-  List<WarehouseItem> _warehouses = [];
-  List<StockTransaction> _transactions = [];
-  List<StocktakeSession> _stocktakes = [];
-
-  bool _isLoadingItems = true;
-  bool _isLoadingTransactions = true;
-  bool _isLoadingStocktakes = true;
+  // Tab Hàng hóa và Nhà kho (đọc thẳng Inventory API như web `loadInventoryWorkspace`).
+  final GoodsStore _goods = GoodsStore();
 
   String? _warehouseFilter;
 
@@ -44,85 +44,27 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
     super.initState();
     _warehouseFilter = widget.initialWarehouseFilter;
     _tabController = TabController(
-      length: 4,
+      length: 5,
       vsync: this,
-      initialIndex: widget.initialTabIndex.clamp(0, 3),
+      initialIndex: widget.initialTabIndex.clamp(0, 4),
     );
 
+    InventoryScope.instance.ensureCapabilities();
     _loadAllData();
   }
 
   @override
   void dispose() {
+    _goods.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadAllData() async {
-    await Future.wait([
-      _loadItems(),
-      _loadWarehouses(),
-      _loadTransactions(),
-      _loadStocktakes(),
-    ]);
-  }
+  Future<void> _loadAllData() => _goods.reload();
 
-  Future<void> _loadItems() async {
-    setState(() => _isLoadingItems = true);
-    try {
-      final overview = await _service.getInventoryOverview();
-      if (mounted) {
-        setState(() {
-          _items = overview.items;
-          _materials = overview.materials;
-          _isLoadingItems = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingItems = false);
-    }
-  }
 
-  Future<void> _loadWarehouses() async {
-    try {
-      final list = await _service.getWarehouses();
-      if (mounted) {
-        setState(() {
-          _warehouses = list;
-        });
-      }
-    } catch (_) {}
-  }
 
-  Future<void> _loadTransactions() async {
-    setState(() => _isLoadingTransactions = true);
-    try {
-      final list = await _service.getInventoryTransactions(limit: 100);
-      if (mounted) {
-        setState(() {
-          _transactions = list;
-          _isLoadingTransactions = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingTransactions = false);
-    }
-  }
 
-  Future<void> _loadStocktakes() async {
-    setState(() => _isLoadingStocktakes = true);
-    try {
-      final list = await _service.getStocktakes(warehouses: _warehouses);
-      if (mounted) {
-        setState(() {
-          _stocktakes = list;
-          _isLoadingStocktakes = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingStocktakes = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,23 +74,23 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
         backgroundColor: AppColors.slate900,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Kho hàng',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              'inventory.goods.screen_title'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Hàng hóa, nhà kho, lịch sử xuất nhập & kiểm đếm',
-              style: TextStyle(fontSize: 11, color: AppColors.slate400),
+              'inventory.goods.screen_subtitle'.tr(),
+              style: const TextStyle(fontSize: 11, color: AppColors.slate400),
             ),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Làm mới',
+            tooltip: 'inventory.goods.refresh'.tr(),
             onPressed: _loadAllData,
           ),
         ],
@@ -166,14 +108,14 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
               unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               indicatorColor: const Color(0xFF2563EB),
               indicatorWeight: 3,
-              tabs: const [
+              tabs: [
                 Tab(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.inventory_2_outlined, size: 16),
-                      SizedBox(width: 6),
-                      Text('Hàng hóa'),
+                      const Icon(Icons.inventory_2_outlined, size: 16),
+                      const SizedBox(width: 6),
+                      Text('inventory.goods.tab_goods'.tr()),
                     ],
                   ),
                 ),
@@ -181,9 +123,20 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.warehouse_outlined, size: 16),
-                      SizedBox(width: 6),
-                      Text('Nhà kho'),
+                      const Icon(Icons.warehouse_outlined, size: 16),
+                      const SizedBox(width: 6),
+                      Text('inventory.goods.tab_warehouse'.tr()),
+                    ],
+                  ),
+                ),
+                // Web: Hàng hóa - Nhà kho - Xuất/nhập kho - Lịch sử xuất nhập - Lịch sử kiểm đếm.
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.local_shipping_outlined, size: 16),
+                      const SizedBox(width: 6),
+                      Text('inventory.movement.tab'.tr()),
                     ],
                   ),
                 ),
@@ -191,9 +144,9 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.swap_horiz_rounded, size: 16),
-                      SizedBox(width: 6),
-                      Text('Lịch sử xuất nhập'),
+                      const Icon(Icons.swap_horiz_rounded, size: 16),
+                      const SizedBox(width: 6),
+                      Text('inventory.goods.tab_history'.tr()),
                     ],
                   ),
                 ),
@@ -201,9 +154,9 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.fact_check_outlined, size: 16),
-                      SizedBox(width: 6),
-                      Text('Lịch sử kiểm đếm'),
+                      const Icon(Icons.fact_check_outlined, size: 16),
+                      const SizedBox(width: 6),
+                      Text('inventory.goods.tab_stocktakes'.tr()),
                     ],
                   ),
                 ),
@@ -215,39 +168,43 @@ class _InventoryItemsScreenState extends State<InventoryItemsScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Tab 1: Hàng hóa (Danh mục hàng hóa & dịch vụ)
-          _isLoadingItems
-              ? const Center(child: CircularProgressIndicator())
-              : InventoryTradeItemsView(
-                  items: _materials,
-                  isLoading: _isLoadingItems,
-                  onRefresh: _loadItems,
-                ),
+          // Tab 1: Hàng hóa (web TradeItemsPage)
+          InventoryTradeItemsView(store: _goods),
 
-          // Tab 2: Nhà kho (Quản lý tồn kho & Xuất/nhập kho)
+          // Tab 2: Nhà kho (web WarehouseStockTab)
           InventoryItemsView(
-            items: _items,
-            warehouses: _warehouses,
-            selectedWarehouseFilter: _warehouseFilter,
-            onClearWarehouseFilter: () => setState(() => _warehouseFilter = null),
-            onSelectWarehouse: (whCode) => setState(() => _warehouseFilter = whCode),
-            onRefresh: _loadItems,
+            store: _goods,
+            // Form phiếu tự nạp danh mục qua Inventory API (web `workspace.materials`).
+            movementItems: const [],
+            initialWarehouseCode: _warehouseFilter,
+            onMovementSubmitted: () => _goods.reload(),
+            // Web: tạo đợt kiểm kê xong chuyển sang tab con "Lịch sử kiểm đếm".
+            onStocktakeCreated: () => _tabController.animateTo(4),
           ),
 
-          // Tab 3: Lịch sử xuất nhập
+          // Tab 3: Xuất/nhập kho (Tất cả / Chờ duyệt / Yêu cầu xuất từ đơn bán)
+          InventoryStockMovementTab(
+            initialView: widget.initialMovementView,
+            initialDocumentKey: widget.initialDocumentKey,
+            onStockChanged: () => _goods.reload(),
+          ),
+
+          // Tab 4: Lịch sử xuất nhập
+          // Tab tự nạp sổ cái; onRefresh chỉ làm mới dữ liệu dùng chung sau khi ghi phiếu.
           InventoryHistoryView(
-            transactions: _transactions,
-            items: _items,
-            warehouses: _warehouses,
-            isLoading: _isLoadingTransactions,
-            onRefresh: _loadTransactions,
+            transactions: const [],
+            items: const [],
+            warehouses: const [],
+            isLoading: false,
+            onRefresh: () => _goods.reload(),
           ),
 
-          // Tab 4: Lịch sử kiểm đếm
+          // Tab 5: Lịch sử kiểm đếm
+          // Tab tự nạp danh sách đợt kiểm kê.
           InventoryStocktakesView(
-            stocktakes: _stocktakes,
-            isLoading: _isLoadingStocktakes,
-            onRefresh: _loadStocktakes,
+            stocktakes: const [],
+            isLoading: false,
+            onRefresh: () async {},
           ),
         ],
       ),

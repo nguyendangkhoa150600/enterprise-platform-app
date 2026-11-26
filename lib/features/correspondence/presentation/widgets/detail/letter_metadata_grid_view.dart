@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Section 3: Metadata Grid matching Savina Web 1:1
 class LetterMetadataGridView extends StatelessWidget {
@@ -20,9 +21,9 @@ class LetterMetadataGridView extends StatelessWidget {
     // Tiếp nhận sơ bộ
     final intakeInfo = [
       if (letter.envelopeStatus != null) _envelopeLabel(letter.envelopeStatus!),
-      if (letter.sealed) 'Niêm phong còn nguyên',
-      if (letter.pageCount != null) '${letter.pageCount} tờ',
-      if (letter.copyCount != null) '${letter.copyCount} bản',
+      if (letter.sealed) 'correspondence.detail_view.meta_sealed'.tr(),
+      if (letter.pageCount != null) 'correspondence.detail_view.meta_pages'.tr(args: {'count': letter.pageCount}),
+      if (letter.copyCount != null) 'correspondence.detail_view.meta_copies'.tr(args: {'count': letter.copyCount}),
     ].join(' · ');
 
     return Container(
@@ -48,7 +49,7 @@ class LetterMetadataGridView extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildMetaItem(
-                  isIncoming ? 'Ngày đến' : 'Người gửi',
+                  isIncoming ? 'correspondence.detail_view.meta_received_on'.tr() : 'correspondence.detail_view.meta_sender'.tr(),
                   isIncoming
                       ? CorrespondenceDateUtils.formatDay(letter.receivedOn)
                       : (letter.authorUnitName ?? letter.senderOrg),
@@ -57,12 +58,12 @@ class LetterMetadataGridView extends StatelessWidget {
               const SizedBox(width: 14),
               Expanded(
                 child: _buildMetaItem(
-                  isIncoming ? 'Ngày văn bản' : 'Nơi nhận',
+                  isIncoming ? 'correspondence.detail_view.meta_document_date'.tr() : 'correspondence.detail_view.meta_recipient'.tr(),
                   isIncoming
                       ? (CorrespondenceDateUtils.formatDay(letter.senderDate).isNotEmpty
                           ? CorrespondenceDateUtils.formatDay(letter.senderDate)
-                          : 'Không ghi')
-                      : (letter.recipient ?? 'Chưa ghi'),
+                          : 'correspondence.detail_view.meta_not_stated'.tr())
+                      : (letter.recipient ?? 'correspondence.detail_view.meta_not_recorded'.tr()),
                 ),
               ),
             ],
@@ -75,10 +76,10 @@ class LetterMetadataGridView extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildMetaItem(
-                  isIncoming ? 'Hạn xử lý' : 'Hạn ban hành',
+                  isIncoming ? 'correspondence.detail_view.meta_due_date'.tr() : 'correspondence.detail_view.meta_issue_deadline'.tr(),
                   CorrespondenceDateUtils.formatDay(letter.dueOn).isNotEmpty
                       ? CorrespondenceDateUtils.formatDay(letter.dueOn)
-                      : 'Không đặt',
+                      : 'correspondence.detail_view.meta_not_set'.tr(),
                   subtext: due?.text,
                   subtextColor: due?.color,
                 ),
@@ -86,8 +87,8 @@ class LetterMetadataGridView extends StatelessWidget {
               const SizedBox(width: 14),
               Expanded(
                 child: _buildMetaItem(
-                  'Loại văn bản',
-                  letter.kindName.isNotEmpty ? letter.kindName : 'Chưa phân loại',
+                  'correspondence.detail_view.meta_kind'.tr(),
+                  letter.kindName.isNotEmpty ? letter.kindName : 'correspondence.detail_view.meta_unclassified'.tr(),
                 ),
               ),
             ],
@@ -100,15 +101,15 @@ class LetterMetadataGridView extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildMetaItem(
-                  'Độ khẩn · Độ mật',
+                  'correspondence.detail_view.meta_urgency_confidentiality'.tr(),
                   '${letter.urgencyName} · ${letter.confidentialityName}',
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: _buildMetaItem(
-                  isIncoming ? 'Văn thư tiếp nhận' : 'Số dự thảo',
-                  isIncoming ? (letter.receivedByName ?? 'Văn thư') : letter.incomingNo,
+                  isIncoming ? 'correspondence.detail_view.meta_received_by'.tr() : 'correspondence.detail_view.meta_draft_no'.tr(),
+                  isIncoming ? (letter.receivedByName ?? 'correspondence.detail_view.meta_clerk'.tr()) : letter.incomingNo,
                 ),
               ),
             ],
@@ -121,17 +122,17 @@ class LetterMetadataGridView extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildMetaItem(
-                  'Sổ đăng ký',
+                  'correspondence.detail_view.meta_register'.tr(),
                   letter.registerName != null && letter.registerName!.isNotEmpty
                       ? letter.registerName!
-                      : (isIncoming ? 'Sổ công văn đến' : 'Sổ công văn đi'),
+                      : (isIncoming ? 'correspondence.detail_view.meta_register_incoming'.tr() : 'correspondence.detail_view.meta_register_outgoing'.tr()),
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: _buildMetaItem(
-                  'Tiếp nhận sơ bộ',
-                  intakeInfo.isNotEmpty ? intakeInfo : 'Bì nguyên vẹn',
+                  'correspondence.detail_view.meta_preliminary_intake'.tr(),
+                  intakeInfo.isNotEmpty ? intakeInfo : 'correspondence.detail_view.envelope_intact'.tr(),
                 ),
               ),
             ],
@@ -181,11 +182,11 @@ class LetterMetadataGridView extends StatelessWidget {
   String _envelopeLabel(String status) {
     switch (status) {
       case 'intact':
-        return 'Bì nguyên vẹn';
+        return 'correspondence.detail_view.envelope_intact'.tr();
       case 'damaged':
-        return 'Bì rách, có dấu hiệu bóc mở';
+        return 'correspondence.detail_view.envelope_damaged'.tr();
       case 'electronic':
-        return 'Văn bản điện tử';
+        return 'correspondence.detail_view.envelope_electronic'.tr();
       default:
         return status;
     }

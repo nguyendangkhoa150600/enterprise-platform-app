@@ -24,7 +24,7 @@ class WorkspaceRemoteDataSource {
       '/api/workspace/v1/directory',
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
-    return res.data;
+    return res.statusCode == 200 ? res.data : null;
   }
 
   // Thư mục tài liệu (Folders)
@@ -125,65 +125,105 @@ class WorkspaceRemoteDataSource {
     return res.statusCode == 200 || res.statusCode == 201;
   }
 
-  /// Quy trình 3 bước chuẩn tải tệp tài liệu (Đồng bộ 1:1 với Web React):
-  /// Chặng 1: Ghi siêu dữ liệu vào cơ sở dữ liệu và nhận `uploadUrl` (Presigned URL) kèm `version`
-  /// Chặng 2: Đẩy binary data trực tiếp lên kho lưu trữ (S3/MinIO) qua PUT
-  /// Chặng 3: Báo máy chủ đã tải xong để chuyển trạng thái từ "Chưa tải lên xong" thành sẵn sàng
-  Future<bool> uploadDocument({
+  /// Dọn sẵn đường dẫn `<gốc>/<dự án>/<công việc>` và trả id thư mục lá (web `ensureFolderPath`).
+  /// POST /api/workspace/v1/folders/ensure-path {rootFolderId?, projectId, workItemId?}
+  Future<String> ensureFolderPath({
+    String? rootFolderId,
+    required String projectId,
+    String? workItemId,
+  }) async {
+    final res = await _dio.post(
+      '/api/workspace/v1/folders/ensure-path',
+      data: {
+        if (rootFolderId != null && rootFolderId.isNotEmpty) 'rootFolderId': rootFolderId,
+        'projectId': projectId,
+        if (workItemId != null && workItemId.isNotEmpty) 'workItemId': workItemId,
+      },
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    final data = _unwrap(res);
+    final id = data['id']?.toString();
+    if (id == null || id.isEmpty) throw WorkspaceUploadException(null);
+    return id;
+  }
+
+  /// Quy trình 3 chặng tải một tệp tài liệu (1:1 web `UploadDialog`):
+  /// 1. POST /documents {folderId,name,fileName,contentType,sizeBytes,description?,linkTo?} → `uploadUrl`, `document`, `version`
+  /// 2. PUT bytes thẳng lên URL ký trước (không kèm Authorization)
+  /// 3. POST /documents/:id/versions/:versionId/complete {sizeBytes}
+  /// Trả id tài liệu vừa tạo; lỗi thì ném [WorkspaceUploadException] (message từ server nếu có).
+  Future<String> uploadDocumentFile({
     required String folderId,
     required String name,
     required String fileName,
     required String contentType,
     required List<int> bytes,
-    String? projectId,
+    String? description,
+    String? linkEntityType,
+    String? linkEntityId,
   }) async {
-    // Chặng 1: Ghi siêu dữ liệu, nhận URL ký trước
-    final created = await createDocumentRaw(
-      folderId: folderId,
-      name: name,
-      fileName: fileName,
-      contentType: contentType,
-      sizeBytes: bytes.length,
-      projectId: projectId,
+    final res = await _dio.post(
+      '/api/workspace/v1/documents',
+      data: {
+        'folderId': folderId,
+        'name': name,
+        'fileName': fileName,
+        'contentType': contentType,
+        'sizeBytes': bytes.length,
+        if (description != null && description.isNotEmpty) 'description': description,
+        if (linkEntityType != null && linkEntityId != null && linkEntityId.isNotEmpty)
+          'linkTo': {'entityType': linkEntityType, 'entityId': linkEntityId},
+      },
+      options: Options(validateStatus: (s) => s != null && s < 500),
     );
-
-    if (created == null) return false;
-
-    final data = created is Map<String, dynamic> ? (created['data'] ?? created) : null;
-    if (data is! Map<String, dynamic>) return false;
-
+    final data = _unwrap(res);
     final uploadUrl = data['uploadUrl']?.toString();
     final documentId = (data['document'] is Map ? data['document']['id'] : data['id'])?.toString();
-    final versionId = (data['version'] is Map
-            ? data['version']['id']
-            : (data['versionId'] ?? data['currentVersionId']))
-        ?.toString();
-
+    final versionId = (data['version'] is Map ? data['version']['id'] : data['versionId'])?.toString();
     if (uploadUrl == null || uploadUrl.isEmpty || documentId == null || versionId == null) {
-      return false;
+      throw WorkspaceUploadException(null);
     }
 
-    // Chặng 2: PUT binary bytes thẳng lên kho lưu trữ (S3/MinIO)
-    // KHÔNG đi qua API server và KHÔNG đính kèm header Authorization (URL đã ký tự mang quyền)
-    final storageDio = Dio();
-    final putRes = await storageDio.put(
+    final putRes = await Dio().put(
       uploadUrl,
       data: Stream.fromIterable([bytes]),
       options: Options(
-        headers: {
-          'Content-Type': contentType,
-          'Content-Length': bytes.length,
-        },
-        validateStatus: (s) => s != null && s < 500,
+        headers: {'Content-Type': contentType, 'Content-Length': bytes.length},
+        validateStatus: (s) => s != null && s < 600,
       ),
     );
-
-    if (putRes.statusCode != 200 && putRes.statusCode != 204) {
-      return false;
+    final putStatus = putRes.statusCode ?? 0;
+    if (putStatus < 200 || putStatus >= 300) {
+      throw WorkspaceUploadException(null, storageStatus: putStatus);
     }
 
-    // Chặng 3: Báo cho backend server đã upload xong để phiên bản thôi hiện "Chưa tải lên xong"
-    return await completeDocumentUploadRaw(documentId, versionId, bytes.length);
+    // Chỉ báo xong SAU khi PUT thành công, như web.
+    final done = await _dio.post(
+      '/api/workspace/v1/documents/$documentId/versions/$versionId/complete',
+      data: {'sizeBytes': bytes.length},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    _unwrap(done);
+    return documentId;
+  }
+
+  /// Bóc `data` (nếu có) của phản hồi 2xx; phản hồi lỗi thì ném kèm `message` của server.
+  Map<String, dynamic> _unwrap(Response<dynamic> res) {
+    final body = res.data;
+    final status = res.statusCode ?? 0;
+    if (status < 200 || status >= 300) {
+      String? message;
+      if (body is Map) {
+        final err = body['error'];
+        message = (body['message'] ?? (err is Map ? err['message'] : null))?.toString();
+      }
+      throw WorkspaceUploadException(message);
+    }
+    if (body is Map<String, dynamic>) {
+      final inner = body['data'];
+      return inner is Map<String, dynamic> ? inner : body;
+    }
+    return const {};
   }
 
   Future<bool> deleteDocumentRaw(String documentId) async {
@@ -291,12 +331,18 @@ class WorkspaceRemoteDataSource {
     );
   }
 
+  /// Như web: đổi trạng thái là `PATCH /projects/:id {status}` ("completed" là một trạng thái
+  /// bình thường); lưu trữ là thao tác riêng `POST /projects/:id/archive`.
   Future<Response> updateProjectStatusRaw(String id, String status) async {
-    final ep = status.toLowerCase() == 'archived' || status.toLowerCase() == 'completed'
-        ? '/api/workspace/v1/projects/$id/archive'
-        : '/api/workspace/v1/projects/$id';
-    return await _dio.post(
-      ep,
+    if (status.toLowerCase() == 'archived') {
+      return await _dio.post(
+        '/api/workspace/v1/projects/$id/archive',
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
+    }
+    return await _dio.patch(
+      '/api/workspace/v1/projects/$id',
+      data: {'status': status},
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
   }
@@ -357,6 +403,121 @@ class WorkspaceRemoteDataSource {
       },
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
+  }
+
+  Future<Response> updateWorkItemRaw(String workItemId, Map<String, dynamic> data) async {
+    return await _dio.patch(
+      '/api/workspace/v1/work-items/$workItemId',
+      data: data,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  /// PATCH /standalone-tasks/:id — sửa "Công việc khác" (contract `UpdateStandaloneTaskRequest`).
+  Future<Response> updateStandaloneTaskRaw(String taskId, Map<String, dynamic> data) async {
+    return await _dio.patch(
+      '/api/workspace/v1/standalone-tasks/$taskId',
+      data: data,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<dynamic> getWorkItemHistoryRaw(String workItemId) async {
+    final res = await _dio.get(
+      '/api/workspace/v1/work-items/$workItemId/history',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
+  }
+
+  Future<Response> deleteWorkItemRaw(String workItemId) async {
+    return await _dio.delete(
+      '/api/workspace/v1/work-items/$workItemId',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> reverseWorkItemRaw(String workItemId, String reason) async {
+    return await _dio.post(
+      '/api/workspace/v1/work-items/$workItemId/reverse',
+      data: {'reason': reason},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> reportWorkItemProgressRaw(
+    String workItemId, {
+    required double percent,
+    double? actualHours,
+    String? note,
+  }) async {
+    return await _dio.post(
+      '/api/workspace/v1/work-items/$workItemId/progress-reports',
+      data: {
+        'percent': percent,
+        'actualHours': ?actualHours,
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<dynamic> getWorkItemChecklistRaw(String workItemId) async {
+    final res = await _dio.get(
+      '/api/workspace/v1/work-items/$workItemId/checklist',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
+  }
+
+  Future<Response> addWorkItemChecklistRaw(String workItemId, List<String> titles) async {
+    return await _dio.post(
+      '/api/workspace/v1/work-items/$workItemId/checklist',
+      data: {'titles': titles},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> updateWorkItemChecklistRaw(String workItemId, String itemId, {String? title, bool? done}) async {
+    return await _dio.patch(
+      '/api/workspace/v1/work-items/$workItemId/checklist/$itemId',
+      data: {
+        'title': ?title,
+        'done': ?done,
+      },
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> removeWorkItemChecklistRaw(String workItemId, String itemId) async {
+    return await _dio.delete(
+      '/api/workspace/v1/work-items/$workItemId/checklist/$itemId',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<Response> moveWorkItemRaw(String workItemId, {String? parentId}) async {
+    return await _dio.post(
+      '/api/workspace/v1/work-items/$workItemId/move',
+      data: {'parentId': parentId},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+  }
+
+  Future<dynamic> getWorkItemProgressReportsRaw(String workItemId) async {
+    final res = await _dio.get(
+      '/api/workspace/v1/work-items/$workItemId/progress-reports',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
+  }
+
+  Future<dynamic> getWorkItemDependenciesRaw(String workItemId) async {
+    final res = await _dio.get(
+      '/api/workspace/v1/work-items/$workItemId/dependencies',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
   }
 
   // 4. Công việc ngoài dự án (Standalone Tasks)
@@ -473,6 +634,32 @@ class WorkspaceRemoteDataSource {
     return res.data;
   }
 
+  Future<dynamic> createTagRaw(String name) async {
+    final res = await _dio.post(
+      '/api/workspace/v1/tags',
+      data: {'name': name},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
+  }
+
+  Future<List<String>> getRecentWorkItemTitlesRaw() async {
+    final res = await _dio.get(
+      '/api/workspace/v1/work-item-titles',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    if (res.data != null) {
+      final data = res.data is Map ? (res.data['data'] ?? res.data) : res.data;
+      if (data is Map && data['items'] is List) {
+        return (data['items'] as List).map((e) => e.toString()).toList();
+      }
+      if (data is List) {
+        return data.map((e) => e.toString()).toList();
+      }
+    }
+    return [];
+  }
+
   Future<dynamic> getProjectCodePreviewRaw({String? group, String? projectType}) async {
     final q = <String, dynamic>{};
     if (group != null && group.isNotEmpty) q['group'] = group;
@@ -523,6 +710,26 @@ class WorkspaceRemoteDataSource {
       options: Options(validateStatus: (s) => s != null && s < 500),
     );
     return res.data;
+  }
+
+  Future<dynamic> getChatThreadRaw(String entityType, String entityId, {String? before}) async {
+    final q = <String, dynamic>{};
+    if (before != null && before.isNotEmpty) q['before'] = before;
+
+    final res = await _dio.get(
+      '/api/workspace/v1/chat/$entityType/$entityId',
+      queryParameters: q.isNotEmpty ? q : null,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    return res.data;
+  }
+
+  Future<Response> sendChatMessageRaw(Map<String, dynamic> data) async {
+    return await _dio.post(
+      '/api/workspace/v1/chat/messages',
+      data: data,
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
   }
 
   // Báo cáo & Phân tích (Đồng bộ 1:1 với Web React)
@@ -588,4 +795,16 @@ class WorkspaceRemoteDataSource {
     );
     return res.data;
   }
+}
+
+/// Lỗi trong luồng tải tài liệu lên; [message] là thông báo tiếng Việt của server (nếu có).
+class WorkspaceUploadException implements Exception {
+  final String? message;
+  /// Mã HTTP khi PUT lên kho thất bại (web "Tải tệp lên thất bại (status).").
+  final int? storageStatus;
+
+  WorkspaceUploadException(this.message, {this.storageStatus});
+
+  @override
+  String toString() => message ?? 'WorkspaceUploadException';
 }

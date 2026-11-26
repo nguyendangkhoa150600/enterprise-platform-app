@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../domain/models/correspondence_models.dart';
 
 class CorrespondenceStepperFlowCards extends StatelessWidget {
@@ -17,13 +18,13 @@ class CorrespondenceStepperFlowCards extends StatelessWidget {
       children: [
         _buildDirectionFlowCard(
           direction: 'incoming',
-          title: 'Công văn đến theo bước',
+          title: 'correspondence.list.incoming_by_step'.tr(),
           stages: CorrespondenceConstants.incomingStages,
         ),
         const SizedBox(height: 12),
         _buildDirectionFlowCard(
           direction: 'outgoing',
-          title: 'Công văn đi theo bước',
+          title: 'correspondence.list.outgoing_by_step'.tr(),
           stages: CorrespondenceConstants.outgoingStages,
         ),
       ],
@@ -37,7 +38,7 @@ class CorrespondenceStepperFlowCards extends StatelessWidget {
   }) {
     final stageCounts = overview.byStage[direction] ?? {};
     final total = stages.fold<int>(0, (sum, st) => sum + (stageCounts[st] ?? 0));
-    final statusText = total == 0 ? 'Không có công văn đang mở' : '$total công văn đang mở';
+    final statusText = total == 0 ? 'correspondence.list.no_open_letters'.tr() : 'correspondence.list.open_letters_count'.tr(args: {'count': total});
 
     return Container(
       padding: const EdgeInsets.all(16),

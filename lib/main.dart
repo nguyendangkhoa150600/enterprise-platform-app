@@ -14,7 +14,6 @@ import 'providers/notification_provider.dart';
 import 'providers/chat_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/notification_center_screen.dart';
 import 'services/notification_router.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = NotificationRouter.navigatorKey;
@@ -100,7 +99,7 @@ class MyApp extends StatelessWidget {
               color: Colors.white,
               surfaceTintColor: Colors.transparent,
               elevation: 8,
-              shadowColor: Colors.black.withOpacity(0.12),
+              shadowColor: Colors.black.withValues(alpha: 0.12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: const BorderSide(color: Color(0xFFE2E8F0)),

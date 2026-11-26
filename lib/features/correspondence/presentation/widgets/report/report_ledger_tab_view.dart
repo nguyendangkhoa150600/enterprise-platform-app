@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/correspondence_models.dart';
 import '../../../domain/repositories/i_correspondence_repository.dart';
 import '../../../data/repositories/correspondence_repository_impl.dart';
 import '../correspondence_letter_card.dart';
 import '../correspondence_letter_detail_bottom_sheet.dart';
 import '../../../utils/correspondence_register_exporter.dart';
+import '../../utils/correspondence_error.dart';
 
 /// Tab hiển thị "Sổ công văn đến" hoặc "Sổ công văn đi" theo năm (matching LedgerView 1:1)
 class ReportLedgerTabView extends StatefulWidget {
@@ -70,7 +72,7 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Không tải được sổ theo dõi công văn. Vui lòng thử lại.';
+        _errorMessage = 'correspondence.report.ledger.load_failed'.tr();
         _isLoading = false;
       });
     }
@@ -112,8 +114,8 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
   Future<void> _exportExcel(List<LetterSummary> filtered) async {
     if (filtered.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không có văn bản nào để xuất sổ.'),
+        SnackBar(
+          content: Text('correspondence.report.ledger.export_empty'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -121,10 +123,10 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đang chuẩn bị xuất tệp Excel...'),
+      SnackBar(
+        content: Text('correspondence.report.ledger.export_preparing'.tr()),
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
+        duration: const Duration(seconds: 2),
       ),
     );
 
@@ -138,7 +140,7 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đã xuất sổ theo dõi: $count văn bản.'),
+          content: Text('correspondence.report.ledger.export_success'.tr(args: {'count': count})),
           backgroundColor: const Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
         ),
@@ -148,7 +150,7 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không xuất được sổ: $e'),
+          content: Text('correspondence.report.ledger.export_failed'.tr(args: {'error': correspondenceErrorMessage(e, 'common.error_generic'.tr())})),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -185,7 +187,7 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
               ElevatedButton.icon(
                 onPressed: _loadData,
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Thử lại'),
+                label: Text('common.retry'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
                   foregroundColor: Colors.white,
@@ -229,10 +231,10 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
                     });
                   },
                   items: [
-                    const DropdownMenuItem(value: '', child: Text('Tất cả các tháng')),
+                    DropdownMenuItem(value: '', child: Text('correspondence.report.ledger.all_months'.tr())),
                     ...List.generate(12, (index) {
                       final m = (index + 1).toString().padLeft(2, '0');
-                      return DropdownMenuItem(value: m, child: Text('Tháng ${index + 1}'));
+                      return DropdownMenuItem(value: m, child: Text('correspondence.report.ledger.month_option'.tr(args: {'month': index + 1})));
                     }),
                   ],
                 ),
@@ -254,12 +256,12 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.assignment_outlined, size: 15, color: Color(0xFF475569)),
-                    SizedBox(width: 5),
+                  children: [
+                    const Icon(Icons.assignment_outlined, size: 15, color: Color(0xFF475569)),
+                    const SizedBox(width: 5),
                     Text(
-                      'Xuất Excel',
-                      style: TextStyle(
+                      'correspondence.report.ledger.export_excel'.tr(),
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF334155),
@@ -291,7 +293,7 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
             style: const TextStyle(fontSize: 12.5),
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Tìm theo số, trích yếu, cơ quan...',
+              hintText: 'correspondence.report.ledger.search_hint'.tr(),
               hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
               prefixIcon: const Icon(Icons.search, size: 16, color: Color(0xFF64748B)),
               suffixIcon: _searchController.text.isNotEmpty
@@ -314,12 +316,12 @@ class _ReportLedgerTabViewState extends State<ReportLedgerTabView> {
 
         // Letters List
         if (filtered.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 30),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 30),
             child: Center(
               child: Text(
-                'Không có công văn nào trong sổ theo dõi.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                'correspondence.report.ledger.empty'.tr(),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
               ),
             ),
           )

@@ -165,7 +165,7 @@ class BankTaxTabContent extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: dependents.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (ctx, idx) {
                     final dep = dependents[idx];
                     final name = dep['fullName']?.toString() ?? dep['full_name']?.toString() ?? 'profile.bank.default_dependent_name'.tr();

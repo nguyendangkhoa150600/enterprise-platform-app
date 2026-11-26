@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../../workspace/presentation/widgets/searchable_dropdown_field.dart';
 
 /// Filter Bar cho màn hình Công văn đi (Stages pills, Date capsule, Catalog filter, Book filter, Search & Export)
-class CorrespondenceOutgoingFilterBar extends StatelessWidget {
+class CorrespondenceOutgoingFilterBar extends StatefulWidget {
   final String selectedStage;
   final ValueChanged<String> onStageChanged;
 
@@ -44,22 +45,66 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
 
   /// Danh sách các bước lọc công văn đi đồng bộ 1:1 với Web
   static const List<Map<String, String>> stageTabs = [
-    {'key': '', 'label': 'Tất cả'},
-    {'key': 'drafting', 'label': 'Đang soạn thảo'},
-    {'key': 'checking', 'label': 'Văn thư kiểm tra'},
-    {'key': 'reviewing', 'label': 'Đang trình duyệt'},
-    {'key': 'publishing', 'label': 'Chờ ban hành'},
-    {'key': 'archived', 'label': 'Đã lưu trữ'},
-    {'key': 'revoking', 'label': 'Chờ duyệt huỷ'},
-    {'key': 'cancelled', 'label': 'Đã huỷ'},
+    {'key': '', 'label': 'common.all'},
+    {'key': 'drafting', 'label': 'correspondence.filter.stage_drafting'},
+    {'key': 'checking', 'label': 'correspondence.filter.stage_checking'},
+    {'key': 'reviewing', 'label': 'correspondence.filter.stage_reviewing'},
+    {'key': 'publishing', 'label': 'correspondence.filter.stage_publishing'},
+    {'key': 'overdue', 'label': 'correspondence.filter.stage_overdue'},
+    {'key': 'archived', 'label': 'correspondence.filter.stage_archived'},
+    {'key': 'revoking', 'label': 'correspondence.filter.stage_revoking'},
+    {'key': 'cancelled', 'label': 'correspondence.filter.stage_cancelled'},
   ];
 
   static const List<Map<String, String>> monthOptions = [
-    {'key': 'this_month', 'label': 'Tháng này'},
-    {'key': 'last_month', 'label': 'Tháng trước'},
-    {'key': 'this_year', 'label': 'Năm nay'},
-    {'key': 'all', 'label': 'Tất cả thời gian'},
+    {'key': 'this_month', 'label': 'correspondence.filter.period_this_month'},
+    {'key': 'last_month', 'label': 'correspondence.filter.period_last_month'},
+    {'key': 'this_year', 'label': 'correspondence.filter.period_this_year'},
+    {'key': 'all', 'label': 'correspondence.filter.period_all'},
   ];
+
+  @override
+  State<CorrespondenceOutgoingFilterBar> createState() => _CorrespondenceOutgoingFilterBarState();
+}
+
+class _CorrespondenceOutgoingFilterBarState extends State<CorrespondenceOutgoingFilterBar> {
+  final ScrollController _stageScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollToSelectedStage();
+  }
+
+  @override
+  void didUpdateWidget(covariant CorrespondenceOutgoingFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedStage != widget.selectedStage) {
+      _scrollToSelectedStage();
+    }
+  }
+
+  @override
+  void dispose() {
+    _stageScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSelectedStage() {
+    final idx = CorrespondenceOutgoingFilterBar.stageTabs
+        .indexWhere((tab) => tab['key'] == widget.selectedStage);
+    if (idx <= 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_stageScrollController.hasClients) return;
+      final target = (idx * 115.0) - 40.0;
+      final maxScroll = _stageScrollController.position.maxScrollExtent;
+      _stageScrollController.animateTo(
+        target.clamp(0.0, maxScroll),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,33 +121,54 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
         children: [
           // 1. Stage Tabs (Scrollable horizontal pills)
           SingleChildScrollView(
+            controller: _stageScrollController,
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
-              children: stageTabs.map((tab) {
-                final isSelected = selectedStage == tab['key'];
+              children: CorrespondenceOutgoingFilterBar.stageTabs.map((tab) {
+                final isSelected = widget.selectedStage == tab['key'];
+                final isOverdue = tab['key'] == 'overdue';
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: InkWell(
-                    onTap: () => onStageChanged(tab['key']!),
+                    onTap: () => widget.onStageChanged(tab['key']!),
                     borderRadius: BorderRadius.circular(20),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6.5),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
+                        color: isSelected
+                            ? (isOverdue ? const Color(0xFFDC2626) : const Color(0xFF2563EB))
+                            : (isOverdue ? const Color(0xFFFEF2F2) : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                          color: isSelected
+                              ? (isOverdue ? const Color(0xFFDC2626) : const Color(0xFF2563EB))
+                              : (isOverdue ? const Color(0xFFFECACA) : const Color(0xFFE2E8F0)),
                         ),
                       ),
-                      child: Text(
-                        tab['label']!,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected ? Colors.white : const Color(0xFF475569),
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isOverdue) ...[
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              size: 13,
+                              color: isSelected ? Colors.white : const Color(0xFFDC2626),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            tab['label']!.tr(),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isOverdue ? const Color(0xFFDC2626) : const Color(0xFF475569)),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -129,32 +195,32 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
                 Expanded(
                   flex: 4,
                   child: SearchableDropdownField<CatalogItem>(
-                    value: kinds.where((k) => k.code == selectedKind).firstOrNull,
-                    items: kinds,
-                    onChanged: (k) => onKindChanged(k.code),
+                    value: widget.kinds.where((k) => k.code == widget.selectedKind).firstOrNull,
+                    items: widget.kinds,
+                    onChanged: (k) => widget.onKindChanged(k.code),
                     itemLabel: (k) => k.name,
-                    hintText: 'Tất cả loại văn bản',
+                    hintText: 'correspondence.filter.all_kinds'.tr(),
                     icon: Icons.search,
                     showClear: true,
-                    onClear: () => onKindChanged(null),
+                    onClear: () => widget.onKindChanged(null),
                     maxHeight: 200,
                   ),
                 ),
 
                 // Sổ văn bản đi (nếu có hơn 1 sổ)
-                if (books.isNotEmpty) ...[
+                if (widget.books.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Expanded(
                     flex: 3,
                     child: SearchableDropdownField<RegisterBookModel>(
-                      value: books.where((b) => b.id == selectedBookId).firstOrNull,
-                      items: books,
-                      onChanged: (b) => onBookChanged(b.id),
+                      value: widget.books.where((b) => b.id == widget.selectedBookId).firstOrNull,
+                      items: widget.books,
+                      onChanged: (b) => widget.onBookChanged(b.id),
                       itemLabel: (b) => b.name,
-                      hintText: 'Tất cả sổ',
+                      hintText: 'correspondence.filter.all_books'.tr(),
                       icon: Icons.book_outlined,
                       showClear: true,
-                      onClear: () => onBookChanged(null),
+                      onClear: () => widget.onBookChanged(null),
                       maxHeight: 200,
                     ),
                   ),
@@ -177,20 +243,20 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
                       border: Border.all(color: const Color(0xFFCBD5E1)),
                     ),
                     child: TextField(
-                      controller: searchController,
-                      focusNode: searchFocusNode,
-                      onChanged: onSearchChanged,
+                      controller: widget.searchController,
+                      focusNode: widget.searchFocusNode,
+                      onChanged: widget.onSearchChanged,
                       style: const TextStyle(fontSize: 12.5),
                       decoration: InputDecoration(
                         isDense: true,
-                        hintText: 'Tìm theo số, trích yếu, nơi nhận, phòng soạn...',
+                        hintText: 'correspondence.filter.search_hint_outgoing'.tr(),
                         hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                         prefixIcon: const Icon(Icons.search, size: 16, color: Color(0xFF64748B)),
-                        suffixIcon: searchController.text.isNotEmpty
+                        suffixIcon: widget.searchController.text.isNotEmpty
                             ? InkWell(
                                 onTap: () {
-                                  searchController.clear();
-                                  onSearchChanged('');
+                                  widget.searchController.clear();
+                                  widget.onSearchChanged('');
                                 },
                                 child: const Icon(Icons.clear, size: 15, color: Color(0xFF94A3B8)),
                               )
@@ -203,7 +269,7 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 InkWell(
-                  onTap: onExport,
+                  onTap: widget.onExport,
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8.5),
@@ -214,12 +280,12 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.assignment_outlined, size: 15, color: Color(0xFF475569)),
-                        SizedBox(width: 5),
+                      children: [
+                        const Icon(Icons.assignment_outlined, size: 15, color: Color(0xFF475569)),
+                        const SizedBox(width: 5),
                         Text(
-                          'Xuất sổ',
-                          style: TextStyle(
+                          'correspondence.filter.export_register'.tr(),
+                          style: const TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF334155),
@@ -239,10 +305,10 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
 
   /// Unified Date Capsule theo chuẩn Rule 5.3
   Widget _buildMonthCapsule(BuildContext context) {
-    final currentLabel = monthOptions.firstWhere(
-      (m) => m['key'] == selectedMonthKey,
-      orElse: () => monthOptions[0],
-    )['label']!;
+    final currentLabel = CorrespondenceOutgoingFilterBar.monthOptions.firstWhere(
+      (m) => m['key'] == widget.selectedMonthKey,
+      orElse: () => CorrespondenceOutgoingFilterBar.monthOptions[0],
+    )['label']!.tr();
 
     return InkWell(
       onTap: () => _showMonthPickerSheet(context),
@@ -288,11 +354,11 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(
-                  'Chọn kỳ văn bản',
-                  style: TextStyle(
+                  'correspondence.filter.pick_period'.tr(),
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF0F172A),
@@ -300,12 +366,12 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
                 ),
               ),
               const Divider(height: 1),
-              ...monthOptions.map((opt) {
-                final isSelected = opt['key'] == selectedMonthKey;
+              ...CorrespondenceOutgoingFilterBar.monthOptions.map((opt) {
+                final isSelected = opt['key'] == widget.selectedMonthKey;
                 return ListTile(
                   dense: true,
                   title: Text(
-                    opt['label']!,
+                    opt['label']!.tr(),
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -317,7 +383,7 @@ class CorrespondenceOutgoingFilterBar extends StatelessWidget {
                       : null,
                   onTap: () {
                     Navigator.pop(ctx);
-                    onMonthChanged(opt['key']!);
+                    widget.onMonthChanged(opt['key']!);
                   },
                 );
               }),

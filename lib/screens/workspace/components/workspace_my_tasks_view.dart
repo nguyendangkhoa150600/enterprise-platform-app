@@ -638,7 +638,13 @@ class _WorkspaceMyTasksViewState extends State<WorkspaceMyTasksView> {
         : task.title;
 
     return InkWell(
-      onTap: () => widget.onTaskTap?.call(task),
+      onTap: () => widget.onTaskTap?.call(
+        task.copyWith(
+          projectId: task.projectId ?? project.id,
+          projectCode: task.projectCode ?? project.code,
+          projectName: task.projectName ?? project.name,
+        ),
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: const BoxDecoration(

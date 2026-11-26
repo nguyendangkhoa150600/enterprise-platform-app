@@ -7,6 +7,9 @@ import '../features/workspace/presentation/widgets/tabs/workspace_projects_tab_v
 import '../features/workspace/presentation/widgets/tabs/workspace_reports_tab_view.dart';
 import '../models/workspace_models.dart';
 import '../services/workspace_service.dart';
+import '../features/workspace/data/datasources/workspace_task_detail_api.dart';
+import '../features/workspace/data/datasources/workspace_calendar_api.dart';
+import '../utils/app_toast.dart';
 import 'workspace/components/workspace_create_dialogs.dart';
 import 'workspace/components/workspace_documents_reports_view.dart';
 import 'workspace/components/workspace_my_tasks_view.dart';
@@ -19,9 +22,32 @@ import 'workspace/components/workspace_standalone_task_detail_sheet.dart';
 class WorkspaceScreen extends StatefulWidget {
   final int initialTab; // 0: Việc của tôi, 1: Việc khác, 2: Dự án, 3: Khách hàng & HĐ, 4: Tài liệu, 5: Báo cáo
 
+  /// Từ thông báo nhắc tên: mở thẳng dự án này ở tab Trao đổi, cuộn tới tin [initialMessageId].
+  final String? initialProjectId;
+  final String? initialMessageId;
+
+  /// Mở dự án [initialProjectId] ở tab Trao đổi (link nhắc tên/tin mới); false thì mở dự án như bình thường.
+  final bool openProjectChat;
+
+  /// Từ thông báo: mở thẳng chi tiết công việc trong dự án (web `#projects/work-item/<id>`, `#my-work/work-item/<id>`).
+  final String? initialWorkItemId;
+
+  /// Từ thông báo: mở thẳng chi tiết công việc ngoài dự án (web `#tasks/<id>`).
+  final String? initialStandaloneTaskId;
+
+  /// Từ thông báo lịch (web `#projects/calendar/<id>`, `#my-work/calendar/<id>`): mở dự án của sự kiện ở tab Lịch
+  /// và mở sự kiện.
+  final String? initialCalendarEventId;
+
   const WorkspaceScreen({
     super.key,
     this.initialTab = 0,
+    this.initialProjectId,
+    this.initialMessageId,
+    this.openProjectChat = true,
+    this.initialWorkItemId,
+    this.initialStandaloneTaskId,
+    this.initialCalendarEventId,
   });
 
   @override
@@ -36,7 +62,65 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   void initState() {
     super.initState();
     _controller = WorkspaceController(initialTab: widget.initialTab);
-    _controller.loadAllData();
+    _controller.loadAllData().then((_) => _openInitialTarget());
+  }
+
+  Future<void> _openInitialTarget() async {
+    final workItemId = widget.initialWorkItemId;
+    final taskId = widget.initialStandaloneTaskId;
+    if ((workItemId ?? '').isNotEmpty || (taskId ?? '').isNotEmpty) {
+      final api = WorkspaceTaskDetailApi();
+      final isWorkItem = (workItemId ?? '').isNotEmpty;
+      final res = isWorkItem ? await api.getWorkItem(workItemId!) : await api.getStandaloneTask(taskId!);
+      if (!mounted) return;
+      if (!res.ok || res.data == null || res.data!.isEmpty) {
+        AppToast.error(context, res.error ?? 'workspace.task_detail.load_failed'.tr());
+        return;
+      }
+      var task = StandaloneTaskItem.fromJson(res.data!);
+      if (isWorkItem && task.projectId == null && (widget.initialProjectId ?? '').isNotEmpty) {
+        task = task.copyWith(projectId: widget.initialProjectId);
+      }
+      showWorkspaceStandaloneTaskDetailSheet(context, task: task, service: _service, onRefresh: _controller.loadAllData);
+      return;
+    }
+    await _openInitialProject();
+  }
+
+  Future<void> _openInitialProject() async {
+    var projectId = widget.initialProjectId;
+    final eventId = widget.initialCalendarEventId;
+    if ((eventId ?? '').isNotEmpty && (projectId ?? '').isEmpty) {
+      // Link "Việc của tôi" không kèm dự án: hỏi sự kiện để biết dự án của nó.
+      final res = await WorkspaceCalendarApi().getEvent(eventId!);
+      if (!mounted) return;
+      projectId = res.data?.occurrence?.projectId;
+      if (projectId == null) {
+        if (!res.ok) AppToast.error(context, res.error ?? 'workspace.calendar.error_load'.tr());
+        return;
+      }
+    }
+    if (projectId == null || projectId.isEmpty || !mounted) return;
+    ProjectItem? target;
+    for (final p in [..._controller.projects, ..._controller.myWorkProjects]) {
+      if (p.id == projectId) {
+        target = p;
+        break;
+      }
+    }
+    try {
+      target ??= await _service.getProjectDetail(projectId);
+    } catch (_) {}
+    if (target == null || !mounted) return;
+    showWorkspaceProjectDetailSheet(
+      context,
+      project: target,
+      service: _service,
+      onProjectsChanged: _controller.loadAllData,
+      openChat: widget.openProjectChat && (eventId ?? '').isEmpty,
+      initialMessageId: widget.initialMessageId,
+      initialCalendarEventId: eventId,
+    );
   }
 
   @override
@@ -211,6 +295,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       context,
       project: project,
       service: _service,
+      onProjectsChanged: _controller.loadAllData,
     );
   }
 

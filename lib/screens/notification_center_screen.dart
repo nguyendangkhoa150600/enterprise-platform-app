@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../models/notification_models.dart';
 import '../providers/notification_provider.dart';
 import '../core/i18n/app_i18n.dart';
@@ -88,7 +87,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                           )
                         : ListView.separated(
                             itemCount: prefs.length,
-                            separatorBuilder: (_, __) => const Divider(height: 16, color: Color(0xFFF8FAFC)),
+                            separatorBuilder: (_, index) => const Divider(height: 16, color: Color(0xFFF8FAFC)),
                             itemBuilder: (c, i) {
                               final p = prefs[i];
                               return Row(
@@ -119,7 +118,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                   ),
                                   Switch(
                                     value: p.feedEnabled,
-                                    activeColor: const Color(0xFF2563EB),
+                                    activeThumbColor: const Color(0xFF2563EB),
                                     onChanged: (val) {
                                       setModalState(() {
                                         prefs[i] = NotificationPreference(
@@ -314,6 +313,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     const SizedBox(width: 6),
                     _buildFilterChip('hrm', 'notif.filter.hrm'.tr()),
                     const SizedBox(width: 6),
+                    _buildFilterChip('correspondence', 'notif.filter.correspondence'.tr()),
+                    const SizedBox(width: 6),
                     _buildFilterChip('procedure', 'notif.filter.procedure'.tr()),
                     const SizedBox(width: 6),
                     _buildFilterChip('maintenance', 'notif.filter.maintenance'.tr()),
@@ -336,7 +337,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, index) => const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final noti = filtered[index];
                             return _buildNotificationCard(context, noti);

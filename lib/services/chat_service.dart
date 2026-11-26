@@ -127,7 +127,7 @@ class ChatService {
         data: {
           'body': body.trim(),
           if (mentions.isNotEmpty) 'mentions': mentions,
-          if (replyToId != null) 'replyToId': replyToId,
+          'replyToId': ?replyToId,
         },
       );
       if (res.statusCode == 200 || res.statusCode == 201) {

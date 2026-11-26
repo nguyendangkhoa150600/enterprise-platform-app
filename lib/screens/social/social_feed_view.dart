@@ -14,7 +14,13 @@ import 'components/social_groups_view.dart';
 import 'components/social_profile_view.dart';
 
 class SocialFeedView extends StatefulWidget {
-  const SocialFeedView({super.key});
+  /// Từ thông báo: mở sẵn bảng tin của nhóm này (web `/modules/social/groups/<id>`).
+  final String? initialGroupId;
+
+  /// Từ thông báo: mở sẵn mục này ('pending', 'groups'...) (web `/modules/social/pending`).
+  final String? initialSection;
+
+  const SocialFeedView({super.key, this.initialGroupId, this.initialSection});
 
   @override
   State<SocialFeedView> createState() => _SocialFeedViewState();
@@ -98,8 +104,22 @@ class _SocialFeedViewState extends State<SocialFeedView> with SingleTickerProvid
   void initState() {
     super.initState();
     _ensureAnimation();
-    _loadTopicsAndFeed();
     _scrollController.addListener(_onScroll);
+    final groupId = widget.initialGroupId;
+    final section = widget.initialSection;
+    if (groupId != null && groupId.isNotEmpty) {
+      _activeGroupId = groupId;
+      _loadTopicsAndFeed();
+      SocialService().getGroupName(groupId).then((name) {
+        if (!mounted || name == null || _activeGroupId != groupId) return;
+        setState(() => _activeGroupName = name);
+      });
+    } else if (section != null && section.isNotEmpty) {
+      _activeSection = section;
+      _loadTopicsAndFeed();
+    } else {
+      _loadTopicsAndFeed();
+    }
   }
 
   @override

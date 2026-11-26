@@ -1,6 +1,6 @@
 ﻿part of '../../role_permission_screen.dart';
 
-extension RoleDetailSheetExtension on _RolePermissionScreenState {
+extension _RoleDetailSheetExtension on _RolePermissionScreenState {
   void _showRoleDetailModal(TenantRole role, bool canManage) {
     showModalBottomSheet(
       context: context,
@@ -687,7 +687,6 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
           )
         else
           ...memberUsers.map((u) {
-            final initial = u.fullName.isNotEmpty ? u.fullName.trim()[0].toUpperCase() : '?';
             final bg = _getAvatarBg(u.fullName);
             final fg = _getAvatarFg(u.fullName);
 
@@ -701,14 +700,7 @@ extension RoleDetailSheetExtension on _RolePermissionScreenState {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 17,
-                    backgroundColor: bg,
-                    child: Text(
-                      initial,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: fg),
-                    ),
-                  ),
+                  UserAvatar(userId: u.id, name: u.fullName, size: 34, background: bg, foreground: fg, fontSize: 13),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

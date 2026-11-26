@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/file_download_helper.dart';
 import '../../../../features/workspace/data/datasources/workspace_remote_datasource.dart';
+import '../../../../features/workspace/presentation/utils/project_access_extension.dart';
 import '../../../../models/workspace_models.dart';
 import 'workspace_create_folder_dialog.dart';
 import 'workspace_upload_document_dialog.dart';
@@ -16,11 +17,24 @@ class WorkspaceDocumentsView extends StatefulWidget {
   final String? initialProjectId;
   final VoidCallback onRefresh;
 
+  /// Tab Tài liệu trong trang Dự án: phạm vi cố định theo dự án này (web DocumentPanel `projectId`),
+  /// gọi API có `projectId` và ẩn bộ chọn "Mọi dự án".
+  final String? scopeProjectId;
+
+  /// Quyền trong dự án; null (trang Tài liệu chung) giữ hành vi cũ.
+  final ProjectAccess? access;
+
+  /// Báo số tài liệu của phạm vi mỗi lần nạp xong (web `onCount`).
+  final ValueChanged<int>? onCount;
+
   const WorkspaceDocumentsView({
     super.key,
     required this.projects,
     this.initialProjectId,
     required this.onRefresh,
+    this.scopeProjectId,
+    this.access,
+    this.onCount,
   });
 
   @override
@@ -43,6 +57,9 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
   bool _isLoading = true;
   bool _loadFailed = false;
 
+  bool get _isScoped => widget.scopeProjectId != null && widget.scopeProjectId!.isNotEmpty;
+  bool get _canWrite => widget.access?.canWrite ?? true;
+
   @override
   void initState() {
     super.initState();
@@ -58,8 +75,8 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
 
     try {
       final results = await Future.wait([
-        _remote.getFoldersRaw(),
-        _remote.getDocumentsRaw(),
+        _remote.getFoldersRaw(projectId: widget.scopeProjectId),
+        _remote.getDocumentsRaw(projectId: widget.scopeProjectId),
       ]);
 
       final rawFolders = results[0];
@@ -90,6 +107,7 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
         }
       }
       _folderCounts = counts;
+      if (_isScoped) widget.onCount?.call(_documents.length);
     } catch (_) {
       _loadFailed = true;
     }
@@ -216,7 +234,10 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
 
   @override
   Widget build(BuildContext context) {
-    final isFlatMode = _searchQuery.trim().isNotEmpty || _selectedKind != 'ALL' || _selectedProjectId != null;
+    // Trong tab dự án, phạm vi dự án là cố định nên vẫn duyệt theo thư mục.
+    final isFlatMode = _searchQuery.trim().isNotEmpty ||
+        _selectedKind != 'ALL' ||
+        (!_isScoped && _selectedProjectId != null);
 
     // Lọc tài liệu
     final filteredDocs = _documents.where((doc) {
@@ -365,53 +386,61 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
 
           const SizedBox(height: 8),
 
-          // Hàng nút [+ Thư mục] và [Tải lên] đồng bộ Web 1:1
+          // Hàng nút [+ Thư mục] và [Tải lên] đồng bộ Web 1:1 (chỉ khi có quyền ghi)
           Row(
             children: [
-              OutlinedButton.icon(
-                icon: const Icon(Icons.create_new_folder_outlined, size: 15),
-                label: const Text('Thư mục', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF334155),
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  backgroundColor: Colors.white,
+              if (_canWrite) ...[
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.create_new_folder_outlined, size: 15),
+                  label: const Text('Thư mục', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF334155),
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    final ok = await showCreateWorkspaceFolderDialog(
+                      context,
+                      remote: _remote,
+                      existingFolders: _folders,
+                      projects: widget.projects,
+                      defaultParentId: _currentFolderId,
+                      defaultProjectId: _selectedProjectId,
+                    );
+                    if (ok) _load();
+                  },
                 ),
-                onPressed: () async {
-                  final ok = await showCreateWorkspaceFolderDialog(
-                    context,
-                    remote: _remote,
-                    existingFolders: _folders,
-                    projects: widget.projects,
-                    defaultParentId: _currentFolderId,
-                    defaultProjectId: _selectedProjectId,
-                  );
-                  if (ok) _load();
-                },
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.upload_file_outlined, size: 15),
-                label: const Text('Tải lên', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF59E0B),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.upload_file_outlined, size: 15),
+                  label: const Text('Tải lên', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    // Web DocumentPanel: tab Tài liệu của dự án thì tự xếp `<gốc>/<dự án>`; trang chung thì chọn thư mục.
+                    final scope = widget.scopeProjectId;
+                    final ok = await showUploadWorkspaceDocumentDialog(
+                      context,
+                      remote: _remote,
+                      folders: workspaceUploadVisibleFolders(
+                        _folders,
+                        filterProjectId: _isScoped ? null : _selectedProjectId,
+                      ),
+                      defaultFolderId: _currentFolderId,
+                      autoPath: _isScoped ? (projectId: scope!, workItemId: null) : null,
+                    );
+                    if (!mounted) return;
+                    if (ok) _load();
+                  },
                 ),
-                onPressed: () async {
-                  final ok = await showUploadWorkspaceDocumentDialog(
-                    context,
-                    remote: _remote,
-                    folders: _folders,
-                    defaultFolderId: _currentFolderId,
-                    defaultProjectId: _selectedProjectId,
-                  );
-                  if (ok) _load();
-                },
-              ),
+              ],
               const Spacer(),
               Text(
                 '${filteredDocs.length} tài liệu',
@@ -477,38 +506,39 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
           ),
           const SizedBox(height: 8),
 
-          // Dropdown lọc theo dự án (Searchable & Scrollable chuẩn UX Mobile)
-          SearchableDropdownField<ProjectItem>(
-            value: (_selectedProjectId != null && _selectedProjectId!.isNotEmpty)
-                ? widget.projects.where((p) => p.id == _selectedProjectId).firstOrNull
-                : null,
-            items: [
-              ProjectItem(
-                id: '',
-                name: 'Mọi dự án',
-                code: '',
-                status: '',
-              ),
-              ...widget.projects,
-            ],
-            hintText: 'Mọi dự án',
-            itemLabel: (p) => p.id.isEmpty
-                ? 'Mọi dự án'
-                : (p.code.isNotEmpty ? '${p.code} - ${p.name}' : p.name),
-            itemSubtitle: (p) => p.id.isEmpty ? null : (p.typeLabel.isNotEmpty ? p.typeLabel : null),
-            maxHeight: 280,
-            showClear: true,
-            onChanged: (p) {
-              setState(() {
-                _selectedProjectId = p.id.isEmpty ? null : p.id;
-              });
-            },
-            onClear: () {
-              setState(() {
-                _selectedProjectId = null;
-              });
-            },
-          ),
+          // Dropdown lọc theo dự án (Searchable & Scrollable chuẩn UX Mobile) — ẩn trong tab dự án
+          if (!_isScoped)
+            SearchableDropdownField<ProjectItem>(
+              value: (_selectedProjectId != null && _selectedProjectId!.isNotEmpty)
+                  ? widget.projects.where((p) => p.id == _selectedProjectId).firstOrNull
+                  : null,
+              items: [
+                ProjectItem(
+                  id: '',
+                  name: 'Mọi dự án',
+                  code: '',
+                  status: '',
+                ),
+                ...widget.projects,
+              ],
+              hintText: 'Mọi dự án',
+              itemLabel: (p) => p.id.isEmpty
+                  ? 'Mọi dự án'
+                  : (p.code.isNotEmpty ? '${p.code} - ${p.name}' : p.name),
+              itemSubtitle: (p) => p.id.isEmpty ? null : (p.typeLabel.isNotEmpty ? p.typeLabel : null),
+              maxHeight: 280,
+              showClear: true,
+              onChanged: (p) {
+                setState(() {
+                  _selectedProjectId = p.id.isEmpty ? null : p.id;
+                });
+              },
+              onClear: () {
+                setState(() {
+                  _selectedProjectId = null;
+                });
+              },
+            ),
 
           const SizedBox(height: 12),
 
@@ -584,6 +614,8 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
                 projects: widget.projects,
                 remote: _remote,
                 onRefresh: _load,
+                canWrite: _canWrite,
+                scopeProjectId: widget.scopeProjectId,
               ),
             ),
           ).then((_) => _load());
@@ -622,13 +654,14 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                 ),
               ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFF94A3B8)),
-              tooltip: 'Xoá thư mục',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              onPressed: () => _deleteFolder(folder),
-            ),
+            if (_canWrite)
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFF94A3B8)),
+                tooltip: 'Xoá thư mục',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => _deleteFolder(folder),
+              ),
             const Icon(Icons.chevron_right, size: 18, color: Color(0xFF94A3B8)),
           ],
         ),

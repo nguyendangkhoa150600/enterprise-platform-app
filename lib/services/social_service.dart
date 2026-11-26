@@ -310,5 +310,34 @@ class SocialService {
       return false;
     }
   }
-}
 
+  /// Một bài viết (web `loadPost`: GET /posts/:id) — mở từ thông báo.
+  Future<SocialPost?> getPost(String postId) async {
+    try {
+      final res = await _dio.get('/api/social/v1/posts/${Uri.encodeComponent(postId)}');
+      if (res.statusCode == 200 && res.data is Map) {
+        final data = Map<String, dynamic>.from(res.data as Map);
+        return SocialPost.fromJson(data['post'] is Map ? Map<String, dynamic>.from(data['post'] as Map) : data);
+      }
+    } catch (e) {
+      debugPrint('[SocialService] getPost error: $e');
+    }
+    return null;
+  }
+
+  /// Tên một nhóm (web `loadGroup`: GET /groups/:id) — mở bảng tin của nhóm từ thông báo.
+  Future<String?> getGroupName(String groupId) async {
+    try {
+      final res = await _dio.get('/api/social/v1/groups/${Uri.encodeComponent(groupId)}');
+      if (res.statusCode == 200 && res.data is Map) {
+        final data = res.data as Map;
+        final group = data['group'] is Map ? data['group'] as Map : data;
+        final name = group['name']?.toString();
+        return name == null || name.isEmpty ? null : name;
+      }
+    } catch (e) {
+      debugPrint('[SocialService] getGroupName error: $e');
+    }
+    return null;
+  }
+}

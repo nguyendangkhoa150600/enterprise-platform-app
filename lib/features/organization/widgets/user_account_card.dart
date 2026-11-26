@@ -5,16 +5,21 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../models/platform_models.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_status_badge.dart';
+import '../../../widgets/user_avatar.dart';
 
 /// Clean User Account Card for Admin & User Management
 class UserAccountCard extends StatelessWidget {
   final TenantUser user;
+
+  /// Tên các vai trò của người dùng (TenantUser không kèm vai trò; nơi gọi tải qua `getUserRoleIds`).
+  final List<String> roles;
   final VoidCallback? onAssignRole;
   final VoidCallback? onToggleStatus;
 
   const UserAccountCard({
     super.key,
     required this.user,
+    this.roles = const [],
     this.onAssignRole,
     this.onToggleStatus,
   });
@@ -22,7 +27,6 @@ class UserAccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = user.status.toUpperCase() == 'ACTIVE';
-    final initials = user.fullName.trim().split(' ').where((s) => s.isNotEmpty).map((s) => s[0]).take(2).join().toUpperCase();
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 10),
@@ -33,16 +37,13 @@ class UserAccountCard extends StatelessWidget {
           // Row 1: Avatar, Full Name, Email, Status Badge
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: isActive ? AppColors.primaryLight : AppColors.slate200,
-                child: Text(
-                  initials.isNotEmpty ? initials : 'U',
-                  style: AppTextStyles.h3.copyWith(
-                    color: isActive ? AppColors.primary : AppColors.slate600,
-                    fontSize: 13,
-                  ),
-                ),
+              UserAvatar(
+                userId: user.id,
+                name: user.fullName,
+                size: 40,
+                background: isActive ? AppColors.primaryLight : AppColors.slate200,
+                foreground: isActive ? AppColors.primary : AppColors.slate600,
+                fontSize: 13,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -84,10 +85,10 @@ class UserAccountCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Expanded(
                       child: Text(
-                        user.roles.isNotEmpty ? user.roles.join(', ') : 'org_widgets.user.no_roles'.tr(),
+                        roles.isNotEmpty ? roles.join(', ') : 'org_widgets.user.no_roles'.tr(),
                         style: AppTextStyles.caption.copyWith(
-                          color: user.roles.isNotEmpty ? AppColors.primaryDark : AppColors.slate400,
-                          fontWeight: user.roles.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                          color: roles.isNotEmpty ? AppColors.primaryDark : AppColors.slate400,
+                          fontWeight: roles.isNotEmpty ? FontWeight.bold : FontWeight.normal,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),

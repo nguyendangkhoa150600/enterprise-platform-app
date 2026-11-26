@@ -67,13 +67,13 @@ class HrmAttendanceService {
         }),
         // Same payload as the web portal: the server uses its own clock and validates GPS against the sites.
         data: {
-          if (employeeId != null) 'employeeId': employeeId,
+          'employeeId': ?employeeId,
           'externalEventId': idempotencyKey,
           'verificationMethod': verificationMethod,
           'deviceId': deviceId,
-          if (latitude != null) 'latitude': latitude,
-          if (longitude != null) 'longitude': longitude,
-          if (accuracy != null) 'accuracy': accuracy,
+          'latitude': ?latitude,
+          'longitude': ?longitude,
+          'accuracy': ?accuracy,
         },
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -112,13 +112,13 @@ class HrmAttendanceService {
           'X-Device-Id': deviceId,
         }),
         data: {
-          if (employeeId != null) 'employeeId': employeeId,
+          'employeeId': ?employeeId,
           'externalEventId': idempotencyKey,
           'verificationMethod': verificationMethod,
           'deviceId': deviceId,
-          if (latitude != null) 'latitude': latitude,
-          if (longitude != null) 'longitude': longitude,
-          if (accuracy != null) 'accuracy': accuracy,
+          'latitude': ?latitude,
+          'longitude': ?longitude,
+          'accuracy': ?accuracy,
         },
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -226,9 +226,9 @@ class HrmAttendanceService {
       final response = await _dio.get(
         '/hrm/v1/attendance',
         queryParameters: {
-          if (employeeId != null) 'employee_id': employeeId,
-          if (from != null) 'from': from,
-          if (to != null) 'to': to,
+          'employee_id': ?employeeId,
+          'from': ?from,
+          'to': ?to,
           if (status != null && status != 'ALL') 'status': status,
         },
       );
@@ -506,7 +506,7 @@ class HrmAttendanceService {
     return {'success': false, 'message': 'svc_hrm.cannot_connect'.tr()};
   }
 
-  List<LeaveType> _cachedLeaveTypes = [];
+  final List<LeaveType> _cachedLeaveTypes = [];
 
   // 6.5. Get Leave Types (Loại nghỉ phép)
   Future<List<LeaveType>> getLeaveTypes() async {
@@ -827,8 +827,8 @@ class HrmAttendanceService {
     if (requestType == 'LEAVE') {
       try {
         final Map<String, dynamic> leavePayload = {
-          if (validUuidLeaveTypeId != null) 'leaveTypeId': validUuidLeaveTypeId,
-          if (validUuidLeaveTypeId != null) 'leave_type_id': validUuidLeaveTypeId,
+          'leaveTypeId': ?validUuidLeaveTypeId,
+          'leave_type_id': ?validUuidLeaveTypeId,
           'duration': duration > 0 ? duration : 1.0,
           'isNegativeLeave': isNegativeLeave,
           'is_negative_leave': isNegativeLeave,
@@ -874,10 +874,10 @@ class HrmAttendanceService {
         final Map<String, dynamic> payload = {
           if (isEmpUuid) 'employeeId': employeeId,
           if (isEmpUuid) 'employee_id': employeeId,
-          if (validUuidLeaveTypeId != null) 'leaveTypeId': validUuidLeaveTypeId,
-          if (validUuidLeaveTypeId != null) 'leave_type_id': validUuidLeaveTypeId,
+          'leaveTypeId': ?validUuidLeaveTypeId,
+          'leave_type_id': ?validUuidLeaveTypeId,
           if (actualDraftId != null && !actualDraftId.startsWith('DFT-')) 'draftId': actualDraftId,
-          if (actualExpectedUpdatedAt != null) 'expectedUpdatedAt': actualExpectedUpdatedAt,
+          'expectedUpdatedAt': ?actualExpectedUpdatedAt,
           ...leavePayload,
         };
         debugPrint('[HrmAttendanceService] /hrm/v1/leave-requests payload: $payload');
@@ -914,7 +914,7 @@ class HrmAttendanceService {
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
             if (attendanceId != null && attendanceId.isNotEmpty) 'attendanceId': attendanceId,
-            if (actualReasonId != null) 'reasonId': actualReasonId,
+            'reasonId': ?actualReasonId,
             'requestDate': requestDate,
             'punches': [
               {'kind': punchKind, 'at': punchIso}
@@ -961,7 +961,7 @@ class HrmAttendanceService {
           '/hrm/v1/ot-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
-            if (actualReasonId != null) 'reasonId': actualReasonId,
+            'reasonId': ?actualReasonId,
             if (projectId != null && projectId.isNotEmpty) 'projectId': projectId,
             if (projectCode != null && projectCode.isNotEmpty) 'projectCode': projectCode,
             if (projectName != null && projectName.isNotEmpty) 'projectName': projectName,
@@ -1007,7 +1007,7 @@ class HrmAttendanceService {
           '/hrm/v1/business-trip-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
-            if (actualReasonId != null) 'reasonId': actualReasonId,
+            'reasonId': ?actualReasonId,
             if (projectId != null && projectId.isNotEmpty) 'projectId': projectId,
             if (projectCode != null && projectCode.isNotEmpty) 'projectCode': projectCode,
             if (projectName != null && projectName.isNotEmpty) 'projectName': projectName,
@@ -1077,7 +1077,7 @@ class HrmAttendanceService {
           '/hrm/v1/shift-change-requests',
           data: {
             if (isEmpUuid) 'employeeId': employeeId,
-            if (reasonId != null) 'reasonId': reasonId,
+            'reasonId': ?reasonId,
             'changeType': 'CHANGE',
             'fromDate': fromDateClean,
             'toDate': toDateClean,
@@ -1337,9 +1337,9 @@ class HrmAttendanceService {
       }
 
       final body = {
-        if (cleanEmployeeId != null) 'employeeId': cleanEmployeeId,
+        'employeeId': ?cleanEmployeeId,
         'payload': payload,
-        if (versionToUse != null) 'expectedUpdatedAt': versionToUse,
+        'expectedUpdatedAt': ?versionToUse,
       };
 
       debugPrint('[HrmAttendanceService] saveDraft isEdit: $isEdit, url: $url, body: $body');
@@ -1423,7 +1423,7 @@ class HrmAttendanceService {
         final res = await _dio.delete(
           '/hrm/v1/request-drafts/$k/$id',
           data: {
-            if (expectedUpdatedAt != null) 'expectedUpdatedAt': expectedUpdatedAt,
+            'expectedUpdatedAt': ?expectedUpdatedAt,
           },
         );
         if (res.statusCode == 200 || res.statusCode == 204) return true;
@@ -1649,7 +1649,7 @@ class HrmAttendanceService {
           'fileName': fileName,
           'contentType': contentType,
           'sizeBytes': bytes.length,
-          if (documentType != null) 'documentType': documentType,
+          'documentType': ?documentType,
         },
         options: Options(validateStatus: (s) => s != null && s < 500),
       );
@@ -1705,7 +1705,7 @@ class HrmAttendanceService {
           '/hrm/v1/employees/$employeeId/profile-documents',
           data: {
             'documentChanges': documentChanges,
-            if (identityCardExpiryDate != null) 'identityCardExpiryDate': identityCardExpiryDate,
+            'identityCardExpiryDate': ?identityCardExpiryDate,
           },
           options: Options(validateStatus: (s) => s != null && s < 500),
         );

@@ -3,7 +3,9 @@ import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
+import '../../../core/i18n/app_i18n.dart';
 import '../domain/models/correspondence_models.dart';
+import '../domain/errors/correspondence_exception.dart';
 
 /// Tiện ích trích xuất sổ đăng ký văn bản đến / đi theo mẫu của
 /// Nghị định 30/2020/NĐ-CP (Phụ lục IV), đồng bộ 1:1 với bản Web.
@@ -34,10 +36,10 @@ class CorrespondenceRegisterExporter {
     required List<LetterSummary> letters,
   }) {
     String note(LetterSummary letter) {
-      if (letter.stage == 'cancelled') return 'Đã huỷ';
+      if (letter.stage == 'cancelled') return 'correspondence.export.note_cancelled'.tr();
       if (letter.stage == 'archived') {
         return (letter.archiveCode != null && letter.archiveCode!.isNotEmpty)
-            ? 'Hồ sơ ${letter.archiveCode}'
+            ? 'correspondence.export.note_dossier'.tr(args: {'code': letter.archiveCode})
             : '';
       }
       return letter.stageLabel;
@@ -53,15 +55,15 @@ class CorrespondenceRegisterExporter {
 
       return [
         [
-          'Ngày đến',
-          'Số đến',
-          'Tác giả',
-          'Số, ký hiệu',
-          'Ngày tháng',
-          'Tên loại và trích yếu nội dung',
-          'Đơn vị hoặc người nhận',
-          'Ký nhận',
-          'Ghi chú',
+          'correspondence.export.incoming_header.received_on'.tr(),
+          'correspondence.export.incoming_header.incoming_no'.tr(),
+          'correspondence.export.incoming_header.author'.tr(),
+          'correspondence.export.incoming_header.reference_no'.tr(),
+          'correspondence.export.incoming_header.date'.tr(),
+          'correspondence.export.incoming_header.kind_subject'.tr(),
+          'correspondence.export.incoming_header.recipient_unit'.tr(),
+          'correspondence.export.incoming_header.signature'.tr(),
+          'correspondence.export.incoming_header.note'.tr(),
         ],
         ...ordered.map((letter) => [
               formatDay(letter.receivedOn),
@@ -90,16 +92,16 @@ class CorrespondenceRegisterExporter {
 
       return [
         [
-          'Số, ký hiệu văn bản',
-          'Ngày tháng văn bản',
-          'Tên loại và trích yếu nội dung',
-          'Người ký',
-          'Nơi nhận văn bản',
-          'Đơn vị, người nhận bản lưu',
-          'Số lượng bản',
-          'Ngày chuyển',
-          'Ký nhận',
-          'Ghi chú',
+          'correspondence.export.outgoing_header.reference_no'.tr(),
+          'correspondence.export.outgoing_header.date'.tr(),
+          'correspondence.export.outgoing_header.kind_subject'.tr(),
+          'correspondence.export.outgoing_header.signer'.tr(),
+          'correspondence.export.outgoing_header.recipient'.tr(),
+          'correspondence.export.outgoing_header.copy_holder'.tr(),
+          'correspondence.export.outgoing_header.copy_count'.tr(),
+          'correspondence.export.outgoing_header.sent_on'.tr(),
+          'correspondence.export.outgoing_header.signature'.tr(),
+          'correspondence.export.outgoing_header.note'.tr(),
         ],
         ...issued.map((letter) => [
               letter.outgoingNo ?? '',
@@ -128,13 +130,13 @@ class CorrespondenceRegisterExporter {
     final rows = buildRegisterRows(direction: direction, letters: letters);
     final count = rows.length - 1; // Loại bỏ dòng tiêu đề
     if (count <= 0) {
-      throw Exception('Không có văn bản nào phù hợp để xuất sổ.');
+      throw CorrespondenceException(message: 'correspondence.export.no_matching_letters'.tr());
     }
 
     final today = localToday();
     final fileName =
         'so-dang-ky-van-ban-${direction == 'incoming' ? 'den' : 'di'}-$today.xlsx';
-    final sheetName = direction == 'incoming' ? 'Văn bản đến' : 'Văn bản đi';
+    final sheetName = direction == 'incoming' ? 'correspondence.export.sheet_incoming'.tr() : 'correspondence.export.sheet_outgoing'.tr();
 
     final excel = Excel.createExcel();
     final sheet = excel[sheetName];
@@ -170,7 +172,7 @@ class CorrespondenceRegisterExporter {
 
     final bytes = excel.encode();
     if (bytes == null || bytes.isEmpty) {
-      throw Exception('Không thể tạo nội dung tệp Excel.');
+      throw CorrespondenceException(message: 'correspondence.export.excel_build_failed'.tr());
     }
 
     final uint8Bytes = Uint8List.fromList(bytes);

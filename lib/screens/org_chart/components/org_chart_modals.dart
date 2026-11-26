@@ -4,6 +4,7 @@ import '../../../models/platform_models.dart';
 import '../../../services/platform_service.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../widgets/user_avatar.dart';
 
 Widget buildOrgCategoryOption({
   required String label,
@@ -303,6 +304,7 @@ void showOrgNodeDetailBottomSheet(
                           return;
                         }
 
+                        final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(ctx);
                         final nodeTypeId = selectedCategory == 'unit' ? 'nt-dept' : 'nt-pos-lead';
                         final success = await platformService.updateNode(
@@ -315,7 +317,7 @@ void showOrgNodeDetailBottomSheet(
                         );
 
                         if (success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(content: Text('org_chart.props_saved'.tr()), backgroundColor: Color(0xFF059669)),
                           );
                           onRefreshSnapshot();
@@ -610,13 +612,13 @@ void showOrgNodeDetailBottomSheet(
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: const Color(0xFFEFF6FF),
-                            child: Text(
-                              name.isNotEmpty ? name[0] : 'U',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                            ),
+                          UserAvatar(
+                            userId: asg.userId,
+                            name: assignedUser?.fullName,
+                            size: 36,
+                            background: const Color(0xFFEFF6FF),
+                            foreground: const Color(0xFF2563EB),
+                            fontSize: 14,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -838,6 +840,7 @@ void showOrgNodeAddOrEditDialog(
                         return;
                       }
 
+                      final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(ctx);
                       final nodeTypeId = selectedCategory == 'unit' ? 'nt-dept' : 'nt-pos-lead';
                       bool success = false;
@@ -863,7 +866,7 @@ void showOrgNodeAddOrEditDialog(
                       }
 
                       if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text(isEditing ? 'org_chart.node_updated'.tr() : 'org_chart.node_added'.tr()),
                             backgroundColor: const Color(0xFF059669),
@@ -917,10 +920,11 @@ void confirmDeleteOrgNode(
         ),
         ElevatedButton(
           onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
             Navigator.pop(ctx);
             final success = await platformService.deleteNode(node.id);
             if (success) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(content: Text('org_chart.node_deleted'.tr()), backgroundColor: Color(0xFFEF4444)),
               );
               onRefreshSnapshot();

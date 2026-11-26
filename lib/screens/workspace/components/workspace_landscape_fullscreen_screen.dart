@@ -1,19 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/workspace/domain/models/workspace_report_models.dart' show TagItem;
+import '../../../features/workspace/presentation/utils/project_access_extension.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
+import 'project_detail/project_work_filters.dart';
+import 'project_detail/project_work_model.dart';
+import 'project_detail/project_work_tree.dart';
 import 'workspace_project_kanban_view.dart';
 import 'workspace_project_gantt_view.dart';
-import 'workspace_sheets.dart';
+import 'workspace_standalone_task_detail_sheet.dart';
 
-/// Màn hình xem toàn màn hình theo chiều nằm ngang (Landscape Fullscreen)
-/// Hỗ trợ trải nghiệm tối đa cho chế độ Kanban và biểu đồ tiến độ Gantt
+/// Màn hình xem toàn màn hình nằm ngang của tab Công việc: cùng ba kiểu xem Bảng (cây WBS) / Kanban / Gantt
+/// và cùng bộ lọc với tab Công việc (nhận bộ lọc đang áp từ trang dự án).
 class WorkspaceLandscapeFullscreenScreen extends StatefulWidget {
   final ProjectItem project;
   final List<StandaloneTaskItem> tasks;
   final String initialViewMode; // 'table' | 'kanban' | 'gantt'
   final WorkspaceService service;
   final VoidCallback onRefresh;
+
+  /// Bộ lọc đang áp ở tab Công việc (mặc định: không lọc).
+  final WorkFilter? initialFilter;
+  final Map<String, TagItem> tags;
+  final String? currentUserId;
+
+  /// Mở chi tiết công việc; vắng thì mở sheet chi tiết mặc định.
+  final ValueChanged<StandaloneTaskItem>? onOpenItem;
 
   const WorkspaceLandscapeFullscreenScreen({
     super.key,
@@ -22,6 +36,10 @@ class WorkspaceLandscapeFullscreenScreen extends StatefulWidget {
     this.initialViewMode = 'kanban',
     required this.service,
     required this.onRefresh,
+    this.initialFilter,
+    this.tags = const {},
+    this.currentUserId,
+    this.onOpenItem,
   });
 
   @override
@@ -31,19 +49,16 @@ class WorkspaceLandscapeFullscreenScreen extends StatefulWidget {
 class _WorkspaceLandscapeFullscreenScreenState extends State<WorkspaceLandscapeFullscreenScreen> {
   late String _viewMode;
   late List<StandaloneTaskItem> _tasks;
+  late WorkFilter _filter;
+  final Set<String> _collapsed = {};
   bool _isLoading = false;
-
-  // Filter
-  String _statusFilter = 'ALL';
-  final String _priorityFilter = 'ALL';
 
   @override
   void initState() {
     super.initState();
     _viewMode = widget.initialViewMode;
     _tasks = List.from(widget.tasks);
-
-    // Khóa hướng màn hình nằm ngang khi mở
+    _filter = widget.initialFilter ?? WorkFilter.none;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
@@ -52,10 +67,7 @@ class _WorkspaceLandscapeFullscreenScreenState extends State<WorkspaceLandscapeF
 
   @override
   void dispose() {
-    // Phục hồi lại hướng dọc khi đóng
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
@@ -63,12 +75,11 @@ class _WorkspaceLandscapeFullscreenScreenState extends State<WorkspaceLandscapeF
     setState(() => _isLoading = true);
     try {
       final items = await widget.service.getProjectWorkItems(widget.project.id);
-      if (mounted) {
-        setState(() {
-          _tasks = items;
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _tasks = items;
+        _isLoading = false;
+      });
       widget.onRefresh();
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -76,168 +87,118 @@ class _WorkspaceLandscapeFullscreenScreenState extends State<WorkspaceLandscapeF
   }
 
   void _exitFullscreen() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     Navigator.of(context).pop();
   }
 
-  List<StandaloneTaskItem> _getFilteredTasks() {
-    return _tasks.where((t) {
-      if (_statusFilter != 'ALL' && t.status != _statusFilter) return false;
-      if (_priorityFilter != 'ALL' && t.priority != _priorityFilter) return false;
-      return true;
-    }).toList();
+  void _open(StandaloneTaskItem item) {
+    if (widget.onOpenItem != null) {
+      widget.onOpenItem!(item);
+      return;
+    }
+    showWorkspaceStandaloneTaskDetailSheet(
+      context,
+      task: item.copyWith(
+        projectId: widget.project.id,
+        projectCode: widget.project.code,
+        projectName: widget.project.name,
+      ),
+      service: widget.service,
+      onRefresh: _reloadTasks,
+    );
+  }
+
+  void _toggle(WorkTreeRow row) {
+    final id = row.item.id;
+    setState(() {
+      if (_filter.showChildren) {
+        _collapsed.contains(id) ? _collapsed.remove(id) : _collapsed.add(id);
+      } else {
+        _collapsed.remove(id);
+        _filter = _filter.copyWith(showChildren: true);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _getFilteredTasks();
+    final matched = matchWorkItems(_tasks, _filter, widget.currentUserId);
+    final count = _filter.filtering
+        ? 'workspace.work_tab.count_filtered'.tr(args: {'matched': '${matched.length}', 'total': '${_tasks.length}'})
+        : 'workspace.work_tab.count'.tr(args: {'total': '${_tasks.length}'});
 
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, _) {
-        // Luôn khôi phục chiều dọc khi người dùng nhấn nút Back hệ thống
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-        ]);
+        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       },
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
             children: [
-              // Thanh điều hướng trên cùng nằm ngang (Compact Navigation Bar)
               Container(
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: const BoxDecoration(
-                  color: Colors.white,
                   border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
                 ),
                 child: Row(
                   children: [
-                    // Nút thu nhỏ / Thoát nằm ngang
-                    InkWell(
-                      onTap: _exitFullscreen,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.fullscreen_exit, size: 18, color: Color(0xFF334155)),
-                            SizedBox(width: 4),
-                            Text(
-                              'Thu nhỏ',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                            ),
-                          ],
-                        ),
-                      ),
+                    IconButton(
+                      tooltip: 'workspace.work_tab.exit_landscape'.tr(),
+                      onPressed: _exitFullscreen,
+                      icon: const Icon(Icons.fullscreen_exit, size: 20, color: Color(0xFF334155)),
                     ),
-                    const SizedBox(width: 12),
-
-                    // Tên dự án
                     Expanded(
                       child: Text(
                         widget.project.name,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 12),
-
-                    // Segment chuyển chế độ xem: Bảng | Kanban | Gantt
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.all(2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildModeTab('Bảng', _viewMode == 'table', () => setState(() => _viewMode = 'table')),
-                          _buildModeTab('Kanban', _viewMode == 'kanban', () => setState(() => _viewMode = 'kanban')),
-                          _buildModeTab('Gantt', _viewMode == 'gantt', () => setState(() => _viewMode = 'gantt')),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    // Filter Trạng thái nhanh
-                    PopupMenuButton<String>(
-                      onSelected: (val) => setState(() => _statusFilter = val),
-                      itemBuilder: (ctx) => [
-                        const PopupMenuItem(value: 'ALL', child: Text('Tất cả trạng thái', style: TextStyle(fontSize: 12))),
-                        const PopupMenuItem(value: 'todo', child: Text('Chưa làm', style: TextStyle(fontSize: 12))),
-                        const PopupMenuItem(value: 'in_progress', child: Text('Đang làm', style: TextStyle(fontSize: 12))),
-                        const PopupMenuItem(value: 'blocked', child: Text('Vướng mắc', style: TextStyle(fontSize: 12))),
-                        const PopupMenuItem(value: 'review', child: Text('Chờ duyệt', style: TextStyle(fontSize: 12))),
-                        const PopupMenuItem(value: 'done', child: Text('Hoàn thành', style: TextStyle(fontSize: 12))),
-                        const PopupMenuItem(value: 'cancelled', child: Text('Đã huỷ', style: TextStyle(fontSize: 12))),
-                      ],
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _statusFilter == 'ALL' ? 'Lọc' : _getStatusLabel(_statusFilter),
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                            ),
-                            const Icon(Icons.arrow_drop_down, size: 14, color: Color(0xFF64748B)),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _segmented(),
                     const SizedBox(width: 8),
-
-                    // Nút Reload
+                    OutlinedButton.icon(
+                      onPressed: () => showProjectWorkFilterSheet(
+                        context,
+                        filter: _filter,
+                        items: _tasks,
+                        tags: widget.tags,
+                        projectId: widget.project.id,
+                        currentUserId: widget.currentUserId,
+                        onChanged: (f) => setState(() => _filter = f),
+                      ),
+                      icon: const Icon(Icons.filter_list, size: 15),
+                      label: Text(
+                        _filter.facets > 0 ? '${'common.filter'.tr()} (${_filter.facets})' : 'common.filter'.tr(),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                    ),
+                    if (_viewMode == 'table') ...[
+                      Checkbox(
+                        value: _filter.showChildren,
+                        visualDensity: VisualDensity.compact,
+                        onChanged: (v) => setState(() => _filter = _filter.copyWith(showChildren: v ?? true)),
+                      ),
+                      Text('workspace.work_tab.show_children'.tr(), style: const TextStyle(fontSize: 12)),
+                    ],
+                    const SizedBox(width: 8),
+                    Text(count, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                     IconButton(
                       icon: const Icon(Icons.refresh, size: 18, color: Color(0xFF64748B)),
                       onPressed: _reloadTasks,
-                      tooltip: 'Tải lại',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                      tooltip: 'workspace.task_detail.menu.refresh'.tr(),
                     ),
                   ],
                 ),
               ),
-
-              // Nội dung hiển thị toàn màn hình theo chế độ đã chọn
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator(color: Color(0xFFEAB308)))
-                    : _viewMode == 'kanban'
-                        ? WorkspaceProjectKanbanView(
-                            tasks: filtered,
-                            service: widget.service,
-                            onRefresh: _reloadTasks,
-                          )
-                        : _viewMode == 'gantt'
-                            ? WorkspaceProjectGanttView(
-                                tasks: filtered,
-                                service: widget.service,
-                                onRefresh: _reloadTasks,
-                              )
-                            : _buildTableView(filtered),
+                    : _content(matched),
               ),
             ],
           ),
@@ -246,219 +207,77 @@ class _WorkspaceLandscapeFullscreenScreenState extends State<WorkspaceLandscapeF
     );
   }
 
-  Widget _buildModeTab(String label, bool isSelected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
+  Widget _content(List<StandaloneTaskItem> matched) {
+    switch (_viewMode) {
+      case 'kanban':
+        return WorkspaceProjectKanbanView(
+          tasks: matched,
+          service: widget.service,
+          onRefresh: _reloadTasks,
+          access: widget.project.access,
+        );
+      case 'gantt':
+        return WorkspaceProjectGanttView(
+          tasks: matched,
+          allTasks: _tasks,
+          service: widget.service,
+          onRefresh: _reloadTasks,
+          access: widget.project.access,
+          onOpenTask: _open,
+          sort: _filter.sort,
+          ascending: _filter.ascending,
+        );
+      default:
+        final rows = workTableRows(_tasks, matched, _filter, _collapsed);
+        if (rows.isEmpty) {
+          return Center(
+            child: Text(
+              _filter.filtering
+                  ? 'workspace.project_detail.no_items_filtered'.tr()
+                  : 'workspace.project_detail.no_items'.tr(),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+            ),
+          );
+        }
+        return ProjectWorkTree(
+          rows: rows,
+          tags: widget.tags,
+          onOpen: _open,
+          onToggle: _toggle,
+          onRefresh: _reloadTasks,
+        );
+    }
+  }
+
+  Widget _segmented() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(6)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final v in const ['table', 'kanban', 'gantt'])
+            InkWell(
+              onTap: () => setState(() => _viewMode = v),
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _viewMode == v ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'workspace.work_tab.view_$v'.tr(),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: _viewMode == v ? FontWeight.bold : FontWeight.w500,
+                    color: _viewMode == v ? const Color(0xFF0F172A) : const Color(0xFF64748B),
                   ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-          ),
-        ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
-  }
-
-  Widget _buildTableView(List<StandaloneTaskItem> filtered) {
-    if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.assignment_outlined, size: 40, color: Colors.grey.shade400),
-            const SizedBox(height: 8),
-            Text('Chưa có công việc nào', style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
-          ],
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: filtered.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
-      itemBuilder: (ctx, idx) {
-        final task = filtered[idx];
-        final isCancelled = task.status == 'cancelled' || task.status == 'canceled' || task.status == 'da_huy';
-        final isDone = task.status == 'done' || task.status == 'completed';
-
-        return InkWell(
-          onTap: () {
-            showWorkspaceTaskStatusSheet(
-              context,
-              task: task,
-              service: widget.service,
-              onStatusChanged: _reloadTasks,
-            );
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${idx + 1}',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.bold,
-                      color: isCancelled ? const Color(0xFF64748B) : const Color(0xFF0F172A),
-                      decoration: isCancelled ? TextDecoration.lineThrough : null,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildLandscapePriorityChip(task.priority),
-                const SizedBox(width: 8),
-                _buildLandscapeStatusChip(task.status),
-                const SizedBox(width: 14),
-                if (isCancelled)
-                  const Text('Đã huỷ', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))
-                else
-                  Text(
-                    '${task.progressPercent.toInt()}%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: isDone || task.progressPercent >= 100 ? const Color(0xFF047857) : const Color(0xFF3B82F6),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLandscapePriorityChip(String p) {
-    Color bg;
-    Color text;
-    String label;
-    switch (p.toLowerCase()) {
-      case 'urgent':
-        bg = const Color(0xFFFEF2F2);
-        text = const Color(0xFFDC2626);
-        label = 'Khẩn cấp';
-        break;
-      case 'high':
-        bg = const Color(0xFFFFF7ED);
-        text = const Color(0xFFEA580C);
-        label = 'Cao';
-        break;
-      case 'low':
-        bg = const Color(0xFFF1F5F9);
-        text = const Color(0xFF64748B);
-        label = 'Thấp';
-        break;
-      case 'normal':
-      default:
-        bg = const Color(0xFFEFF6FF);
-        text = const Color(0xFF2563EB);
-        label = 'Bình thường';
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
-      child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: text)),
-    );
-  }
-
-  Widget _buildLandscapeStatusChip(String status) {
-    Color bg;
-    Color text;
-    String label;
-    switch (status.toLowerCase()) {
-      case 'done':
-      case 'completed':
-        bg = const Color(0xFFECFDF5);
-        text = const Color(0xFF047857);
-        label = 'Hoàn thành';
-        break;
-      case 'blocked':
-      case 'stuck':
-        bg = const Color(0xFFFEF2F2);
-        text = const Color(0xFFDC2626);
-        label = 'Vướng mắc';
-        break;
-      case 'review':
-        bg = const Color(0xFFFFFBEB);
-        text = const Color(0xFFD97706);
-        label = 'Chờ duyệt';
-        break;
-      case 'in_progress':
-        bg = const Color(0xFFEFF6FF);
-        text = const Color(0xFF1D4ED8);
-        label = 'Đang làm';
-        break;
-      case 'cancelled':
-      case 'canceled':
-      case 'da_huy':
-        bg = const Color(0xFFF1F5F9);
-        text = const Color(0xFF64748B);
-        label = 'Đã huỷ';
-        break;
-      default:
-        bg = const Color(0xFFF1F5F9);
-        text = const Color(0xFF475569);
-        label = 'Chưa làm';
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
-      child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: text)),
-    );
-  }
-
-  String _getStatusLabel(String s) {
-    switch (s) {
-      case 'todo': return 'Chưa làm';
-      case 'in_progress': return 'Đang làm';
-      case 'blocked': return 'Vướng mắc';
-      case 'review': return 'Chờ duyệt';
-      case 'done': return 'Đã xong';
-      case 'cancelled': return 'Đã huỷ';
-      default: return 'Tất cả';
-    }
   }
 }

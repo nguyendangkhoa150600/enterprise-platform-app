@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/workspace/presentation/utils/project_access_extension.dart';
 import '../../../models/workspace_models.dart';
 import '../../../services/workspace_service.dart';
+import '../../../utils/app_toast.dart';
 import '../../../utils/user_resolver.dart';
-import 'workspace_sheets.dart';
+import 'workspace_blocked_reason_dialog.dart';
+import 'workspace_standalone_task_detail_sheet.dart';
 import 'workspace_complete_work_item_dialog.dart';
 import 'workspace_cancel_work_item_dialog.dart';
+import '../../../widgets/user_avatar.dart';
 
 /// Chế độ xem bảng Kanban cho công việc dự án, đồng bộ 1:1 với Web React
 /// Hỗ trợ kéo thả (Drag and Drop) thẻ công việc giữa các cột trạng thái
@@ -15,12 +20,15 @@ class WorkspaceProjectKanbanView extends StatefulWidget {
   final List<StandaloneTaskItem> tasks;
   final WorkspaceService service;
   final VoidCallback onRefresh;
+  /// Quyền trong dự án; `null` thì cho phép mọi thao tác (giữ hành vi cũ).
+  final ProjectAccess? access;
 
   const WorkspaceProjectKanbanView({
     super.key,
     required this.tasks,
     required this.service,
     required this.onRefresh,
+    this.access,
   });
 
   @override
@@ -32,6 +40,18 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
   final ScrollController _scrollController = ScrollController();
   Timer? _autoScrollTimer;
   double _scrollSpeed = 0.0;
+  /// Trạng thái của thẻ đang kéo, để làm mờ các cột không thả được (web `locked`).
+  String? _draggingStatus;
+
+  bool get _canWrite => widget.access?.canWrite ?? true;
+
+  bool _accepts(String from, String to) =>
+      _canWrite && from != to && WorkItemTransitions.canTransition(from, to);
+
+  void _endDrag() {
+    _stopAutoScroll();
+    if (_draggingStatus != null && mounted) setState(() => _draggingStatus = null);
+  }
 
   static const List<Map<String, dynamic>> _columns = [
     {
@@ -159,6 +179,8 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
 
   List<StandaloneTaskItem> _getTasksForColumn(String columnId) {
     return _localTasks.where((t) {
+      // Web tab-kanban: `phase` là vỏ chứa, không hiện trên bảng.
+      if (t.meta.isPhase) return false;
       final s = t.status.toLowerCase();
       if (columnId == 'todo') {
         return s == 'todo' || s == 'draft' || s.isEmpty;
@@ -197,6 +219,28 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
     });
   }
 
+  /// Web `workItemStatusLabel`: việc huỷ hiệu lực vẫn là `cancelled` nhưng hiện riêng.
+  String _statusLabel(StandaloneTaskItem task) {
+    if (task.isReversed) return 'workspace.kanban.status_reversed'.tr();
+    final col = _columns.where((c) => c['id'] == task.status.toLowerCase());
+    return col.isEmpty ? task.status : col.first['title'] as String;
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    AppToast.error(context, message);
+  }
+
+  /// Web `toastStatusChanged`: chỉ báo khi Bắt đầu hoặc Hoàn tác; chuyển khác im lặng.
+  void _toastStatusChanged(String from, String to, String code) {
+    if (!mounted) return;
+    if (to == 'in_progress' && from == 'todo') {
+      AppToast.success(context, 'workspace.kanban.toast_started'.tr(args: {'code': code}));
+    } else if (to == 'in_progress' && from == 'done') {
+      AppToast.success(context, 'workspace.kanban.toast_reopened'.tr(args: {'code': code}));
+    }
+  }
+
   Future<void> _handleDropTask(StandaloneTaskItem task, String targetColumnId, String targetColumnTitle) async {
     _stopAutoScroll();
 
@@ -204,8 +248,36 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
     final currentStatus = task.status.toLowerCase();
     if (currentStatus == targetColumnId) return;
 
+    final access = widget.access;
+    if (!_canWrite) return;
+    // Web tab-kanban: chỉ nhận bước chuyển hợp lệ theo bảng trạng thái.
+    if (!WorkItemTransitions.canTransition(currentStatus, targetColumnId)) {
+      _showError('workspace.kanban.invalid_transition'.tr(args: {
+        'from': _statusLabel(task),
+        'to': targetColumnTitle,
+      }));
+      return;
+    }
+
     // Rung nhẹ xác nhận đã thả thành công
     HapticFeedback.lightImpact();
+
+    // Vướng mắc phải kèm lý do — server từ chối `blocked` không có `note`.
+    if (targetColumnId == 'blocked') {
+      final ok = await showWorkspaceBlockedReasonDialog(
+        context,
+        task: task,
+        onSubmit: (reason) async {
+          final done = await widget.service.updateWorkItemStatus(task.id, 'blocked', note: reason);
+          return done ? null : (widget.service.lastError ?? 'workspace.kanban.blocked_failed'.tr());
+        },
+      );
+      if (ok && mounted) {
+        _updateLocalTaskStatus(task.id, 'blocked');
+        widget.onRefresh();
+      }
+      return;
+    }
 
     // 1. Trường hợp thả vào "Hoàn thành": Kiểm tra điều kiện hoàn thành
     if (targetColumnId == 'done') {
@@ -223,8 +295,12 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
       return;
     }
 
-    // 2. Trường hợp thả vào "Đã huỷ": Bắt buộc hiển thị modal lý do và chỉ chuyển khi submit thành công
+    // 2. Trường hợp thả vào "Đã huỷ": cần quyền huỷ, rồi qua modal lý do
     if (targetColumnId == 'cancelled') {
+      if (access != null && !access.canCancelItem) {
+        _showError('workspace.kanban.no_cancel_permission'.tr());
+        return;
+      }
       final cancelled = await showCancelWorkItemDialog(
         context,
         workItemId: task.id,
@@ -235,74 +311,22 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
       if (cancelled && mounted) {
         _updateLocalTaskStatus(task.id, 'cancelled');
         widget.onRefresh();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Đã huỷ công việc "${task.title}"',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
       return;
     }
 
-    // 3. Các trạng thái khác: Cập nhật Optimistic ngay trên UI
+    // 3. Các trạng thái khác: chuyển thẻ ngay, thất bại thì trả về cột cũ và hiện lý do
     final originalStatus = task.status;
     _updateLocalTaskStatus(task.id, targetColumnId);
 
-    // Gọi API cập nhật trạng thái lên máy chủ
-    bool ok = await widget.service.updateWorkItemStatus(task.id, targetColumnId);
-    if (!ok) {
-      ok = await widget.service.changeStandaloneTaskStatus(task.id, targetColumnId);
-    }
-
+    final ok = await widget.service.updateWorkItemStatus(task.id, targetColumnId);
+    if (!mounted) return;
     if (ok) {
       widget.onRefresh();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Đã chuyển "${task.title}" sang "$targetColumnTitle"',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      _toastStatusChanged(currentStatus, targetColumnId, task.code);
     } else {
-      // Revert lại trạng thái cũ nếu server báo lỗi
-      if (mounted) {
-        _updateLocalTaskStatus(task.id, originalStatus);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể chuyển trạng thái. Vui lòng thử lại!'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      _updateLocalTaskStatus(task.id, originalStatus);
+      _showError(widget.service.lastError ?? 'workspace.kanban.status_failed'.tr());
     }
   }
 
@@ -344,17 +368,18 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
 
     // Bọc cột bằng DragTarget để nhận thẻ công việc khi được thả vào
     return DragTarget<StandaloneTaskItem>(
-      onWillAcceptWithDetails: (details) {
-        final draggedTask = details.data;
-        return draggedTask.status.toLowerCase() != columnId;
-      },
+      onWillAcceptWithDetails: (details) => _accepts(details.data.status.toLowerCase(), columnId),
       onAcceptWithDetails: (details) {
         _handleDropTask(details.data, columnId, title);
       },
       builder: (context, candidateData, rejectedData) {
         final isHovered = candidateData.isNotEmpty;
+        final locked = _draggingStatus != null && !_accepts(_draggingStatus!, columnId);
 
-        return AnimatedContainer(
+        return AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: locked && _draggingStatus != columnId ? 0.45 : 1.0,
+          child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: 270,
           margin: const EdgeInsets.only(right: 12),
@@ -455,6 +480,7 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
               ),
             ],
           ),
+          ),
         );
       },
     );
@@ -490,15 +516,18 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
     // Dùng LongPressDraggable để khi lướt cuộn trang không bị nhầm kéo thả
     return LongPressDraggable<StandaloneTaskItem>(
       data: task,
+      // Chỉ xem dự án thì không kéo thả đổi trạng thái được (web `draggable={canWrite}`).
+      maxSimultaneousDrags: _canWrite ? null : 0,
       delay: const Duration(milliseconds: 200),
       hapticFeedbackOnStart: true,
       onDragStarted: () {
         HapticFeedback.mediumImpact();
+        setState(() => _draggingStatus = task.status.toLowerCase());
       },
       onDragUpdate: _handleDragUpdate,
-      onDragEnd: (_) => _stopAutoScroll(),
-      onDraggableCanceled: (_, _) => _stopAutoScroll(),
-      onDragCompleted: _stopAutoScroll,
+      onDragEnd: (_) => _endDrag(),
+      onDraggableCanceled: (_, _) => _endDrag(),
+      onDragCompleted: _endDrag,
       // Thẻ hiển thị khi đang kéo theo ngón tay
       feedback: Material(
         type: MaterialType.transparency,
@@ -540,11 +569,11 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
 
     return InkWell(
       onTap: () {
-        showWorkspaceTaskStatusSheet(
+        showWorkspaceStandaloneTaskDetailSheet(
           context,
           task: task,
           service: widget.service,
-          onStatusChanged: widget.onRefresh,
+          onRefresh: widget.onRefresh,
         );
       },
       borderRadius: BorderRadius.circular(8),
@@ -621,13 +650,13 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
             _buildPriorityBadge(task.priority),
             const Spacer(),
             if (assigneeName != 'Chưa giao') ...[
-              CircleAvatar(
-                radius: 8,
-                backgroundColor: const Color(0xFFEAB308),
-                child: Text(
-                  _getInitials(assigneeName),
-                  style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+              UserAvatar(
+                userId: task.assigneeUserId,
+                name: assigneeName,
+                size: 16,
+                background: const Color(0xFFEAB308),
+                foreground: Colors.white,
+                fontSize: 7,
               ),
               const SizedBox(width: 4),
               Flexible(
@@ -661,9 +690,9 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
                     color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(3),
                   ),
-                  child: const Text(
-                    'Đã huỷ',
-                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  child: Text(
+                    _statusLabel(task),
+                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
                   ),
                 )
               else ...[
@@ -736,12 +765,5 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
   String _formatDate(DateTime? dt) {
     if (dt == null) return '';
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts[0].isEmpty) return '?';
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
   }
 }

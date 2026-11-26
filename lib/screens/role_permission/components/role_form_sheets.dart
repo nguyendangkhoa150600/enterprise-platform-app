@@ -1,6 +1,6 @@
 ﻿part of '../../role_permission_screen.dart';
 
-extension RoleFormSheetsExtension on _RolePermissionScreenState {
+extension _RoleFormSheetsExtension on _RolePermissionScreenState {
   void _showCreateRoleSheet(BuildContext sheetContext) {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -384,7 +384,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             if (!mounted) return;
 
                             if (success) {
-                              Navigator.pop(ctx);
+                              if (ctx.mounted) Navigator.pop(ctx);
                               _loadData();
                               messenger.showSnackBar(
                                 SnackBar(
@@ -852,7 +852,7 @@ extension RoleFormSheetsExtension on _RolePermissionScreenState {
                             if (!mounted) return;
 
                             if (success) {
-                              Navigator.pop(ctx);
+                              if (ctx.mounted) Navigator.pop(ctx);
                               _loadData();
                               messenger.showSnackBar(
                                 SnackBar(

@@ -94,7 +94,7 @@ Widget buildWebDataRow(
                     child: Icon(Icons.copy_rounded, size: 13, color: Color(0xFF94A3B8)),
                   ),
                 ),
-              if (trailing != null) trailing,
+              ?trailing,
             ],
           ),
         ),

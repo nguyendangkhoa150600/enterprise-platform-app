@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/correspondence_models.dart';
 
 /// Hiển thị cây thư mục Kho lưu trữ (Năm › Công văn đến/đi › Hồ sơ) đồng bộ 1:1 với Web
@@ -77,8 +78,8 @@ class ArchiveTreeView extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 searching
-                    ? 'Không tìm thấy hồ sơ nào khớp với từ khoá.'
-                    : 'Chưa có hồ sơ lưu trữ nào.',
+                    ? 'correspondence.archive.no_search_results'.tr()
+                    : 'correspondence.archive.empty'.tr(),
                 style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
               ),
             ],
@@ -118,7 +119,7 @@ class ArchiveTreeView extends StatelessWidget {
                   border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
                 child: Text(
-                  '$totalDossiers hồ sơ',
+                  'correspondence.archive.dossier_count'.tr(args: {'count': totalDossiers}),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

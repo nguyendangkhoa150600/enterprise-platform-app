@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
-import '../../../models/inventory_models.dart';
 
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/inventory/presentation/overview/inventory_dashboard_cards.dart';
+import '../../../features/inventory/presentation/overview/inventory_overview_format.dart';
+import '../../../features/inventory/presentation/overview/inventory_recent_ledger_card.dart';
+import '../../../theme/colors.dart';
+
+/// Nội dung màn Tổng quan Kho (web `InventoryDashboard`): banner, thẻ KPI/biểu đồ theo cấu hình,
+/// phân bổ theo kho lưu trữ và giao dịch kho gần đây.
 class InventoryOverviewView extends StatelessWidget {
-  final InventoryOverviewData data;
-  final bool isLoading;
+  final InventoryDashboardData data;
+
+  /// `null` = chưa nạp được cấu hình → thẻ mặc định.
+  final List<String>? cardSelection;
   final Future<void> Function() onRefresh;
   final VoidCallback onViewAllTransactions;
-  final Function(WarehouseItem warehouse)? onSelectWarehouse;
+
+  /// Thông báo nạp lỗi một phần (dữ liệu đang hiện có thể cũ).
+  final String? errorMessage;
 
   const InventoryOverviewView({
     super.key,
     required this.data,
-    required this.isLoading,
+    required this.cardSelection,
     required this.onRefresh,
     required this.onViewAllTransactions,
-    this.onSelectWarehouse,
+    this.errorMessage,
   });
 
+  /// Định dạng số kiểu Việt Nam (dùng chung bởi các màn Kho khác).
   static String formatViNumber(num value) {
     final isNegative = value < 0;
     final absVal = value.abs();
@@ -31,38 +43,53 @@ class InventoryOverviewView extends StatelessWidget {
     return result;
   }
 
+  static BoxDecoration get _cardDecoration => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.slate200),
+      );
+
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Banner & Eyebrow
+            if (errorMessage != null) ...[
+              _buildErrorBanner(errorMessage!),
+              const SizedBox(height: 12),
+            ],
             _buildTopBanner(),
             const SizedBox(height: 16),
-
-            // Top 3 KPI Metric Cards (Tồn khả dụng, Kho hoạt động, Vật tư lắp đặt)
-            _buildKpiCards(),
+            _buildCards(),
             const SizedBox(height: 18),
-
-            // Left Panel: Phân bổ theo Kho lưu trữ
-            _buildWarehouseDistributionCard(context),
+            _buildWarehouseDistributionCard(),
             const SizedBox(height: 18),
-
-            // Right Panel: Giao dịch Kho gần đây
-            _buildRecentTransactionsCard(context),
-            const SizedBox(height: 24),
+            InventoryRecentLedgerCard(
+              ledger: data.ledger,
+              materialById: data.workspace.materialById,
+              onViewAll: onViewAllTransactions,
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Text(message, style: const TextStyle(fontSize: 12.5, color: Color(0xFFB91C1C))),
     );
   }
 
@@ -70,18 +97,7 @@ class InventoryOverviewView extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -89,431 +105,178 @@ class InventoryOverviewView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: const Color(0xFFBFDBFE)),
             ),
-            child: const Text(
-              'Trung tâm Điều hành Kho & Thiết bị',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF2563EB),
-                letterSpacing: 0.2,
-              ),
+            child: Text(
+              'inventory.overview.eyebrow'.tr(),
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.slate900),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Tổng quan Tài sản & Tồn kho',
-            style: TextStyle(
+          Text(
+            'inventory.overview.heading'.tr(),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
+              color: AppColors.slate900,
               letterSpacing: -0.3,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Theo dõi tổng lượng tồn kho, cảnh báo định mức Min/Max và tiến độ luân chuyển thiết bị.',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: Color(0xFF64748B),
-              height: 1.35,
-            ),
+          Text(
+            'inventory.overview.description'.tr(),
+            style: const TextStyle(fontSize: 12.5, color: AppColors.slate500, height: 1.35),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildKpiCards() {
+  Widget _buildCards() {
+    final cards = resolveInventoryDashboardCards(cardSelection);
+    if (cards.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.slate300),
+        ),
+        child: Text(
+          'inventory.overview.cards_empty'.tr(),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13.5, color: AppColors.slate500),
+        ),
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 20) / 3;
-        return Row(
+        const gap = 10.0;
+        final half = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
           children: [
-            _buildMetricCard(
-              title: 'Tồn khả dụng',
-              value: formatViNumber(data.availableStock),
-              width: cardWidth,
-            ),
-            const SizedBox(width: 10),
-            _buildMetricCard(
-              title: 'Kho hoạt động',
-              value: formatViNumber(data.activeWarehousesCount),
-              width: cardWidth,
-            ),
-            const SizedBox(width: 10),
-            _buildMetricCard(
-              title: 'Vật tư lắp đặt',
-              value: formatViNumber(data.installedAssetsCount),
-              width: cardWidth,
-            ),
+            for (final card in cards)
+              Container(
+                width: card.size == InventoryDashboardCardSize.sm ? half : constraints.maxWidth,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.slate200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      card.titleKey.tr(),
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.slate500),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    card.render(data),
+                  ],
+                ),
+              ),
           ],
         );
       },
     );
   }
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required double width,
-  }) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWarehouseDistributionCard(BuildContext context) {
+  Widget _buildWarehouseDistributionCard() {
+    final warehouses = data.workspace.warehouses;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Phân bổ theo Kho lưu trữ',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+              Expanded(
+                child: Text(
+                  'inventory.overview.distribution.title'.tr(),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.slate900),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Text(
-                  '${data.warehouses.length} kho',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
+              Text(
+                'inventory.overview.distribution.count'.tr(args: {'n': warehouses.length}),
+                style: const TextStyle(fontSize: 12.5, color: AppColors.slate500),
               ),
             ],
           ),
           const SizedBox(height: 14),
-
-          if (data.warehouses.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text(
-                  'Chưa có kho nào được thiết lập.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                ),
-              ),
+          if (warehouses.isEmpty)
+            Text(
+              'inventory.overview.distribution.empty'.tr(),
+              style: const TextStyle(fontSize: 13, color: AppColors.slate500),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: data.warehouses.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final wh = data.warehouses[index];
-                return InkWell(
-                  onTap: () => onSelectWarehouse?.call(wh),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                wh.name,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                'Mã kho: ${wh.code}',
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+            for (final wh in warehouses) ...[
+              Builder(builder: (_) {
+                final rows = data.workspace.stock.where((s) => s.warehouseId == wh.id).toList();
+                final totalItems = rows.fold<double>(0, (sum, s) => sum + s.quantity);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.slate50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.slate200),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              formatViNumber(wh.totalItems),
+                              wh.name,
                               style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF2563EB),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.slate900,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 2),
                             Text(
-                              '${wh.materialCount} danh mục',
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF64748B),
-                              ),
+                              'inventory.overview.distribution.code'.tr(args: {'code': wh.code}),
+                              style: const TextStyle(fontSize: 12, color: AppColors.slate500),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentTransactionsCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with "Xem tất cả →"
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Giao dịch Kho gần đây',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              InkWell(
-                onTap: onViewAllTransactions,
-                borderRadius: BorderRadius.circular(6),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Text(
-                    'Xem tất cả →',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2563EB),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          if (data.recentTransactions.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Text(
-                  'Chưa có giao dịch kho nào phát sinh trong sổ cái.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                ),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: data.recentTransactions.length > 5 ? 5 : data.recentTransactions.length,
-              separatorBuilder: (_, __) => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-              ),
-              itemBuilder: (context, index) {
-                final tx = data.recentTransactions[index];
-                final isPositive = tx.quantity > 0 || tx.isReceipt;
-                final badgeBg = isPositive ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2);
-                final badgeFg = isPositive ? const Color(0xFF15803D) : const Color(0xFFB91C1C);
-                final qtyPrefix = tx.quantity > 0 ? '+' : '';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Top Row: Code and Type Badge
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              tx.code,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF2563EB),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: badgeBg,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              tx.typeLabel,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: badgeFg,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
-                      const SizedBox(height: 6),
-
-                      // Middle Row: Material Code and Name
-                      Text(
-                        tx.materialCode.isNotEmpty ? tx.materialCode : tx.materialId,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      if (tx.materialName.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          tx.materialName,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      const SizedBox(height: 6),
-
-                      // Bottom Row: Quantity and Time
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '$qtyPrefix${formatViNumber(tx.quantity)} ${tx.unit}',
-                            style: TextStyle(
-                              fontSize: 13,
+                            InventoryOverviewFormat.quantity(totalItems),
+                            style: const TextStyle(
+                              fontSize: 14,
                               fontWeight: FontWeight.w800,
-                              color: badgeFg,
+                              color: AppColors.slate900,
                             ),
                           ),
-                          if (tx.date.isNotEmpty)
-                            Row(
-                              children: [
-                                const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF94A3B8)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  tx.date,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF94A3B8),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'inventory.overview.distribution.categories'.tr(args: {'n': rows.length}),
+                            style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 );
-              },
-            ),
+              }),
+            ],
         ],
       ),
     );
   }
 }
-

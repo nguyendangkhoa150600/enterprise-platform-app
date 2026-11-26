@@ -95,7 +95,7 @@ class ConfigCategorySection extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: items.length,
-              separatorBuilder: (_, __) =>
+              separatorBuilder: (_, _) =>
                   const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 56),
               itemBuilder: (ctx, idx) {
                 final item = items[idx];

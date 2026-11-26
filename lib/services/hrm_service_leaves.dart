@@ -1,4 +1,4 @@
-﻿part of 'hrm_service.dart';
+part of 'hrm_service.dart';
 
 extension HrmServiceLeaves on HrmService {
   // 17. Attendance Monitor (GiÃ¡m sÃ¡t cháº¥m cÃ´ng theo ngÃ y)
@@ -59,6 +59,213 @@ extension HrmServiceLeaves on HrmService {
         }
       } catch (e) {
         debugPrint('[HrmService] getLeaveBalances error on $ep: $e');
+      }
+    }
+    return [];
+  }
+
+  /// Lấy danh sách số dư Quỹ nghỉ bù theo nhân viên (đồng bộ 1:1 với Web compOffApi.balances)
+  Future<List<Map<String, dynamic>>> getCompOffBalances() async {
+    final endpoints = [
+      '/api/hrm/v1/comp-off/balances',
+      '/hrm/v1/comp-off/balances',
+      '/comp-off/balances',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          if (data is List) {
+            return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getCompOffBalances error on $ep: $e');
+      }
+    }
+    return [];
+  }
+
+  /// Lấy chi tiết sổ Quỹ nghỉ bù của 1 nhân viên (đồng bộ 1:1 với Web compOffApi.detail)
+  Future<Map<String, dynamic>?> getCompOffDetail(String employeeId) async {
+    final endpoints = [
+      '/api/hrm/v1/comp-off/balances/$employeeId',
+      '/hrm/v1/comp-off/balances/$employeeId',
+      '/comp-off/balances/$employeeId',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          if (data is Map) {
+            return Map<String, dynamic>.from(data);
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getCompOffDetail error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  /// Chạy hết hạn lô quỹ nghỉ bù (đồng bộ 1:1 với Web compOffApi.expire)
+  Future<int?> runCompOffExpire() async {
+    final endpoints = [
+      '/api/hrm/v1/comp-off/expire',
+      '/hrm/v1/comp-off/expire',
+      '/comp-off/expire',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.post(
+          ep,
+          data: {},
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          final data = res.data['data'] ?? res.data;
+          if (data is Map && data['expired'] != null) {
+            return int.tryParse(data['expired'].toString()) ?? 0;
+          }
+          return 0;
+        }
+      } catch (e) {
+        debugPrint('[HrmService] runCompOffExpire error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  /// Điều chỉnh tay quỹ nghỉ bù (đồng bộ 1:1 với Web compOffApi.adjust)
+  Future<Map<String, dynamic>?> adjustCompOff({
+    required String employeeId,
+    required double days,
+    required String reason,
+    String? expiresOn,
+  }) async {
+    final payload = {
+      'employeeId': employeeId,
+      'days': days,
+      'reason': reason,
+      if (expiresOn != null && expiresOn.isNotEmpty) 'expiresOn': expiresOn,
+    };
+    final endpoints = [
+      '/api/hrm/v1/comp-off/adjustments',
+      '/hrm/v1/comp-off/adjustments',
+      '/comp-off/adjustments',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.post(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if ((res.statusCode == 200 || res.statusCode == 201) && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          if (data is Map) return Map<String, dynamic>.from(data);
+          return {'success': true};
+        }
+      } catch (e) {
+        debugPrint('[HrmService] adjustCompOff error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  /// Xem trước chuyển đổi giờ làm thêm tháng thành ngày nghỉ bù (đồng bộ 1:1 với Web compOffApi.conversionPreview)
+  Future<HrmCompOffConversionPreview?> getCompOffConversionPreview(String month) async {
+    final endpoints = [
+      '/api/hrm/v1/comp-off/conversion-preview',
+      '/hrm/v1/comp-off/conversion-preview',
+      '/comp-off/conversion-preview',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          queryParameters: {'month': month},
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          if (data is Map) {
+            return HrmCompOffConversionPreview.fromJson(Map<String, dynamic>.from(data));
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getCompOffConversionPreview error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  /// Thực hiện chuyển đổi giờ dư thành ngày nghỉ bù (đồng bộ 1:1 với Web compOffApi.convert)
+  Future<Map<String, dynamic>?> confirmCompOffConversion({
+    required String month,
+    required List<Map<String, dynamic>> rows,
+  }) async {
+    final payload = {
+      'month': month,
+      'rows': rows,
+    };
+    final endpoints = [
+      '/api/hrm/v1/comp-off/conversions',
+      '/hrm/v1/comp-off/conversions',
+      '/comp-off/conversions',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.post(
+          ep,
+          data: payload,
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if ((res.statusCode == 200 || res.statusCode == 201) && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          if (data is Map) return Map<String, dynamic>.from(data);
+          return {'success': true};
+        }
+      } catch (e) {
+        debugPrint('[HrmService] confirmCompOffConversion error on $ep: $e');
+      }
+    }
+    return null;
+  }
+
+  /// Lấy tổng hợp phân loại làm thêm theo tháng (đồng bộ 1:1 với Web compOffApi.monthSummary)
+  Future<List<HrmOvertimeMonthSummary>> getOvertimeMonthSummary(String month) async {
+    final endpoints = [
+      '/api/hrm/v1/overtime-comp/month-summary',
+      '/hrm/v1/overtime-comp/month-summary',
+      '/overtime-comp/month-summary',
+    ];
+    for (final ep in endpoints) {
+      try {
+        final res = await _dio.get(
+          ep,
+          queryParameters: {'month': month},
+          options: Options(validateStatus: (s) => s != null && s < 500),
+        );
+        if (res.statusCode == 200 && res.data != null) {
+          final data = res.data['data'] ?? res.data;
+          final rawRows = (data is Map) ? data['rows'] : (data is List ? data : null);
+          if (rawRows is List) {
+            return rawRows
+                .map((e) => HrmOvertimeMonthSummary.fromJson(Map<String, dynamic>.from(e as Map)))
+                .toList();
+          }
+        }
+      } catch (e) {
+        debugPrint('[HrmService] getOvertimeMonthSummary error on $ep: $e');
       }
     }
     return [];

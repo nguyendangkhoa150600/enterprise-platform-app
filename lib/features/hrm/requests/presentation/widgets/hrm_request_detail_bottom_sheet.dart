@@ -1,9 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:power_quality_analysis/models/hrm_models.dart';
 import 'package:power_quality_analysis/services/hrm_service.dart';
 import 'package:power_quality_analysis/utils/user_resolver.dart';
 import '../../../../../core/i18n/app_i18n.dart';
+import 'hrm_request_comments_section.dart';
 
 class HrmRequestDetailBottomSheet extends StatefulWidget {
   final HrmRequestItem request;
@@ -31,26 +31,13 @@ class HrmRequestDetailBottomSheet extends StatefulWidget {
 
 class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomSheet> {
   late HrmRequestItem _request;
-  List<HrmRequestComment> _comments = [];
-  bool _isLoadingComments = true;
-  bool _isSendingComment = false;
-  String? _commentError;
   String? _opinionError;
-  final TextEditingController _commentCtrl = TextEditingController();
   final TextEditingController _opinionCtrl = TextEditingController();
-  final FocusNode _commentFocusNode = FocusNode();
   final ScrollController _scrollCtrl = ScrollController();
-  Timer? _pollTimer;
 
-  bool _showMentionPicker = false;
-  List<HrmMentionCandidate> _mentionCandidates = [];
-  final List<HrmMentionCandidate> _selectedMentions = [];
-  int _activeMentionStart = 0;
   bool _isActionBusy = false;
-  bool _apiClosed = false;
 
   bool get _isClosed {
-    if (_apiClosed) return true;
     final stat = _request.status;
     if (stat == HrmRequestStatus.approved ||
         stat == HrmRequestStatus.rejected ||
@@ -69,10 +56,6 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
     super.initState();
     _request = widget.request;
     _opinionCtrl.addListener(_onOpinionChanged);
-    _loadComments();
-    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted) _loadComments(quiet: true);
-    });
   }
 
   void _onOpinionChanged() {
@@ -83,40 +66,10 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
-    _commentCtrl.dispose();
-    _commentFocusNode.dispose();
     _opinionCtrl.removeListener(_onOpinionChanged);
     _opinionCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadComments({bool quiet = false}) async {
-    if (!quiet) {
-      setState(() => _isLoadingComments = true);
-    }
-    try {
-      final result = await widget.hrmService.getRequestCommentsResult(
-        kind: _request.apiKind,
-        requestId: _request.id,
-      );
-      if (mounted) {
-        setState(() {
-          _comments = result.comments;
-          _apiClosed = result.closed;
-          _isLoadingComments = false;
-          _commentError = null;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isLoadingComments = false;
-          _commentError = 'hrm_requests.err_load_comments'.tr();
-        });
-      }
-    }
   }
 
   void _scrollToBottom() {
@@ -129,119 +82,6 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
         );
       }
     });
-  }
-
-  void _onCommentChanged(String val) {
-    final pos = _commentCtrl.selection.baseOffset;
-    if (pos > 0 && pos <= val.length) {
-      final before = val.substring(0, pos);
-      final match = RegExp(r'(^|\s)@([^\s@]{0,30})$').firstMatch(before);
-      if (match != null) {
-        final query = match.group(2) ?? '';
-        final atIndex = before.length - query.length - 1;
-
-        // Không mở lại popup nếu @ này thuộc về mention đã chọn
-        for (final m in _selectedMentions) {
-          if (val.startsWith('@${m.name} ', atIndex)) {
-            if (_showMentionPicker) {
-              setState(() {
-                _showMentionPicker = false;
-                _mentionCandidates = [];
-              });
-            }
-            return;
-          }
-        }
-
-        _activeMentionStart = atIndex;
-        _searchMentionCandidates(query);
-        return;
-      }
-    }
-    if (_showMentionPicker) {
-      setState(() {
-        _showMentionPicker = false;
-        _mentionCandidates = [];
-      });
-    }
-  }
-
-  Future<void> _searchMentionCandidates(String q) async {
-    final res = await widget.hrmService.searchMentionCandidates(
-      kind: _request.apiKind,
-      requestId: _request.id,
-      query: q,
-    );
-    if (mounted) {
-      setState(() {
-        _mentionCandidates = res;
-        _showMentionPicker = res.isNotEmpty;
-      });
-    }
-  }
-
-  void _insertMention(HrmMentionCandidate person) {
-    final text = _commentCtrl.text;
-    final pos = _commentCtrl.selection.baseOffset >= 0 ? _commentCtrl.selection.baseOffset : text.length;
-    final start = _activeMentionStart;
-    final next = '${text.substring(0, start)}@${person.name} ${text.substring(pos)}';
-    _commentCtrl.text = next;
-    final newPos = start + person.name.length + 2;
-    _commentCtrl.selection = TextSelection.collapsed(offset: newPos);
-
-    if (!_selectedMentions.any((m) => m.userId == person.userId)) {
-      _selectedMentions.add(person);
-    }
-    setState(() {
-      _showMentionPicker = false;
-      _mentionCandidates = [];
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _commentFocusNode.requestFocus();
-      }
-    });
-  }
-
-  Future<void> _sendComment() async {
-    final body = _commentCtrl.text.trim();
-    if (body.isEmpty || _isSendingComment) return;
-
-    setState(() {
-      _isSendingComment = true;
-      _commentError = null;
-    });
-
-    final activeMentions = _selectedMentions
-        .where((m) => body.contains('@${m.name}'))
-        .map((m) => m.userId)
-        .toList();
-
-    final ok = await widget.hrmService.postRequestComment(
-      kind: _request.apiKind,
-      requestId: _request.id,
-      body: body,
-      mentionUserIds: activeMentions,
-    );
-
-    if (ok) {
-      _commentCtrl.clear();
-      _selectedMentions.clear();
-      setState(() {
-        _showMentionPicker = false;
-        _mentionCandidates = [];
-      });
-      await _loadComments(quiet: true);
-      _scrollToBottom();
-    } else {
-      setState(() {
-        _commentError = 'hrm_requests.err_send_comment'.tr();
-      });
-    }
-
-    if (mounted) {
-      setState(() => _isSendingComment = false);
-    }
   }
 
   String _resolveApproverName(HrmRequestItem req) {
@@ -280,116 +120,6 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
 
     // 4. Fallback mặc định theo luồng phê duyệt thực tế trên hệ thống
     return 'Hà Nguyên Hoàng';
-  }
-
-  String _formatCommentTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} ${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}';
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
-
-  Widget _buildDecisionBadge(String decision) {
-    final d = decision.toUpperCase();
-    String label = 'hrm_requests.tab_processed'.tr();
-    Color bg = const Color(0xFFF1F5F9);
-    Color fg = const Color(0xFF475569);
-
-    if (d.contains('APPROV')) {
-      label = 'hrm_requests.status_approved'.tr();
-      bg = const Color(0xFFECFDF5);
-      fg = const Color(0xFF047857);
-    } else if (d.contains('REJECT')) {
-      label = 'hrm_requests.st_rejected_done'.tr();
-      bg = const Color(0xFFFFF1F2);
-      fg = const Color(0xFFBE123C);
-    } else if (d.contains('RETURN')) {
-      label = 'hrm_requests.st_returned'.tr();
-      bg = const Color(0xFFFFFBEB);
-      fg = const Color(0xFFB45309);
-    } else if (d.contains('COMPLETE')) {
-      label = 'hrm_requests.st_step_done'.tr();
-      bg = const Color(0xFFF0F9FF);
-      fg = const Color(0xFF0369A1);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: fg),
-      ),
-    );
-  }
-
-  Widget _buildCommentBody(HrmRequestComment comment) {
-    if (comment.mentions.isEmpty) {
-      return Text(
-        comment.body,
-        style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), height: 1.35),
-      );
-    }
-
-    final mentionNames = comment.mentions.map((m) => m.name).where((n) => n.isNotEmpty).toList();
-    if (mentionNames.isEmpty) {
-      return Text(
-        comment.body,
-        style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), height: 1.35),
-      );
-    }
-    mentionNames.sort((a, b) => b.length.compareTo(a.length));
-
-    final spans = <InlineSpan>[];
-    final pattern = RegExp(
-      '(@(?:${mentionNames.map((n) => RegExp.escape(n)).join('|')}))',
-    );
-    int lastIndex = 0;
-    for (final match in pattern.allMatches(comment.body)) {
-      if (match.start > lastIndex) {
-        spans.add(TextSpan(
-          text: comment.body.substring(lastIndex, match.start),
-          style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)),
-        ));
-      }
-      spans.add(WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            match.group(0) ?? '',
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1D4ED8),
-            ),
-          ),
-        ),
-      ));
-      lastIndex = match.end;
-    }
-    if (lastIndex < comment.body.length) {
-      spans.add(TextSpan(
-        text: comment.body.substring(lastIndex),
-        style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A)),
-      ));
-    }
-
-    return RichText(
-      text: TextSpan(children: spans),
-    );
   }
 
   Widget _buildDetailRow(String label, String value) {
@@ -897,245 +627,14 @@ class _HrmRequestDetailBottomSheetState extends State<HrmRequestDetailBottomShee
               ),
               const SizedBox(height: 18),
 
-              // Section: Trao đổi và ý kiến
-              Row(
-                children: [
-                  const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF2563EB)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'hrm_requests.comments_title'.tr(args: {'count': _comments.length}),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                  ),
-                  if (_isLoadingComments) ...[
-                    const SizedBox(width: 8),
-                    const SizedBox(
-                      width: 13,
-                      height: 13,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2563EB)),
-                    ),
-                  ],
-                ],
+              // Section: Trao đổi và ý kiến (dùng chung với "Đơn từ của tôi").
+              HrmRequestCommentsSection(
+                hrmService: widget.hrmService,
+                kind: _request.apiKind,
+                requestId: _request.id,
+                closedByStatus: _isClosed,
+                onSent: _scrollToBottom,
               ),
-              const SizedBox(height: 10),
-
-              // Comment Thread List
-              if (_isLoadingComments && _comments.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: Text(
-                      'hrm_requests.comments_loading'.tr(),
-                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                    ),
-                  ),
-                )
-              else if (_comments.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _isClosed
-                        ? 'hrm_requests.comments_empty_closed'.tr()
-                        : 'hrm_requests.comments_empty'.tr(),
-                    textAlign: _isClosed ? TextAlign.center : TextAlign.start,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _comments.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 10),
-                  itemBuilder: (ctx, idx) {
-                    final c = _comments[idx];
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: c.mine ? const Color(0xFFFFC90A) : const Color(0xFFE2E8F0),
-                          child: Text(
-                            _getInitials(c.authorName),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: c.mine ? const Color(0xFF1A1A1A) : const Color(0xFF475569),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 6,
-                                children: [
-                                  Text(
-                                    c.authorName,
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                  ),
-                                  if (c.decision != null)
-                                    _buildDecisionBadge(c.decision!),
-                                  Text(
-                                    _formatCommentTime(c.createdAt),
-                                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: c.kind == 'DECISION' ? Colors.white : const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: c.kind == 'DECISION' ? Border.all(color: const Color(0xFFE2E8F0)) : null,
-                                ),
-                                child: _buildCommentBody(c),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-
-              if (_commentError != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  _commentError!,
-                  style: const TextStyle(fontSize: 11.5, color: Color(0xFFDC2626), fontWeight: FontWeight.w500),
-                ),
-              ],
-              const SizedBox(height: 10),
-
-              if (_isClosed)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'hrm_requests.comments_closed_note'.tr(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                )
-              else ...[
-                // Mention candidates autocomplete popup
-              if (_showMentionPicker && _mentionCandidates.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  constraints: const BoxConstraints(maxHeight: 160),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    boxShadow: const [
-                      BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.06), blurRadius: 8, offset: Offset(0, 2)),
-                    ],
-                  ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemCount: _mentionCandidates.length,
-                    itemBuilder: (ctx, i) {
-                      final p = _mentionCandidates[i];
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => _insertMention(p),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 11,
-                                  backgroundColor: const Color(0xFFE2E8F0),
-                                  child: Text(_getInitials(p.name), style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(p.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                                      if (p.employeeCode.isNotEmpty || p.department.isNotEmpty)
-                                        Text(
-                                          [p.employeeCode, p.department].where((s) => s.isNotEmpty).join(' · '),
-                                          style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-              // Comment Input Field matching Web
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _commentCtrl,
-                        focusNode: _commentFocusNode,
-                        onChanged: _onCommentChanged,
-                        decoration: InputDecoration(
-                          hintText: 'hrm_requests.comment_hint'.tr(),
-                          hintStyle: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        maxLines: 2,
-                        minLines: 1,
-                      ),
-                    ),
-                    InkWell(
-                      onTap: _isSendingComment ? null : _sendComment,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFC90A),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: _isSendingComment
-                            ? const SizedBox(
-                                width: 15,
-                                height: 15,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A1A1A)),
-                              )
-                            : const Icon(Icons.send_rounded, size: 15, color: Color(0xFF1A1A1A)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             const SizedBox(height: 18),
 
               // Bottom Action Area matching Web

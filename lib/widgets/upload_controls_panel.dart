@@ -27,13 +27,13 @@ class UploadControlsPanel extends StatelessWidget {
           child: Container(
             height: 180,
             decoration: BoxDecoration(
-              color: AppColors.amber.withOpacity(0.1),
+              color: AppColors.amber.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Container(
               margin: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: AppColors.amber.withOpacity(0.05),
+                color: AppColors.amber.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: ClipRRect(
@@ -199,7 +199,7 @@ class UploadControlsPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int>(
-                  value: provider.targetIndex,
+                  initialValue: provider.targetIndex,
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

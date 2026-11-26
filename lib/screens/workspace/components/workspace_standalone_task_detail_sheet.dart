@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
-import '../../../../models/workspace_models.dart';
-import '../../../../services/workspace_service.dart';
-import '../../../../utils/user_resolver.dart';
-import '../../../../utils/app_toast.dart';
-import 'workspace_standalone_task_dialog.dart';
+import 'task_detail/workspace_procedure_steps_panel.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/workspace/data/datasources/workspace_task_detail_api.dart';
+import '../../../models/workspace_models.dart';
+import '../../../services/workspace_service.dart';
+import 'task_detail/task_detail_format.dart';
+import 'task_detail/task_detail_header.dart';
+import 'task_detail/task_detail_info_tab.dart' show StandaloneInfoSection;
+import 'task_detail/task_detail_meta.dart';
+import 'task_detail/task_detail_notices.dart';
+import 'task_detail/task_detail_standalone.dart';
+import 'task_detail/task_detail_subtasks.dart';
+import 'task_detail/task_detail_tabs.dart';
+import 'task_detail/workspace_activity_list.dart';
+import 'task_detail/workspace_checklist_access.dart';
+import 'task_detail/workspace_checklist_panel.dart';
+import 'task_detail/workspace_external_links_panel.dart';
+import 'task_detail/workspace_progress_panel.dart';
+import 'workspace_task_actions_menu.dart';
+import 'workspace_task_chat_sheet.dart';
 
-/// Bottom sheet hiển thị chi tiết công việc ngoài dự án (Standalone Task)
-/// Đồng bộ 100% cấu trúc, thông tin và thao tác với phiên bản Web
+/// Hộp chi tiết công việc (bottom sheet), điều phối các khối con trong `task_detail/`.
+/// Việc dự án: web `projects-view.tsx` (WorkItemDialog + NodeHeader + ChildItems + Checklist + TabOverview,
+/// cột phụ Lịch sử hoạt động). Công việc khác: web `standalone-tasks-view.tsx` › `TaskDetail`.
 void showWorkspaceStandaloneTaskDetailSheet(
   BuildContext context, {
   required StandaloneTaskItem task,
@@ -17,917 +33,480 @@ void showWorkspaceStandaloneTaskDetailSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => _StandaloneTaskDetailContent(
-      initialTask: task,
-      service: service,
-      onRefresh: onRefresh,
-    ),
+    builder: (ctx) => _TaskDetailContent(initialTask: task, service: service, onRefresh: onRefresh),
   );
 }
 
-class _StandaloneTaskDetailContent extends StatefulWidget {
+class _TaskDetailContent extends StatefulWidget {
   final StandaloneTaskItem initialTask;
   final WorkspaceService service;
   final VoidCallback onRefresh;
 
-  const _StandaloneTaskDetailContent({
-    required this.initialTask,
-    required this.service,
-    required this.onRefresh,
-  });
+  const _TaskDetailContent({required this.initialTask, required this.service, required this.onRefresh});
 
   @override
-  State<_StandaloneTaskDetailContent> createState() => _StandaloneTaskDetailContentState();
+  State<_TaskDetailContent> createState() => _TaskDetailContentState();
 }
 
-class _StandaloneTaskDetailContentState extends State<_StandaloneTaskDetailContent> {
+class _TaskDetailContentState extends State<_TaskDetailContent>
+    with WorkspaceTaskActionsMixin<_TaskDetailContent> {
+  final _api = WorkspaceTaskDetailApi();
   late StandaloneTaskItem _task;
-  bool _isLoadingDetail = true;
-  bool _isUpdatingStatus = false;
-  Map<String, dynamic>? _detailData;
-  List<dynamic> _children = [];
-  List<dynamic> _history = [];
-  List<String> _allowedStatuses = [];
-  bool _canAddChild = false;
+  /// Bản `WorkItem` thô vừa nạp (để đọc `reversal.adjustmentRequested`...).
+  Map<String, dynamic>? _raw;
+  bool _loading = true;
+  String? _error;
+  int _seq = 0;
+  /// Các việc đã đi qua (nút "← CODE" như web lùi lịch sử).
+  final List<StandaloneTaskItem> _back = [];
+  int _unread = 0;
+  int _linkCount = 0;
+  int? _depCount;
+  int? _docCount;
+  List<Map<String, dynamic>> _tags = const [];
+  TaskOverviewTab _tab = TaskOverviewTab.detail;
+
+  bool get _isProject => _task.isProjectTask;
+
+  @override
+  StandaloneTaskItem get actionTask => _task;
+  @override
+  WorkspaceService get actionService => widget.service;
+  @override
+  VoidCallback get actionOnRefresh => widget.onRefresh;
+  @override
+  Future<void> reloadTaskDetail() => _fetchDetail();
+
+  @override
+  void openTaskChat() => showWorkspaceTaskChatSheet(context, task: _task, service: widget.service);
 
   @override
   void initState() {
     super.initState();
     _task = widget.initialTask;
+    _tab = TaskTabMemory.restore(_task.id);
+    _fetchDetail();
+    loadTaskContext();
+    _loadTags();
+  }
+
+  Future<void> _loadTags() async {
+    final tags = await widget.service.getTags();
+    if (!mounted) return;
+    setState(() => _tags = tags);
+  }
+
+  /// Nạp đúng endpoint theo loại việc (không rơi sang endpoint kia).
+  Future<void> _fetchDetail() async {
+    final seq = ++_seq;
+    final id = _task.id;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    if (_isProject) {
+      final pid = _task.projectId!;
+      final itemF = _api.getWorkItem(id);
+      final linksF = countWorkItemExternalLinks(projectId: pid, workItemId: id);
+      final unreadF = _api.getRolledUpUnread(pid, id);
+      final res = await itemF;
+      final links = await linksF;
+      final unread = await unreadF;
+      if (!mounted || seq != _seq) return;
+      setState(() {
+        _loading = false;
+        _linkCount = links;
+        _unread = unread.data ?? 0;
+        if (res.ok && res.data != null && res.data!.isNotEmpty) {
+          final parsed = StandaloneTaskItem.fromJson(res.data!);
+          _raw = res.data;
+          _task = parsed.copyWith(
+            projectId: parsed.projectId ?? pid,
+            projectCode: taskProject?.code ?? _task.projectCode,
+            projectName: taskProject?.name ?? _task.projectName,
+          );
+        } else {
+          _error = res.error ?? 'workspace.task_detail.load_failed'.tr();
+        }
+      });
+    } else {
+      final res = await _api.getStandaloneTask(id);
+      if (!mounted || seq != _seq) return;
+      setState(() {
+        _loading = false;
+        if (res.ok && res.data != null && res.data!['task'] is Map) {
+          standaloneDetail = res.data;
+          _task = StandaloneTaskItem.fromJson(res.data!);
+        } else {
+          _error = res.error ?? 'workspace.task_detail.load_failed'.tr();
+        }
+      });
+    }
+  }
+
+  // ------------------------------------------------------------- Điều hướng giữa các việc
+
+  void _show(StandaloneTaskItem next, {required bool push}) {
+    setState(() {
+      if (push) _back.add(_task);
+      _task = next;
+      _raw = null;
+      if (!next.isProjectTask) standaloneDetail = null;
+      _error = null;
+      _unread = 0;
+      _linkCount = 0;
+      _depCount = null;
+      _docCount = null;
+      _tab = TaskTabMemory.restore(next.id);
+    });
     _fetchDetail();
   }
 
-  Future<void> _fetchDetail() async {
-    setState(() => _isLoadingDetail = true);
-    try {
-      final res = await widget.service.getStandaloneTaskDetail(_task.id);
-      if (mounted && res != null) {
-        final taskMap = res['task'] is Map ? res['task'] as Map<String, dynamic> : res;
-        setState(() {
-          _detailData = res;
-          _task = StandaloneTaskItem.fromJson(taskMap);
-          if (res['children'] is List) {
-            _children = res['children'] as List;
-          }
-          if (res['history'] is List) {
-            _history = res['history'] as List;
-          }
-          if (res['allowedStatuses'] is List) {
-            _allowedStatuses = (res['allowedStatuses'] as List).map((e) => e.toString()).toList();
-          }
-          _canAddChild = res['canAddChild'] == true;
-        });
-      }
-    } catch (e) {
-      debugPrint('[StandaloneTaskDetailSheet] _fetchDetail error: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingDetail = false);
-      }
-    }
+  void _openProjectItem(String id) {
+    if (id == _task.id) return;
+    final next = taskProjectItems.where((i) => i.id == id).firstOrNull;
+    if (next != null) _show(next, push: true);
   }
 
-  Future<void> _updateStatus(String newStatus, {String? note}) async {
-    setState(() => _isUpdatingStatus = true);
-    try {
-      final ok = await widget.service.changeStandaloneTaskStatus(_task.id, newStatus, note: note);
-      if (mounted) {
-        setState(() => _isUpdatingStatus = false);
-        if (ok) {
-          if (newStatus == 'cancelled') {
-            Navigator.pop(context);
-            widget.onRefresh();
-            AppToast.success(context, 'Đã huỷ công việc thành công!');
-          } else {
-            AppToast.success(context, 'Cập nhật trạng thái thành công!');
-            widget.onRefresh();
-            _fetchDetail();
-          }
-        } else {
-          AppToast.error(context, 'Không thể cập nhật trạng thái.');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isUpdatingStatus = false);
-        AppToast.error(context, 'Lỗi: $e');
-      }
-    }
+  /// Mở một việc khác của Công việc khác từ tham chiếu `{id, code, title}` hoặc bản `StandaloneTask`.
+  void _openStandaloneRef(Map<String, dynamic> ref) {
+    if (ref['id'] == null || ref['id'] == _task.id) return;
+    _show(StandaloneTaskItem.fromJson(ref), push: true);
   }
 
-  Future<void> _showCancelDialog() async {
-    final noteCtrl = TextEditingController();
-    final shouldCancel = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Huỷ công việc', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Bạn có chắc chắn muốn huỷ công việc này không? Vui lòng nhập lý do:',
-              style: TextStyle(fontSize: 13, color: Color(0xFF475569)),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteCtrl,
-              maxLines: 2,
-              decoration: InputDecoration(
-                hintText: 'Nhập lý do huỷ việc...',
-                hintStyle: const TextStyle(fontSize: 12.5),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Đóng'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xác nhận huỷ'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldCancel == true) {
-      _updateStatus('cancelled', note: noteCtrl.text.trim());
-    }
+  void _goBack() {
+    if (_back.isEmpty) return;
+    _show(_back.removeLast(), push: false);
   }
 
-  Future<void> _showBlockedReasonDialog({bool isEditing = false}) async {
-    final noteCtrl = TextEditingController(text: isEditing ? (_task.blockedReason ?? '') : '');
-    final shouldSubmit = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
-            const SizedBox(width: 8),
-            Text(
-              isEditing ? 'Sửa lý do vướng mắc' : 'Báo vướng mắc',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${_task.code} · ${_task.title}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteCtrl,
-              maxLines: 4,
-              maxLength: 1000,
-              autofocus: true,
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                labelText: 'Lý do vướng mắc *',
-                hintText: 'Ghi rõ điều đang cản trở công việc để người giao và cả nhóm nắm được...',
-                hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Huỷ', style: TextStyle(color: Color(0xFF64748B))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (noteCtrl.text.trim().isEmpty) return;
-              Navigator.pop(ctx, true);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Xác nhận', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldSubmit == true && noteCtrl.text.trim().isNotEmpty) {
-      _updateStatus('blocked', note: noteCtrl.text.trim());
-    }
+  void _afterPanelChange() {
+    _fetchDetail();
+    loadTaskContext(force: true);
+    widget.onRefresh();
   }
 
-  Widget _buildBlockedReasonNotice() {
-    final text = _task.blockedReason?.trim();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFECACA)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.warning_amber_rounded, size: 20, color: Color(0xFFDC2626)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Vướng mắc',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  (text != null && text.isNotEmpty) ? text : 'Chưa ghi lý do vướng mắc',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: (text != null && text.isNotEmpty) ? const Color(0xFFB91C1C) : const Color(0xFF94A3B8),
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () => _showBlockedReasonDialog(isEditing: true),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              (text != null && text.isNotEmpty) ? 'Sửa lý do' : 'Ghi lý do',
-              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _reportProgress() async {
+    final ok = await showReportProgressDialog(context, item: _task, service: widget.service);
+    if (ok && mounted) afterTaskChange();
   }
 
-  Future<void> _confirmDelete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xoá công việc', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Text(
-          'Bạn có chắc chắn muốn xoá vĩnh viễn công việc "${_task.title}" không?',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Huỷ'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xoá'),
-          ),
-        ],
-      ),
-    );
-
-    if (ok == true) {
-      final success = await widget.service.deleteStandaloneTask(_task.id);
-      if (mounted) {
-        if (success) {
-          Navigator.pop(context);
-          widget.onRefresh();
-          AppToast.success(context, 'Đã xoá công việc thành công!');
-        } else {
-          AppToast.error(context, 'Không thể xoá công việc.');
-        }
-      }
-    }
-  }
-
-  void _showHistoryModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.9,
-        minChildSize: 0.4,
-        expand: false,
-        builder: (_, scrollCtrl) => Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const Text('Lịch sử thay đổi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Expanded(
-                child: _history.isEmpty
-                    ? const Center(child: Text('Chưa có lịch sử thay đổi nào.', style: TextStyle(color: Color(0xFF94A3B8))))
-                    : ListView.separated(
-                        controller: scrollCtrl,
-                        itemCount: _history.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1),
-                        itemBuilder: (_, idx) {
-                          final h = _history[idx];
-                          final note = h['note']?.toString();
-                          final createdBy = h['createdBy']?.toString() ?? '';
-                          final createdAt = h['createdAt']?.toString() ?? '';
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              UserResolver.resolveName(createdBy),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              note != null && note.isNotEmpty ? note : 'Cập nhật trạng thái',
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                            ),
-                            trailing: Text(
-                              _formatDateTime(DateTime.tryParse(createdAt)),
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '—';
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-  }
-
-  String _formatDateTime(DateTime? dt) {
-    if (dt == null) return '—';
-    final vn = dt.isUtc ? dt.add(const Duration(hours: 7)) : dt;
-    return '${vn.hour.toString().padLeft(2, '0')}:${vn.minute.toString().padLeft(2, '0')} ${vn.day.toString().padLeft(2, '0')}/${vn.month.toString().padLeft(2, '0')}/${vn.year}';
-  }
+  // ------------------------------------------------------------- Build
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.88,
+      height: MediaQuery.of(context).size.height * 0.92,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Drag Handle
-          Container(
-            width: 38,
-            height: 4,
-            margin: const EdgeInsets.only(top: 10, bottom: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(2),
-            ),
+          TaskDetailTopBar(
+            heading: 'workspace.task_detail.heading'.tr(args: {'code': _task.code}),
+            backLabel: _back.isEmpty ? null : _back.last.code,
+            onBack: _goBack,
           ),
-
-          // Header: Code + Title & Role & Action Icons (History, Delete)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 12, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (_loading) const LinearProgressIndicator(minHeight: 2, color: Color(0xFF1D4ED8)),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _task.code,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _task.title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Vai của bạn: ${_task.myRoleLabel}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.history_rounded, size: 21, color: Color(0xFF64748B)),
-                  tooltip: 'Lịch sử thay đổi',
-                  onPressed: _showHistoryModal,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                ),
-                if (_task.myRole == 'assigner') ...[
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, size: 21, color: Color(0xFFDC2626)),
-                    tooltip: 'Xoá việc',
-                    onPressed: _confirmDelete,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                  ),
+                if (_error != null) ...[
+                  TaskNotice.text(_error!, alert: true),
+                  const SizedBox(height: 10),
                 ],
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 22, color: Color(0xFF64748B)),
-                  tooltip: 'Đóng',
-                  onPressed: () => Navigator.pop(context),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                ),
+                ...(_isProject ? _projectBody() : _standaloneBody()),
               ],
             ),
-          ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-
-          // Scrollable Body
-          Expanded(
-            child: _isLoadingDetail && _detailData == null
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFFEAB308)))
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
-                    children: [
-                      // 1. Status Chip & Action Buttons Row matching Web
-                      _buildActionButtonsRow(),
-                      const SizedBox(height: 18),
-
-                      // Blocked Reason Notice matching Web 1:1
-                      if (_task.status == 'blocked') ...[
-                        _buildBlockedReasonNotice(),
-                        const SizedBox(height: 18),
-                      ],
-
-                      // 2. Information Table matching Web
-                      _buildInfoTable(),
-                      const SizedBox(height: 18),
-
-                      // 3. Description Block
-                      if (_task.description != null && _task.description!.isNotEmpty) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Mô tả công việc',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _task.description!,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B), height: 1.4),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                      ],
-
-                      // 4. Section Việc con (Sub-tasks) matching Web
-                      _buildSubtasksSection(),
-                    ],
-                  ),
           ),
         ],
       ),
     );
   }
 
-  bool _canTransitionTo(String targetStatus) {
-    if (_allowedStatuses.isNotEmpty) {
-      return _allowedStatuses.contains(targetStatus);
-    }
-    switch (targetStatus) {
-      case 'todo':
-        return _task.status == 'in_progress' || _task.status == 'blocked';
-      case 'in_progress':
-        return _task.status == 'todo' || _task.status == 'blocked' || _task.status == 'review';
-      case 'blocked':
-        return _task.status == 'in_progress';
-      case 'review':
-        return _task.status == 'in_progress';
-      case 'done':
-        return _task.status == 'in_progress' || _task.status == 'review';
-      case 'cancelled':
-        return _task.myRole == 'assigner' && _task.status != 'cancelled' && _task.status != 'done';
-      default:
-        return false;
-    }
-  }
+  Widget _gap([double h = 12]) => SizedBox(height: h);
 
-  // Row các nút trạng thái matching Web
-  Widget _buildActionButtonsRow() {
-    if (_isUpdatingStatus) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(8.0),
-          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFEAB308)),
-        ),
+  Widget get _chatButton => TaskActionButton(
+        label: 'workspace.task_detail.chat'.tr(),
+        icon: Icons.chat_bubble_outline_rounded,
+        badge: _unread,
+        onPressed: openTaskChat,
       );
+
+  Widget get _editButton =>
+      TaskActionButton(label: 'common.edit'.tr(), icon: Icons.edit_outlined, onPressed: openEditTask);
+
+  Widget get _busy => const SizedBox(
+        width: 22,
+        height: 22,
+        child: Padding(padding: EdgeInsets.all(3), child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+
+  // ---- Việc dự án
+
+  List<Widget> _projectBody() {
+    final t = _task;
+    final items = taskProjectItems;
+    final byId = {for (final i in items) i.id: i};
+    final chain = <StandaloneTaskItem>[];
+    final seen = <String>{t.id};
+    var cursor = t.parentId == null ? null : byId[t.parentId];
+    while (cursor != null && seen.add(cursor.id)) {
+      chain.insert(0, cursor);
+      cursor = cursor.parentId == null ? null : byId[cursor.parentId];
+    }
+    final projectCode = taskProject?.code ?? t.projectCode ?? '';
+    final quick = projectQuickAction();
+    final hasChildren = items.any((i) => i.parentId == t.id);
+
+    // web `progressCellMode` với canWrite = có quyền sửa việc.
+    String? lockReason;
+    var editable = false;
+    if (taskCanEdit) {
+      if (t.status == 'done') {
+        lockReason = 'workspace.task_detail.progress_lock.done'.tr();
+      } else if (t.status == 'cancelled') {
+        lockReason = null;
+      } else if (hasChildren) {
+        lockReason = 'workspace.task_detail.progress_lock.children'.tr();
+      } else if (t.progressMethod == 'checklist') {
+        lockReason = 'workspace.task_detail.progress_lock.checklist'.tr();
+      } else {
+        editable = true;
+      }
     }
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        // Chip Trạng thái hiện tại
-        _buildCurrentStatusChip(),
+    final reversal = _raw?['reversal'] is Map ? Map<String, dynamic>.from(_raw!['reversal'] as Map) : null;
+    final adjustment = items.where((i) => i.meta.adjustmentOfId == t.id && i.status != 'cancelled').firstOrNull;
+    final original = t.meta.adjustmentOfId == null ? null : byId[t.meta.adjustmentOfId];
+    final me = taskMe;
 
-        // Nút: Về Chưa làm (Khi ở Vướng mắc hoặc Đang làm)
-        if (_canTransitionTo('todo')) ...[
-          OutlinedButton(
-            onPressed: () => _updateStatus('todo'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF0F172A),
-              side: const BorderSide(color: Color(0xFFCBD5E1)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-            child: const Text(
-              'Về Chưa làm',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-            ),
-          ),
+    return [
+      TaskDetailHeader(
+        item: t,
+        crumbs: [
+          if (projectCode.isNotEmpty) TaskDetailCrumb(projectCode, () => Navigator.pop(context)),
+          for (final a in chain) TaskDetailCrumb('${a.code} · ${a.title}', () => _openProjectItem(a.id)),
         ],
-
-        // Nút: Bắt đầu làm / Tiếp tục làm / Yêu cầu làm lại
-        if (_canTransitionTo('in_progress')) ...[
-          OutlinedButton(
-            onPressed: () => _updateStatus('in_progress'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF0F172A),
-              side: const BorderSide(color: Color(0xFFCBD5E1)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        kindLabel: taskItemTypeLabel(t.meta.itemType),
+        primaryActions: [
+          if (taskStatusBusy) _busy,
+          if (quick != null && !taskStatusBusy) TaskActionButton(label: quick.label, filled: true, onPressed: quick.onTap),
+          if (taskCanAddChild)
+            TaskActionButton(
+              label: 'workspace.task_detail.add_child'.tr(),
+              icon: Icons.add,
+              filled: quick == null,
+              onPressed: openCreateChildTask,
             ),
-            child: Text(
-              _task.status == 'blocked'
-                  ? 'Tiếp tục làm'
-                  : (_task.status == 'review' ? 'Yêu cầu làm lại' : 'Bắt đầu làm'),
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-            ),
-          ),
         ],
-
-        // Nút: Báo vướng mắc
-        if (_canTransitionTo('blocked')) ...[
-          OutlinedButton(
-            onPressed: () => _showBlockedReasonDialog(isEditing: false),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF0F172A),
-              side: const BorderSide(color: Color(0xFFCBD5E1)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-            child: const Text('Báo vướng mắc', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-          ),
-        ],
-
-        // Nút: Gửi duyệt (Màu vàng thương hiệu #EAB308 đồng bộ 1:1 với Web)
-        if (_canTransitionTo('review')) ...[
-          ElevatedButton(
-            onPressed: () => _updateStatus('review'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEAB308),
-              foregroundColor: const Color(0xFF0F172A),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-            child: const Text(
-              'Gửi duyệt',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-
-        // Nút: Hoàn thành / Duyệt hoàn thành
-        if (_canTransitionTo('done')) ...[
-          ElevatedButton(
-            onPressed: () => _updateStatus('done'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-            child: Text(
-              _task.status == 'review' ? 'Duyệt hoàn thành' : 'Hoàn thành',
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-
-        // Nút: Huỷ việc (Dành cho Người giao)
-        if (_canTransitionTo('cancelled') || (_task.myRole == 'assigner' && _task.status != 'cancelled' && _task.status != 'done')) ...[
-          ElevatedButton(
-            onPressed: _showCancelDialog,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFEF2F2),
-              foregroundColor: const Color(0xFFDC2626),
-              elevation: 0,
-              side: const BorderSide(color: Color(0xFFFECACA)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-            child: const Text('Huỷ việc', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCurrentStatusChip() {
-    Color bg;
-    Color color;
-    Color border;
-    switch (_task.status) {
-      case 'in_progress':
-        bg = const Color(0xFFEFF6FF);
-        color = const Color(0xFF1D4ED8);
-        border = const Color(0xFFBFDBFE);
-        break;
-      case 'done':
-        bg = const Color(0xFFECFDF5);
-        color = const Color(0xFF047857);
-        border = const Color(0xFFA7F3D0);
-        break;
-      case 'blocked':
-        bg = const Color(0xFFFEF2F2);
-        color = const Color(0xFFDC2626);
-        border = const Color(0xFFFECACA);
-        break;
-      case 'cancelled':
-        bg = const Color(0xFFF1F5F9);
-        color = const Color(0xFF64748B);
-        border = const Color(0xFFE2E8F0);
-        break;
-      case 'todo':
-      default:
-        bg = const Color(0xFFF1F5F9);
-        color = const Color(0xFF475569);
-        border = const Color(0xFFE2E8F0);
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: border),
-      ),
-      child: Text(
-        _task.statusLabel,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
-      ),
-    );
-  }
-
-  // Bảng thông tin chi tiết đồng bộ 1:1 với Web
-  Widget _buildInfoTable() {
-    final creatorName = UserResolver.resolveName(_task.creatorName ?? _task.createdBy);
-    final assigneeName = UserResolver.resolveName(_task.assigneeName ?? _task.assigneeUserId);
-
-    final participants = _task.participantUserIds.map((id) => UserResolver.resolveName(id)).join(', ');
-    final followers = _task.followerUserIds.map((id) => UserResolver.resolveName(id)).join(', ');
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Column(
-        children: [
-          _buildInfoRow('Người giao', creatorName),
-          const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          _buildInfoRow('Người phụ trách', assigneeName),
-          const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          if (participants.isNotEmpty) ...[
-            _buildInfoRow('Người cùng thực hiện', participants),
-            const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          ],
-          if (followers.isNotEmpty) ...[
-            _buildInfoRow('Người theo dõi', followers),
-            const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          ],
-          _buildInfoRow('Mức ưu tiên', _task.priorityLabel),
-          const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          _buildInfoRow('Ngày bắt đầu', _formatDate(_task.plannedStart)),
-          const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          _buildInfoRow('Hạn hoàn thành', _formatDate(_task.dueDate)),
-          const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          _buildInfoRow('Thực tế', '—'),
-          const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          _buildProgressRow(),
-          const Divider(height: 1, color: Color(0xFFF8FAFC)),
-          _buildInfoRow('Giao lúc', _formatDateTime(_task.createdAt)),
+        secondaryActions: [
+          _chatButton,
+          if (taskCanEdit) _editButton,
+          buildTaskActionsMenu(),
         ],
       ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressRow() {
-    final pct = _task.progressPercent.clamp(0.0, 100.0);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 140,
-            child: Text(
-              'Tiến độ',
-              style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
-            ),
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: pct / 100.0,
-                      backgroundColor: const Color(0xFFE2E8F0),
-                      color: const Color(0xFFEAB308),
-                      minHeight: 6,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${pct.toStringAsFixed(0)}%',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Section Việc con matching Web
-  Widget _buildSubtasksSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.subdirectory_arrow_right_rounded, size: 18, color: Color(0xFF64748B)),
-                SizedBox(width: 6),
-                Text(
-                  'Việc con',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                ),
-              ],
-            ),
-            if (_canAddChild) ...[
-              TextButton.icon(
-                onPressed: () {
-                  showWorkspaceAssignStandaloneTaskModal(
-                    context,
-                    service: widget.service,
-                    parentId: _task.id,
-                    onCreated: () {
-                      _fetchDetail();
-                      widget.onRefresh();
-                    },
-                  );
-                },
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Thêm việc con', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ],
+      if (t.isReversed) ...[
+        _gap(8),
+        TaskReversalNotice(
+          reversedByName: reversal?['reversedByName']?.toString() ?? t.meta.reversedByName,
+          reversedAt: DateTime.tryParse(reversal?['reversedAt']?.toString() ?? '') ?? t.meta.reversedAt,
+          reason: reversal?['reason']?.toString() ?? t.reversalReason,
+          adjustmentCode: adjustment?.code,
+          onOpenAdjustment: adjustment == null ? null : () => _openProjectItem(adjustment.id),
+          adjustmentRequested: reversal?['adjustmentRequested'] == true,
         ),
-        const SizedBox(height: 8),
-        if (_children.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: const Text(
-              'Chưa có việc con. Chia nhỏ công việc và giao cho người khác bằng "Thêm việc con".',
-              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-            ),
-          )
-        else
-          Column(
-            children: _children.map((c) {
-              final childMap = c is Map ? Map<String, dynamic>.from(c) : <String, dynamic>{};
-              final childTask = StandaloneTaskItem.fromJson(childMap);
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Text(childTask.code, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(childTask.title, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    ),
-                    Text(childTask.statusLabel, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
       ],
-    );
+      if (t.meta.adjustmentOfId != null) ...[
+        _gap(8),
+        TaskAdjustmentOfNotice(
+          code: original?.code,
+          onOpen: original == null ? null : () => _openProjectItem(original.id),
+        ),
+      ],
+      _gap(),
+      TaskDetailMeta(
+        item: t,
+        projectItems: items,
+        tagCatalog: _tags,
+        onProgressTap: editable ? _reportProgress : null,
+        progressLockedReason: lockReason,
+      ),
+      if (t.status == 'blocked' && !t.isReversed) ...[
+        _gap(),
+        TaskBlockedNotice(
+          reason: t.blockedReason,
+          onEdit: taskCanEditBlockedReason ? editBlockedReason : null,
+        ),
+      ],
+      if (hasChildren) ...[
+        _gap(),
+        TaskChildItems(
+          parent: t,
+          items: items,
+          canAdd: taskCanAddChild,
+          onOpen: (c) => _openProjectItem(c.id),
+          onAdd: openCreateChildTask,
+        ),
+      ],
+      if (canShowChecklist(t, items)) ...[
+        _gap(),
+        WorkspaceChecklistPanel(
+          key: ValueKey('checklist-${t.id}'),
+          item: t,
+          service: widget.service,
+          canEdit: canEditChecklist(item: t, userId: me, canWrite: taskCanWrite, canManage: taskCanManage),
+          currentUserId: me,
+          onChanged: _afterPanelChange,
+        ),
+      ],
+      _gap(),
+      ProjectTaskTabs(
+        item: t,
+        projectItems: items,
+        service: widget.service,
+        selected: _tab,
+        onSelect: (tab) => setState(() => _tab = tab),
+        linkCount: _linkCount,
+        dependencyCount: _depCount,
+        documentCount: _docCount,
+        onDependencyCount: (n) {
+          if (mounted && n != _depCount) setState(() => _depCount = n);
+        },
+        onDocumentCount: (n) {
+          if (mounted && n != _docCount) setState(() => _docCount = n);
+        },
+        canWrite: taskCanWrite,
+        canManage: taskCanManage,
+        canDelete: taskCanDelete,
+        onChanged: _afterPanelChange,
+        onOpenItem: _openProjectItem,
+        onReportQuantity: _reportProgress,
+      ),
+      _gap(),
+      TaskPanel(
+        title: Text('workspace.task_detail.activity_title'.tr()),
+        child: WorkspaceActivityList(
+          key: ValueKey('activity-${t.id}'),
+          projectId: t.projectId!,
+          service: widget.service,
+          projectItems: items,
+          itemIds: taskBranchOf(items, t.id),
+          onOpenItem: _openProjectItem,
+        ),
+      ),
+    ];
+  }
+
+  // ---- Công việc khác
+
+  List<Widget> _standaloneBody() {
+    final t = _task;
+    final d = standaloneDetail;
+    final procedure = (d?['task'] as Map?)?['procedure'];
+    final procedureInstanceId =
+        procedure is Map && (procedure['instanceId']?.toString() ?? '').isNotEmpty ? procedure['instanceId'].toString() : null;
+    final ancestors = (d?['ancestors'] as List?)?.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() ??
+        const <Map<String, dynamic>>[];
+    final children = (d?['children'] as List?)
+            ?.whereType<Map>()
+            .map((e) => StandaloneTaskItem.fromJson(Map<String, dynamic>.from(e)))
+            .toList() ??
+        const <StandaloneTaskItem>[];
+    final open = t.status != 'done' && t.status != 'cancelled';
+    final canProgress = open && (standaloneIsAssigner || standaloneIsExecutor);
+    final roleLabel = 'workspace.task_detail.standalone.role.$standaloneRole'.tr();
+
+    return [
+      TaskDetailHeader(
+        item: t,
+        crumbs: [
+          for (final a in ancestors) TaskDetailCrumb('${a['code'] ?? ''} · ${a['title'] ?? ''}', () => _openStandaloneRef(a)),
+        ],
+        subtitle: d == null
+            ? null
+            : '${'workspace.task_detail.standalone.your_role'.tr(args: {'role': roleLabel})}'
+                '${t.parentId != null ? 'workspace.task_detail.standalone.child_note'.tr() : ''}',
+        primaryActions: [
+          if (taskStatusBusy) _busy,
+          if (!taskStatusBusy)
+            for (final next in standaloneAllowed)
+              TaskActionButton(
+                label: standaloneTransitionLabel(t.status, next, standaloneIsAssigner),
+                filled: next == 'done' || next == 'review',
+                danger: next == 'cancelled',
+                onPressed: () => standaloneTransition(next),
+              ),
+        ],
+        secondaryActions: [
+          _chatButton,
+          if (taskCanEdit) _editButton,
+          buildTaskActionsMenu(),
+        ],
+      ),
+      if (t.status == 'blocked' && !t.isReversed) ...[
+        _gap(),
+        TaskBlockedNotice(reason: t.blockedReason, onEdit: taskCanEditBlockedReason ? editBlockedReason : null),
+      ],
+      _gap(),
+      StandaloneTaskNotices(
+        task: t,
+        detail: d,
+        isAssigner: standaloneIsAssigner,
+        isExecutor: standaloneIsExecutor,
+        canCreateAdjustment: taskCanCreateAdjustment,
+        onOpenRef: _openStandaloneRef,
+        onCreateAdjustment: () => openAdjustmentForm(),
+      ),
+      StandaloneInfoSection(
+        task: t,
+        onProgressTap: canProgress && !taskStatusBusy ? _reportProgress : null,
+        progressLockedReason: t.status == 'done' ? 'workspace.task_detail.progress_lock.done'.tr() : null,
+      ),
+      // Web: việc có hồ sơ quy trình đã mở thì hiện các bước của hồ sơ.
+      if (procedureInstanceId != null) ...[
+        _gap(),
+        WorkspaceProcedureStepsPanel(
+          key: ValueKey('procedure-steps-${t.id}'),
+          id: t.id,
+          standalone: true,
+          version: '${(d?['task'] as Map?)?['updatedAt'] ?? ''}|${t.status}|$procedureInstanceId',
+        ),
+      ],
+      if (canShowChecklist(t, const [])) ...[
+        _gap(),
+        WorkspaceChecklistPanel(
+          key: ValueKey('checklist-${t.id}'),
+          item: t,
+          service: widget.service,
+          canEdit: canEditStandaloneChecklist(standaloneRole),
+          currentUserId: taskMe,
+          onChanged: _afterPanelChange,
+        ),
+      ],
+      _gap(),
+      TaskPanel(
+        title: Text('workspace.task_detail.tab.progress'.tr()),
+        child: WorkspaceProgressPanel(
+          key: ValueKey('progress-${t.id}'),
+          item: t,
+          service: widget.service,
+          canReport: canProgress,
+          onChanged: _afterPanelChange,
+        ),
+      ),
+      _gap(),
+      StandaloneChildItems(
+        parent: t,
+        children: children,
+        canAdd: taskCanAddChild,
+        onOpen: (c) => _show(c, push: true),
+        onAdd: openCreateChildTask,
+      ),
+      _gap(),
+      StandaloneHistoryList(entries: standaloneHistoryOf(d)),
+    ];
   }
 }

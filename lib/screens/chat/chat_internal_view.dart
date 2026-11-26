@@ -8,6 +8,7 @@ import '../../utils/user_resolver.dart';
 import '../../theme/colors.dart';
 import 'chat_thread_screen.dart';
 import 'create_group_dialog.dart';
+import '../../widgets/user_avatar.dart';
 
 class ChatInternalView extends StatefulWidget {
   const ChatInternalView({super.key});
@@ -155,7 +156,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
               Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.emerald.withOpacity(0.12),
+                  color: AppColors.emerald.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -235,7 +236,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.amber.shade50.withOpacity(0.8),
+          color: Colors.amber.shade50.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.amber.shade300, width: 1.2),
         ),
@@ -286,7 +287,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.amber.shade900.withOpacity(0.8),
+                      color: Colors.amber.shade900.withValues(alpha: 0.8),
                     ),
                   ),
                 ],
@@ -395,13 +396,13 @@ class _ChatInternalViewState extends State<ChatInternalView> {
               alignment: Alignment.center,
               child: conv.kind == 'group'
                   ? const Icon(Icons.group_rounded, color: Colors.white, size: 20)
-                  : Text(
-                      _getInitials(title),
-                      style: const TextStyle(
-                        color: Color(0xFF18181B),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                  : UserAvatar(
+                      userId: isDirect ? peerUserId : null,
+                      name: title,
+                      size: 40,
+                      background: Colors.transparent,
+                      foreground: const Color(0xFF18181B),
+                      fontSize: 14,
                     ),
             ),
             if (isOnline)
@@ -492,13 +493,13 @@ class _ChatInternalViewState extends State<ChatInternalView> {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text(
-                _getInitials(person.fullName),
-                style: const TextStyle(
-                  color: Color(0xFF18181B),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13.5,
-                ),
+              child: UserAvatar(
+                userId: person.id,
+                name: person.fullName,
+                size: 38,
+                background: Colors.transparent,
+                foreground: Color(0xFF18181B),
+                fontSize: 13.5,
               ),
             ),
             if (isOnline)
@@ -558,17 +559,6 @@ class _ChatInternalViewState extends State<ChatInternalView> {
         ),
       ),
     );
-  }
-
-  String _getInitials(String name) {
-    if (name.isEmpty) return '?';
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.length >= 2) {
-      final firstChar = parts[0].isNotEmpty ? parts[0][0] : '';
-      final lastChar = parts[parts.length - 1].isNotEmpty ? parts[parts.length - 1][0] : '';
-      return '$firstChar$lastChar'.toUpperCase();
-    }
-    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
   }
 
   String _formatTime(String raw) {

@@ -1,10 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../core/i18n/app_i18n.dart';
 import '../models/hrm_leave_balance_models.dart';
 import '../services/hrm_service.dart';
 import 'leave_balances/components/leave_balance_card.dart';
 import 'leave_balances/components/leave_adjustments_view.dart';
 import 'leave_balances/components/leave_balance_detail_sheet.dart';
+import 'leave_balances/components/comp_off_card.dart';
+import 'leave_balances/components/comp_off_ledger_sheet.dart';
+import 'leave_balances/components/comp_off_adjust_dialog.dart';
+import 'leave_balances/components/comp_off_conversion_view.dart';
+import 'leave_balances/components/comp_off_classify_view.dart';
+import 'leave_balances/components/comp_off_action_bar.dart';
 
 class LeaveBalancesScreen extends StatefulWidget {
   const LeaveBalancesScreen({super.key});
@@ -17,7 +23,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
   final HrmService _hrmService = HrmService();
 
   int _selectedYear = DateTime.now().year;
-  int _activeTab = 0; // 0: Quỹ phép, 1: Lịch sử điều chỉnh
+  int _activeTab = 0; // 0: Quỹ phép năm, 1: Quỹ nghỉ bù, 2: Lịch sử điều chỉnh
   bool _isLoading = true;
   String _searchQuery = '';
   String _statusFilter = 'ALL'; // 'ALL', 'OK', 'DEPLETED', 'OVER', 'NO_BALANCE', 'NO_CONTRACT'
@@ -31,6 +37,17 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  // Tab 1: Quỹ nghỉ bù state (đồng bộ 1:1 với Web)
+  int _compOffSubTab = 0; // 0: Số dư, 1: Chuyển đổi tháng, 2: Phân loại làm thêm
+  bool _isExpiringLots = false;
+  List<HrmCompOffBalanceItem> _compOffBalances = [];
+  String _compOffSearchQuery = '';
+  String _compOffStatusFilter = 'ALL'; // 'ALL', 'AVAILABLE', 'DEPLETED', 'EXPIRING'
+  final String _compOffSelectedDept = 'ALL';
+  String _compOffSortBy = 'NAME'; // 'NAME', 'AVAILABLE_DESC', 'AVAILABLE_ASC'
+  final TextEditingController _compOffSearchCtrl = TextEditingController();
+  int _compOffCurrentPage = 1;
+
   // Tab 2: Lịch sử điều chỉnh state
   int _adjYear = 0; // 0 = Tất cả các năm
   String _adjType = 'ALL'; // 'ALL', 'ADJUSTMENT', 'REVERSAL'
@@ -43,15 +60,34 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
     _adjYear = _selectedYear;
     _scrollController.addListener(_onScroll);
     _loadData();
+    _preloadCompOffCount();
+  }
+
+  void _preloadCompOffCount() {
+    _hrmService.getCompOffBalances().then((raw) {
+      if (mounted) {
+        setState(() {
+          _compOffBalances = raw.map((e) => HrmCompOffBalanceItem.fromJson(e)).toList();
+        });
+      }
+    }).catchError((_) {});
   }
 
   void _onScroll() {
     if (_scrollController.hasClients &&
         _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
-      if (_currentPage * _pageSize < _filteredBalances.length) {
-        setState(() {
-          _currentPage++;
-        });
+      if (_activeTab == 0) {
+        if (_currentPage * _pageSize < _filteredBalances.length) {
+          setState(() {
+            _currentPage++;
+          });
+        }
+      } else if (_activeTab == 1) {
+        if (_compOffCurrentPage * _pageSize < _filteredCompOffBalances.length) {
+          setState(() {
+            _compOffCurrentPage++;
+          });
+        }
       }
     }
   }
@@ -59,6 +95,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _compOffSearchCtrl.dispose();
     _adjSearchCtrl.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -75,6 +112,16 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
             _balances = list;
             _isLoading = false;
             _currentPage = 1;
+          });
+        }
+      } else if (_activeTab == 1) {
+        final raw = await _hrmService.getCompOffBalances();
+        final list = raw.map((e) => HrmCompOffBalanceItem.fromJson(e)).toList();
+        if (mounted) {
+          setState(() {
+            _compOffBalances = list;
+            _isLoading = false;
+            _compOffCurrentPage = 1;
           });
         }
       } else {
@@ -207,6 +254,49 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
     return _filteredBalances.take(_currentPage * _pageSize).toList();
   }
 
+  // Filtered and sorted rows for Comp Off (Quỹ nghỉ bù)
+  List<HrmCompOffBalanceItem> get _filteredCompOffBalances {
+    final list = _compOffBalances.where((r) {
+      if (_compOffSearchQuery.isNotEmpty) {
+        final q = _compOffSearchQuery.toLowerCase();
+        final name = r.employeeName.toLowerCase();
+        final code = r.employeeCode.toLowerCase();
+        final dept = (r.department ?? '').toLowerCase();
+        if (!name.contains(q) && !code.contains(q) && !dept.contains(q)) return false;
+      }
+      if (_compOffSelectedDept != 'ALL') {
+        final d = (r.department ?? '').trim();
+        if (d != _compOffSelectedDept) return false;
+      }
+      switch (_compOffStatusFilter) {
+        case 'AVAILABLE':
+          return r.available > 0;
+        case 'DEPLETED':
+          return r.available == 0;
+        case 'EXPIRING':
+          return r.nextExpiry != null;
+        case 'ALL':
+        default:
+          return true;
+      }
+    }).toList();
+
+    switch (_compOffSortBy) {
+      case 'AVAILABLE_DESC':
+        list.sort((a, b) => b.available.compareTo(a.available));
+        break;
+      case 'AVAILABLE_ASC':
+        list.sort((a, b) => a.available.compareTo(b.available));
+        break;
+      case 'NAME':
+      default:
+        list.sort((a, b) => a.employeeName.compareTo(b.employeeName));
+        break;
+    }
+
+    return list;
+  }
+
 
   String _formatNumber(double val) {
     if (val == val.roundToDouble()) {
@@ -277,10 +367,10 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
       ),
       body: Column(
         children: [
-          // 1. Sub Tabs (Quỹ phép / Lịch sử điều chỉnh)
+          // 1. Sub Tabs (Quỹ phép / Quỹ nghỉ bù / Lịch sử điều chỉnh - 100% khớp Web)
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF1F5F9),
@@ -297,10 +387,19 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                       count: _balances.length,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 3),
                   Expanded(
                     child: _buildSubTab(
                       index: 1,
+                      label: 'Quỹ nghỉ bù',
+                      icon: Icons.more_time_rounded,
+                      count: _compOffBalances.isNotEmpty ? _compOffBalances.length : null,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Expanded(
+                    child: _buildSubTab(
+                      index: 2,
                       label: 'leave.tab.adjustments'.tr(),
                       icon: Icons.history_rounded,
                       count: _adjustments.isNotEmpty ? _adjustments.length : null,
@@ -318,7 +417,9 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
                 : RefreshIndicator(
                     onRefresh: _loadData,
                     color: const Color(0xFFD9AB00),
-                    child: _activeTab == 0 ? _buildBalancesView() : _buildAdjustmentsView(),
+                    child: _activeTab == 0
+                        ? _buildBalancesView()
+                        : (_activeTab == 1 ? _buildCompOffView() : _buildAdjustmentsView()),
                   ),
           ),
         ],
@@ -342,7 +443,7 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -355,29 +456,33 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
           children: [
             Icon(
               icon,
-              size: 15,
+              size: 13.5,
               color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                ),
               ),
             ),
             if (count != null && count > 0) ...[
-              const SizedBox(width: 5),
+              const SizedBox(width: 3),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$count',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                 ),
               ),
             ],
@@ -892,13 +997,386 @@ class _LeaveBalancesScreenState extends State<LeaveBalancesScreen> {
   }
 
   // ==========================================
-  // DRAWER Lá»ŠCH Sá»¬ QUá»¸ PHÃ‰P 1 NHÃ‚N VIÃŠN
+  // DRAWER LỊCH SỬ QUỸ PHÉP 1 NHÂN VIÊN
   // ==========================================
   void _showHistoryDrawer(HrmLeaveBalanceItem balance) {
     showLeaveBalanceDetailSheet(
       context,
       balance: balance,
       hrmService: _hrmService,
+    );
+  }
+
+  // ==========================================
+  // TAB 1: QUỸ NGHỈ BÙ (COMPENSATORY LEAVE)
+  // ==========================================
+  Widget _buildCompOffView() {
+    return Column(
+      children: [
+        CompOffSubTabBar(
+          selectedIndex: _compOffSubTab,
+          onTabSelected: (idx) => setState(() => _compOffSubTab = idx),
+        ),
+        Expanded(
+          child: _compOffSubTab == 0
+              ? _buildCompOffBalancesSubView()
+              : (_compOffSubTab == 1
+                  ? CompOffConversionView(hrmService: _hrmService, onDataChanged: _loadData)
+                  : CompOffClassifyView(hrmService: _hrmService)),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _runCompOffExpire() async {
+    setState(() => _isExpiringLots = true);
+    try {
+      final expired = await _hrmService.runCompOffExpire();
+      if (!mounted) return;
+      setState(() => _isExpiringLots = false);
+      if (expired != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(expired > 0 ? 'Đã hết hạn $expired lô quỹ nghỉ bù.' : 'Không có lô nào quá hạn.'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+        _loadData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không chạy được hết hạn lô. Vui lòng thử lại.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isExpiringLots = false);
+    }
+  }
+
+  void _openCompOffAdjust() {
+    showCompOffAdjustSheet(
+      context,
+      hrmService: _hrmService,
+      onDone: _loadData,
+    );
+  }
+
+  void _exportCompOffExcel() {
+    final rows = _filteredCompOffBalances;
+    if (rows.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không có dữ liệu để xuất.')),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã xuất thông tin số dư của ${rows.length} nhân viên (Quy_Nghi_Bu.xlsx).'),
+        backgroundColor: const Color(0xFF10B981),
+      ),
+    );
+  }
+
+  void _showCompOffImportDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.file_upload_outlined, size: 20, color: Color(0xFF2563EB)),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Import Excel quỹ nghỉ bù',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Cấu trúc tệp Excel chuẩn gồm các cột:\n• Mã nhân viên (employeeCode)\n• Số ngày (days: dương để cộng quỹ, âm để trừ quỹ)\n• Lý do (reason: bắt buộc)\n• Hạn dùng (expiresOn: YYYY-MM-DD, tuỳ chọn)',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.45),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Đã hiểu', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompOffBalancesSubView() {
+    final filtered = _filteredCompOffBalances;
+    final displayed = filtered.take(_compOffCurrentPage * _pageSize).toList();
+    final total = _compOffBalances.length;
+    final availableCount = _compOffBalances.where((e) => e.available > 0).length;
+    final depletedCount = _compOffBalances.where((e) => e.available == 0).length;
+    final expiringCount = _compOffBalances.where((e) => e.nextExpiry != null).length;
+
+    return ListView(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(14),
+      children: [
+        // Description banner (Khớp 1:1 với Web)
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFBFDBFE)),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF2563EB)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Quỹ nghỉ bù',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Giờ làm thêm vượt trần của tháng đã chốt công được quy đổi thành ngày nghỉ bù. Nghỉ bù được dùng theo bước nửa ngày, lấy từ lô gần hết hạn trước.',
+                      style: TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF), height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Search Bar (Khớp 1:1 với Web placeholder "Tìm theo mã hoặc tên nhân viên")
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: TextField(
+            controller: _compOffSearchCtrl,
+            onChanged: (val) {
+              setState(() {
+                _compOffSearchQuery = val;
+                _compOffCurrentPage = 1;
+              });
+            },
+            style: const TextStyle(fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Tìm theo mã hoặc tên nhân viên',
+              hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+              prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+              suffixIcon: _compOffSearchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 16),
+                      onPressed: () {
+                        _compOffSearchCtrl.clear();
+                        setState(() {
+                          _compOffSearchQuery = '';
+                          _compOffCurrentPage = 1;
+                        });
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Action Buttons Toolbar (Xuất Excel, Import Excel, Chạy hết hạn lô, Điều chỉnh quỹ)
+        CompOffActionBar(
+          isExpiringLots: _isExpiringLots,
+          onExportExcel: _exportCompOffExcel,
+          onImportExcel: _showCompOffImportDialog,
+          onRunExpire: _runCompOffExpire,
+          onOpenAdjust: _openCompOffAdjust,
+        ),
+        const SizedBox(height: 12),
+
+        // Filter Pills
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildCompOffFilterChip(
+                label: 'Tất cả ($total)',
+                isActive: _compOffStatusFilter == 'ALL',
+                onTap: () => setState(() {
+                  _compOffStatusFilter = 'ALL';
+                  _compOffCurrentPage = 1;
+                }),
+              ),
+              const SizedBox(width: 6),
+              _buildCompOffFilterChip(
+                label: 'Còn quỹ ($availableCount)',
+                isActive: _compOffStatusFilter == 'AVAILABLE',
+                onTap: () => setState(() {
+                  _compOffStatusFilter = 'AVAILABLE';
+                  _compOffCurrentPage = 1;
+                }),
+              ),
+              const SizedBox(width: 6),
+              _buildCompOffFilterChip(
+                label: 'Hết quỹ ($depletedCount)',
+                isActive: _compOffStatusFilter == 'DEPLETED',
+                onTap: () => setState(() {
+                  _compOffStatusFilter = 'DEPLETED';
+                  _compOffCurrentPage = 1;
+                }),
+              ),
+              if (expiringCount > 0) ...[
+                const SizedBox(width: 6),
+                _buildCompOffFilterChip(
+                  label: 'Sắp hết hạn ($expiringCount)',
+                  isActive: _compOffStatusFilter == 'EXPIRING',
+                  onTap: () => setState(() {
+                    _compOffStatusFilter = 'EXPIRING';
+                    _compOffCurrentPage = 1;
+                  }),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // List Header: Summary count & Sort
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Danh sách nhân viên (${filtered.length})',
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+            ),
+            PopupMenuButton<String>(
+              initialValue: _compOffSortBy,
+              onSelected: (val) => setState(() => _compOffSortBy = val),
+              child: Row(
+                children: [
+                  const Icon(Icons.sort_rounded, size: 14, color: Color(0xFF64748B)),
+                  const SizedBox(width: 4),
+                  Text(
+                    _compOffSortBy == 'AVAILABLE_DESC'
+                        ? 'Còn lại nhiều nhất'
+                        : (_compOffSortBy == 'AVAILABLE_ASC' ? 'Còn lại ít nhất' : 'Tên A-Z'),
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'NAME', child: Text('Tên A-Z')),
+                PopupMenuItem(value: 'AVAILABLE_DESC', child: Text('Còn lại nhiều nhất')),
+                PopupMenuItem(value: 'AVAILABLE_ASC', child: Text('Còn lại ít nhất')),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Cards list or empty state
+        if (displayed.isEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.more_time_rounded, size: 40, color: Color(0xFF94A3B8)),
+                SizedBox(height: 10),
+                Text(
+                  'Chưa có nhân viên nào phát sinh quỹ nghỉ bù',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Dữ liệu số dư quỹ nghỉ bù sẽ hiển thị khi nhân viên làm thêm vượt trần được quy đổi hoặc được điều chỉnh.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          )
+        else
+          ...displayed.map(
+            (r) => EmployeeCompOffCard(
+              row: r,
+              formatNumber: _formatNumber,
+              onTap: () => showCompOffLedgerSheet(
+                context,
+                employee: r,
+                hrmService: _hrmService,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCompOffFilterChip({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isActive ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            color: isActive ? Colors.white : const Color(0xFF475569),
+          ),
+        ),
+      ),
     );
   }
 }

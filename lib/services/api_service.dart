@@ -1,9 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import '../models/models.dart';
-import '../providers/auth_provider.dart';
 import 'api_client_helper.dart';
 
 class ApiService {
@@ -134,7 +131,7 @@ class ApiService {
         'target': targetIndex.toString(),
         'threshold_options': jsonEncode(thresholdPayload),
         'data_files': dataFiles,
-        if (reportFile != null) 'report_file': reportFile,
+        'report_file': ?reportFile,
       });
 
       final response = await _dio.put(

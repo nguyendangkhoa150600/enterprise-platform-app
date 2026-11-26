@@ -96,7 +96,7 @@ class HrmShiftsModals {
             return ListView.separated(
               shrinkWrap: true,
               itemCount: shifts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (_, i) {
                 final s = shifts[i];
                 return _buildShiftCard(
@@ -179,7 +179,7 @@ class HrmShiftsModals {
             return ListView.separated(
               shrinkWrap: true,
               itemCount: result.policies.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 final p = result.policies[i];
                 final isCurrent = p['id']?.toString() == result.currentId;

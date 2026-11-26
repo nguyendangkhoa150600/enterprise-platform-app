@@ -270,7 +270,7 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: eventsList.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, idx) {
                     final ev = eventsList[idx];
                     final isFirst = idx == 0;
@@ -299,7 +299,7 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                             border: Border.all(color: Colors.white, width: 2),
                             boxShadow: [
                               BoxShadow(
-                                color: (isFirst ? const Color(0xFF021E73) : const Color(0xFF94A3B8)).withOpacity(0.35),
+                                color: (isFirst ? const Color(0xFF021E73) : const Color(0xFF94A3B8)).withValues(alpha: 0.35),
                                 spreadRadius: 2,
                               ),
                             ],
@@ -447,7 +447,7 @@ class ProfileWorkHistoryTabContent extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: contracts.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, idx) {
                     final c = contracts[idx];
                     final code = c['contractCode']?.toString() ?? c['code']?.toString() ?? '--';

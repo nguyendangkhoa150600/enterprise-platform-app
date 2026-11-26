@@ -398,6 +398,7 @@ class HrmPayslipModals {
                               return;
                             }
                             setModalState(() => isSubmitting = true);
+                            final messenger = ScaffoldMessenger.of(context);
                             final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
                             await _service.createCorrection(
                               requestDate: today,
@@ -406,13 +407,13 @@ class HrmPayslipModals {
                               reason: '[Đính chính hồ sơ: $selectedField -> ${newValCtrl.text.trim()}] ${reasonCtrl.text.trim()}',
                             );
 
-                            Navigator.pop(ctx);
+                            if (ctx.mounted) Navigator.pop(ctx);
                             onSubmit({
                               'field': selectedField,
                               'newValue': newValCtrl.text.trim(),
                               'reason': reasonCtrl.text.trim(),
                             });
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(
                                 content: Text('hrm_modals.payslip.da_gui_de_nghi_chinh_sua'.tr()),
                                 behavior: SnackBarBehavior.floating,

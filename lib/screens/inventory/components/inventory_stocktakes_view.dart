@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../features/inventory/data/stocktake/stocktake_repository.dart';
+import '../../../features/inventory/domain/inventory_capabilities.dart';
+import '../../../features/inventory/domain/stocktake/stocktake_models.dart';
+import '../../../features/inventory/presentation/stocktake/create_stocktake_sheet.dart';
+import '../../../features/inventory/presentation/stocktake/stocktake_ui.dart';
+import '../../../features/inventory/presentation/utils/inventory_scope.dart';
 import '../../../models/inventory_models.dart';
+import '../../../theme/colors.dart';
 import 'stocktake_detail_sheet.dart';
 
+/// Tab "Lịch sử kiểm đếm" của trang Kho hàng (danh sách đợt của web `stocktake-hub.tsx`).
+///
+/// Tự nạp đợt từ `GET /stocktakes?limit=200` (đủ trường như web). Các tham số cũ được giữ để
+/// màn cha không phải đổi; [onRefresh] vẫn được gọi khi kéo làm mới để màn cha đồng bộ.
 class InventoryStocktakesView extends StatefulWidget {
   final List<StocktakeSession> stocktakes;
   final bool isLoading;
@@ -20,474 +31,293 @@ class InventoryStocktakesView extends StatefulWidget {
 }
 
 class _InventoryStocktakesViewState extends State<InventoryStocktakesView> {
+  final _repo = StocktakeRepository.instance;
+
+  List<InvStocktakeSession> _sessions = [];
+  List<InvStocktakeWarehouse> _warehouses = [];
+  bool _loading = true;
+  String? _error;
+
   String _searchQuery = '';
-  String _selectedStatusFilter = 'ALL'; // ALL, COUNTING, PENDING_APPROVAL, APPROVED, POSTED, DRAFT
+  String _statusFilter = 'all';
+  String _warehouseFilter = 'all';
 
-  List<StocktakeSession> get _filteredSessions {
-    var list = widget.stocktakes;
+  @override
+  void initState() {
+    super.initState();
+    InventoryScope.instance.ensureCapabilities();
+    _load();
+  }
 
-    if (_selectedStatusFilter != 'ALL') {
-      list = list.where((s) => s.status.toUpperCase() == _selectedStatusFilter).toList();
+  Future<void> _load() async {
+    setState(() {
+      _loading = _sessions.isEmpty;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait<Object>([
+        _repo.loadStocktakes(),
+        _repo.loadWarehouses().catchError((Object _) => <InvStocktakeWarehouse>[]),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _sessions = results[0] as List<InvStocktakeSession>;
+        _warehouses = results[1] as List<InvStocktakeWarehouse>;
+      });
+    } catch (e) {
+      InventoryScope.instance.onError(e);
+      if (!mounted) return;
+      setState(() => _error = inventoryErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
 
-    if (_searchQuery.trim().isEmpty) return list;
+  Future<void> _refresh() async {
+    await Future.wait([
+      _load(),
+      InventoryScope.instance.ensureCapabilities(force: true),
+      widget.onRefresh().catchError((Object _) {}),
+    ]);
+  }
+
+  void _replaceSession(InvStocktakeSession s) {
+    if (!mounted) return;
+    setState(() {
+      final i = _sessions.indexWhere((x) => x.id == s.id);
+      if (i >= 0) {
+        _sessions[i] = s;
+      } else {
+        _sessions.insert(0, s);
+      }
+    });
+  }
+
+  Future<void> _openDetail(InvStocktakeSession s) async {
+    await StocktakeDetailSheet.show(context, session: s, onSessionUpdated: _replaceSession);
+  }
+
+  Future<void> _create() async {
+    final created = await CreateStocktakeSheet.show(context, warehouses: _warehouses);
+    if (created == null || !mounted) return;
+    StocktakeUi.notice(context, 'inventory.stocktake.notice_created'.tr(args: {'code': created.code}));
+    await _load();
+    if (!mounted) return;
+    final fresh = _sessions.where((x) => x.id == created.id).firstOrNull ?? created;
+    await _openDetail(fresh);
+  }
+
+  List<InvStocktakeSession> get _filtered {
     final q = _searchQuery.trim().toLowerCase();
-    return list.where((s) {
-      final code = s.code.toLowerCase();
-      final title = s.title.toLowerCase();
-      final wh = s.warehouseCode.toLowerCase();
-      final whName = (s.warehouseName ?? '').toLowerCase();
-      return code.contains(q) || title.contains(q) || wh.contains(q) || whName.contains(q);
+    return _sessions.where((s) {
+      if (_statusFilter != 'all' && s.status != _statusFilter) return false;
+      if (_warehouseFilter != 'all' && s.warehouseCode != _warehouseFilter) return false;
+      if (q.isNotEmpty && !s.code.toLowerCase().contains(q) && !s.title.toLowerCase().contains(q)) return false;
+      return true;
     }).toList();
+  }
+
+  Future<void> _pickWarehouseFilter() async {
+    final v = await showStocktakePicker(
+      context,
+      title: 'inventory.stocktake.filter_warehouse'.tr(),
+      selected: _warehouseFilter,
+      options: [
+        StocktakePickOption('all', 'inventory.stocktake.filter_all_warehouses'.tr()),
+        ..._warehouses.map((w) => StocktakePickOption(w.code, w.code)),
+      ],
+    );
+    if (!mounted || v == null) return;
+    setState(() => _warehouseFilter = v);
+  }
+
+  Future<void> _pickStatusFilter() async {
+    final v = await showStocktakePicker(
+      context,
+      title: 'inventory.stocktake.filter_status'.tr(),
+      selected: _statusFilter,
+      options: [
+        StocktakePickOption('all', 'inventory.stocktake.filter_all_statuses'.tr()),
+        ...StocktakeStatuses.all.map((st) => StocktakePickOption(st, StocktakeUi.statusLabel(st))),
+      ],
+    );
+    if (!mounted || v == null) return;
+    setState(() => _statusFilter = v);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final filtered = _filteredSessions;
-
-    return RefreshIndicator(
-      onRefresh: widget.onRefresh,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Summary Card
-            _buildSummaryCard(),
-            const SizedBox(height: 14),
-
-            // Search Bar
-            _buildSearchBar(),
-            const SizedBox(height: 12),
-
-            // Filter Chips
-            _buildFilterChips(),
-            const SizedBox(height: 14),
-
-            // List of Stocktake Sessions
-            if (filtered.isEmpty)
-              _buildEmptyState()
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filtered.length,
-                separatorBuilder: (_, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return _buildSessionCard(filtered[index]);
-                },
-              ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard() {
-    final countingCount = widget.stocktakes.where((s) => s.status.toUpperCase() == 'COUNTING').length;
-    final pendingCount = widget.stocktakes.where((s) => s.status.toUpperCase() == 'PENDING_APPROVAL').length;
-    final completedCount = widget.stocktakes.where((s) => s.status.toUpperCase() == 'POSTED' || s.status.toUpperCase() == 'APPROVED').length;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ValueListenableBuilder<InventoryCapabilities>(
+      valueListenable: InventoryScope.instance.capabilities,
+      builder: (context, caps, _) {
+        final filtered = _filtered;
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
             children: [
-              const Expanded(
-                child: Text(
-                  'Lịch sử & Tiến độ Kiểm kê',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
-                ),
-                child: Text(
-                  '${widget.stocktakes.length} đợt kiểm',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF2563EB),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMiniStat(
-                  label: 'Đang đếm',
-                  value: '$countingCount đợt',
-                  color: const Color(0xFF2563EB),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMiniStat(
-                  label: 'Chờ duyệt',
-                  value: '$pendingCount đợt',
-                  color: const Color(0xFFD97706),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMiniStat(
-                  label: 'Hoàn tất',
-                  value: '$completedCount đợt',
-                  color: const Color(0xFF059669),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniStat({required String label, required String value, required Color color}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: TextField(
-        onChanged: (val) => setState(() => _searchQuery = val),
-        decoration: InputDecoration(
-          hintText: 'Tìm theo mã phiếu KK, tên, mã kho...',
-          hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-          prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF94A3B8)),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, size: 18, color: Color(0xFF94A3B8)),
-                  onPressed: () => setState(() => _searchQuery = ''),
+              _buildHeader(),
+              const SizedBox(height: 12),
+              _buildToolbar(caps),
+              const SizedBox(height: 10),
+              _buildFilters(),
+              const SizedBox(height: 14),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: CircularProgressIndicator()),
                 )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        ),
-      ),
+              else if (_error != null)
+                _buildError()
+              else if (filtered.isEmpty)
+                _buildEmpty()
+              else
+                ...filtered.map(_buildSessionCard),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildFilterChips() {
-    final chips = [
-      {'key': 'ALL', 'label': 'Tất cả (${widget.stocktakes.length})'},
-      {'key': 'COUNTING', 'label': 'Đang đếm'},
-      {'key': 'PENDING_APPROVAL', 'label': 'Chờ duyệt'},
-      {'key': 'POSTED', 'label': 'Đã hoàn tất'},
-      {'key': 'DRAFT', 'label': 'Dự thảo'},
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: chips.map((c) {
-          final isSelected = _selectedStatusFilter == c['key'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(
-                c['label']!,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
-                ),
-              ),
-              selected: isSelected,
-              selectedColor: const Color(0xFF2563EB),
-              backgroundColor: const Color(0xFFF1F5F9),
-              side: BorderSide(
-                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-              ),
-              onSelected: (_) => setState(() => _selectedStatusFilter = c['key']!),
+  Widget _buildHeader() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: StocktakeUi.blue50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFDBEAFE)),
             ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildSessionCard(StocktakeSession session) {
-    final progress = session.totalItems > 0
-        ? (session.countedItems / session.totalItems).clamp(0.0, 1.0)
-        : 0.0;
-    final percent = (progress * 100).toInt();
-
-    final dateStr = session.stocktakeDate != null && session.stocktakeDate!.isNotEmpty
-        ? session.stocktakeDate!
-        : DateFormat('HH:mm dd/MM/yyyy').format(session.createdAt);
-
-    return InkWell(
-      onTap: () => StocktakeDetailSheet.show(
-        context,
-        session: session,
-        onSessionUpdated: widget.onRefresh,
-      ),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Row 1: Code & Status
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                  ),
-                  child: Text(
-                    session.code.isNotEmpty ? session.code : 'KK-${session.id.substring(0, 8)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: session.statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: session.statusColor.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        session.statusLabel,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: session.statusColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF94A3B8)),
-                  ],
-                ),
-              ],
-            ),
-          const SizedBox(height: 10),
-
-          // Title
-          Text(
-            session.title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.2,
-            ),
+            child: Text('inventory.stocktake.hub_badge'.tr(),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: StocktakeUi.blue600)),
           ),
           const SizedBox(height: 6),
-
-          // Warehouse & Date
-          Row(
-            children: [
-              const Icon(Icons.warehouse_outlined, size: 14, color: Color(0xFF64748B)),
-              const SizedBox(width: 4),
-              Text(
-                'Kho: ${session.warehouseCode}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-              ),
-              const SizedBox(width: 12),
-              const Icon(Icons.calendar_today_outlined, size: 13, color: Color(0xFF64748B)),
-              const SizedBox(width: 4),
-              Text(
-                dateStr,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Progress bar
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Tiến độ kiểm đếm: ${session.countedItems}/${session.totalItems} mặt hàng',
-                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    '$percent%',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 6,
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    session.differenceItems > 0 ? const Color(0xFFF59E0B) : const Color(0xFF2563EB),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Difference stats (if any)
-          if (session.differenceItems > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFDE68A)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFD97706)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Phát hiện lệch ${session.differenceItems} mặt hàng (giá trị lệch: ${_formatCurrency(session.totalVarianceValue)})',
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E), fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          Text('inventory.stocktake.hub_title'.tr(),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.slate900)),
+          const SizedBox(height: 3),
+          Text('inventory.stocktake.hub_desc'.tr(),
+              style: const TextStyle(fontSize: 12.5, color: AppColors.slate500, height: 1.4)),
         ],
-      ),
-    ),
-  );
-}
+      );
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 36),
-        child: Column(
-          children: [
-            const Icon(Icons.fact_check_outlined, size: 48, color: Color(0xFF94A3B8)),
-            const SizedBox(height: 12),
-            const Text(
-              'Không tìm thấy đợt kiểm kê nào.',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF475569),
+  Widget _buildToolbar(InventoryCapabilities caps) => Row(
+        children: [
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: StocktakeUi.blue600,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            onPressed: caps.canCreateStocktake ? _create : null,
+            icon: const Icon(Icons.add, size: 18),
+            label: Text('inventory.stocktake.create_button'.tr(), style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              style: const TextStyle(fontSize: 13),
+              decoration: StocktakeUi.input(
+                hint: 'inventory.stocktake.list_search'.tr(),
+                prefix: const Icon(Icons.search, size: 18, color: AppColors.slate400),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              _searchQuery.isNotEmpty || _selectedStatusFilter != 'ALL'
-                  ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.'
-                  : 'Chưa có phiên kiểm kê nào được tạo trên hệ thống.',
-              style: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+          ),
+        ],
+      );
+
+  Widget _buildFilters() {
+    final whText = _warehouseFilter == 'all' ? 'inventory.stocktake.filter_all_warehouses'.tr() : _warehouseFilter;
+    final stText =
+        _statusFilter == 'all' ? 'inventory.stocktake.filter_all_statuses'.tr() : StocktakeUi.statusLabel(_statusFilter);
+    return Row(children: [
+      Expanded(child: StocktakeSelectField(text: whText, onTap: _pickWarehouseFilter)),
+      const SizedBox(width: 8),
+      Expanded(child: StocktakeSelectField(text: stText, onTap: _pickStatusFilter)),
+    ]);
+  }
+
+  Widget _buildSessionCard(InvStocktakeSession s) {
+    final meta = '${s.warehouseCode}${s.stocktakeDate != null ? ' · ${s.stocktakeDate}' : ''}';
+    final progress = s.totalItems > 0
+        ? 'inventory.stocktake.card_counted'.tr(args: {'counted': s.countedItems, 'total': s.totalItems})
+        : 'inventory.stocktake.card_no_snapshot'.tr();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openDetail(s),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.slate200),
             ),
-          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(s.code,
+                        style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.slate900)),
+                  ),
+                  StocktakeUi.statusBadge(s.status),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.slate400),
+                ]),
+                const SizedBox(height: 6),
+                Text(s.title,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate800, height: 1.3)),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Expanded(child: Text(meta, style: const TextStyle(fontSize: 12, color: AppColors.slate500))),
+                  Text(progress, style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
+                ]),
+                if (s.differenceItems > 0) ...[
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    const Icon(Icons.warning_amber_rounded, size: 14, color: StocktakeUi.red600),
+                    const SizedBox(width: 4),
+                    Text('inventory.stocktake.card_diff'.tr(args: {'n': s.differenceItems}),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: StocktakeUi.red600)),
+                  ]),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  String _formatCurrency(num val) {
-    final parts = val.toStringAsFixed(0).split('.');
-    final intPart = parts[0];
-    final regExp = RegExp(r'\B(?=(\d{3})+(?!\d))');
-    final formatted = intPart.replaceAllMapped(regExp, (Match m) => '.');
-    return '$formatted đ';
-  }
-}
+  Widget _buildEmpty() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 36),
+        child: Column(children: [
+          const Icon(Icons.fact_check_outlined, size: 44, color: AppColors.slate400),
+          const SizedBox(height: 10),
+          Text('inventory.stocktake.list_empty'.tr(),
+              textAlign: TextAlign.center, style: const TextStyle(fontSize: 13.5, color: AppColors.slate400)),
+        ]),
+      );
 
+  Widget _buildError() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 36),
+        child: Column(children: [
+          const Icon(Icons.error_outline, size: 40, color: StocktakeUi.red600),
+          const SizedBox(height: 10),
+          Text(_error ?? '', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: AppColors.slate600)),
+          const SizedBox(height: 10),
+          OutlinedButton(onPressed: _load, child: Text('inventory.stocktake.retry'.tr())),
+        ]),
+      );
+}

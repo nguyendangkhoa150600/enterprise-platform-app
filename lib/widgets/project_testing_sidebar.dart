@@ -166,7 +166,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                             return Container(
                               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.amber.withOpacity(0.1) : Colors.transparent,
+                                color: isSelected ? AppColors.amber.withValues(alpha: 0.1) : Colors.transparent,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: ListTile(
@@ -316,7 +316,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                                   return Container(
                                     margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: isSelected ? AppColors.emeraldAccent.withOpacity(0.1) : Colors.transparent,
+                                      color: isSelected ? AppColors.emeraldAccent.withValues(alpha: 0.1) : Colors.transparent,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: ListTile(
@@ -409,7 +409,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                       addressController.text.isEmpty ? null : addressController.text,
                       descController.text.isEmpty ? null : descController.text,
                     );
-                if (mounted) Navigator.pop(context);
+                if (mounted && context.mounted) Navigator.pop(context);
               }
             },
             child: Text('common.create'.tr()),
@@ -447,7 +447,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
                       addressController.text.isEmpty ? null : addressController.text,
                       descController.text.isEmpty ? null : descController.text,
                     );
-                if (mounted) Navigator.pop(context);
+                if (mounted && context.mounted) Navigator.pop(context);
               }
             },
             child: Text('common.save'.tr()),
@@ -470,7 +470,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
             onPressed: () async {
               if (project.projectId != null) {
                 await context.read<AnalysisProvider>().deleteProject(project.projectId!);
-                if (mounted) Navigator.pop(context);
+                if (mounted && context.mounted) Navigator.pop(context);
               }
             },
             child: Text('common.delete'.tr(), style: TextStyle(color: Colors.white)),
@@ -497,7 +497,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
             onPressed: () async {
               if (nameController.text.isNotEmpty) {
                 await context.read<AnalysisProvider>().addTesting(nameController.text);
-                if (mounted) Navigator.pop(context);
+                if (mounted && context.mounted) Navigator.pop(context);
               }
             },
             child: Text('common.create'.tr()),
@@ -524,7 +524,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
             onPressed: () async {
               if (nameController.text.isNotEmpty && testing.testingId != null) {
                 await context.read<AnalysisProvider>().updateTesting(testing.testingId!, nameController.text);
-                if (mounted) Navigator.pop(context);
+                if (mounted && context.mounted) Navigator.pop(context);
               }
             },
             child: Text('common.save'.tr()),
@@ -547,7 +547,7 @@ class _ProjectTestingSidebarState extends State<ProjectTestingSidebar> {
             onPressed: () async {
               if (testing.testingId != null) {
                 await context.read<AnalysisProvider>().deleteTesting(testing.testingId!);
-                if (mounted) Navigator.pop(context);
+                if (mounted && context.mounted) Navigator.pop(context);
               }
             },
             child: Text('common.delete'.tr(), style: TextStyle(color: Colors.white)),

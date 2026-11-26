@@ -347,7 +347,38 @@ String _normalizeRequestKey(String? raw) {
   return 'leave';
 }
 
-void showCorrectionFormDialog({
+/// Giá trị điền sẵn lúc mở form (bản nháp của Trợ lý Savina, web `RequestFormInitial`); ô null giữ mặc định của form.
+/// Ngày giờ áp vào khoảng thời gian đầu của loại đơn đang mở; lý do, dự án chỉ chọn khi có trong danh mục tải về.
+class RequestFormPrefill {
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  final TimeOfDay? fromTime;
+  final TimeOfDay? toTime;
+  final String? leaveTypeId;
+  final String? reasonId;
+  final String? description;
+  final String? destination;
+
+  /// DOMESTIC | OVERSEAS | INTERSITE.
+  final String? businessTripType;
+  final String? projectId;
+
+  const RequestFormPrefill({
+    this.fromDate,
+    this.toDate,
+    this.fromTime,
+    this.toTime,
+    this.leaveTypeId,
+    this.reasonId,
+    this.description,
+    this.destination,
+    this.businessTripType,
+    this.projectId,
+  });
+}
+
+/// Mở form tạo đơn; trả về đơn vừa gửi (nhiều khoảng thời gian là đơn cuối cùng), null khi đóng không gửi.
+Future<AttendanceCorrection?> showCorrectionFormDialog({
   required BuildContext context,
   required HrmAttendanceService service,
   AttendanceRecord? item,
@@ -355,6 +386,7 @@ void showCorrectionFormDialog({
   AttendanceCorrection? draftItem,
   AttendanceContext? attendanceContext,
   List<LeaveType> availableLeaveTypes = const [],
+  RequestFormPrefill? prefill,
   required Future<void> Function(AttendanceCorrection draft) onSaveDraft,
   required Future<void> Function(AttendanceCorrection? deletedDraft) onSubmitSuccess,
 }) {
@@ -470,6 +502,32 @@ void showCorrectionFormDialog({
     }
   }
 
+  // Điền sẵn từ bản nháp của Trợ lý (lý do, dự án áp khi danh mục tải xong, xem bên dưới).
+  if (prefill != null) {
+    final target = switch (selectedCategoryKey) {
+      'ot' => otIntervals.first,
+      'business_trip' => tripIntervals.first,
+      'leave' => leaveIntervals.first,
+      _ => null,
+    };
+    if (target != null) {
+      if (prefill.fromDate != null) target.fromDate = prefill.fromDate!;
+      if (prefill.toDate != null) target.toDate = prefill.toDate!;
+      if (prefill.fromTime != null) target.fromTime = prefill.fromTime!;
+      if (prefill.toTime != null) target.toTime = prefill.toTime!;
+    }
+    if (prefill.description != null) descController.text = prefill.description!;
+    if (prefill.destination != null) tripLocationCtrl.text = prefill.destination!;
+    switch (prefill.businessTripType) {
+      case 'OVERSEAS':
+        tripScope = 'Công tác nước ngoài (Quốc tế)';
+      case 'INTERSITE':
+        tripScope = 'Công tác nội bộ liên chi nhánh';
+      case 'DOMESTIC':
+        tripScope = 'Công tác trong nước (Nội địa)';
+    }
+  }
+
   // Attachments & submission state
   String? selectedFileName;
   int? selectedFileSize;
@@ -477,7 +535,7 @@ void showCorrectionFormDialog({
   bool isSavingDraft = false;
   String? modalErrorMessage;
 
-  showModalBottomSheet(
+  return showModalBottomSheet<AttendanceCorrection>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -531,7 +589,8 @@ void showCorrectionFormDialog({
             )));
           }
 
-          selectedLeaveReason ??= leaveReasonsList.first;
+          selectedLeaveReason ??=
+              leaveReasonsList.where((r) => r.id == prefill?.leaveTypeId).firstOrNull ?? leaveReasonsList.first;
 
           // Fetch dynamic reasons and linkable projects from backend (Zero-Mock Policy)
           if (!didFetchServerReasons) {
@@ -546,6 +605,16 @@ void showCorrectionFormDialog({
               if (results[1].isNotEmpty) tripReasons = results[1] as List<HrmRequestReason>;
               if (results[2].isNotEmpty) correctionReasons = results[2] as List<HrmRequestReason>;
               if (results[3].isNotEmpty) linkableProjects = results[3] as List<ProjectItem>;
+              final wantedReasonId = prefill?.reasonId;
+              if (wantedReasonId != null) {
+                selectedOtReason = otReasons.where((r) => r.id == wantedReasonId).firstOrNull ?? selectedOtReason;
+                selectedTripReason = tripReasons.where((r) => r.id == wantedReasonId).firstOrNull ?? selectedTripReason;
+              }
+              final wantedProjectId = prefill?.projectId;
+              if (wantedProjectId != null) {
+                selectedTripProject =
+                    linkableProjects.where((p) => p.id == wantedProjectId).firstOrNull ?? selectedTripProject;
+              }
               selectedOtReason = otReasons.firstWhere((r) => r.id == selectedOtReason?.id, orElse: () => otReasons.first);
               selectedTripReason = tripReasons.firstWhere((r) => r.id == selectedTripReason?.id, orElse: () => tripReasons.first);
               selectedCorrectionReason = correctionReasons.firstWhere((r) => r.id == selectedCorrectionReason?.id, orElse: () => correctionReasons.first);
@@ -943,6 +1012,7 @@ void showCorrectionFormDialog({
                                   modalErrorMessage = null;
                                 });
 
+                                AttendanceCorrection? created;
                                 try {
                                   if (selectedCategoryKey == 'leave') {
                                     final reasonTag = selectedLeaveReason?.name ?? 'Nghỉ phép năm';
@@ -982,7 +1052,7 @@ void showCorrectionFormDialog({
                                       }).toList();
                                     }
 
-                                    await service.createCorrection(
+                                    created = await service.createCorrection(
                                       employeeId: attendanceContext?.employeeId,
                                       attendanceId: item?.id,
                                       leaveTypeId: targetLeaveTypeId,
@@ -1010,7 +1080,7 @@ void showCorrectionFormDialog({
                                       final fDate = '${interval.fromDate.year}-${interval.fromDate.month.toString().padLeft(2, '0')}-${interval.fromDate.day.toString().padLeft(2, '0')}';
                                       final tDate = '${interval.toDate.year}-${interval.toDate.month.toString().padLeft(2, '0')}-${interval.toDate.day.toString().padLeft(2, '0')}';
 
-                                      await service.createCorrection(
+                                      created = await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
                                         attendanceId: item?.id,
                                         reasonId: actualReasonId,
@@ -1057,7 +1127,7 @@ void showCorrectionFormDialog({
                                       final fDate = '${interval.fromDate.year}-${interval.fromDate.month.toString().padLeft(2, '0')}-${interval.fromDate.day.toString().padLeft(2, '0')}';
                                       final tDate = '${interval.toDate.year}-${interval.toDate.month.toString().padLeft(2, '0')}-${interval.toDate.day.toString().padLeft(2, '0')}';
 
-                                      await service.createCorrection(
+                                      created = await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
                                         attendanceId: item?.id,
                                         reasonId: actualReasonId,
@@ -1092,7 +1162,7 @@ void showCorrectionFormDialog({
 
                                     final fDate = '${correctionDate.year}-${correctionDate.month.toString().padLeft(2, '0')}-${correctionDate.day.toString().padLeft(2, '0')}';
 
-                                    await service.createCorrection(
+                                    created = await service.createCorrection(
                                       employeeId: attendanceContext?.employeeId,
                                       attendanceId: item?.id,
                                       reasonId: actualReasonId,
@@ -1114,7 +1184,7 @@ void showCorrectionFormDialog({
                                   }
 
                                   if (ctx.mounted) {
-                                    Navigator.pop(ctx);
+                                    Navigator.pop(ctx, created);
                                   }
 
                                   if (draftItem != null && !draftItem.id.startsWith('DFT-')) {
@@ -1581,35 +1651,83 @@ Widget _buildOvertimeForm({
           const SizedBox(height: 6),
         ],
 
-        _buildDateTimeRangeRow(
+        // 1. Ngày làm thêm (Chỉ chọn 1 ngày duy nhất cho mỗi khoảng, đồng bộ 1:1 với Web)
+        Text(
+          i == 0 ? 'Ngày làm thêm *' : 'Ngày làm thêm (khoảng ${i + 1}) *',
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+        ),
+        const SizedBox(height: 6),
+        _buildDateCapsule(
           context: context,
-          fromLabel: i == 0 ? 'Từ ngày giờ làm thêm *' : 'Từ ngày giờ làm thêm (khoảng ${i + 1}) *',
-          toLabel: i == 0 ? 'Đến ngày giờ làm thêm *' : 'Đến ngày giờ làm thêm *',
-          fromDate: intervals[i].fromDate,
-          toDate: intervals[i].toDate,
-          fromTime: intervals[i].fromTime,
-          toTime: intervals[i].toTime,
-          errorText: intervals[i].error,
-          onPickFromDate: (d) => setModalState(() {
+          date: intervals[i].fromDate,
+          onSelected: (d) => setModalState(() {
             intervals[i].fromDate = d;
-            if (intervals[i].toDate.isBefore(d)) intervals[i].toDate = d;
-            onClearError?.call();
-          }),
-          onPickToDate: (d) => setModalState(() {
             intervals[i].toDate = d;
             onClearError?.call();
           }),
-          onPickFromTime: (t) => setModalState(() {
-            intervals[i].fromTime = t;
-            onClearError?.call();
-          }),
-          onPickToTime: (t) => setModalState(() {
-            intervals[i].toTime = t;
-            onClearError?.call();
-          }),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
 
+        // 2. Từ giờ & Đến giờ (Đặt cạnh nhau trên 1 hàng như Web)
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Từ giờ *',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildTimeCapsule(
+                    context: context,
+                    time: intervals[i].fromTime,
+                    label: 'giờ bắt đầu',
+                    onSelected: (t) => setModalState(() {
+                      intervals[i].fromTime = t;
+                      onClearError?.call();
+                    }),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Đến giờ *',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildTimeCapsule(
+                    context: context,
+                    time: intervals[i].toTime,
+                    label: 'giờ kết thúc',
+                    onSelected: (t) => setModalState(() {
+                      intervals[i].toTime = t;
+                      onClearError?.call();
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (intervals[i].error != null && intervals[i].error!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            intervals[i].error!,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFDC2626),
+              height: 1.35,
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
 
         // Sáng hôm sau (Khớp 1:1 với Web: Làm việc bình thường / Nghỉ nửa ngày / Nghỉ cả ngày)
@@ -1710,7 +1828,11 @@ Widget _buildOvertimeForm({
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${intervals[i].fromDate.day}/${intervals[i].fromDate.month} ${_formatTime(intervals[i].fromTime)} - ${intervals[i].toDate.day}/${intervals[i].toDate.month} ${_formatTime(intervals[i].toTime)}',
+                            intervals[i].fromDate.year == intervals[i].toDate.year &&
+                                    intervals[i].fromDate.month == intervals[i].toDate.month &&
+                                    intervals[i].fromDate.day == intervals[i].toDate.day
+                                ? '${intervals[i].fromDate.day.toString().padLeft(2, '0')}/${intervals[i].fromDate.month.toString().padLeft(2, '0')} ${_formatTime(intervals[i].fromTime)} - ${_formatTime(intervals[i].toTime)}'
+                                : '${intervals[i].fromDate.day}/${intervals[i].fromDate.month} ${_formatTime(intervals[i].fromTime)} - ${intervals[i].toDate.day}/${intervals[i].toDate.month} ${_formatTime(intervals[i].toTime)}',
                             style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
                           ),
                           if (intervals[i].nextDayRest != 'NONE') ...[
@@ -3247,6 +3369,179 @@ Future<void> _showNativeTimeOnlyPicker({
       onSelected(picked);
     }
   }
+}
+
+/// Kích hoạt chọn ngày Native (Cupertino Date Wheel trên iOS, DatePicker trên Android)
+void _showNativeDateOnlyPicker({
+  required BuildContext context,
+  required DateTime initialDate,
+  required ValueChanged<DateTime> onSelected,
+  DateTime? minDate,
+}) {
+  final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+  DateTime tempDate = initialDate;
+
+  if (isIOS) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return Container(
+          height: 290,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Huỷ', style: TextStyle(color: Color(0xFF64748B), fontSize: 15)),
+                      ),
+                      const Text(
+                        'Chọn ngày',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0F172A)),
+                      ),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          onSelected(tempDate);
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Xong', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF021E73), fontSize: 15)),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: CupertinoDatePicker(
+                    initialDateTime: initialDate.isBefore(minDate ?? DateTime(2025)) ? (minDate ?? DateTime(2025)) : initialDate,
+                    minimumDate: minDate,
+                    maximumDate: DateTime(2028),
+                    mode: CupertinoDatePickerMode.date,
+                    onDateTimeChanged: (DateTime newDt) {
+                      tempDate = newDt;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  } else {
+    showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(minDate ?? DateTime(2025)) ? (minDate ?? DateTime(2025)) : initialDate,
+      firstDate: minDate ?? DateTime(2025),
+      lastDate: DateTime(2028),
+    ).then((pickedDate) {
+      if (pickedDate != null) {
+        onSelected(pickedDate);
+      }
+    });
+  }
+}
+
+/// Hộp chọn ngày chuẩn Web (dd/MM/yyyy kèm icon lịch)
+Widget _buildDateCapsule({
+  required BuildContext context,
+  required DateTime date,
+  required ValueChanged<DateTime> onSelected,
+  DateTime? minDate,
+}) {
+  final dateStr = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+  return InkWell(
+    onTap: () => _showNativeDateOnlyPicker(
+      context: context,
+      initialDate: date,
+      onSelected: onSelected,
+      minDate: minDate,
+    ),
+    borderRadius: BorderRadius.circular(10),
+    child: Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              dateStr,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+          const Icon(Icons.calendar_month_outlined, size: 18, color: Color(0xFF64748B)),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Hộp chọn giờ chuẩn Web (HH:mm kèm icon đồng hồ)
+Widget _buildTimeCapsule({
+  required BuildContext context,
+  required TimeOfDay time,
+  required String label,
+  required ValueChanged<TimeOfDay> onSelected,
+}) {
+  final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+  return InkWell(
+    onTap: () => _showNativeTimeOnlyPicker(
+      context: context,
+      initialTime: time,
+      timeType: label,
+      onSelected: onSelected,
+    ),
+    borderRadius: BorderRadius.circular(10),
+    child: Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              timeStr,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+          const Icon(Icons.access_time_rounded, size: 18, color: Color(0xFF64748B)),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Hộp chọn thời gian Unified Date Capsule theo chuẩn Rule 5.3

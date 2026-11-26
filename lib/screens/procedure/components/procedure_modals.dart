@@ -1,9 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../models/procedure_models.dart';
 import '../../../services/module_business_service.dart';
 import '../../../theme/colors.dart';
 import '../../../core/i18n/app_i18n.dart';
+import '../../../features/finance/domain/models/finance_models.dart';
+import '../../../features/finance/presentation/finance_routes.dart';
+import '../../../widgets/user_avatar.dart';
+
+export 'procedure_create_instance_dialog.dart';
 
 String _formatDateTime(String? raw) {
   if (raw == null || raw.isEmpty) return '-';
@@ -35,128 +41,6 @@ Widget _buildDetailRow(String label, String val) {
           child: Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
         ),
       ],
-    ),
-  );
-}
-
-// 1. Mở hồ sơ mới (Dialog thực tế với API)
-void showCreateProcedureInstanceDialog({
-  required BuildContext context,
-  required List<ProcedureDefinition> definitions,
-  required ModuleBusinessService service,
-  required VoidCallback onCreated,
-}) {
-  String? selectedDefId = definitions.isNotEmpty ? definitions.first.id : null;
-  final titleController = TextEditingController();
-  bool isSubmitting = false;
-
-  showDialog(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (context, setDialogState) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.add_circle_outline, color: Color(0xFF2563EB)),
-              const SizedBox(width: 8),
-              Text('procedure.create.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('procedure.create.select_procedure'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.white,
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: selectedDefId,
-                      items: definitions.map((def) {
-                        return DropdownMenuItem<String>(
-                          value: def.id,
-                          child: Text(def.name, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)), overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setDialogState(() => selectedDefId = val);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text('procedure.create.case_title'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    hintText: 'procedure.create.title_hint'.tr(),
-                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-              child: Text('common.cancel'.tr()),
-            ),
-            ElevatedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      final title = titleController.text.trim();
-                      if (title.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('procedure.create.title_required'.tr())),
-                        );
-                        return;
-                      }
-                      if (selectedDefId == null) return;
-
-                      setDialogState(() => isSubmitting = true);
-                      final newInst = await service.createProcedureInstance(
-                        definitionId: selectedDefId!,
-                        title: title,
-                      );
-                      if (context.mounted) {
-                        Navigator.pop(ctx);
-                        if (newInst != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('procedure.create.success'.tr(args: {'code': newInst.code}))),
-                          );
-                          onCreated();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('procedure.create.failed'.tr())),
-                          );
-                        }
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: isSubmitting
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text('procedure.create.submit'.tr()),
-            ),
-          ],
-        );
-      },
     ),
   );
 }
@@ -291,6 +175,158 @@ Widget _buildRaciRoleTag(String role, List<String> people) {
   );
 }
 
+Widget _buildFinanceVoucherCard(BuildContext context, ProcedureInstanceStep step) {
+  final voucher = step.financeVoucher;
+  final integration = step.integration;
+  final isPayment = integration?.voucherKind.toUpperCase() != 'RECEIPT' &&
+      !step.name.toLowerCase().contains('phiếu thu');
+  final kindLabel = isPayment ? 'Phiếu chi' : 'Phiếu thu';
+
+  Color bgColor = const Color(0xFFEFF6FF);
+  Color borderColor = const Color(0xFFBFDBFE);
+  Color iconColor = const Color(0xFF2563EB);
+  String title = 'Chờ Tài chính tạo phiếu';
+  String? detail;
+
+  if (voucher != null) {
+    switch (voucher.state) {
+      case 'requested':
+        bgColor = const Color(0xFFF8FAFC);
+        borderColor = const Color(0xFFE2E8F0);
+        iconColor = const Color(0xFF64748B);
+        title = (voucher.code != null && voucher.code!.isNotEmpty)
+            ? '${voucher.code} · Chờ cập nhật phiếu'
+            : 'Chờ Tài chính tạo phiếu';
+        break;
+      case 'linked':
+        bgColor = const Color(0xFFEFF6FF);
+        borderColor = const Color(0xFFBFDBFE);
+        iconColor = const Color(0xFF2563EB);
+        title = voucher.code ?? 'Phiếu liên kết';
+        final parts = <String>[];
+        parts.add('Chờ ghi sổ');
+        if (voucher.amount != null) {
+          parts.add(NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(voucher.amount));
+        }
+        detail = parts.join(' · ');
+        break;
+      case 'posted':
+        bgColor = const Color(0xFFF0FDF4);
+        borderColor = const Color(0xFFBBF7D0);
+        iconColor = const Color(0xFF16A34A);
+        title = voucher.code ?? 'Đã ghi sổ';
+        final parts = <String>[];
+        parts.add(voucher.postedByName != null ? 'Đã ghi sổ bởi ${voucher.postedByName}' : 'Đã ghi sổ');
+        if (voucher.amount != null) {
+          parts.add(NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(voucher.amount));
+        }
+        detail = parts.join(' · ');
+        break;
+      case 'returned':
+        bgColor = const Color(0xFFFFFBEB);
+        borderColor = const Color(0xFFFDE68A);
+        iconColor = const Color(0xFFD97706);
+        title = 'Kế toán đã trả hồ sơ';
+        if (voucher.returnedReason != null && voucher.returnedReason!.isNotEmpty) {
+          detail = 'Lý do: ${voucher.returnedReason}';
+        }
+        break;
+      default:
+        bgColor = const Color(0xFFEFF6FF);
+        borderColor = const Color(0xFFBFDBFE);
+        iconColor = const Color(0xFF2563EB);
+        title = voucher.code ?? 'Phiếu liên kết';
+        break;
+    }
+  }
+
+  return Container(
+    margin: const EdgeInsets.only(top: 8, bottom: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: borderColor),
+    ),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
+          ),
+          child: Icon(Icons.account_balance_outlined, size: 18, color: iconColor),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'BƯỚC TÀI CHÍNH · ${kindLabel.toUpperCase()}',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF64748B), letterSpacing: 0.3),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (detail != null && detail.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        InkWell(
+          onTap: () {
+            if (voucher?.voucherId != null && voucher!.voucherId!.isNotEmpty) {
+              FinanceRoutes.openVoucherDetail(context, voucher.voucherId!);
+            } else {
+              FinanceRoutes.openVoucherList(
+                context,
+                isPayment ? FinanceVoucherKind.payment : FinanceVoucherKind.receipt,
+                initialScope: 'procedure',
+              );
+            }
+          },
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFF93C5FD)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFF2563EB)),
+                SizedBox(width: 4),
+                Text(
+                  'Mở phiếu',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 // 2. Chi tiết hồ sơ tương tác (Đồng bộ 100% với Web)
 void showProcedureDetailSheet({
   required BuildContext context,
@@ -407,151 +443,170 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                   ),
                 ),
 
-                // Top Bar: Badges + Action Buttons
+                // Top Bar: Badges + Action Buttons (Chống overflow ngang)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      // Status Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: currentItem.isCompleted
-                              ? const Color(0xFFECFDF5)
-                              : (currentItem.isRejected ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF)),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: currentItem.isCompleted
-                                ? const Color(0xFF86EFAC)
-                                : (currentItem.isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFDBEAFE)),
-                          ),
-                        ),
-                        child: Text(
-                          currentItem.isCompleted ? 'procedure.status.completed'.tr() : (currentItem.isRejected ? 'procedure.status.rejected'.tr() : 'procedure.status.running'.tr()),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: currentItem.isCompleted
-                                ? const Color(0xFF059669)
-                                : (currentItem.isRejected ? const Color(0xFFDC2626) : const Color(0xFF2563EB)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-
-                      // SLA Badge
-                      if (currentItem.slaCountdownText != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: currentItem.isSlaBreached
-                                ? const Color(0xFFFEE2E2)
-                                : (currentItem.isSlaWarning ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7)),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: currentItem.isSlaBreached
-                                  ? const Color(0xFFFCA5A5)
-                                  : (currentItem.isSlaWarning ? const Color(0xFFFDE68A) : const Color(0xFF86EFAC)),
-                            ),
-                          ),
-                          child: Text(
-                            currentItem.slaCountdownText!,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: currentItem.isSlaBreached
-                                  ? const Color(0xFFB91C1C)
-                                  : (currentItem.isSlaWarning ? const Color(0xFFB45309) : const Color(0xFF15803D)),
-                            ),
-                          ),
-                        ),
-
-                      const Spacer(),
-
-                      // Top Right Actions: Huỷ hồ sơ / Xoá đơn
-                      if (currentItem.isRunning)
-                        OutlinedButton(
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text('procedure.detail.cancel_case'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                                content: Text('procedure.detail.cancel_confirm_message'.tr()),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.close'.tr())),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    child: Text('procedure.detail.cancel_confirm_button'.tr()),
+                  child: LayoutBuilder(
+                    builder: (context, topBarConstraints) => SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: topBarConstraints.maxWidth),
+                        child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Status Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: currentItem.isCompleted
+                                      ? const Color(0xFFECFDF5)
+                                      : (currentItem.isRejected ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF)),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: currentItem.isCompleted
+                                        ? const Color(0xFF86EFAC)
+                                        : (currentItem.isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFDBEAFE)),
                                   ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              final updated = await widget.service.applyProcedureAction(instanceId: currentItem.id, action: 'cancel');
-                              if (updated != null) {
-                                setState(() => currentItem = updated);
-                                widget.onDataChanged();
-                              }
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          ),
-                          child: Text('procedure.detail.cancel_case'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
-                        ),
-                      if (auth?.canDelete == true) ...[
-                        const SizedBox(width: 6),
-                        OutlinedButton(
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text('procedure.detail.delete_case'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                                content: Text('procedure.detail.delete_confirm_message'.tr()),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.close'.tr())),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    child: Text('procedure.detail.delete_confirm_button'.tr()),
+                                ),
+                                child: Text(
+                                  currentItem.isCompleted
+                                      ? 'procedure.status.completed'.tr()
+                                      : (currentItem.isRejected ? 'procedure.status.rejected'.tr() : 'procedure.status.running'.tr()),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: currentItem.isCompleted
+                                        ? const Color(0xFF059669)
+                                        : (currentItem.isRejected ? const Color(0xFFDC2626) : const Color(0xFF2563EB)),
                                   ),
-                                ],
+                                ),
                               ),
-                            );
-                            if (confirm == true) {
-                              final ok = await widget.service.deleteProcedureInstance(
-                                instanceId: currentItem.id,
-                                reason: 'Người dùng xoá từ ứng dụng mobile',
-                              );
-                              if (ok && context.mounted) {
-                                Navigator.pop(context);
-                                widget.onDataChanged();
-                              }
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            side: const BorderSide(color: Color(0xFFFCA5A5)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              if (currentItem.slaCountdownText != null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: currentItem.isSlaBreached
+                                        ? const Color(0xFFFEE2E2)
+                                        : (currentItem.isSlaWarning ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7)),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: currentItem.isSlaBreached
+                                          ? const Color(0xFFFCA5A5)
+                                          : (currentItem.isSlaWarning ? const Color(0xFFFDE68A) : const Color(0xFF86EFAC)),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    currentItem.slaCountdownText!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: currentItem.isSlaBreached
+                                          ? const Color(0xFFB91C1C)
+                                          : (currentItem.isSlaWarning ? const Color(0xFFB45309) : const Color(0xFF15803D)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          child: Text('procedure.detail.delete_case'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFFDC2626))),
-                        ),
-                      ],
-                      const SizedBox(width: 4),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 20, color: AppColors.slate500),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () => Navigator.pop(context),
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Top Right Actions: Huỷ hồ sơ / Xoá đơn
+                              if (currentItem.isRunning)
+                                OutlinedButton(
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text('procedure.detail.cancel_case'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                        content: Text('procedure.detail.cancel_confirm_message'.tr()),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.close'.tr())),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+                                            onPressed: () => Navigator.pop(ctx, true),
+                                            child: Text('procedure.detail.cancel_confirm_button'.tr()),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      final updated = await widget.service.applyProcedureAction(instanceId: currentItem.id, action: 'cancel');
+                                      if (updated != null) {
+                                        setState(() => currentItem = updated);
+                                        widget.onDataChanged();
+                                      }
+                                    }
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                  child: Text('procedure.detail.cancel_case'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
+                                ),
+                              if (auth?.canDelete == true) ...[
+                                const SizedBox(width: 6),
+                                OutlinedButton(
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text('procedure.detail.delete_case'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                                        content: Text('procedure.detail.delete_confirm_message'.tr()),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.close'.tr())),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+                                            onPressed: () => Navigator.pop(ctx, true),
+                                            child: Text('procedure.detail.delete_confirm_button'.tr()),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      final ok = await widget.service.deleteProcedureInstance(
+                                        instanceId: currentItem.id,
+                                        reason: 'Người dùng xoá từ ứng dụng mobile',
+                                      );
+                                      if (ok && context.mounted) {
+                                        Navigator.pop(context);
+                                        widget.onDataChanged();
+                                      }
+                                    }
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    side: const BorderSide(color: Color(0xFFFCA5A5)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                  child: Text('procedure.detail.delete_case'.tr(), style: const TextStyle(fontSize: 11, color: Color(0xFFDC2626))),
+                                ),
+                              ],
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20, color: AppColors.slate500),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -783,6 +838,9 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                           return _buildRaciRoleTag(role, people);
                                         }).toList(),
                                       ),
+
+                                      // Thẻ Bước Tài chính (Phiếu thu / Phiếu chi) đồng bộ với Web
+                                      if (step.isFinanceStep) _buildFinanceVoucherCard(context, step),
                                       const SizedBox(height: 12),
 
                                       // If user can act on this step: input note & action buttons
@@ -1004,6 +1062,9 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                             return _buildRaciRoleTag(role, people);
                                           }).toList(),
                                         ),
+
+                                        // Thẻ Bước Tài chính (Phiếu thu / Phiếu chi) đồng bộ với Web
+                                        if (step.isFinanceStep) _buildFinanceVoucherCard(context, step),
                                       ],
                                     ),
                                   ),
@@ -1042,13 +1103,13 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                           children: [
                                             Row(
                                               children: [
-                                                CircleAvatar(
-                                                  radius: 10,
-                                                  backgroundColor: const Color(0xFFDBEAFE),
-                                                  child: Text(
-                                                    act.actorName.isNotEmpty ? act.actorName[0] : 'U',
-                                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                                                  ),
+                                                UserAvatar(
+                                                  userId: act.actorId,
+                                                  name: act.actorName,
+                                                  size: 20,
+                                                  background: const Color(0xFFDBEAFE),
+                                                  foreground: const Color(0xFF2563EB),
+                                                  fontSize: 8,
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Text(act.actorName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),

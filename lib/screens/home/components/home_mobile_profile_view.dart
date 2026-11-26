@@ -6,16 +6,15 @@ import '../../../shared/widgets/language_selector_tile.dart';
 import '../../../providers/auth_provider.dart';
 import '../../account_screen.dart';
 import '../../login_screen.dart';
+import '../../../widgets/user_avatar.dart';
 
 class HomeMobileProfileView extends StatelessWidget {
   final String userName;
-  final String userInitials;
   final String tenantDisplay;
 
   const HomeMobileProfileView({
     super.key,
     required this.userName,
-    required this.userInitials,
     required this.tenantDisplay,
   });
 
@@ -39,13 +38,13 @@ class HomeMobileProfileView extends StatelessWidget {
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.slate900,
-                  child: Text(
-                    userInitials,
-                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                UserAvatar(
+                  userId: authProvider.userId,
+                  name: userName,
+                  size: 60,
+                  background: AppColors.slate900,
+                  foreground: Colors.white,
+                  fontSize: 22,
                 ),
                 const SizedBox(width: 16),
                 Expanded(

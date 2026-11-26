@@ -8,16 +8,43 @@ import '../../../services/workspace_service.dart';
 import '../../../../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
 import '../../../utils/user_resolver.dart';
 import '../../../utils/app_toast.dart';
+import '../../../widgets/user_avatar.dart';
+
+/// Giá trị điền sẵn của form "Giao việc" (web `StandaloneTaskPrefill`); chỉ ô khác null mới được điền.
+class StandaloneTaskPrefill {
+  final String? title;
+  final String? description;
+  final String? priority;
+  final String? assigneeUserId;
+  final List<String>? participantUserIds;
+  final List<String>? followerUserIds;
+  final DateTime? plannedStart;
+  final DateTime? dueDate;
+
+  const StandaloneTaskPrefill({
+    this.title,
+    this.description,
+    this.priority,
+    this.assigneeUserId,
+    this.participantUserIds,
+    this.followerUserIds,
+    this.plannedStart,
+    this.dueDate,
+  });
+}
 
 /// Hiển thị Modal "Giao việc" (Công việc không thuộc dự án nào)
 /// Đồng bộ 1:1 với Web modal giao việc độc lập
-void showWorkspaceAssignStandaloneTaskModal(
+/// [prefill] điền sẵn form (Trợ lý Savina); [onTaskCreated] nhận bản ghi `task` server trả về khi tạo xong.
+Future<void> showWorkspaceAssignStandaloneTaskModal(
   BuildContext context, {
   required WorkspaceService service,
   required VoidCallback onCreated,
   String? parentId,
+  StandaloneTaskPrefill? prefill,
+  ValueChanged<Map<String, dynamic>>? onTaskCreated,
 }) {
-  showModalBottomSheet(
+  return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -25,6 +52,8 @@ void showWorkspaceAssignStandaloneTaskModal(
       service: service,
       onCreated: onCreated,
       parentId: parentId,
+      prefill: prefill,
+      onTaskCreated: onTaskCreated,
     ),
   );
 }
@@ -33,11 +62,15 @@ class _AssignStandaloneTaskSheet extends StatefulWidget {
   final WorkspaceService service;
   final VoidCallback onCreated;
   final String? parentId;
+  final StandaloneTaskPrefill? prefill;
+  final ValueChanged<Map<String, dynamic>>? onTaskCreated;
 
   const _AssignStandaloneTaskSheet({
     required this.service,
     required this.onCreated,
     this.parentId,
+    this.prefill,
+    this.onTaskCreated,
   });
 
   @override
@@ -72,8 +105,33 @@ class _AssignStandaloneTaskSheetState extends State<_AssignStandaloneTaskSheet> 
   @override
   void initState() {
     super.initState();
+    final prefill = widget.prefill;
+    if (prefill != null) {
+      _titleCtrl.text = prefill.title ?? '';
+      _descCtrl.text = prefill.description ?? '';
+      _selectedPriority = prefill.priority ?? _selectedPriority;
+      _startDate = prefill.plannedStart;
+      _dueDate = prefill.dueDate;
+    }
     _loadTenantUsers();
     _loadProcedureDefinitions();
+  }
+
+  /// Người trong bản nháp chỉ chọn được khi có trong danh sách người dùng của tenant (nguồn của ô chọn).
+  void _applyPeoplePrefill() {
+    final prefill = widget.prefill;
+    if (prefill == null) return;
+    TenantUser? find(String id) => _allUsers.where((u) => u.id == id).firstOrNull;
+    final assigneeId = prefill.assigneeUserId;
+    if (assigneeId != null) _selectedAssignee = find(assigneeId);
+    for (final id in prefill.participantUserIds ?? const <String>[]) {
+      final user = find(id);
+      if (user != null) _participantUsers.add(user);
+    }
+    for (final id in prefill.followerUserIds ?? const <String>[]) {
+      final user = find(id);
+      if (user != null) _followerUsers.add(user);
+    }
   }
 
   Future<void> _loadProcedureDefinitions() async {
@@ -107,6 +165,7 @@ class _AssignStandaloneTaskSheetState extends State<_AssignStandaloneTaskSheet> 
         setState(() {
           _allUsers = users;
           _isLoadingUsers = false;
+          _applyPeoplePrefill();
         });
       }
     } catch (_) {
@@ -244,19 +303,13 @@ class _AssignStandaloneTaskSheetState extends State<_AssignStandaloneTaskSheet> 
                               value: isChecked,
                               activeColor: const Color(0xFFEAB308),
                               checkColor: Colors.black,
-                              secondary: CircleAvatar(
-                                radius: 16,
-                                backgroundColor: const Color(0xFFE2E8F0),
-                                child: Text(
-                                  user.fullName.isNotEmpty
-                                      ? user.fullName[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF334155),
-                                  ),
-                                ),
+                              secondary: UserAvatar(
+                                userId: user.id,
+                                name: user.fullName,
+                                size: 32,
+                                background: const Color(0xFFE2E8F0),
+                                foreground: const Color(0xFF334155),
+                                fontSize: 12,
                               ),
                               title: Text(
                                 user.fullName,
@@ -380,6 +433,8 @@ class _AssignStandaloneTaskSheetState extends State<_AssignStandaloneTaskSheet> 
       if (mounted) {
         setState(() => _isSubmitting = false);
         if (res.success) {
+          final record = widget.service.lastCreated;
+          if (record != null) widget.onTaskCreated?.call(record);
           Navigator.pop(context);
           widget.onCreated();
           AppToast.success(context, 'Đã giao việc thành công!');
@@ -949,13 +1004,13 @@ class _AssignStandaloneTaskSheetState extends State<_AssignStandaloneTaskSheet> 
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          radius: 9,
-                          backgroundColor: const Color(0xFFCBD5E1),
-                          child: Text(
-                            u.fullName.isNotEmpty ? u.fullName[0].toUpperCase() : 'U',
-                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                          ),
+                        UserAvatar(
+                          userId: u.id,
+                          name: u.fullName,
+                          size: 18,
+                          background: const Color(0xFFCBD5E1),
+                          foreground: const Color(0xFF1E293B),
+                          fontSize: 9,
                         ),
                         const SizedBox(width: 5),
                         Text(

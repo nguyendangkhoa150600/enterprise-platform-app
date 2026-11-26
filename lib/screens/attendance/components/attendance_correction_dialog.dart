@@ -1,4 +1,4 @@
-﻿// import 'dart:convert';
+// import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../models/hrm_attendance_models.dart';
@@ -767,7 +767,7 @@ void showAttendanceCorrectionDialog(
                             }
 
                             final payload = <String, dynamic>{
-                              if (targetLeaveTypeId != null) 'leaveTypeId': targetLeaveTypeId,
+                              'leaveTypeId': ?targetLeaveTypeId,
                               'fromDate': fDate,
                               'toDate': tDate,
                               'requestDate': fDate,
@@ -919,7 +919,7 @@ void showAttendanceCorrectionDialog(
                                       );
 
                                       // Close modal ONLY on success
-                                      Navigator.pop(ctx);
+                                      if (ctx.mounted) Navigator.pop(ctx);
 
                                       if (draftItem != null && !draftItem.id.startsWith('DFT-')) {
                                         service.deleteDraft(draftItem.id, expectedUpdatedAt: draftItem.createdAt);

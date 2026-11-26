@@ -65,7 +65,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
                 border: Border.all(color: AppColors.slate200),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 8,
                   ),
                 ],
@@ -126,7 +126,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
                 border: Border.all(color: AppColors.slate200),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 10,
                   ),
                 ],
@@ -267,7 +267,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
       final file = File(filePath);
       await file.writeAsBytes(bytes);
 
-      if (mounted) {
+      if (mounted && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.emerald,
@@ -277,7 +277,7 @@ class _ProcessingResultsPanelState extends State<ProcessingResultsPanel> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.redAccent,

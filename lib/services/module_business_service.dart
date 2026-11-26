@@ -93,6 +93,8 @@ class ModuleBusinessService {
     required String definitionId,
     required String title,
     Map<String, dynamic>? processAttributeValues,
+    String? startDueAt,
+    String? endDueAt,
   }) async {
     final endpoints = [
       '/api/procedure/v1/instances',
@@ -102,6 +104,9 @@ class ModuleBusinessService {
       'definitionId': definitionId,
       'title': title,
       'idempotencyKey': generateProcedureUuidV4(),
+      'startDueAt': ?startDueAt,
+      'endDueAt': ?endDueAt,
+      if (startDueAt != null || endDueAt != null) 'isHourlyScheduling': true,
       ...?processAttributeValues != null ? {'processAttributeValues': processAttributeValues} : null,
     };
     for (final ep in endpoints) {
@@ -616,7 +621,7 @@ class ModuleBusinessService {
     try {
       await _inventoryPost('/stocktakes/$sessionId/lines/$lineId', data: {
         'actualQuantity': actualQty,
-        if (reason != null) 'reason': reason,
+        'reason': ?reason,
       });
     } catch (_) {}
     // Update local cache
@@ -628,8 +633,11 @@ class ModuleBusinessService {
         final diff = actualQty - old.systemQuantity;
         final diffVal = diff * old.unitCost;
         String status = 'MATCHED';
-        if (diff > 0) status = 'SURPLUS';
-        else if (diff < 0) status = 'DEFICIT';
+        if (diff > 0) {
+          status = 'SURPLUS';
+        } else if (diff < 0) {
+          status = 'DEFICIT';
+        }
         list[idx] = old.copyWith(
           actualQuantity: actualQty,
           difference: diff,
@@ -1002,7 +1010,7 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
 
   Future<StockDocumentItem?> getStockDocumentDetail(String id) async {
     try {
-      final res = await _inventoryGet('/stock-documents/' + Uri.encodeComponent(id));
+      final res = await _inventoryGet('/stock-documents/${Uri.encodeComponent(id)}');
       if (res is Map<String, dynamic>) {
         return StockDocumentItem.fromJson(res);
       }
@@ -1012,7 +1020,7 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
 
   Future<bool> approveStockDocument(String id) async {
     try {
-      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/approve');
+      final res = await _inventoryPost('/stock-documents/${Uri.encodeComponent(id)}/approve');
       return res != null;
     } catch (_) {
       return false;
@@ -1022,7 +1030,7 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
   Future<bool> rejectStockDocument(String id, {String? reason}) async {
     try {
       final res = await _inventoryPost(
-        '/stock-documents/' + Uri.encodeComponent(id) + '/reject',
+        '/stock-documents/${Uri.encodeComponent(id)}/reject',
         data: reason != null ? {'reason': reason} : null,
       );
       return res != null;
@@ -1033,7 +1041,7 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
 
   Future<bool> postStockDocument(String id) async {
     try {
-      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/post');
+      final res = await _inventoryPost('/stock-documents/${Uri.encodeComponent(id)}/post');
       return res != null;
     } catch (_) {
       return false;
@@ -1043,14 +1051,14 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
   Future<bool> reverseStockDocument(String id, {String? reason}) async {
     try {
       final res = await _inventoryPost(
-        '/stock-documents/' + Uri.encodeComponent(id) + '/reverse',
+        '/stock-documents/${Uri.encodeComponent(id)}/reverse',
         data: reason != null ? {'reason': reason} : null,
       );
       return res != null;
     } catch (_) {
       try {
         final res2 = await _inventoryPost(
-          '/stock-documents/' + Uri.encodeComponent(id) + '/reversal',
+          '/stock-documents/${Uri.encodeComponent(id)}/reversal',
           data: reason != null ? {'reason': reason} : null,
         );
         return res2 != null;
@@ -1062,7 +1070,7 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
 
   Future<bool> cancelStockDocument(String id) async {
     try {
-      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/cancel');
+      final res = await _inventoryPost('/stock-documents/${Uri.encodeComponent(id)}/cancel');
       return res != null;
     } catch (_) {
       return false;
@@ -1071,7 +1079,7 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
 
   Future<bool> submitStockDocument(String id) async {
     try {
-      final res = await _inventoryPost('/stock-documents/' + Uri.encodeComponent(id) + '/submit');
+      final res = await _inventoryPost('/stock-documents/${Uri.encodeComponent(id)}/submit');
       return res != null;
     } catch (_) {
       return false;
@@ -1088,13 +1096,13 @@ Future<List<CustodyAssetItem>> getCustodyAssets() async {
   }) async {
     try {
       final payload = {
-        if (warehouseCode != null) 'warehouseCode': warehouseCode,
-        if (targetWarehouseCode != null) 'targetWarehouseCode': targetWarehouseCode,
-        if (documentDate != null) 'documentDate': documentDate,
-        if (note != null) 'note': note,
-        if (lines != null) 'lines': lines,
+        'warehouseCode': ?warehouseCode,
+        'targetWarehouseCode': ?targetWarehouseCode,
+        'documentDate': ?documentDate,
+        'note': ?note,
+        'lines': ?lines,
       };
-      final res = await _inventoryPatch('/stock-documents/' + Uri.encodeComponent(id), data: payload);
+      final res = await _inventoryPatch('/stock-documents/${Uri.encodeComponent(id)}', data: payload);
       if (res is Map<String, dynamic>) {
         return StockDocumentItem.fromJson(res);
       }

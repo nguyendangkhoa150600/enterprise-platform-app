@@ -1,21 +1,42 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Section 6: Tệp của hồ sơ (Attachments) matching Savina Web 1:1
+/// Như web: chỉ hiện tệp của hồ sơ (kết quả từng phòng ban nằm ở mục Phòng ban xử lý)
+/// và chỉ hiện nút tải những loại tệp máy chủ cho phép ở bước này (`actions.attachKinds`).
 class LetterAttachmentsView extends StatelessWidget {
-  final List<LetterAttachment> attachments;
-  final VoidCallback? onUploadScan;
-  final VoidCallback? onUploadRef;
+  final LetterDetail letter;
+  final void Function(String kind)? onUpload;
 
   const LetterAttachmentsView({
     super.key,
-    required this.attachments,
-    this.onUploadScan,
-    this.onUploadRef,
+    required this.letter,
+    this.onUpload,
   });
+
+  static const Map<String, String> _uploadLabelKeys = {
+    'incoming': 'correspondence.attachments.upload_incoming',
+    'draft': 'correspondence.attachments.upload_draft',
+    'outgoing': 'correspondence.attachments.upload_outgoing',
+    'reference': 'correspondence.attachments.upload_reference',
+  };
+
+  static const Map<String, IconData> _uploadIcons = {
+    'incoming': Icons.upload_file_outlined,
+    'draft': Icons.edit_document,
+    'outgoing': Icons.verified_outlined,
+    'reference': Icons.note_add_outlined,
+  };
 
   @override
   Widget build(BuildContext context) {
+    final attachments = letter.attachments.where((item) => item.assignmentId == null || item.assignmentId!.isEmpty).toList();
+    // Kết quả của phòng ban tải ở mục phòng ban; công văn đi thì dự thảo tải ở đây.
+    final kinds = letter.actions.attachKinds
+        .where((kind) => _uploadLabelKeys.containsKey(kind))
+        .where((kind) => kind != 'draft' || letter.direction == 'outgoing')
+        .toList();
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -36,18 +57,18 @@ class LetterAttachmentsView extends StatelessWidget {
           // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text(
-                'Tệp của hồ sơ',
-                style: TextStyle(
+                'correspondence.detail_view.attachments_title'.tr(),
+                style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A),
                 ),
               ),
               Text(
-                'Lưu tại Hệ dùng chung, có phiên bản',
-                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                'correspondence.detail_view.attachments_subtitle'.tr(),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
               ),
             ],
           ),
@@ -55,11 +76,13 @@ class LetterAttachmentsView extends StatelessWidget {
 
           // File Items List
           if (attachments.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                'Chưa có tệp đính kèm nào.',
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                letter.direction == 'incoming'
+                    ? 'correspondence.attachments.empty_incoming'.tr()
+                    : 'correspondence.attachments.empty'.tr(),
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
               ),
             )
           else
@@ -74,49 +97,45 @@ class LetterAttachmentsView extends StatelessWidget {
               },
             ),
 
-          const SizedBox(height: 14),
-
-          // Action Buttons: Tải bản quét & Tải tài liệu kèm theo
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onUploadScan,
-                  icon: const Icon(Icons.upload_file_outlined, size: 16, color: Color(0xFF475569)),
-                  label: const Text(
-                    'Tải bản quét công văn đến',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFCBD5E1)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onUploadRef,
-                  icon: const Icon(Icons.note_add_outlined, size: 16, color: Color(0xFF475569)),
-                  label: const Text(
-                    'Tải tài liệu kèm theo',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFCBD5E1)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          if (kinds.isNotEmpty && onUpload != null) ...[
+            const SizedBox(height: 14),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // 2 nút một hàng; lẻ thì nút cuối chiếm cả hàng.
+                final half = (constraints.maxWidth - 8) / 2;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (var i = 0; i < kinds.length; i++)
+                      SizedBox(
+                        width: (kinds.length.isOdd && i == kinds.length - 1) ? constraints.maxWidth : half,
+                        child: _buildUploadButton(kinds[i]),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildUploadButton(String kind) {
+    return OutlinedButton.icon(
+      onPressed: () => onUpload?.call(kind),
+      icon: Icon(_uploadIcons[kind] ?? Icons.upload_file_outlined, size: 16, color: const Color(0xFF475569)),
+      label: Text(
+        (_uploadLabelKeys[kind] ?? 'correspondence.attachments.upload_generic').tr(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFCBD5E1)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -181,7 +200,7 @@ class LetterAttachmentsView extends StatelessWidget {
               InkWell(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Đang mở xem tệp "${att.fileName}"...'), behavior: SnackBarBehavior.floating),
+                    SnackBar(content: Text('correspondence.detail_view.attachment_opening'.tr(args: {'name': att.fileName})), behavior: SnackBarBehavior.floating),
                   );
                 },
                 borderRadius: BorderRadius.circular(6),
@@ -194,10 +213,10 @@ class LetterAttachmentsView extends StatelessWidget {
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.visibility_outlined, size: 14, color: Color(0xFF475569)),
-                      SizedBox(width: 4),
-                      Text('Xem', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                    children: [
+                      const Icon(Icons.visibility_outlined, size: 14, color: Color(0xFF475569)),
+                      const SizedBox(width: 4),
+                      Text('correspondence.detail_view.attachment_view'.tr(), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
                     ],
                   ),
                 ),
@@ -207,7 +226,7 @@ class LetterAttachmentsView extends StatelessWidget {
               InkWell(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Đang tải xuống "${att.fileName}"...'), behavior: SnackBarBehavior.floating),
+                    SnackBar(content: Text('correspondence.detail_view.attachment_downloading'.tr(args: {'name': att.fileName})), behavior: SnackBarBehavior.floating),
                   );
                 },
                 borderRadius: BorderRadius.circular(6),
@@ -231,15 +250,15 @@ class LetterAttachmentsView extends StatelessWidget {
   String _kindLabel(String kind) {
     switch (kind) {
       case 'incoming':
-        return 'Công văn đến';
+        return 'correspondence.detail_view.attachment_kind_incoming'.tr();
       case 'draft':
-        return 'Dự thảo, kết quả xử lý';
+        return 'correspondence.detail_view.attachment_kind_draft'.tr();
       case 'outgoing':
-        return 'Bản ban hành';
+        return 'correspondence.detail_view.attachment_kind_outgoing'.tr();
       case 'reference':
-        return 'Tài liệu kèm theo';
+        return 'correspondence.detail_view.attachment_kind_reference'.tr();
       default:
-        return 'Tài liệu';
+        return 'correspondence.detail_view.attachment_kind_other'.tr();
     }
   }
 }

@@ -95,9 +95,9 @@ class _InventoryMaterialCreateDialogState extends State<InventoryMaterialCreateD
       'kind': _selectedKind,
       'isSerialized': _trackingMethod == 'SERIAL',
       'minStock': minStock,
-      if (maxStock != null) 'maxStock': maxStock,
-      if (warrantyMonths != null) 'warrantyMonths': warrantyMonths,
-      if (price != null) 'purchasePrice': price,
+      'maxStock': ?maxStock,
+      'warrantyMonths': ?warrantyMonths,
+      'purchasePrice': ?price,
     };
 
     final ok = await _service.createMaterial(payload);

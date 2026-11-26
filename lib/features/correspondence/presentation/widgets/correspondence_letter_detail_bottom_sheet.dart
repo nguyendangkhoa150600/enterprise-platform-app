@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../screens/correspondence_letter_detail_screen.dart';
 
@@ -70,7 +71,7 @@ class CorrespondenceLetterDetailBottomSheet extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              isIncoming ? 'Công văn đến' : 'Công văn đi',
+                              isIncoming ? 'correspondence.list.incoming'.tr() : 'correspondence.list.outgoing'.tr(),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -91,7 +92,7 @@ class CorrespondenceLetterDetailBottomSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Ngày vào sổ: $dateStr',
+                        'correspondence.sheet.entry_date'.tr(args: {'date': dateStr}),
                         style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -115,9 +116,9 @@ class CorrespondenceLetterDetailBottomSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Trích yếu
-                  const Text(
-                    'Trích yếu văn bản',
-                    style: TextStyle(
+                  Text(
+                    'correspondence.sheet.subject'.tr(),
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF64748B),
@@ -137,25 +138,25 @@ class CorrespondenceLetterDetailBottomSheet extends StatelessWidget {
 
                   // Grid of properties
                   _buildPropertyRow(
-                    isIncoming ? 'Cơ quan gửi:' : 'Đơn vị soạn:',
-                    letter.senderOrg.isNotEmpty ? letter.senderOrg : (letter.authorUnitName ?? 'Chưa cập nhật'),
+                    isIncoming ? 'correspondence.sheet.sender_org'.tr() : 'correspondence.sheet.author_unit'.tr(),
+                    letter.senderOrg.isNotEmpty ? letter.senderOrg : (letter.authorUnitName ?? 'correspondence.sheet.not_updated'.tr()),
                   ),
                   if (letter.senderRef != null && letter.senderRef!.isNotEmpty)
-                    _buildPropertyRow('Số hiệu gốc:', letter.senderRef!),
+                    _buildPropertyRow('correspondence.sheet.original_ref'.tr(), letter.senderRef!),
                   if (letter.kindName.isNotEmpty)
-                    _buildPropertyRow('Loại văn bản:', letter.kindName),
-                  _buildPropertyRow('Độ khẩn:', letter.urgencyName),
+                    _buildPropertyRow('correspondence.sheet.kind'.tr(), letter.kindName),
+                  _buildPropertyRow('correspondence.sheet.urgency'.tr(), letter.urgencyName),
                   _buildPropertyRow(
-                    'Bước hiện tại:',
+                    'correspondence.sheet.current_step'.tr(),
                     letter.stageLabel.isNotEmpty
                         ? letter.stageLabel
                         : CorrespondenceConstants.stageLabelOf(letter.stage),
                   ),
                   if (letter.currentAssigneeNames.isNotEmpty)
-                    _buildPropertyRow('Người xử lý:', letter.currentAssigneeNames.join(', ')),
+                    _buildPropertyRow('correspondence.sheet.assignees'.tr(), letter.currentAssigneeNames.join(', ')),
                   if (letter.dueOn != null && letter.dueOn!.isNotEmpty)
                     _buildPropertyRow(
-                      'Hạn xử lý:',
+                      'correspondence.sheet.due_date'.tr(),
                       '${CorrespondenceDateUtils.formatDay(letter.dueOn)} ${due != null ? "(${due.text})" : ""}',
                     ),
                 ],

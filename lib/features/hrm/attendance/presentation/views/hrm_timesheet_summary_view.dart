@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../../../core/i18n/app_i18n.dart';
 import 'package:flutter/services.dart';
@@ -37,7 +36,7 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
   String _timesheetSearchQuery = '';
   String _timesheetFilterTab = 'ALL';
   int _timesheetCurrentPage = 1;
-  int _timesheetPageSize = 10;
+  final int _timesheetPageSize = 10;
   int _timesheetSubTab = 0; // 0: Bảng công, 1: Dữ liệu chấm công
   final Set<String> _selectedTimesheetEmpIds = {};
   HrmTimesheetBoard? _enterpriseTimesheetBoard;
@@ -928,12 +927,12 @@ class _HrmTimesheetSummaryViewState extends State<HrmTimesheetSummaryView> {
                                     }),
 
                                     // Summary data cells (matching web totals)
-                                    _buildSummaryDataCell('${emp.totals.workdayUnits.toStringAsFixed(emp.totals.workdayUnits % 1 == 0 ? 0 : 1)}', 38, const Color(0xFF0284C7), isBold: true),
+                                    _buildSummaryDataCell(emp.totals.workdayUnits.toStringAsFixed(emp.totals.workdayUnits % 1 == 0 ? 0 : 1), 38, const Color(0xFF0284C7), isBold: true),
                                     _buildSummaryDataCell('${emp.totals.lateDays + emp.totals.earlyLeaveDays}', 34, (emp.totals.lateDays + emp.totals.earlyLeaveDays) > 0 ? const Color(0xFFD97706) : const Color(0xFF94A3B8)),
                                     _buildSummaryDataCell('${emp.totals.annualLeaveDays + emp.totals.paidLeaveDays}', 34, const Color(0xFF94A3B8)),
                                     _buildSummaryDataCell('${emp.totals.absentDays}', 34, emp.totals.absentDays > 0 ? const Color(0xFFE11D48) : const Color(0xFF94A3B8)),
                                     _buildSummaryDataCell('${emp.totals.abnormalDays}', 32, emp.totals.abnormalDays > 0 ? const Color(0xFFE11D48) : const Color(0xFF94A3B8)),
-                                    _buildSummaryDataCell('${(emp.totals.otMinutes / 60).toStringAsFixed(0)}', 36, (emp.totals.otMinutes > 0) ? const Color(0xFF059669) : const Color(0xFF94A3B8)),
+                                    _buildSummaryDataCell((emp.totals.otMinutes / 60).toStringAsFixed(0), 36, (emp.totals.otMinutes > 0) ? const Color(0xFF059669) : const Color(0xFF94A3B8)),
                                   ],
                                 ),
                               );

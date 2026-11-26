@@ -1,5 +1,8 @@
+import 'package:dio/dio.dart';
+import '../../domain/errors/correspondence_exception.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
+import '../datasources/correspondence_error_mapper.dart';
 import '../datasources/correspondence_remote_datasource.dart';
 
 class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
@@ -16,8 +19,8 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
         return CorrespondenceOverview.fromJson(data);
       }
       return const CorrespondenceOverview();
-    } catch (e) {
-      rethrow;
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -65,8 +68,8 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
             .toList();
       }
       return [];
-    } catch (e) {
-      rethrow;
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -103,9 +106,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterSummary.fromJson(data);
       }
-      throw Exception('Phản hồi không hợp lệ từ máy chủ.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -116,17 +119,30 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterDetail.fromJson(data);
       }
-      throw Exception('Phản hồi không hợp lệ từ máy chủ.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
   @override
-  Future<void> uploadLetterAttachment(String letterId, dynamic file, String kind) async {
+  Future<void> uploadLetterAttachment(
+    String letterId,
+    dynamic file,
+    String kind, {
+    String? assignmentId,
+  }) async {
+    // Không nuốt lỗi: nơi gọi cần biết để báo người dùng tải lên thất bại.
     try {
-      await _remoteDataSource.uploadAttachmentRaw(letterId, file, kind);
-    } catch (_) {}
+      await _remoteDataSource.uploadAttachmentRaw(
+        letterId,
+        file,
+        kind,
+        assignmentId: assignmentId,
+      );
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
   }
 
   @override
@@ -136,9 +152,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return CatalogItem.fromJson(data);
       }
-      throw Exception('Không tạo được danh mục.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -149,9 +165,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterDetail.fromJson(data);
       }
-      throw Exception('Không tìm thấy thông tin công văn.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -162,9 +178,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterDetail.fromJson(data);
       }
-      throw Exception('Không phân loại được công văn.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -175,9 +191,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterDetail.fromJson(data);
       }
-      throw Exception('Không duyệt được công văn.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -188,9 +204,160 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterDetail.fromJson(data);
       }
-      throw Exception('Không trả lại được công văn.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> sendToClerk(String id, Map<String, dynamic> body) async {
+    try {
+      final data = await _remoteDataSource.sendToClerkRaw(id, body);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> submitLetter(String id, Map<String, dynamic> body) async {
+    try {
+      final data = await _remoteDataSource.submitLetterRaw(id, body);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> publishLetter(String id, Map<String, dynamic> body) async {
+    try {
+      final data = await _remoteDataSource.publishLetterRaw(id, body);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> completeLetter(String id, Map<String, dynamic> body) async {
+    try {
+      final data = await _remoteDataSource.completeLetterRaw(id, body);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> assignAssignmentHandler(String letterId, String assignmentId, String handlerUserId) async {
+    try {
+      final data = await _remoteDataSource.assignAssignmentHandlerRaw(letterId, assignmentId, handlerUserId);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> respondAssignment(String letterId, String assignmentId, String note) async {
+    try {
+      final data = await _remoteDataSource.respondAssignmentRaw(letterId, assignmentId, note);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> updateDelivery(String id, Map<String, dynamic> body) async {
+    try {
+      final data = await _remoteDataSource.updateDeliveryRaw(id, body);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> requestRevoke(String id, Map<String, dynamic> body) async {
+    try {
+      final data = await _remoteDataSource.requestRevokeRaw(id, body);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> decideRevoke(String id, {required bool approve, String? note}) async {
+    try {
+      final data = await _remoteDataSource.decideRevokeRaw(id, {
+        'approve': approve,
+        if (note != null && note.isNotEmpty) 'note': note,
+      });
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<LetterDetail> withdrawRevoke(String id) async {
+    try {
+      final data = await _remoteDataSource.withdrawRevokeRaw(id);
+      if (data is Map<String, dynamic>) {
+        return LetterDetail.fromJson(data);
+      }
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<void> removeLetter(String id) async {
+    try {
+      await _remoteDataSource.removeLetterRaw(id);
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
+    }
+  }
+
+  @override
+  Future<void> cancelLetter(String id, String reason) async {
+    try {
+      await _remoteDataSource.cancelLetterRaw(id, reason);
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -205,9 +372,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterDetail.fromJson(data);
       }
-      throw Exception('Không gửi được ý kiến trao đổi.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -218,9 +385,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return LetterDetail.fromJson(data);
       }
-      throw Exception('Không gửi được nhắc nhở đôn đốc.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -231,9 +398,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return ArchiveTree.fromJson(data);
       }
-      throw Exception('Không tải được cây lưu trữ.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -244,9 +411,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return AttachmentTicket.fromJson(data);
       }
-      throw Exception('Không lấy được liên kết tải tệp.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -257,9 +424,9 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
       if (data is Map<String, dynamic>) {
         return CorrespondenceReport.fromJson(data);
       }
-      throw Exception('Không tải được số liệu báo cáo.');
-    } catch (e) {
-      rethrow;
+      throw const CorrespondenceException();
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 
@@ -275,8 +442,8 @@ class CorrespondenceRepositoryImpl implements ICorrespondenceRepository {
             .toList();
       }
       return const [];
-    } catch (e) {
-      rethrow;
+    } on DioException catch (e) {
+      throw mapCorrespondenceDioError(e);
     }
   }
 }

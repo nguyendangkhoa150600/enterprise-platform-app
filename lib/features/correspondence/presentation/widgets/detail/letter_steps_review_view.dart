@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../core/i18n/app_i18n.dart';
 
 /// Section 4: Ý kiến các bước duyệt matching Savina Web 1:1
 class LetterStepsReviewView extends StatelessWidget {
@@ -31,9 +32,9 @@ class LetterStepsReviewView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Ý kiến các bước duyệt',
-            style: TextStyle(
+          Text(
+            'correspondence.detail_view.steps_title'.tr(),
+            style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w700,
               color: Color(0xFF0F172A),
@@ -57,23 +58,23 @@ class LetterStepsReviewView extends StatelessWidget {
 
   Widget _buildStepItem(LetterStep step) {
     final returned = step.decision == 'returned' && step.status != 'done';
-    String statusLabel = 'Chưa tới';
+    String statusLabel = 'correspondence.detail_view.step_status_pending'.tr();
     Color bgColor = const Color(0xFFF1F5F9);
     Color textColor = const Color(0xFF64748B);
     Color dotColor = const Color(0xFF94A3B8);
 
     if (returned) {
-      statusLabel = 'Không đạt';
+      statusLabel = 'correspondence.detail_view.step_status_failed'.tr();
       bgColor = const Color(0xFFFEE2E2);
       textColor = const Color(0xFFDC2626);
       dotColor = const Color(0xFFEF4444);
     } else if (step.status == 'done') {
-      statusLabel = 'Đạt';
+      statusLabel = 'correspondence.detail_view.step_status_passed'.tr();
       bgColor = const Color(0xFFECFDF5);
       textColor = const Color(0xFF059669);
       dotColor = const Color(0xFF10B981);
     } else if (step.status == 'active') {
-      statusLabel = 'Đang chờ duyệt';
+      statusLabel = 'correspondence.detail_view.step_status_active'.tr();
       bgColor = const Color(0xFFFEF3C7);
       textColor = const Color(0xFFD97706);
       dotColor = const Color(0xFFF59E0B);
@@ -97,14 +98,14 @@ class LetterStepsReviewView extends StatelessWidget {
               if (step.assignees.isNotEmpty) ...[
                 const SizedBox(height: 3),
                 Text(
-                  'Người duyệt: ${step.assignees.join(", ")}',
+                  'correspondence.detail_view.step_approvers'.tr(args: {'names': step.assignees.join(", ")}),
                   style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                 ),
               ],
               if (step.actedAt != null && step.actedAt!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
-                  '${returned ? "Trả lại" : "Đạt"} · ${step.actedByName ?? "Người dùng"} lúc ${CorrespondenceDateUtils.formatDateTime(step.actedAt)}',
+                  'correspondence.detail_view.step_acted'.tr(args: {'decision': returned ? 'correspondence.detail_view.step_decision_returned'.tr() : 'correspondence.detail_view.step_status_passed'.tr(), 'actor': step.actedByName ?? 'correspondence.detail_view.user_fallback'.tr(), 'time': CorrespondenceDateUtils.formatDateTime(step.actedAt)}),
                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
                 ),
               ],

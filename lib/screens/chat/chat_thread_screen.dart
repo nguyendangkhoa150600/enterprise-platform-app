@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../utils/user_resolver.dart';
 import '../../theme/colors.dart';
+import '../../widgets/user_avatar.dart';
 
 class ChatThreadScreen extends StatefulWidget {
   final ChatConversation conversation;
@@ -384,7 +385,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   borderRadius: BorderRadius.circular(36),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
+                      color: Colors.black.withValues(alpha: 0.25),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -413,7 +414,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -452,7 +453,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -527,7 +528,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 5),
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
+          color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
           shape: BoxShape.circle,
         ),
         child: Text(
@@ -606,17 +607,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 
     if (senderId.contains('@')) return senderId.split('@').first;
     return 'Người dùng';
-  }
-
-  String _getSenderInitials(String name) {
-    if (name.isEmpty) return '?';
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.length >= 2) {
-      final firstChar = parts[0].isNotEmpty ? parts[0][0] : '';
-      final lastChar = parts[parts.length - 1].isNotEmpty ? parts[parts.length - 1][0] : '';
-      return '$firstChar$lastChar'.toUpperCase();
-    }
-    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
   }
 
   Color _getSenderColor(String senderId) {
@@ -776,14 +766,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       ? const Icon(Icons.apartment_rounded, color: Colors.white, size: 20)
                       : widget.conversation.kind == 'group'
                           ? const Icon(Icons.group_rounded, color: Colors.white, size: 20)
-                          : Text(
-                              _getSenderInitials(displayTitle),
-                              style: const TextStyle(
-                                color: Color(0xFF18181B),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
+                          : UserAvatar(userId: peerUserId, name: displayTitle, size: 38, fontSize: 14,
+                              background: Colors.transparent, foreground: const Color(0xFF18181B)),
                 ),
                 if (widget.conversation.kind == 'direct' && isPeerOnline)
                   Positioned(
@@ -950,7 +934,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
 
     final senderName = _getSenderName(msg.senderId, people);
-    final initials = _getSenderInitials(senderName);
     final avatarColor = _getSenderColor(msg.senderId);
 
     return Column(
@@ -964,7 +947,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           members: members,
           showSenderHeader: showSenderHeader,
           senderName: senderName,
-          initials: initials,
           avatarColor: avatarColor,
           myUserId: myUserId,
           people: people,
@@ -1003,7 +985,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     required List<ChatMember> members,
     required bool showSenderHeader,
     required String senderName,
-    required String initials,
     required Color avatarColor,
     required String myUserId,
     required List<ChatPerson> people,
@@ -1050,14 +1031,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           // Avatar for other senders
           if (!isMe) ...[
             if (showSenderHeader)
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: avatarColor,
-                child: Text(
-                  initials,
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              )
+              UserAvatar(userId: msg.senderId, name: senderName, size: 28,
+                  background: avatarColor, foreground: Colors.white, fontSize: 10)
             else
               const SizedBox(width: 28), // Spacing alignment if same sender
             const SizedBox(width: 8),
@@ -1096,7 +1071,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -1189,7 +1164,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             const SizedBox(width: 5),
             ...readers.take(4).map((readerId) {
               final readerName = _getSenderName(readerId, people);
-              final readerInitials = _getSenderInitials(readerName);
               return Container(
                 margin: const EdgeInsets.only(left: 3),
                 width: 17,
@@ -1203,14 +1177,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  readerInitials,
-                  style: const TextStyle(
-                    color: Color(0xFF18181B),
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: UserAvatar(userId: readerId, name: readerName, size: 17, fontSize: 8.5,
+                    background: Colors.transparent, foreground: const Color(0xFF18181B)),
               );
             }),
             if (readers.length > 4)
@@ -1276,7 +1244,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: isMe ? Colors.black.withOpacity(0.12) : const Color(0xFFF1F5F9),
+        color: isMe ? Colors.black.withValues(alpha: 0.12) : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(8),
         border: Border(
           left: BorderSide(
@@ -1304,7 +1272,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             style: TextStyle(
               fontSize: 11.5,
               fontStyle: reply.isDeleted ? FontStyle.italic : FontStyle.normal,
-              color: isMe ? Colors.white.withOpacity(0.85) : const Color(0xFF475569),
+              color: isMe ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF475569),
             ),
           ),
         ],
@@ -1343,7 +1311,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 4,
                     offset: const Offset(0, 1.5),
                   ),

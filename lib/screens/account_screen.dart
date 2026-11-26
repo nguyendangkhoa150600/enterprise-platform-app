@@ -1,8 +1,12 @@
+import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../core/i18n/app_i18n.dart';
+import '../services/api_client_helper.dart';
 import '../shared/widgets/language_selector_tile.dart';
+import '../widgets/user_avatar.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -20,14 +24,179 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _isSaving = false;
+  bool _isAvatarBusy = false;
   String? _inlineError;
 
   @override
+  void initState() {
+    super.initState();
+    PeopleAvatarDirectory.instance.addListener(_onDirectoryChanged);
+    _loadProfile();
+  }
+
+  @override
   void dispose() {
+    PeopleAvatarDirectory.instance.removeListener(_onDirectoryChanged);
     _currentPasswordCtrl.dispose();
     _newPasswordCtrl.dispose();
     _confirmationCtrl.dispose();
     super.dispose();
+  }
+
+  void _onDirectoryChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final dio = Dio(BaseOptions(
+        baseUrl: AuthProvider.authBaseUrl,
+        connectTimeout: const Duration(seconds: 10),
+      ));
+      ApiClientHelper.configureDio(dio);
+      final res = await dio.get('/api/platform/v1/profile', options: Options(validateStatus: (s) => s != null && s < 500));
+      if (!mounted) return;
+      if (res.statusCode == 200 && res.data is Map) {
+        final v = (res.data['avatarVersion'] as num?)?.toInt();
+        final userId = Provider.of<AuthProvider>(context, listen: false).userId;
+        if (userId != null && userId.isNotEmpty) {
+          PeopleAvatarDirectory.instance.setVersion(userId, v);
+          setState(() {});
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _chooseAvatar() async {
+    try {
+      final file = await FilePicker.pickFile(type: FileType.image);
+      if (file == null || !mounted) return;
+
+      final size = await file.length() ?? 0;
+      if (size > 5 * 1024 * 1024) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account.avatar.size_error'.tr()),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      final ext = (file.extension ?? 'png').toLowerCase();
+      if (!['png', 'jpg', 'jpeg', 'webp'].contains(ext)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account.avatar.type_error'.tr()),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      setState(() => _isAvatarBusy = true);
+
+      final bytes = await file.xFile.readAsBytes();
+      final dio = Dio(BaseOptions(
+        baseUrl: AuthProvider.authBaseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
+      ));
+      ApiClientHelper.configureDio(dio);
+
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: 'avatar.$ext'),
+      });
+
+      final res = await dio.put('/api/platform/v1/profile/avatar', data: formData);
+      if (!mounted) return;
+
+      if (res.statusCode == 200 && res.data is Map) {
+        final newVersion = (res.data['avatarVersion'] as num?)?.toInt();
+        final userId = Provider.of<AuthProvider>(context, listen: false).userId;
+        if (userId != null && userId.isNotEmpty) {
+          PeopleAvatarDirectory.instance.setVersion(userId, newVersion);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account.avatar.success'.tr()),
+            backgroundColor: const Color(0xFF059669),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account.avatar.failed'.tr()),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('account.avatar.failed'.tr()),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isAvatarBusy = false);
+    }
+  }
+
+  Future<void> _removeAvatar() async {
+    setState(() => _isAvatarBusy = true);
+    try {
+      final dio = Dio(BaseOptions(
+        baseUrl: AuthProvider.authBaseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
+      ));
+      ApiClientHelper.configureDio(dio);
+
+      final res = await dio.delete('/api/platform/v1/profile/avatar');
+      if (!mounted) return;
+
+      if (res.statusCode == 200) {
+        final userId = Provider.of<AuthProvider>(context, listen: false).userId;
+        if (userId != null && userId.isNotEmpty) {
+          PeopleAvatarDirectory.instance.setVersion(userId, null);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account.avatar.remove_success'.tr()),
+            backgroundColor: const Color(0xFF059669),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account.avatar.remove_failed'.tr()),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('account.avatar.remove_failed'.tr()),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isAvatarBusy = false);
+    }
   }
 
   // Password rules validation matching React
@@ -151,16 +320,10 @@ class _AccountScreenState extends State<AccountScreen> {
     final displayName = auth.fullName ?? 'account.user'.tr();
     final email = auth.email ?? '';
     final tenantSlug = auth.tenantSlug ?? '';
-    final roles = auth.roles.isNotEmpty ? auth.roles : [auth.kind ?? 'tenant-user'];
+    final isPlatformAdmin = auth.isPlatformAdmin;
 
-    final initials = displayName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((s) => s.isNotEmpty)
-        .take(2)
-        .map((s) => s[0])
-        .join('')
-        .toUpperCase();
+    final currentVersion = auth.userId != null ? PeopleAvatarDirectory.instance.versionOf(auth.userId!) : null;
+    final hasAvatar = currentVersion != null;
 
     final rules = _getRules();
     final strength = _getStrength();
@@ -171,7 +334,7 @@ class _AccountScreenState extends State<AccountScreen> {
       appBar: AppBar(
         title: Text(
           'account.title'.tr(),
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -199,7 +362,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 children: [
                   Text(
                     'account.subtitle'.tr(),
-                    style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
+                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
                   ),
                 ],
               ),
@@ -219,7 +382,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -229,97 +392,116 @@ class _AccountScreenState extends State<AccountScreen> {
                 children: [
                   // Profile Header Banner
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.only(top: 24, bottom: 20, left: 16, right: 16),
-                    decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFFFF8DC).withValues(alpha: 0.6),
+                          Colors.white,
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                      border: const Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
                     ),
                     child: Column(
                       children: [
                         Center(
                           child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
                               Container(
-                                width: 72,
-                                height: 72,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF2563EB), Color(0xFF4F46E5)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  border: Border.all(color: const Color(0xFFEFF6FF), width: 4),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF2563EB).withOpacity(0.25),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
+                                      color: const Color(0xFFFFC90A).withValues(alpha: 0.22),
+                                      spreadRadius: 5,
+                                      blurRadius: 0,
                                     ),
                                   ],
                                 ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  initials.isNotEmpty ? initials : 'U',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2,
-                                  ),
+                                child: UserAvatar(
+                                  userId: auth.userId,
+                                  name: displayName,
+                                  size: 88,
+                                  fontSize: 28,
                                 ),
                               ),
                               Positioned(
-                                bottom: 2,
-                                right: 2,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2.5),
+                                bottom: -2,
+                                right: -2,
+                                child: Material(
+                                  color: Colors.white,
+                                  shape: const CircleBorder(),
+                                  elevation: 2,
+                                  shadowColor: Colors.black.withValues(alpha: 0.18),
+                                  child: InkWell(
+                                    onTap: _isAvatarBusy ? null : _chooseAvatar,
+                                    customBorder: const CircleBorder(),
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                      child: _isAvatarBusy
+                                          ? const SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2563EB)),
+                                            )
+                                          : const Icon(Icons.camera_alt_rounded, size: 16, color: Color(0xFF2563EB)),
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          displayName,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          email,
-                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
+                          spacing: 8,
+                          runSpacing: 8,
                           alignment: WrapAlignment.center,
-                          children: roles.map((r) {
-                            String label = r;
-                            if (r == 'tenant-admin') label = 'account.role.tenant_admin'.tr();
-                            else if (r == 'tenant-user') label = 'account.user'.tr();
-                            else if (r == 'platform-admin') label = 'account.role.platform_admin'.tr();
-
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFFDBEAFE)),
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _isAvatarBusy ? null : _chooseAvatar,
+                              icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                              label: Text('account.avatar.update_btn'.tr()),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF1D4ED8),
+                                side: const BorderSide(color: Color(0xFFBFD3FB)),
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                               ),
-                              child: Text(
-                                label,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+                            ),
+                            if (hasAvatar)
+                              OutlinedButton.icon(
+                                onPressed: _isAvatarBusy ? null : _removeAvatar,
+                                icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                                label: Text('account.avatar.remove_btn'.tr()),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF475569),
+                                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                  backgroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
                               ),
-                            );
-                          }).toList(),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'account.avatar.hint'.tr(),
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                         ),
                       ],
                     ),
@@ -337,6 +519,41 @@ class _AccountScreenState extends State<AccountScreen> {
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
                           _buildProfileRow(Icons.business_outlined, 'account.profile.enterprise'.tr(), tenantSlug.toUpperCase()),
                         ],
+                        const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                        _buildProfileRow(
+                          Icons.shield_outlined,
+                          'account.profile.account_type'.tr(),
+                          isPlatformAdmin ? 'account.profile.platform_admin'.tr() : 'account.profile.tenant_user'.tr(),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Info Notice Box
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F9FF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFDBEAFE)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF2563EB)),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isPlatformAdmin
+                                ? 'account.profile.platform_note'.tr()
+                                : 'account.profile.manage_note'.tr(),
+                            style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -355,7 +572,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),

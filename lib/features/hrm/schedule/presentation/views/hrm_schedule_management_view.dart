@@ -4,6 +4,7 @@ import '../../../../../models/hrm_models.dart';
 import '../../../../../models/hrm_attendance_models.dart';
 import '../../../../../models/hrm_work_schedule_models.dart';
 import '../../../../../services/hrm_service.dart';
+import '../../../../../widgets/user_avatar.dart';
 
 /// Quản lý Phân ca, Nhả ca & Lịch làm việc (Web 1:1 ?view=schedules) - Chuẩn Web 1:1 Pixel-Perfect
 class HrmScheduleManagementView extends StatefulWidget {
@@ -34,7 +35,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
   final Set<String> _scheduleSelectedEmployeeIds = {};
   String? _scheduleSelectedUnitId;
   bool _scheduleIncludeChildUnits = true;
-  String _scheduleSelectedShiftId = 'HC_STANDARD';
+  final String _scheduleSelectedShiftId = 'HC_STANDARD';
   String? _scheduleSelectedTemplateId;
   bool _scheduleUseTemplate = false;
   DateTime _scheduleEffectiveDate = DateTime.now();
@@ -905,7 +906,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: 7,
-                    separatorBuilder: (_, __) => const Divider(height: 12, color: Color(0xFFE2E8F0)),
+                    separatorBuilder: (_, _) => const Divider(height: 12, color: Color(0xFFE2E8F0)),
                     itemBuilder: (ctx, idx) {
                       final weekday = idx + 1; // 1 = T2 ... 7 = CN
                       final rule = _scheduleWeeklyRules.firstWhere(
@@ -1331,7 +1332,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: _recentScheduleHistory.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
                       itemBuilder: (context, i) {
                         final h = _recentScheduleHistory[i];
                         final actionLabel = (h['actionLabel'] ?? h['title'] ?? 'hrm_schedule.thay_lich_dinh_ky'.tr()).toString();
@@ -1942,20 +1943,14 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _employees.length.clamp(0, 8),
-              separatorBuilder: (_, __) => const Divider(height: 12, color: Color(0xFFF1F5F9)),
+              separatorBuilder: (_, _) => const Divider(height: 12, color: Color(0xFFF1F5F9)),
               itemBuilder: (context, idx) {
                 final emp = _employees[idx];
                 final shiftLabel = idx % 2 == 0 ? 'T2-T6: Ca HC; T7: HC-T7; CN: OFF' : 'hrm_schedule.t2_t7_ca_sang_ca1_cn_off'.tr();
                 return Row(
                   children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: const Color(0xFFEFF6FF),
-                      child: Text(
-                        emp.fullName.isNotEmpty ? emp.fullName[0].toUpperCase() : 'N',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                      ),
-                    ),
+                    UserAvatar(userId: emp.userId, name: emp.fullName, size: 32, fontSize: 12,
+                        background: const Color(0xFFEFF6FF), foreground: const Color(0xFF2563EB)),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -2059,7 +2054,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   Expanded(
                     child: ListView.separated(
                       itemCount: filteredIndices.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (ctx, i) {
                         final idx = filteredIndices[i];
                         final empId = hasOptions ? _scheduleEmployeeOptions[idx].employeeId : _employees[idx].id;
@@ -2079,12 +2074,12 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             });
                             Navigator.pop(ctx);
                           },
-                          leading: CircleAvatar(
-                            backgroundColor: isForRelease ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
-                            child: Text(
-                              empName.isNotEmpty ? empName[0].toUpperCase() : 'N',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: isForRelease ? const Color(0xFFDC2626) : const Color(0xFF2563EB)),
-                            ),
+                          leading: UserAvatar(
+                            userId: hasOptions ? null : _employees[idx].userId,
+                            name: empName,
+                            size: 40,
+                            background: isForRelease ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
+                            foreground: isForRelease ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
                           ),
                           title: Text(empName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                           subtitle: Text('$empCode • $dept', style: const TextStyle(fontSize: 11)),
@@ -2157,7 +2152,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   Expanded(
                     child: ListView.separated(
                       itemCount: filteredIndices.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (ctx, i) {
                         final idx = filteredIndices[i];
                         final empId = hasOptions ? _scheduleEmployeeOptions[idx].employeeId : _employees[idx].id;
@@ -2289,7 +2284,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                 )
                               : ListView.separated(
                                   itemCount: records.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                                  separatorBuilder: (_, _) => const SizedBox(height: 14),
                                   itemBuilder: (ctx, i) {
                                     final item = records[i];
                                     final beforeRaw = item['before'];
@@ -2465,7 +2460,7 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   Expanded(
                     child: ListView.separated(
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
                       itemBuilder: (ctx, i) {
                         final item = filtered[i];
                         final isSelected = item['id'] == currentShiftId;
@@ -3188,12 +3183,13 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                   confirm: currentPreview.requiresConfirmation || currentRequest.scope.type == 'COMPANY',
                 );
 
+                final messenger = ScaffoldMessenger.of(context);
                 final res = await _hrmService.applySchedule(reqToSave);
                 if (ctx.mounted) {
                   setModalState(() => isSaving = false);
                   if (res.isSuccess) {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(
                         content: Text(res.message.isNotEmpty ? res.message : 'hrm_schedule.luu_phan_ca_thanh_cong'.tr()),
                         backgroundColor: const Color(0xFF059669),
@@ -3773,10 +3769,11 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                                       dryRun: false,
                                       confirm: true,
                                     );
+                                    final messenger = ScaffoldMessenger.of(context);
                                     final finalResult = await _hrmService.cancelSchedule(finalReq);
                                     if (ctx.mounted) {
                                       Navigator.pop(ctx);
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      messenger.showSnackBar(
                                         SnackBar(
                                           content: Text('hrm_schedule.da_huy_ngay_lich_cua_nhan_vien'.tr(args: {'dayCount': finalResult.dayCount, 'employeeCount': finalResult.employeeCount})),
                                           backgroundColor: const Color(0xFF059669),

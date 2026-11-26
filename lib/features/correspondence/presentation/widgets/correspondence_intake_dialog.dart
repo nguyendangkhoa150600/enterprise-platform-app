@@ -4,6 +4,7 @@ import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
 import '../../../workspace/presentation/widgets/searchable_dropdown_field.dart';
+import '../../../../core/i18n/app_i18n.dart';
 
 class CorrespondenceIntakeDialog extends StatefulWidget {
   final VoidCallback? onCreated;
@@ -58,9 +59,9 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
   PlatformFile? _selectedFile;
 
   static const Map<String, String> _envelopeStatusLabels = {
-    'intact': 'Bì nguyên vẹn',
-    'damaged': 'Bì rách, có dấu hiệu bóc mở',
-    'electronic': 'Văn bản điện tử',
+    'intact': 'correspondence.detail_view.envelope_intact',
+    'damaged': 'correspondence.detail_view.envelope_damaged',
+    'electronic': 'correspondence.detail_view.envelope_electronic',
   };
 
   @override
@@ -183,22 +184,22 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Thêm nhanh $kindTitle', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text('correspondence.intake_dialog.quick_add_title'.tr(args: {'kind': kindTitle}), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         content: TextField(
           controller: textController,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Nhập tên $kindTitle...',
+            hintText: 'correspondence.intake_dialog.quick_add_hint'.tr(args: {'kind': kindTitle}),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             isDense: true,
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
             onPressed: () => Navigator.pop(ctx, textController.text.trim()),
-            child: const Text('Thêm', style: TextStyle(color: Colors.white)),
+            child: Text('correspondence.intake_dialog.add'.tr(), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -229,12 +230,12 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
     final subject = _subjectController.text.trim();
 
     if (senderOrg.isEmpty || subject.isEmpty) {
-      setState(() => _errorMessage = 'Nhập cơ quan gửi và trích yếu nội dung.');
+      setState(() => _errorMessage = 'correspondence.intake_dialog.error_required'.tr());
       return;
     }
 
     if (_dueOn.isNotEmpty && _receivedOn.isNotEmpty && _dueOn.compareTo(_receivedOn) < 0) {
-      setState(() => _errorMessage = 'Hạn xử lý không được trước ngày đến.');
+      setState(() => _errorMessage = 'correspondence.intake_dialog.error_due_before_received'.tr());
       return;
     }
 
@@ -271,10 +272,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
       final letter = await _repository.createLetter(req);
 
       // Upload file attachment if picked
+      bool uploadFailed = false;
       if (_selectedFile != null) {
         try {
           await _repository.uploadLetterAttachment(letter.id, _selectedFile, 'incoming');
-        } catch (_) {}
+        } catch (_) {
+          uploadFailed = true;
+        }
       }
 
       if (!mounted) return;
@@ -282,13 +286,14 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
 
       final numStr = letter.incomingNo.isNotEmpty ? letter.incomingNo : letter.displayNo;
       final msg = letter.personal
-          ? 'Đã vào sổ số $numStr, chuyển thẳng người nhận.'
-          : 'Đã vào sổ công văn đến số $numStr.';
+          ? 'correspondence.intake_dialog.registered_personal'.tr(args: {'number': numStr})
+          : 'correspondence.intake_dialog.registered'.tr(args: {'number': numStr});
+      final fullMsg = uploadFailed ? '$msg ${'correspondence.intake.upload_failed_suffix'.tr()}' : msg;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(msg),
-          backgroundColor: const Color(0xFF059669),
+          content: Text(fullMsg),
+          backgroundColor: uploadFailed ? const Color(0xFFD97706) : const Color(0xFF059669),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -300,7 +305,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _errorMessage = 'Không vào sổ được công văn. Vui lòng kiểm tra lại.';
+        _errorMessage = 'correspondence.intake_dialog.register_failed'.tr();
       });
     }
   }
@@ -353,7 +358,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
     required ValueChanged<String> onChanged,
     bool isRequired = false,
   }) {
-    final display = value.isNotEmpty ? CorrespondenceDateUtils.formatDay(value) : 'Chọn ngày';
+    final display = value.isNotEmpty ? CorrespondenceDateUtils.formatDay(value) : 'correspondence.intake_dialog.pick_date'.tr();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -410,14 +415,14 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
               InkWell(
                 onTap: () => _quickAddCatalog(kindKey, label),
                 borderRadius: BorderRadius.circular(4),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.add, size: 14, color: Color(0xFF0284C7)),
-                      SizedBox(width: 2),
-                      Text('Thêm', style: TextStyle(fontSize: 11.5, color: Color(0xFF0284C7), fontWeight: FontWeight.bold)),
+                      const Icon(Icons.add, size: 14, color: Color(0xFF0284C7)),
+                      const SizedBox(width: 2),
+                      Text('correspondence.intake_dialog.add'.tr(), style: const TextStyle(fontSize: 11.5, color: Color(0xFF0284C7), fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -430,7 +435,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
           items: items,
           onChanged: (item) => onChanged(item.code),
           itemLabel: (item) => item.name,
-          hintText: 'Chọn $label...',
+          hintText: 'correspondence.intake_dialog.select_hint'.tr(args: {'label': label}),
           icon: Icons.search,
           showClear: true,
           onClear: () => onChanged(null),
@@ -531,19 +536,19 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Tiếp nhận công văn đến',
-                        style: TextStyle(
+                        'correspondence.intake_dialog.title'.tr(),
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0F172A),
                         ),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
-                        'Vào sổ, cấp số đến; sau đó văn thư phân loại và giao phòng ban xử lý. Bản quét lưu trong kho tài liệu của Hệ dùng chung.',
-                        style: TextStyle(
+                        'correspondence.intake_dialog.subtitle'.tr(),
+                        style: const TextStyle(
                           fontSize: 11.5,
                           color: Color(0xFF64748B),
                           height: 1.35,
@@ -598,13 +603,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                           ),
 
                         // 1. Cơ quan, đơn vị gửi *
-                        _buildFieldLabel('Cơ quan, đơn vị gửi', isRequired: true),
+                        _buildFieldLabel('correspondence.intake_dialog.sender_label'.tr(), isRequired: true),
                         const SizedBox(height: 5),
                         TextField(
                           controller: _senderOrgController,
                           maxLength: 255,
                           style: const TextStyle(fontSize: 13.5),
-                          decoration: _inputDecoration('Sở Kế hoạch và Đầu tư Đà Nẵng'),
+                          decoration: _inputDecoration('correspondence.intake_dialog.sender_hint'.tr()),
                         ),
                         const SizedBox(height: 12),
 
@@ -616,7 +621,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildFieldLabel('Số, ký hiệu văn bản'),
+                                  _buildFieldLabel('correspondence.intake_dialog.reference_label'.tr()),
                                   const SizedBox(height: 5),
                                   TextField(
                                     controller: _senderRefController,
@@ -629,7 +634,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                     children: [
                                       Expanded(
                                         child: _buildDatePickerCapsule(
-                                          label: 'Ngày văn bản',
+                                          label: 'correspondence.intake_dialog.document_date'.tr(),
                                           value: _senderDate,
                                           onChanged: (val) => setState(() => _senderDate = val),
                                         ),
@@ -637,7 +642,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: _buildDatePickerCapsule(
-                                          label: 'Ngày đến',
+                                          label: 'correspondence.intake_dialog.received_on'.tr(),
                                           value: _receivedOn,
                                           isRequired: true,
                                           onChanged: (val) {
@@ -661,7 +666,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      _buildFieldLabel('Số, ký hiệu văn bản'),
+                                      _buildFieldLabel('correspondence.intake_dialog.reference_label'.tr()),
                                       const SizedBox(height: 5),
                                       TextField(
                                         controller: _senderRefController,
@@ -676,7 +681,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                 Expanded(
                                   flex: 2,
                                   child: _buildDatePickerCapsule(
-                                    label: 'Ngày văn bản',
+                                    label: 'correspondence.intake_dialog.document_date'.tr(),
                                     value: _senderDate,
                                     onChanged: (val) => setState(() => _senderDate = val),
                                   ),
@@ -685,7 +690,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                 Expanded(
                                   flex: 2,
                                   child: _buildDatePickerCapsule(
-                                    label: 'Ngày đến',
+                                    label: 'correspondence.intake_dialog.received_on'.tr(),
                                     value: _receivedOn,
                                     isRequired: true,
                                     onChanged: (val) {
@@ -703,14 +708,14 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                         const SizedBox(height: 12),
 
                         // 3. Trích yếu nội dung *
-                        _buildFieldLabel('Trích yếu nội dung', isRequired: true),
+                        _buildFieldLabel('correspondence.intake_dialog.subject_label'.tr(), isRequired: true),
                         const SizedBox(height: 5),
                         TextField(
                           controller: _subjectController,
                           maxLines: 3,
                           maxLength: 1000,
                           style: const TextStyle(fontSize: 13.5),
-                          decoration: _inputDecoration('Đề nghị báo cáo tình hình thực hiện dự án đầu tư quý IV năm 2026'),
+                          decoration: _inputDecoration('correspondence.intake_dialog.subject_hint'.tr()),
                         ),
                         const SizedBox(height: 12),
 
@@ -723,7 +728,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _buildCatalogSelector(
-                                    label: 'Loại văn bản',
+                                    label: 'correspondence.intake_dialog.kind_label'.tr(),
                                     items: kinds,
                                     selectedCode: _selectedKind,
                                     kindKey: 'letter_type',
@@ -739,7 +744,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                     children: [
                                       Expanded(
                                         child: _buildCatalogSelector(
-                                          label: 'Độ khẩn',
+                                          label: 'correspondence.intake_dialog.urgency_label'.tr(),
                                           items: urgencies,
                                           selectedCode: _selectedUrgency,
                                           kindKey: 'urgency',
@@ -749,7 +754,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: _buildCatalogSelector(
-                                          label: 'Độ mật',
+                                          label: 'correspondence.intake_dialog.confidentiality_label'.tr(),
                                           items: confs,
                                           selectedCode: _selectedConfidentiality,
                                           kindKey: 'confidentiality',
@@ -766,7 +771,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                               children: [
                                 Expanded(
                                   child: _buildCatalogSelector(
-                                    label: 'Loại văn bản',
+                                    label: 'correspondence.intake_dialog.kind_label'.tr(),
                                     items: kinds,
                                     selectedCode: _selectedKind,
                                     kindKey: 'letter_type',
@@ -781,7 +786,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: _buildCatalogSelector(
-                                    label: 'Độ khẩn',
+                                    label: 'correspondence.intake_dialog.urgency_label'.tr(),
                                     items: urgencies,
                                     selectedCode: _selectedUrgency,
                                     kindKey: 'urgency',
@@ -791,7 +796,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: _buildCatalogSelector(
-                                    label: 'Độ mật',
+                                    label: 'correspondence.intake_dialog.confidentiality_label'.tr(),
                                     items: confs,
                                     selectedCode: _selectedConfidentiality,
                                     kindKey: 'confidentiality',
@@ -815,9 +820,9 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Phân loại sơ bộ',
-                                style: TextStyle(
+                              Text(
+                                'correspondence.intake_dialog.preliminary_section'.tr(),
+                                style: const TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF0F172A),
@@ -833,14 +838,14 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                     return Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        _buildFieldLabel('Tình trạng bì'),
+                                        _buildFieldLabel('correspondence.intake_dialog.envelope_label'.tr()),
                                         const SizedBox(height: 5),
                                         SearchableDropdownField<String>(
                                           value: _envelopeStatus,
                                           items: _envelopeStatusLabels.keys.toList(),
                                           onChanged: (status) => setState(() => _envelopeStatus = status),
-                                          itemLabel: (status) => _envelopeStatusLabels[status] ?? status,
-                                          hintText: 'Chọn tình trạng bì...',
+                                          itemLabel: (status) => _envelopeStatusLabels[status]?.tr() ?? status,
+                                          hintText: 'correspondence.intake_dialog.envelope_hint'.tr(),
                                           showClear: false,
                                         ),
                                         const SizedBox(height: 12),
@@ -850,13 +855,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  _buildFieldLabel('Số tờ'),
+                                                  _buildFieldLabel('correspondence.intake_dialog.page_count'.tr()),
                                                   const SizedBox(height: 5),
                                                   TextField(
                                                     controller: _pageCountController,
                                                     keyboardType: TextInputType.number,
                                                     style: const TextStyle(fontSize: 13.5),
-                                                    decoration: _inputDecoration('Số tờ'),
+                                                    decoration: _inputDecoration('correspondence.intake_dialog.page_count'.tr()),
                                                   ),
                                                 ],
                                               ),
@@ -866,13 +871,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  _buildFieldLabel('Số bản'),
+                                                  _buildFieldLabel('correspondence.intake_dialog.copy_count'.tr()),
                                                   const SizedBox(height: 5),
                                                   TextField(
                                                     controller: _copyCountController,
                                                     keyboardType: TextInputType.number,
                                                     style: const TextStyle(fontSize: 13.5),
-                                                    decoration: _inputDecoration('Số bản'),
+                                                    decoration: _inputDecoration('correspondence.intake_dialog.copy_count'.tr()),
                                                   ),
                                                 ],
                                               ),
@@ -890,14 +895,14 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            _buildFieldLabel('Tình trạng bì'),
+                                            _buildFieldLabel('correspondence.intake_dialog.envelope_label'.tr()),
                                             const SizedBox(height: 5),
                                             SearchableDropdownField<String>(
                                               value: _envelopeStatus,
                                               items: _envelopeStatusLabels.keys.toList(),
                                               onChanged: (status) => setState(() => _envelopeStatus = status),
-                                              itemLabel: (status) => _envelopeStatusLabels[status] ?? status,
-                                              hintText: 'Chọn tình trạng bì...',
+                                              itemLabel: (status) => _envelopeStatusLabels[status]?.tr() ?? status,
+                                              hintText: 'correspondence.intake_dialog.envelope_hint'.tr(),
                                               showClear: false,
                                             ),
                                           ],
@@ -908,13 +913,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            _buildFieldLabel('Số tờ'),
+                                            _buildFieldLabel('correspondence.intake_dialog.page_count'.tr()),
                                             const SizedBox(height: 5),
                                             TextField(
                                               controller: _pageCountController,
                                               keyboardType: TextInputType.number,
                                               style: const TextStyle(fontSize: 13.5),
-                                              decoration: _inputDecoration('Số tờ'),
+                                              decoration: _inputDecoration('correspondence.intake_dialog.page_count'.tr()),
                                             ),
                                           ],
                                         ),
@@ -924,13 +929,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            _buildFieldLabel('Số bản'),
+                                            _buildFieldLabel('correspondence.intake_dialog.copy_count'.tr()),
                                             const SizedBox(height: 5),
                                             TextField(
                                               controller: _copyCountController,
                                               keyboardType: TextInputType.number,
                                               style: const TextStyle(fontSize: 13.5),
-                                              decoration: _inputDecoration('Số bản'),
+                                              decoration: _inputDecoration('correspondence.intake_dialog.copy_count'.tr()),
                                             ),
                                           ],
                                         ),
@@ -952,9 +957,9 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     const SizedBox(width: 4),
-                                    const Text(
-                                      'Dấu niêm phong còn nguyên (văn bản mật)',
-                                      style: TextStyle(fontSize: 12.5, color: Color(0xFF1E293B)),
+                                    Text(
+                                      'correspondence.intake_dialog.sealed'.tr(),
+                                      style: const TextStyle(fontSize: 12.5, color: Color(0xFF1E293B)),
                                     ),
                                   ],
                                 ),
@@ -963,18 +968,18 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                               const SizedBox(height: 12),
 
                               // Gửi đích danh (cá nhân, tổ chức đoàn thể)
-                              _buildFieldLabel('Gửi đích danh (cá nhân, tổ chức đoàn thể)'),
+                              _buildFieldLabel('correspondence.intake_dialog.addressed_to_label'.tr()),
                               const SizedBox(height: 5),
                               TextField(
                                 controller: _addressedToController,
                                 maxLength: 255,
                                 style: const TextStyle(fontSize: 13.5),
-                                decoration: _inputDecoration('Để trống nếu gửi cơ quan'),
+                                decoration: _inputDecoration('correspondence.intake_dialog.addressed_to_hint'.tr()),
                               ),
                               const SizedBox(height: 12),
 
                               // Người nhận đích danh trong hệ thống
-                              _buildFieldLabel('Người nhận đích danh trong hệ thống'),
+                              _buildFieldLabel('correspondence.intake_dialog.addressed_user_label'.tr()),
                               const SizedBox(height: 5),
                               SearchableDropdownField<CorrespondencePerson>(
                                 value: _directory.people.where((p) => p.userId == _selectedAddressedUserId).firstOrNull,
@@ -986,7 +991,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                   final dept = p.department ?? '';
                                   return [code, dept].where((s) => s.isNotEmpty).join(' · ');
                                 },
-                                hintText: 'Chọn nếu người nhận có tài khoản',
+                                hintText: 'correspondence.intake_dialog.addressed_user_hint'.tr(),
                                 icon: Icons.person_search_rounded,
                                 showClear: true,
                                 onClear: () {
@@ -997,9 +1002,9 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                 },
                               ),
                               const SizedBox(height: 4),
-                              const Text(
-                                'Người này nhận thông báo và xem được công văn.',
-                                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                              Text(
+                                'correspondence.intake_dialog.addressed_user_note'.tr(),
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                               ),
 
                               // Thư riêng checkbox (khi có người nhận đích danh)
@@ -1022,10 +1027,10 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       const SizedBox(width: 4),
-                                      const Expanded(
+                                      Expanded(
                                         child: Text(
-                                          'Thư riêng: không bóc bì, chuyển thẳng người nhận, không vào quy trình xử lý (người nhận trả văn thư được nếu là việc chung)',
-                                          style: TextStyle(fontSize: 11.5, color: Color(0xFF065F46), height: 1.35),
+                                          'correspondence.intake_dialog.personal'.tr(),
+                                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF065F46), height: 1.35),
                                         ),
                                       ),
                                     ],
@@ -1039,22 +1044,22 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
 
                         // 6. Sổ đăng ký (nếu có từ 2 sổ trở lên)
                         if (incomingRegisters.length > 1) ...[
-                          _buildFieldLabel('Sổ đăng ký'),
+                          _buildFieldLabel('correspondence.intake_dialog.register_label'.tr()),
                           const SizedBox(height: 5),
                           SearchableDropdownField<RegisterBookModel>(
                             value: incomingRegisters.where((b) => b.id == _selectedRegisterId).firstOrNull,
                             items: incomingRegisters,
                             onChanged: (b) => setState(() => _selectedRegisterId = b.id),
                             itemLabel: (b) => b.name,
-                            itemSubtitle: (b) => b.confidential ? 'Sổ văn bản mật' : null,
-                            hintText: 'Tự chọn theo độ mật, loại văn bản',
+                            itemSubtitle: (b) => b.confidential ? 'correspondence.intake_dialog.register_confidential'.tr() : null,
+                            hintText: 'correspondence.intake_dialog.register_hint'.tr(),
                             showClear: true,
                             onClear: () => setState(() => _selectedRegisterId = null),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            'Văn bản có độ mật tự vào sổ mật (cấp số riêng); chọn sổ khác nếu cần.',
-                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          Text(
+                            'correspondence.intake_dialog.register_note'.tr(),
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                           ),
                           const SizedBox(height: 14),
                         ],
@@ -1065,7 +1070,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                           children: [
                             Expanded(
                               child: _buildDatePickerCapsule(
-                                label: 'Hạn xử lý',
+                                label: 'correspondence.intake_dialog.due_label'.tr(),
                                 value: _dueOn,
                                 onChanged: (val) => setState(() => _dueOn = val),
                               ),
@@ -1075,13 +1080,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildFieldLabel('Bản quét công văn'),
+                                  _buildFieldLabel('correspondence.intake_dialog.scan_label'.tr()),
                                   const SizedBox(height: 5),
                                   OutlinedButton.icon(
                                     onPressed: _pickFile,
                                     icon: const Icon(Icons.attach_file, size: 16, color: Color(0xFF0284C7)),
                                     label: Text(
-                                      _selectedFile != null ? _selectedFile!.name : 'Chọn tệp',
+                                      _selectedFile != null ? _selectedFile!.name : 'correspondence.intake_dialog.pick_file'.tr(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(fontSize: 12, color: Color(0xFF0284C7)),
@@ -1093,9 +1098,9 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  const Text(
-                                    'PDF, ảnh hay tệp Word của công văn',
-                                    style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                                  Text(
+                                    'correspondence.intake_dialog.scan_note'.tr(),
+                                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                                   ),
                                 ],
                               ),
@@ -1106,22 +1111,22 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
 
                         // 8. Quy trình & Stepper preview (nếu không phải thư riêng)
                         if (!_personal) ...[
-                          _buildFieldLabel('Quy trình'),
+                          _buildFieldLabel('correspondence.intake_dialog.workflow_label'.tr()),
                           const SizedBox(height: 5),
                           SearchableDropdownField<WorkflowModel>(
                             value: incomingWorkflows.where((w) => w.id == _selectedWorkflowId).firstOrNull,
                             items: incomingWorkflows,
                             onChanged: (w) => setState(() => _selectedWorkflowId = w.id),
-                            itemLabel: (w) => 'Theo cấu hình: ${w.name}',
-                            hintText: 'Chọn quy trình...',
+                            itemLabel: (w) => 'correspondence.intake_dialog.workflow_item'.tr(args: {'name': w.name}),
+                            hintText: 'correspondence.intake_dialog.workflow_hint'.tr(),
                             icon: Icons.search,
                             showClear: true,
                             onClear: () => setState(() => _selectedWorkflowId = null),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            'Để trống: theo quy trình cấu hình cho loại văn bản (hay quy trình mặc định).',
-                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          Text(
+                            'correspondence.intake_dialog.workflow_note'.tr(),
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                           ),
                           const SizedBox(height: 8),
 
@@ -1137,13 +1142,13 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildStepPreviewItem('1. ${currentWf.startName ?? "Văn thư tiếp nhận"}', 'Ô đầu'),
+                                  _buildStepPreviewItem('1. ${currentWf.startName ?? 'correspondence.intake_dialog.step_start_default'.tr()}', 'correspondence.intake_dialog.step_first'.tr()),
                                   ...currentWf.steps.asMap().entries.map((entry) {
                                     final step = entry.value;
                                     final subtitle = step.formatSubtitle(_directory);
                                     return _buildStepPreviewItem('${entry.key + 2}. ${step.name}', subtitle);
                                   }),
-                                  _buildStepPreviewItem('${currentWf.steps.length + 2}. ${currentWf.endName ?? "Văn thư hoàn tất, lưu trữ"}', 'Ô cuối'),
+                                  _buildStepPreviewItem('${currentWf.steps.length + 2}. ${currentWf.endName ?? 'correspondence.intake_dialog.step_end_default'.tr()}', 'correspondence.intake_dialog.step_last'.tr()),
                                 ],
                               ),
                             ),
@@ -1168,7 +1173,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   ),
-                  child: const Text('Huỷ', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                  child: Text('common.cancel'.tr(), style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton(
@@ -1182,7 +1187,7 @@ class _CorrespondenceIntakeDialogState extends State<CorrespondenceIntakeDialog>
                   ),
                   child: _isSubmitting
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Vào sổ công văn', style: TextStyle(fontWeight: FontWeight.w700)),
+                      : Text('correspondence.intake_dialog.submit'.tr(), style: const TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ],
             ),

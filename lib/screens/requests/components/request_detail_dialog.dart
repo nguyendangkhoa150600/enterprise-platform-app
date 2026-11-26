@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../features/hrm/requests/presentation/widgets/hrm_request_comments_section.dart';
+import '../../../services/hrm_service.dart';
 import 'package:provider/provider.dart';
 import '../../../models/hrm_attendance_models.dart';
 import '../../../providers/auth_provider.dart';
@@ -535,76 +537,13 @@ void showCorrectionDetailDialog({
                     const Divider(height: 1, color: Color(0xFFF1F5F9)),
                     const SizedBox(height: 14),
 
-                    // 4. Trao đổi và ý kiến (0) (Matching Web 1:1)
-                    Row(
-                      children: const [
-                        Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF2563EB)),
-                        SizedBox(width: 6),
-                        Text(
-                          'Trao đổi và ý kiến (0)',
-                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                        ),
-                      ],
+                    // 4. Trao đổi và ý kiến — cùng khối với chi tiết đơn ở "Đơn từ cần xử lý" (web `RequestComments`).
+                    HrmRequestCommentsSection(
+                      hrmService: HrmService(),
+                      kind: (c.kind ?? '').isNotEmpty ? c.kind! : 'correction',
+                      requestId: c.id,
+                      closedByStatus: c.status == 'APPROVED' || c.status == 'REJECTED' || c.status == 'CANCELLED',
                     ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
-                      ),
-                      child: Text(
-                        (c.status == 'APPROVED' || c.status == 'REJECTED' || c.status == 'CANCELLED')
-                            ? 'Chưa có trao đổi nào.'
-                            : 'Chưa có trao đổi nào. Gõ @ để nhắc tên người cần xem đơn này.',
-                        textAlign: (c.status == 'APPROVED' || c.status == 'REJECTED' || c.status == 'CANCELLED')
-                            ? TextAlign.center
-                            : TextAlign.start,
-                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (c.status == 'APPROVED' || c.status == 'REJECTED' || c.status == 'CANCELLED')
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Đơn đã huỷ, rút hoặc hoàn tất xử lý nên không thể trao đổi thêm.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-                        ),
-                      )
-                    else
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Row(
-                          children: const [
-                            Expanded(
-                              child: Text(
-                                'Viết trao đổi... gõ @ để nhắc người liên quan...',
-                                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Icon(Icons.attach_file_rounded, size: 16, color: Color(0xFF94A3B8)),
-                            SizedBox(width: 8),
-                            Icon(Icons.send_rounded, size: 16, color: Color(0xFFF59E0B)),
-                          ],
-                        ),
-                      ),
                   ],
                 ),
               ),

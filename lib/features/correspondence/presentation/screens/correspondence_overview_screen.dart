@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
@@ -11,6 +12,7 @@ import 'correspondence_mine_screen.dart';
 import 'correspondence_incoming_screen.dart';
 import 'correspondence_outgoing_screen.dart';
 import 'correspondence_archive_screen.dart';
+import 'correspondence_tracking_screen.dart';
 
 class CorrespondenceOverviewScreen extends StatefulWidget {
   const CorrespondenceOverviewScreen({super.key});
@@ -56,7 +58,7 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Không tải được dữ liệu Tổng quan Văn thư. Vui lòng thử lại.';
+        _errorMessage = 'correspondence.overview.load_failed'.tr();
         _isLoading = false;
       });
     }
@@ -74,7 +76,7 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Tính năng "$action" đang được chuẩn bị khởi chạy trên di động.'),
+        content: Text('correspondence.overview.feature_coming_soon'.tr(args: {'action': action})),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -95,21 +97,21 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Tổng quan Văn thư',
-              style: TextStyle(
+            Text(
+              'correspondence.overview.title'.tr(),
+              style: const TextStyle(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
               ),
             ),
             Row(
-              children: const [
-                Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
-                SizedBox(width: 4),
+              children: [
+                const Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
+                const SizedBox(width: 4),
                 Text(
-                  'Văn thư',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                  'correspondence.overview.breadcrumb'.tr(),
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -128,15 +130,15 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
-            SizedBox(height: 14),
+            const CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
+            const SizedBox(height: 14),
             Text(
-              'Đang tải tổng quan văn thư...',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              'correspondence.overview.loading'.tr(),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
           ],
         ),
@@ -161,7 +163,7 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
               ElevatedButton.icon(
                 onPressed: _loadData,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Thử lại'),
+                label: Text('common.retry'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
                   foregroundColor: Colors.white,
@@ -210,6 +212,20 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const CorrespondenceArchiveScreen()),
+                  );
+                } else if (key == 'awaiting_approval') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CorrespondenceIncomingScreen(initialStage: 'reviewing'),
+                    ),
+                  );
+                } else if (key == 'overdue') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CorrespondenceTrackingScreen(initialFilter: 'overdue'),
+                    ),
                   );
                 }
               },
@@ -264,9 +280,9 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
             OutlinedButton.icon(
               onPressed: () => _onActionTap('Soạn công văn đi'),
               icon: const Icon(Icons.edit_document, size: 16, color: Color(0xFF0284C7)),
-              label: const Text(
-                'Soạn công văn đi',
-                style: TextStyle(
+              label: Text(
+                'correspondence.overview.action_compose_outgoing'.tr(),
+                style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0284C7),
@@ -287,9 +303,9 @@ class _CorrespondenceOverviewScreenState extends State<CorrespondenceOverviewScr
             ElevatedButton.icon(
               onPressed: () => _onActionTap('Tiếp nhận công văn đến'),
               icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
-              label: const Text(
-                'Tiếp nhận công văn đến',
-                style: TextStyle(
+              label: Text(
+                'correspondence.overview.action_register_incoming'.tr(),
+                style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,

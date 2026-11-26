@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../core/i18n/app_i18n.dart';
 import '../../data/repositories/correspondence_repository_impl.dart';
 import '../../domain/models/correspondence_models.dart';
 import '../../domain/repositories/i_correspondence_repository.dart';
@@ -61,7 +62,7 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Không tải được danh sách công văn cần xử lý. Vui lòng thử lại.';
+        _errorMessage = 'correspondence.list.mine_load_failed'.tr();
         _isLoading = false;
       });
     }
@@ -89,7 +90,7 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Tính năng "$action" đang được chuẩn bị khởi chạy trên di động.'),
+        content: Text('correspondence.list.feature_coming_soon'.tr(args: {'action': action})),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -110,21 +111,21 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Cần tôi xử lý',
-              style: TextStyle(
+            Text(
+              'correspondence.list.mine_title'.tr(),
+              style: const TextStyle(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
               ),
             ),
             Row(
-              children: const [
-                Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
-                SizedBox(width: 4),
+              children: [
+                const Icon(Icons.home_outlined, size: 12, color: Color(0xFF64748B)),
+                const SizedBox(width: 4),
                 Text(
-                  'Văn thư › Cần tôi xử lý',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                  'correspondence.list.mine_breadcrumb'.tr(),
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -181,9 +182,9 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
             OutlinedButton.icon(
               onPressed: () => _onActionTap('Soạn công văn đi'),
               icon: const Icon(Icons.edit_document, size: 16, color: Color(0xFF0284C7)),
-              label: const Text(
-                'Soạn công văn đi',
-                style: TextStyle(
+              label: Text(
+                'correspondence.list.compose_outgoing'.tr(),
+                style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0284C7),
@@ -204,9 +205,9 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
             ElevatedButton.icon(
               onPressed: () => _onActionTap('Tiếp nhận công văn đến'),
               icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
-              label: const Text(
-                'Tiếp nhận công văn đến',
-                style: TextStyle(
+              label: Text(
+                'correspondence.list.register_incoming'.tr(),
+                style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -243,7 +244,7 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
         onChanged: _onSearchChanged,
         style: const TextStyle(fontSize: 13.5, color: Color(0xFF0F172A)),
         decoration: InputDecoration(
-          hintText: 'Tìm theo số, trích yếu, cơ quan gửi',
+          hintText: 'correspondence.list.mine_search_hint'.tr(),
           hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
           prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF64748B)),
           suffixIcon: _searchQuery.isNotEmpty
@@ -268,14 +269,14 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
       return Container(
         height: 180,
         alignment: Alignment.center,
-        child: const Column(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
-            SizedBox(height: 12),
+            const CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0284C7)),
+            const SizedBox(height: 12),
             Text(
-              'Đang tải công văn cần xử lý...',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              'correspondence.list.mine_loading'.tr(),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
           ],
         ),
@@ -305,7 +306,7 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
               ElevatedButton.icon(
                 onPressed: _loadData,
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Thử lại'),
+                label: Text('common.retry'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
                   foregroundColor: Colors.white,
@@ -337,8 +338,8 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
         child: Center(
           child: Text(
             _searchQuery.isNotEmpty
-                ? 'Không có công văn nào khớp với từ tìm kiếm.'
-                : 'Không có công văn nào đang chờ bạn xử lý.',
+                ? 'correspondence.list.mine_empty_search'.tr()
+                : 'correspondence.list.mine_empty'.tr(),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 14,
@@ -385,7 +386,7 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  'Hiển thị ${_letters.length} công văn',
+                  'correspondence.list.showing_count'.tr(args: {'count': _letters.length}),
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -440,7 +441,7 @@ class _CorrespondenceMineScreenState extends State<CorrespondenceMineScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${isIncoming ? 'Đến' : 'Đi'} · $dateStr',
+                        '${isIncoming ? 'correspondence.list.direction_in'.tr() : 'correspondence.list.direction_out'.tr()} · $dateStr',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF64748B),

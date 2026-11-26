@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/workspace_service.dart';
+import '../../../core/i18n/app_i18n.dart';
 
 /// Hộp thoại xác nhận huỷ công việc kèm lý do huỷ, đồng bộ 1:1 với Web React
 Future<bool> showCancelWorkItemDialog(
@@ -8,6 +9,10 @@ Future<bool> showCancelWorkItemDialog(
   String? workItemCode,
   required String workItemTitle,
   required WorkspaceService service,
+  /// Việc trong dự án dùng API work-item, việc lẻ dùng API standalone — không gọi chéo.
+  bool isProjectTask = true,
+  /// Số việc con còn mở trong nhánh (web `openChildren`).
+  int openChildren = 0,
 }) async {
   final result = await showDialog<bool>(
     context: context,
@@ -17,6 +22,8 @@ Future<bool> showCancelWorkItemDialog(
       workItemCode: workItemCode,
       workItemTitle: workItemTitle,
       service: service,
+      isProjectTask: isProjectTask,
+      openChildren: openChildren,
     ),
   );
   return result ?? false;
@@ -27,12 +34,16 @@ class _CancelWorkItemDialog extends StatefulWidget {
   final String? workItemCode;
   final String workItemTitle;
   final WorkspaceService service;
+  final bool isProjectTask;
+  final int openChildren;
 
   const _CancelWorkItemDialog({
     required this.workItemId,
     this.workItemCode,
     required this.workItemTitle,
     required this.service,
+    required this.isProjectTask,
+    required this.openChildren,
   });
 
   @override
@@ -42,6 +53,7 @@ class _CancelWorkItemDialog extends StatefulWidget {
 class _CancelWorkItemDialogState extends State<_CancelWorkItemDialog> {
   final TextEditingController _reasonController = TextEditingController();
   bool _isSubmitting = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -50,52 +62,32 @@ class _CancelWorkItemDialogState extends State<_CancelWorkItemDialog> {
   }
 
   Future<void> _handleConfirmCancel() async {
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
     final note = _reasonController.text.trim();
-
-    try {
-      // 1. Thử cập nhật work item dự án kèm ghi chú lý do
-      bool ok = await widget.service.updateWorkItemStatus(
-        widget.workItemId,
-        'cancelled',
-        note: note.isNotEmpty ? note : null,
-      );
-
-      // 2. Thử cập nhật standalone task nếu không phải work item
-      if (!ok) {
-        ok = await widget.service.changeStandaloneTaskStatus(
-          widget.workItemId,
-          'cancelled',
-          note: note.isNotEmpty ? note : null,
-        );
-      }
-
-      if (mounted) {
-        if (ok) {
-          Navigator.of(context).pop(true);
-        } else {
-          setState(() => _isSubmitting = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Không thể huỷ công việc. Vui lòng thử lại!'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
+    final ok = widget.isProjectTask
+        ? await widget.service.updateWorkItemStatus(
+            widget.workItemId,
+            'cancelled',
+            note: note.isNotEmpty ? note : null,
+          )
+        : await widget.service.changeStandaloneTaskStatus(
+            widget.workItemId,
+            'cancelled',
+            note: note.isNotEmpty ? note : null,
           );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã xảy ra lỗi: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop(true);
+      return;
     }
+    // Như web: giữ hộp thoại, hiện lời nhắn của server (vd. còn việc con đang mở).
+    setState(() {
+      _isSubmitting = false;
+      _error = widget.service.lastError ?? 'workspace.cancel_item.failed'.tr();
+    });
   }
 
   @override
@@ -129,9 +121,11 @@ class _CancelWorkItemDialogState extends State<_CancelWorkItemDialog> {
               const SizedBox(height: 12),
 
               // Đoạn giải thích
-              const Text(
-                'Công việc chuyển sang Đã huỷ và rời khỏi danh sách đang làm; mở lại được từ trạng thái Đã huỷ.',
-                style: TextStyle(
+              Text(
+                widget.openChildren > 0
+                    ? 'workspace.cancel_item.message_with_children'.tr(args: {'count': widget.openChildren})
+                    : 'workspace.cancel_item.message'.tr(),
+                style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF64748B),
                   height: 1.45,
@@ -177,6 +171,10 @@ class _CancelWorkItemDialogState extends State<_CancelWorkItemDialog> {
                   ),
                 ),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(_error!, style: const TextStyle(fontSize: 12.5, color: Color(0xFFDC2626))),
+              ],
               const SizedBox(height: 20),
 
               // Hàng nút hành động căn phải
