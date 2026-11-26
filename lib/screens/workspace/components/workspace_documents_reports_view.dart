@@ -424,13 +424,19 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: () async {
+                    // Web DocumentPanel: tab Tài liệu của dự án thì tự xếp `<gốc>/<dự án>`; trang chung thì chọn thư mục.
+                    final scope = widget.scopeProjectId;
                     final ok = await showUploadWorkspaceDocumentDialog(
                       context,
                       remote: _remote,
-                      folders: _folders,
+                      folders: workspaceUploadVisibleFolders(
+                        _folders,
+                        filterProjectId: _isScoped ? null : _selectedProjectId,
+                      ),
                       defaultFolderId: _currentFolderId,
-                      defaultProjectId: _selectedProjectId,
+                      autoPath: _isScoped ? (projectId: scope!, workItemId: null) : null,
                     );
+                    if (!mounted) return;
                     if (ok) _load();
                   },
                 ),
@@ -609,6 +615,7 @@ class _WorkspaceDocumentsViewState extends State<WorkspaceDocumentsView> {
                 remote: _remote,
                 onRefresh: _load,
                 canWrite: _canWrite,
+                scopeProjectId: widget.scopeProjectId,
               ),
             ),
           ).then((_) => _load());

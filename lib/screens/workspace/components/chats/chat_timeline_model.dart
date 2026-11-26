@@ -353,3 +353,29 @@ List<({String text, bool mention})> splitByMentions(String text, List<MentionSpa
   if (cursor < text.length) parts.add((text: text.substring(cursor), mention: false));
   return parts;
 }
+
+/// Cách đáy trong ngần này thì coi như đang đọc ở đáy: có tin mới thì xuống đáy (web `STICK_TO_BOTTOM_PX`).
+const double kChatStickToBottomPx = 80;
+
+/// Chỗ đang đọc của một cột cuộn ngược (offset 0 = đáy): ở gần đáy thì bám đáy, không thì giữ khoảng cách tới đỉnh
+/// như web giữ `scrollTop` khi tin mới chèn xuống đáy.
+class ChatScrollAnchor {
+  final ScrollController controller;
+  final bool atBottom;
+  final double fromTop;
+
+  const ChatScrollAnchor(this.controller, this.atBottom, this.fromTop);
+
+  static ChatScrollAnchor? capture(ScrollController controller) {
+    if (!controller.hasClients) return null;
+    final position = controller.position;
+    return ChatScrollAnchor(controller, position.pixels < kChatStickToBottomPx, position.maxScrollExtent - position.pixels);
+  }
+
+  void restore() {
+    if (!controller.hasClients) return;
+    final position = controller.position;
+    final target = atBottom ? 0.0 : (position.maxScrollExtent - fromTop).clamp(0.0, position.maxScrollExtent);
+    if (target != position.pixels) controller.jumpTo(target);
+  }
+}

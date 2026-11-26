@@ -16,6 +16,8 @@ class WorkspaceFolderDetailScreen extends StatefulWidget {
   final Future<void> Function() onRefresh;
   /// Quyền ghi thư mục/tài liệu (web `folder.projectId ? canWrite : canDelete`); mặc định giữ hành vi cũ.
   final bool canWrite;
+  /// Mở từ tab Tài liệu của một dự án (web DocumentPanel `projectId`): tải lên tự xếp `<gốc>/<dự án>`.
+  final String? scopeProjectId;
 
   const WorkspaceFolderDetailScreen({
     super.key,
@@ -26,6 +28,7 @@ class WorkspaceFolderDetailScreen extends StatefulWidget {
     required this.remote,
     required this.onRefresh,
     this.canWrite = true,
+    this.scopeProjectId,
   });
 
   @override
@@ -465,13 +468,15 @@ class _WorkspaceFolderDetailScreenState extends State<WorkspaceFolderDetailScree
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         ),
                         onPressed: () async {
+                          final scope = widget.scopeProjectId;
                           final ok = await showUploadWorkspaceDocumentDialog(
                             context,
                             remote: widget.remote,
-                            folders: _folders,
+                            folders: workspaceUploadVisibleFolders(_folders),
                             defaultFolderId: _currentFolder.id,
-                            defaultProjectId: _currentFolder.projectId,
+                            autoPath: scope != null && scope.isNotEmpty ? (projectId: scope, workItemId: null) : null,
                           );
+                          if (!mounted) return;
                           if (ok == true) _reload();
                         },
                       ),

@@ -163,7 +163,15 @@ class CalendarEventMutation {
   final List<CalendarEventParticipant> participants;
   final List<CalendarSchedulingWarning> warnings;
 
-  const CalendarEventMutation({this.description, this.participants = const [], this.warnings = const []});
+  /// Sự kiện dựng thành một lần xuất hiện (lần đầu) để mở form — web mở sự kiện từ link thông báo.
+  final CalendarOccurrence? occurrence;
+
+  const CalendarEventMutation({
+    this.description,
+    this.participants = const [],
+    this.warnings = const [],
+    this.occurrence,
+  });
 
   factory CalendarEventMutation.fromJson(dynamic data) {
     final json = data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
@@ -172,7 +180,21 @@ class CalendarEventMutation {
         ? (json[key] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
         : const [];
     final description = event['description']?.toString();
+    CalendarOccurrence? occurrence;
+    final id = event['id']?.toString() ?? '';
+    final start = DateTime.tryParse(event['startAt']?.toString() ?? '')?.toLocal();
+    if (id.isNotEmpty && start != null) {
+      String two(int n) => n.toString().padLeft(2, '0');
+      final rule = event['recurrenceRule']?.toString() ?? '';
+      occurrence = CalendarOccurrence.fromJson({
+        ...Map<String, dynamic>.from(event),
+        'eventId': id,
+        'occurrenceDate': '${start.year}-${two(start.month)}-${two(start.day)}',
+        'isRecurring': rule.isNotEmpty,
+      });
+    }
     return CalendarEventMutation(
+      occurrence: occurrence,
       description: description == null || description.isEmpty ? null : description,
       participants: listOf('participants').map(CalendarEventParticipant.fromJson).toList(),
       warnings: listOf('warnings').map(CalendarSchedulingWarning.fromJson).toList(),

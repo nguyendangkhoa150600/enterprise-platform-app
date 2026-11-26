@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'task_detail/workspace_procedure_steps_panel.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../features/workspace/data/datasources/workspace_task_detail_api.dart';
 import '../../../models/workspace_models.dart';
@@ -404,6 +405,9 @@ class _TaskDetailContentState extends State<_TaskDetailContent>
   List<Widget> _standaloneBody() {
     final t = _task;
     final d = standaloneDetail;
+    final procedure = (d?['task'] as Map?)?['procedure'];
+    final procedureInstanceId =
+        procedure is Map && (procedure['instanceId']?.toString() ?? '').isNotEmpty ? procedure['instanceId'].toString() : null;
     final ancestors = (d?['ancestors'] as List?)?.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() ??
         const <Map<String, dynamic>>[];
     final children = (d?['children'] as List?)
@@ -461,6 +465,16 @@ class _TaskDetailContentState extends State<_TaskDetailContent>
         onProgressTap: canProgress && !taskStatusBusy ? _reportProgress : null,
         progressLockedReason: t.status == 'done' ? 'workspace.task_detail.progress_lock.done'.tr() : null,
       ),
+      // Web: việc có hồ sơ quy trình đã mở thì hiện các bước của hồ sơ.
+      if (procedureInstanceId != null) ...[
+        _gap(),
+        WorkspaceProcedureStepsPanel(
+          key: ValueKey('procedure-steps-${t.id}'),
+          id: t.id,
+          standalone: true,
+          version: '${(d?['task'] as Map?)?['updatedAt'] ?? ''}|${t.status}|$procedureInstanceId',
+        ),
+      ],
       if (canShowChecklist(t, const [])) ...[
         _gap(),
         WorkspaceChecklistPanel(

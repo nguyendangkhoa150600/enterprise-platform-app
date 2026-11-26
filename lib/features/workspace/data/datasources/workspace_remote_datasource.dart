@@ -125,65 +125,105 @@ class WorkspaceRemoteDataSource {
     return res.statusCode == 200 || res.statusCode == 201;
   }
 
-  /// Quy trình 3 bước chuẩn tải tệp tài liệu (Đồng bộ 1:1 với Web React):
-  /// Chặng 1: Ghi siêu dữ liệu vào cơ sở dữ liệu và nhận `uploadUrl` (Presigned URL) kèm `version`
-  /// Chặng 2: Đẩy binary data trực tiếp lên kho lưu trữ (S3/MinIO) qua PUT
-  /// Chặng 3: Báo máy chủ đã tải xong để chuyển trạng thái từ "Chưa tải lên xong" thành sẵn sàng
-  Future<bool> uploadDocument({
+  /// Dọn sẵn đường dẫn `<gốc>/<dự án>/<công việc>` và trả id thư mục lá (web `ensureFolderPath`).
+  /// POST /api/workspace/v1/folders/ensure-path {rootFolderId?, projectId, workItemId?}
+  Future<String> ensureFolderPath({
+    String? rootFolderId,
+    required String projectId,
+    String? workItemId,
+  }) async {
+    final res = await _dio.post(
+      '/api/workspace/v1/folders/ensure-path',
+      data: {
+        if (rootFolderId != null && rootFolderId.isNotEmpty) 'rootFolderId': rootFolderId,
+        'projectId': projectId,
+        if (workItemId != null && workItemId.isNotEmpty) 'workItemId': workItemId,
+      },
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    final data = _unwrap(res);
+    final id = data['id']?.toString();
+    if (id == null || id.isEmpty) throw WorkspaceUploadException(null);
+    return id;
+  }
+
+  /// Quy trình 3 chặng tải một tệp tài liệu (1:1 web `UploadDialog`):
+  /// 1. POST /documents {folderId,name,fileName,contentType,sizeBytes,description?,linkTo?} → `uploadUrl`, `document`, `version`
+  /// 2. PUT bytes thẳng lên URL ký trước (không kèm Authorization)
+  /// 3. POST /documents/:id/versions/:versionId/complete {sizeBytes}
+  /// Trả id tài liệu vừa tạo; lỗi thì ném [WorkspaceUploadException] (message từ server nếu có).
+  Future<String> uploadDocumentFile({
     required String folderId,
     required String name,
     required String fileName,
     required String contentType,
     required List<int> bytes,
-    String? projectId,
+    String? description,
+    String? linkEntityType,
+    String? linkEntityId,
   }) async {
-    // Chặng 1: Ghi siêu dữ liệu, nhận URL ký trước
-    final created = await createDocumentRaw(
-      folderId: folderId,
-      name: name,
-      fileName: fileName,
-      contentType: contentType,
-      sizeBytes: bytes.length,
-      projectId: projectId,
+    final res = await _dio.post(
+      '/api/workspace/v1/documents',
+      data: {
+        'folderId': folderId,
+        'name': name,
+        'fileName': fileName,
+        'contentType': contentType,
+        'sizeBytes': bytes.length,
+        if (description != null && description.isNotEmpty) 'description': description,
+        if (linkEntityType != null && linkEntityId != null && linkEntityId.isNotEmpty)
+          'linkTo': {'entityType': linkEntityType, 'entityId': linkEntityId},
+      },
+      options: Options(validateStatus: (s) => s != null && s < 500),
     );
-
-    if (created == null) return false;
-
-    final data = created is Map<String, dynamic> ? (created['data'] ?? created) : null;
-    if (data is! Map<String, dynamic>) return false;
-
+    final data = _unwrap(res);
     final uploadUrl = data['uploadUrl']?.toString();
     final documentId = (data['document'] is Map ? data['document']['id'] : data['id'])?.toString();
-    final versionId = (data['version'] is Map
-            ? data['version']['id']
-            : (data['versionId'] ?? data['currentVersionId']))
-        ?.toString();
-
+    final versionId = (data['version'] is Map ? data['version']['id'] : data['versionId'])?.toString();
     if (uploadUrl == null || uploadUrl.isEmpty || documentId == null || versionId == null) {
-      return false;
+      throw WorkspaceUploadException(null);
     }
 
-    // Chặng 2: PUT binary bytes thẳng lên kho lưu trữ (S3/MinIO)
-    // KHÔNG đi qua API server và KHÔNG đính kèm header Authorization (URL đã ký tự mang quyền)
-    final storageDio = Dio();
-    final putRes = await storageDio.put(
+    final putRes = await Dio().put(
       uploadUrl,
       data: Stream.fromIterable([bytes]),
       options: Options(
-        headers: {
-          'Content-Type': contentType,
-          'Content-Length': bytes.length,
-        },
-        validateStatus: (s) => s != null && s < 500,
+        headers: {'Content-Type': contentType, 'Content-Length': bytes.length},
+        validateStatus: (s) => s != null && s < 600,
       ),
     );
-
-    if (putRes.statusCode != 200 && putRes.statusCode != 204) {
-      return false;
+    final putStatus = putRes.statusCode ?? 0;
+    if (putStatus < 200 || putStatus >= 300) {
+      throw WorkspaceUploadException(null, storageStatus: putStatus);
     }
 
-    // Chặng 3: Báo cho backend server đã upload xong để phiên bản thôi hiện "Chưa tải lên xong"
-    return await completeDocumentUploadRaw(documentId, versionId, bytes.length);
+    // Chỉ báo xong SAU khi PUT thành công, như web.
+    final done = await _dio.post(
+      '/api/workspace/v1/documents/$documentId/versions/$versionId/complete',
+      data: {'sizeBytes': bytes.length},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    _unwrap(done);
+    return documentId;
+  }
+
+  /// Bóc `data` (nếu có) của phản hồi 2xx; phản hồi lỗi thì ném kèm `message` của server.
+  Map<String, dynamic> _unwrap(Response<dynamic> res) {
+    final body = res.data;
+    final status = res.statusCode ?? 0;
+    if (status < 200 || status >= 300) {
+      String? message;
+      if (body is Map) {
+        final err = body['error'];
+        message = (body['message'] ?? (err is Map ? err['message'] : null))?.toString();
+      }
+      throw WorkspaceUploadException(message);
+    }
+    if (body is Map<String, dynamic>) {
+      final inner = body['data'];
+      return inner is Map<String, dynamic> ? inner : body;
+    }
+    return const {};
   }
 
   Future<bool> deleteDocumentRaw(String documentId) async {
@@ -755,4 +795,16 @@ class WorkspaceRemoteDataSource {
     );
     return res.data;
   }
+}
+
+/// Lỗi trong luồng tải tài liệu lên; [message] là thông báo tiếng Việt của server (nếu có).
+class WorkspaceUploadException implements Exception {
+  final String? message;
+  /// Mã HTTP khi PUT lên kho thất bại (web "Tải tệp lên thất bại (status).").
+  final int? storageStatus;
+
+  WorkspaceUploadException(this.message, {this.storageStatus});
+
+  @override
+  String toString() => message ?? 'WorkspaceUploadException';
 }

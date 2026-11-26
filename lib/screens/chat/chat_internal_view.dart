@@ -155,7 +155,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
               Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.emerald.withOpacity(0.12),
+                  color: AppColors.emerald.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -235,7 +235,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.amber.shade50.withOpacity(0.8),
+          color: Colors.amber.shade50.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.amber.shade300, width: 1.2),
         ),
@@ -286,7 +286,7 @@ class _ChatInternalViewState extends State<ChatInternalView> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.amber.shade900.withOpacity(0.8),
+                      color: Colors.amber.shade900.withValues(alpha: 0.8),
                     ),
                   ),
                 ],

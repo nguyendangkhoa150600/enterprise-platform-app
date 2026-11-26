@@ -164,6 +164,47 @@ class WorkspaceChatTimelineApi extends WorkspaceApiBase {
         parse: _dropped,
       );
 
+  /// GET /projects/:id/chat-feed — một trang công việc kèm tóm tắt trao đổi (chế độ "Theo công việc"),
+  /// chỉ để đọc. Web `loadProjectChatFeed`: `page`, `pageSize`, `q`, `hasChat=1`.
+  Future<WorkspaceApiResult<ProjectChatFeedPage>> loadFeed(
+    String projectId, {
+    required int page,
+    required int pageSize,
+    String? search,
+    bool onlyWithChat = false,
+  }) =>
+      send(
+        'GET',
+        '${WorkspaceApiBase.root}/projects/$projectId/chat-feed',
+        query: {
+          'page': '$page',
+          'pageSize': '$pageSize',
+          if (search != null && search.isNotEmpty) 'q': search,
+          if (onlyWithChat) 'hasChat': '1',
+        },
+        parse: (data) => ProjectChatFeedPage.fromJson(_mapOf(data)),
+      );
+
+  /// GET /projects/:id/chat-feed/:workItemId — trao đổi của một công việc, cũ → mới, chỉ để đọc.
+  /// Có [before] (id tin cũ nhất đang có) thì là trang liền trước nó.
+  Future<WorkspaceApiResult<ProjectChatThread>> loadFeedThread(
+    String projectId,
+    String workItemId, {
+    String? before,
+  }) =>
+      send(
+        'GET',
+        '${WorkspaceApiBase.root}/projects/$projectId/chat-feed/$workItemId',
+        query: {if (before != null && before.isNotEmpty) 'before': before},
+        parse: (data) => ProjectChatThread.fromJson(_mapOf(data)),
+      );
+
+  /// `{data: {...}}` hoặc `{...}` → map.
+  static Map<String, dynamic> _mapOf(dynamic data) {
+    final inner = data is Map && data['data'] is Map ? data['data'] : data;
+    return inner is Map ? Map<String, dynamic>.from(inner) : const {};
+  }
+
   /// Tài liệu của dự án (để chọn đính kèm), như màn Dự án trên web.
   Future<WorkspaceApiResult<List<WorkspaceDocumentItem>>> loadDocuments(String projectId) => send(
         'GET',

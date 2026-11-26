@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'workspace_procedure_steps_panel.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/i18n/app_i18n.dart';
 import '../../../../features/workspace/data/datasources/workspace_links_api.dart';
@@ -113,15 +114,32 @@ class _WorkspaceExternalLinksPanelState extends State<WorkspaceExternalLinksPane
         child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))),
       );
     }
+    // Hồ sơ quy trình gắn với việc này (web `procedureRef`): các bước hiện ngay dưới danh sách hồ sơ liên kết.
+    Map<String, dynamic>? procedureRef;
+    for (final ref in _links) {
+      if (ref['moduleKey'] == 'procedure-engine' &&
+          (ref['entityType'] == null || ref['entityType'] == 'work_item')) {
+        procedureRef = ref;
+        break;
+      }
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text('workspace.procedure_steps.links_title'.tr(),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
         if (_degraded)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text('workspace.links.degraded'.tr(), style: TextStyle(fontSize: 12.5, color: muted)),
           ),
         for (final ref in _links) _row(ref, theme),
+        if (procedureRef != null)
+          WorkspaceProcedureStepsPanel(
+            id: widget.item.id,
+            version: '${widget.item.status}|${procedureRef['cachedStatus'] ?? ''}|${procedureRef['externalId'] ?? ''}',
+          ),
       ],
     );
   }
@@ -174,7 +192,10 @@ class _WorkspaceExternalLinksPanelState extends State<WorkspaceExternalLinksPane
           if (widget.canWrite)
             TextButton(
               onPressed: _busy || referenceId.isEmpty ? null : () => _unlink(referenceId),
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                foregroundColor: theme.colorScheme.error,
+              ),
               child: Text('workspace.links.unlink'.tr()),
             ),
         ],
@@ -183,7 +204,7 @@ class _WorkspaceExternalLinksPanelState extends State<WorkspaceExternalLinksPane
   }
 }
 
-/// Số hồ sơ liên kết của việc — tab chỉ hiện khi > 0 (web `resolveOverviewTab`). Lỗi → 0 (web coi như rỗng).
+/// Số hồ sơ liên kết của việc — mục "Hồ sơ liên kết" trong tab Chi tiết chỉ hiện khi > 0. Lỗi → 0 (web coi như rỗng).
 Future<int> countWorkItemExternalLinks({required String projectId, required String workItemId}) async {
   final result = await WorkspaceLinksApi().listWorkItemLinks(workItemId);
   return result.ok ? result.data!.items.length : 0;

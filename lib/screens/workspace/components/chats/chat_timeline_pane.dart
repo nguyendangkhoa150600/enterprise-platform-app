@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/i18n/app_i18n.dart';
+import '../../../../core/realtime/realtime_service.dart';
 import '../../../../features/workspace/data/datasources/workspace_chat_timeline_api.dart';
 import '../../../../features/workspace/data/datasources/workspace_remote_datasource.dart';
 import '../../../../models/workspace_models.dart';
@@ -13,6 +14,9 @@ import 'chat_timeline_model.dart';
 
 const Duration _filterDebounce = Duration(milliseconds: 300);
 const int _maxJumpPages = 20;
+
+/// Gộp các tín hiệu realtime dồn dập thành một lần tải lại (web chat-feed-store `REALTIME_DEBOUNCE_MS`).
+const Duration _realtimeDebounce = Duration(milliseconds: 300);
 
 /// Trao đổi của dự án theo thời gian (web chat-timeline-pane.tsx). Web có hai cột cạnh nhau; trên điện thoại hai cột
 /// được chuyển qua lại bằng công tắc ở đầu khung, mỗi cột xếp cũ → mới:
@@ -33,6 +37,9 @@ class ChatTimelinePane extends StatefulWidget {
   final bool canUpload;
   final ValueChanged<StandaloneTaskItem>? onOpen;
 
+  /// Tin cần cuộn tới và nháy khi mở (từ thông báo nhắc tên).
+  final String? initialMessageId;
+
   const ChatTimelinePane({
     super.key,
     required this.projectId,
@@ -42,6 +49,7 @@ class ChatTimelinePane extends StatefulWidget {
     required this.canReply,
     required this.canUpload,
     this.onOpen,
+    this.initialMessageId,
   });
 
   @override
@@ -65,11 +73,16 @@ class _ChatTimelinePaneState extends State<ChatTimelinePane> {
   int _loadToken = 0;
 
   int _column = 0;
+  String? _pendingInitialMessageId;
   String? _replyingId;
   String? _flashId;
 
   List<WorkspaceDocumentItem> _documents = [];
   List<WorkspaceFolderItem> _folders = [];
+
+  VoidCallback? _offRealtime;
+  Timer? _realtimeTimer;
+  bool _refreshing = false;
 
   ChatTimelineFilter get _filter => _draft.toFilter(settledQuery: _settledQuery);
   bool get _hasMore => _pages.isNotEmpty && _pages.last.hasMore;
@@ -77,13 +90,21 @@ class _ChatTimelinePaneState extends State<ChatTimelinePane> {
   @override
   void initState() {
     super.initState();
+    _pendingInitialMessageId = widget.initialMessageId;
     _reload();
     _loadDocuments();
+    _offRealtime = RealtimeService.instance.listen(
+      'workspace.chat.changed',
+      _onChatSignal,
+      onReconnected: _scheduleRefresh,
+    );
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _offRealtime?.call();
+    _realtimeTimer?.cancel();
     _workScroll.dispose();
     _projectScroll.dispose();
     super.dispose();
@@ -118,6 +139,99 @@ class _ChatTimelinePaneState extends State<ChatTimelinePane> {
         _error = result.error ?? 'workspace.chat_timeline.load_failed'.tr();
       }
     });
+    final pending = _pendingInitialMessageId;
+    if (result.ok && pending != null) {
+      _pendingInitialMessageId = null;
+      await _openInitialMessage(pending);
+    }
+  }
+
+  /// Tín hiệu `workspace.chat.changed` của dự án này (web chat-feed-store `listenRealtime`): bỏ qua "đã đọc" vì không
+  /// đổi nội dung; tín hiệu không gửi cho chính người nhắn (tin của mình đã tải lại ở `_afterSent`).
+  void _onChatSignal(Map<String, dynamic> data) {
+    if (data['projectId'] != widget.projectId || data['change'] == 'read') return;
+    _scheduleRefresh();
+  }
+
+  void _scheduleRefresh() {
+    _realtimeTimer?.cancel();
+    _realtimeTimer = Timer(_realtimeDebounce, () {
+      if (!mounted) return;
+      // Đang tải (đổi bộ lọc, tin cũ hơn) thì chờ xong rồi mới làm mới, kẻo kết quả hai bên đè nhau.
+      if (_loading || _fetchingOlder || _refreshing) {
+        _scheduleRefresh();
+        return;
+      }
+      _refreshQuiet();
+    });
+  }
+
+  /// Tải lại lặng lẽ đúng số trang đang có (web huỷ bộ nhớ đệm của truy vấn nhiều trang): giữ bộ lọc, không hiện
+  /// "Đang tải", giữ chỗ đang đọc; đang ở đáy thì xuống đáy để thấy tin mới.
+  Future<void> _refreshQuiet() async {
+    if (_pages.isEmpty) {
+      await _reload();
+      return;
+    }
+    final token = _loadToken;
+    final count = _pages.length;
+    final fresh = <ChatTimelinePage>[];
+    String? before;
+    var failed = false;
+    _refreshing = true;
+    for (var i = 0; i < count; i++) {
+      final result = await _api.loadTimeline(widget.projectId, before: before, filter: _filter);
+      if (!mounted) return;
+      if (token != _loadToken) break;
+      if (!result.ok) {
+        failed = true;
+        break;
+      }
+      fresh.add(result.data!);
+      final entries = flattenTimelinePages([result.data!]);
+      if (!result.data!.hasMore || entries.isEmpty) break;
+      before = entries.first.message.id;
+    }
+    _refreshing = false;
+    if (token != _loadToken || failed || fresh.isEmpty) return;
+    // Trong lúc làm mới người dùng đã nạp thêm tin cũ: làm lại để khớp số trang.
+    if (_pages.length != count) {
+      _scheduleRefresh();
+      return;
+    }
+    final anchors = [ChatScrollAnchor.capture(_workScroll), ChatScrollAnchor.capture(_projectScroll)];
+    setState(() => _pages = fresh);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    for (final anchor in anchors) {
+      anchor?.restore();
+    }
+  }
+
+  /// Mở từ thông báo: tìm tin (nạp thêm trang cũ nếu cần), chuyển sang đúng cột rồi cuộn tới và nháy.
+  Future<void> _openInitialMessage(String messageId) async {
+    ChatTimelineEntry? find() {
+      for (final e in flattenTimelinePages(_pages)) {
+        if (e.message.id == messageId) return e;
+      }
+      return null;
+    }
+
+    var entry = find();
+    var hasMore = _hasMore;
+    for (var round = 0; entry == null && hasMore && round < _maxJumpPages; round++) {
+      hasMore = await _loadOlder();
+      if (!mounted) return;
+      entry = find();
+    }
+    if (entry == null) {
+      if (mounted) AppToast.error(context, 'workspace.chat_timeline.jump_missing'.tr());
+      return;
+    }
+    setState(() => _column = entry!.isProject ? 1 : 0);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await _jumpTo(messageId);
   }
 
   /// Trang liền trước tin cũ nhất đang có; trả về còn tin cũ hơn không.
@@ -144,19 +258,23 @@ class _ChatTimelinePaneState extends State<ChatTimelinePane> {
     return result.ok && result.data!.hasMore;
   }
 
+  /// Ô lọc đổi ngay; riêng từ khoá chờ người dùng gõ xong một nhịp rồi mới gọi server (web FILTER_DEBOUNCE_MS).
+  /// Đổi bộ lọc khác trong lúc đang chờ không được huỷ nhịp chờ của từ khoá, kẻo từ khoá mới không bao giờ được áp.
   void _onDraftChange(TimelineFilterDraft next) {
     final queryChanged = next.q != _draft.q;
+    final othersChanged = next.toFilter(settledQuery: _settledQuery).toQuery().toString() !=
+        _draft.toFilter(settledQuery: _settledQuery).toQuery().toString();
     setState(() => _draft = next);
-    _debounce?.cancel();
     if (queryChanged) {
+      _debounce?.cancel();
       _debounce = Timer(_filterDebounce, () {
         if (!mounted) return;
+        if (_settledQuery == _draft.q) return;
         _settledQuery = _draft.q;
         _reload();
       });
-    } else {
-      _reload();
     }
+    if (othersChanged) _reload();
   }
 
   /// Bấm dòng trích: tới tin gốc và cho nền nó nháy; tin gốc cũ hơn phần đã nạp thì nạp thêm trang cũ.
@@ -192,21 +310,27 @@ class _ChatTimelinePaneState extends State<ChatTimelinePane> {
   }
 
   Future<List<String>> _upload() async {
-    final before = _documents.map((d) => d.id).toSet();
-    final ok = await showUploadWorkspaceDocumentDialog(
+    // Web `chat-timeline-pane`: tệp gắn vào dự án và tự xếp vào `<thư mục gốc>/<dự án>`;
+    // id tài liệu vừa tạo dùng thẳng làm đính kèm của tin.
+    final ids = await showUploadWorkspaceDocumentsDialog(
       context,
       remote: WorkspaceRemoteDataSource(),
       folders: _folders,
-      defaultProjectId: widget.projectId,
+      linkedTo: (entityType: 'project', entityId: widget.projectId),
+      autoPath: (projectId: widget.projectId, workItemId: null),
     );
-    if (!ok || !mounted) return const [];
+    if (ids == null || ids.isEmpty || !mounted) return const [];
+    // Nạp lại danh sách tài liệu để tin hiện đúng tên tệp đính kèm (web `onDocumentUploaded`).
     await _loadDocuments();
-    return _documents.map((d) => d.id).where((id) => !before.contains(id)).toList();
+    return ids;
   }
 
-  void _afterSent() {
+  /// Gửi xong thì cột đó kéo xuống đáy để người gửi thấy tin của mình (web `bottomToken`), rồi nạp lại.
+  Future<void> _afterSent(ScrollController column) async {
     setState(() => _replyingId = null);
-    _reload();
+    await _reload();
+    if (!mounted || !column.hasClients) return;
+    column.jumpTo(0);
   }
 
   @override
@@ -243,7 +367,7 @@ class _ChatTimelinePaneState extends State<ChatTimelinePane> {
         onReply: () => setState(() => _replyingId = row.key),
         onCancelReply: () => setState(() => _replyingId = null),
         sendReply: (body, mentions, _) => _api.reply(entry.message.id, body: body, mentions: mentions),
-        onSent: _afterSent,
+        onSent: () => _afterSent(inProjectColumn ? _projectScroll : _workScroll),
         onOpen: widget.onOpen,
         onJumpTo: _jumpTo,
       );
@@ -355,7 +479,7 @@ class _ChatTimelinePaneState extends State<ChatTimelinePane> {
                   ),
                   successText: 'workspace.chat_timeline.sent'.tr(),
                   failureText: 'workspace.chat_timeline.send_failed'.tr(),
-                  onSent: _afterSent,
+                  onSent: () => _afterSent(_projectScroll),
                 ),
               ),
             )
@@ -439,3 +563,4 @@ class _TimelineColumn extends StatelessWidget {
     return parts.length == 3 ? '${parts[2]}/${parts[1]}/${parts[0]}' : key;
   }
 }
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../utils/app_toast.dart';
 import '../../../../core/i18n/app_i18n.dart';
 import '../../../../features/workspace/data/datasources/workspace_calendar_api.dart';
 import '../../../../features/workspace/presentation/utils/project_access_extension.dart';
@@ -20,6 +21,9 @@ class WorkspaceProjectCalendarTab extends StatefulWidget {
   final List<StandaloneTaskItem> projectItems;
   final void Function(String itemId)? onOpenItem;
 
+  /// Từ thông báo (web `#projects/calendar/<id>`): mở sẵn sự kiện này.
+  final String? initialEventId;
+
   const WorkspaceProjectCalendarTab({
     super.key,
     required this.project,
@@ -27,6 +31,7 @@ class WorkspaceProjectCalendarTab extends StatefulWidget {
     required this.access,
     this.projectItems = const [],
     this.onOpenItem,
+    this.initialEventId,
   });
 
   @override
@@ -52,7 +57,22 @@ class _WorkspaceProjectCalendarTabState extends State<WorkspaceProjectCalendarTa
     super.initState();
     _selectedKey = calendarDateKey(_anchor);
     _load();
-    _loadPeople();
+    _loadPeople().then((_) => _openInitialEvent());
+  }
+
+  /// Web: tải sự kiện, chuyển sang tab Lịch và mở form của nó (ở mobile: nhảy lưới tới ngày đó rồi mở form).
+  Future<void> _openInitialEvent() async {
+    final id = widget.initialEventId;
+    if (id == null || id.isEmpty || !mounted) return;
+    final res = await _api.getEvent(id);
+    if (!mounted) return;
+    final occurrence = res.data?.occurrence;
+    if (!res.ok || occurrence == null) {
+      AppToast.error(context, res.error ?? 'workspace.calendar.error_load'.tr());
+      return;
+    }
+    _setAnchor(occurrence.startAt);
+    _openForm(occurrence: occurrence);
   }
 
   @override

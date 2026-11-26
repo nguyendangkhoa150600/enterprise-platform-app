@@ -12,6 +12,9 @@ void showWorkspaceProjectDetailSheet(
   required ProjectItem project,
   required WorkspaceService service,
   VoidCallback? onProjectsChanged,
+  bool openChat = false,
+  String? initialMessageId,
+  String? initialCalendarEventId,
 }) {
   showModalBottomSheet(
     context: context,
@@ -21,6 +24,9 @@ void showWorkspaceProjectDetailSheet(
       project: project,
       service: service,
       onProjectsChanged: onProjectsChanged,
+      openChat: openChat,
+      initialMessageId: initialMessageId,
+      initialCalendarEventId: initialCalendarEventId,
     ),
   );
 }

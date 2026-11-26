@@ -1,3 +1,4 @@
+import '../../domain/procedure_steps_model.dart';
 import 'workspace_api_base.dart';
 
 /// Danh sách hồ sơ liên kết (con trỏ sang module khác) — web `ExternalReferenceList`.
@@ -25,5 +26,21 @@ class WorkspaceLinksApi extends WorkspaceApiBase {
         'DELETE',
         '${WorkspaceApiBase.root}/work-items/$workItemId/links/$referenceId',
         parse: (_) {},
+      );
+
+  /// Các bước hồ sơ quy trình gắn với công việc (web `getWorkItemProcedureSteps` /
+  /// `getStandaloneTaskProcedureSteps`). [standalone] = công việc ngoài dự án.
+  Future<WorkspaceApiResult<WorkItemProcedureSteps>> procedureSteps(String id, {bool standalone = false}) => send(
+        'GET',
+        '${WorkspaceApiBase.root}/${standalone ? 'standalone-tasks' : 'work-items'}/$id/procedure-steps',
+        parse: (data) => WorkItemProcedureSteps.fromJson(
+            data is Map ? Map<String, dynamic>.from(data['data'] is Map ? data['data'] as Map : data) : const {}),
+      );
+
+  /// Tin nhắn nằm ở node nào (web `getChatMessageLocation`), để mở đúng dự án từ thông báo nhắc tên.
+  Future<WorkspaceApiResult<Map<String, dynamic>>> chatMessageLocation(String messageId) => send(
+        'GET',
+        '${WorkspaceApiBase.root}/chat/messages/${Uri.encodeComponent(messageId)}/location',
+        parse: (data) => data is Map ? Map<String, dynamic>.from(data['data'] is Map ? data['data'] as Map : data) : {},
       );
 }

@@ -32,11 +32,21 @@ class ProjectDetailSheet extends StatefulWidget {
   /// Đã đổi trạng thái, mở lưu trữ hay huỷ dự án: trang cha nạp lại danh sách (web `onProjectsChanged`).
   final VoidCallback? onProjectsChanged;
 
+  /// Mở thẳng tab Trao đổi (và cuộn tới tin) khi vào từ thông báo.
+  final bool openChat;
+
+  /// Từ thông báo lịch: mở sẵn tab Lịch và sự kiện này.
+  final String? initialCalendarEventId;
+  final String? initialMessageId;
+
   const ProjectDetailSheet({
     super.key,
     required this.project,
     required this.service,
     this.onProjectsChanged,
+    this.openChat = false,
+    this.initialCalendarEventId,
+    this.initialMessageId,
   });
 
   @override
@@ -68,6 +78,8 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
   void initState() {
     super.initState();
     _project = widget.project;
+    if (widget.openChat) _tab = _kChatsTab;
+    if ((widget.initialCalendarEventId ?? '').isNotEmpty) _tab = 'calendar';
     _tasks = List.from(widget.project.tasks);
     _loadAllData();
     _loadTags();
@@ -427,6 +439,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
           access: access,
           projectItems: _tasks,
           onOpenItem: _openItemById,
+          initialEventId: widget.initialCalendarEventId,
         );
       case 'documents':
         return WorkspaceDocumentsView(
@@ -462,6 +475,7 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
           members: _members,
           canWrite: !_project.isArchived,
           onOpenTaskDetail: _openItem,
+          initialMessageId: widget.initialMessageId,
         );
       default:
         return ProjectWorkTab(

@@ -10,7 +10,7 @@ import 'workspace_linked_documents_panel.dart';
 import 'workspace_progress_panel.dart';
 
 /// Các tab phụ của công việc (web `overview-tabs.ts`).
-enum TaskOverviewTab { detail, progress, dependencies, documents, links }
+enum TaskOverviewTab { detail, progress, dependencies, documents }
 
 /// Nhớ tab đang mở của đúng một công việc (web `parseStoredTab`/`rememberTab`, ở đây giữ trong bộ nhớ).
 class TaskTabMemory {
@@ -28,9 +28,6 @@ class TaskTabMemory {
 
   static void remember(String itemId, TaskOverviewTab tab) => _stored = '$itemId|${tab.name}';
 
-  /// web `resolveOverviewTab`: tab "Hồ sơ liên kết" chỉ có khi việc có hồ sơ liên kết.
-  static TaskOverviewTab resolve(TaskOverviewTab tab, bool hasLinks) =>
-      tab == TaskOverviewTab.links && !hasLinks ? TaskOverviewTab.detail : tab;
 }
 
 class TaskTabSpec {
@@ -144,7 +141,7 @@ class TaskDetailTabs extends StatelessWidget {
 }
 
 /// Các tab phụ của việc dự án (web `tab-overview.tsx` khi có `selected`):
-/// Chi tiết | Lịch sử tiến độ | Phụ thuộc (số) | Tài liệu (số) | Hồ sơ liên kết (chỉ khi có).
+/// Chi tiết (kèm Hồ sơ liên kết và các bước quy trình khi có) | Lịch sử tiến độ | Phụ thuộc (số) | Tài liệu (số).
 class ProjectTaskTabs extends StatelessWidget {
   final StandaloneTaskItem item;
   final List<StandaloneTaskItem> projectItems;
@@ -190,7 +187,7 @@ class ProjectTaskTabs extends StatelessWidget {
     final canEditProgress = canWrite && !t.isReversed;
     String k(String s) => 'workspace.task_detail.tab.$s'.tr();
     return TaskDetailTabs(
-      selected: TaskTabMemory.resolve(selected, hasLinks),
+      selected: selected,
       onSelect: (tab) {
         TaskTabMemory.remember(t.id, tab);
         onSelect(tab);
@@ -199,7 +196,23 @@ class ProjectTaskTabs extends StatelessWidget {
         TaskTabSpec(
           id: TaskOverviewTab.detail,
           label: k('detail'),
-          builder: (_) => TaskDetailInfoTab(item: t, onReportQuantity: canEditProgress ? onReportQuantity : null),
+          builder: (_) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TaskDetailInfoTab(item: t, onReportQuantity: canEditProgress ? onReportQuantity : null),
+              // Web: hồ sơ liên kết và các bước quy trình nằm ngay trong tab Chi tiết, dưới thông tin của việc.
+              if (hasLinks) ...[
+                const SizedBox(height: 16),
+                WorkspaceExternalLinksPanel(
+                  key: ValueKey('links-${t.id}'),
+                  item: t,
+                  service: service,
+                  canWrite: canWrite,
+                  onChanged: onChanged,
+                ),
+              ],
+            ],
+          ),
         ),
         TaskTabSpec(
           id: TaskOverviewTab.progress,
@@ -244,19 +257,6 @@ class ProjectTaskTabs extends StatelessWidget {
             onCount: onDocumentCount,
           ),
         ),
-        if (hasLinks)
-          TaskTabSpec(
-            id: TaskOverviewTab.links,
-            label: k('links'),
-            count: linkCount,
-            builder: (_) => WorkspaceExternalLinksPanel(
-              key: ValueKey('links-${t.id}'),
-              item: t,
-              service: service,
-              canWrite: canWrite,
-              onChanged: onChanged,
-            ),
-          ),
       ],
     );
   }
