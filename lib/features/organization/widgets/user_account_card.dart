@@ -9,12 +9,16 @@ import '../../../shared/widgets/app_status_badge.dart';
 /// Clean User Account Card for Admin & User Management
 class UserAccountCard extends StatelessWidget {
   final TenantUser user;
+
+  /// Tên các vai trò của người dùng (TenantUser không kèm vai trò; nơi gọi tải qua `getUserRoleIds`).
+  final List<String> roles;
   final VoidCallback? onAssignRole;
   final VoidCallback? onToggleStatus;
 
   const UserAccountCard({
     super.key,
     required this.user,
+    this.roles = const [],
     this.onAssignRole,
     this.onToggleStatus,
   });
@@ -84,10 +88,10 @@ class UserAccountCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Expanded(
                       child: Text(
-                        user.roles.isNotEmpty ? user.roles.join(', ') : 'org_widgets.user.no_roles'.tr(),
+                        roles.isNotEmpty ? roles.join(', ') : 'org_widgets.user.no_roles'.tr(),
                         style: AppTextStyles.caption.copyWith(
-                          color: user.roles.isNotEmpty ? AppColors.primaryDark : AppColors.slate400,
-                          fontWeight: user.roles.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                          color: roles.isNotEmpty ? AppColors.primaryDark : AppColors.slate400,
+                          fontWeight: roles.isNotEmpty ? FontWeight.bold : FontWeight.normal,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),

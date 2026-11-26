@@ -303,6 +303,7 @@ void showOrgNodeDetailBottomSheet(
                           return;
                         }
 
+                        final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(ctx);
                         final nodeTypeId = selectedCategory == 'unit' ? 'nt-dept' : 'nt-pos-lead';
                         final success = await platformService.updateNode(
@@ -315,7 +316,7 @@ void showOrgNodeDetailBottomSheet(
                         );
 
                         if (success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(content: Text('org_chart.props_saved'.tr()), backgroundColor: Color(0xFF059669)),
                           );
                           onRefreshSnapshot();
@@ -838,6 +839,7 @@ void showOrgNodeAddOrEditDialog(
                         return;
                       }
 
+                      final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(ctx);
                       final nodeTypeId = selectedCategory == 'unit' ? 'nt-dept' : 'nt-pos-lead';
                       bool success = false;
@@ -863,7 +865,7 @@ void showOrgNodeAddOrEditDialog(
                       }
 
                       if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text(isEditing ? 'org_chart.node_updated'.tr() : 'org_chart.node_added'.tr()),
                             backgroundColor: const Color(0xFF059669),
@@ -917,10 +919,11 @@ void confirmDeleteOrgNode(
         ),
         ElevatedButton(
           onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
             Navigator.pop(ctx);
             final success = await platformService.deleteNode(node.id);
             if (success) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(content: Text('org_chart.node_deleted'.tr()), backgroundColor: Color(0xFFEF4444)),
               );
               onRefreshSnapshot();

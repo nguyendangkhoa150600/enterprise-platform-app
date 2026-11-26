@@ -4,7 +4,6 @@ import '../../../services/hrm_attendance_service.dart';
 /// Data Repository for Payroll, Payslips, and Personal Income
 abstract class PayrollRepository {
   Future<List<Map<String, dynamic>>> getMyPayslips({bool forceRefresh = false});
-  Future<Map<String, dynamic>> getIncomeSummary({int? year});
   Future<Map<String, dynamic>?> getPersonalProfile({bool forceRefresh = false});
   Future<bool> createDependent(Map<String, dynamic> payload);
   Future<bool> deleteDependent(String dependentId);
@@ -30,7 +29,8 @@ class PayrollRepositoryImpl implements PayrollRepository {
   @override
   Future<List<Map<String, dynamic>>> getMyPayslips({bool forceRefresh = false}) async {
     try {
-      return await _service.getMyPayslips(forceRefresh: forceRefresh);
+      // Service không có bộ nhớ đệm riêng nên luôn tải mới; [forceRefresh] giữ cho tương thích giao diện.
+      return await _service.getMyPayslips();
     } catch (e) {
       debugPrint('[PayrollRepositoryImpl] getMyPayslips error: $e');
       rethrow;
@@ -38,24 +38,9 @@ class PayrollRepositoryImpl implements PayrollRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> getIncomeSummary({int? year}) async {
-    try {
-      return await _service.getIncomeSummary(year: year);
-    } catch (e) {
-      debugPrint('[PayrollRepositoryImpl] getIncomeSummary error: $e');
-      return {
-        'totalGross': 0,
-        'totalNet': 0,
-        'totalTax': 0,
-        'totalInsurance': 0,
-      };
-    }
-  }
-
-  @override
   Future<Map<String, dynamic>?> getPersonalProfile({bool forceRefresh = false}) async {
     try {
-      return await _service.getPersonalProfile(forceRefresh: forceRefresh);
+      return await _service.getMyProfile();
     } catch (e) {
       debugPrint('[PayrollRepositoryImpl] getPersonalProfile error: $e');
       return null;

@@ -1,6 +1,6 @@
 ﻿part of '../../role_permission_screen.dart';
 
-extension RoleDetailSheetExtension on _RolePermissionScreenState {
+extension _RoleDetailSheetExtension on _RolePermissionScreenState {
   void _showRoleDetailModal(TenantRole role, bool canManage) {
     showModalBottomSheet(
       context: context,

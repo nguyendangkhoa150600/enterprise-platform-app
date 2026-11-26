@@ -505,7 +505,7 @@ class HrmProfileModals {
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: contracts.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                separatorBuilder: (_, _) => const SizedBox(height: 8),
                                 itemBuilder: (context, idx) {
                                   final c = contracts[idx];
                                   final code = c['contractCode']?.toString() ?? c['code']?.toString() ?? '--';
@@ -1081,6 +1081,7 @@ class HrmProfileModals {
                               return;
                             }
                             setModalState(() => isSaving = true);
+                            final messenger = ScaffoldMessenger.of(context);
 
                             final empId = employeeId;
                             String? attachmentId;
@@ -1104,7 +1105,7 @@ class HrmProfileModals {
                               if (effectiveFromCtrl.text.trim().isNotEmpty) 'effectiveFrom': effectiveFromCtrl.text.trim(),
                               if (expiryDateCtrl.text.trim().isNotEmpty) 'expiryDate': expiryDateCtrl.text.trim(),
                               if (gradeCtrl.text.trim().isNotEmpty) 'grade': gradeCtrl.text.trim(),
-                              if (attachmentId != null) 'attachmentId': attachmentId,
+                              'attachmentId': ?attachmentId,
                             };
 
                             if (empId != null && empId.isNotEmpty) {
@@ -1154,9 +1155,9 @@ class HrmProfileModals {
                               'fileName': attachedFileName,
                             };
 
-                            Navigator.pop(ctx);
+                            if (ctx.mounted) Navigator.pop(ctx);
                             onAdded(item);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(
                                 content: Text(editItem != null ? 'hrm_modals.profile.da_cap_nhat_bang_cap_chung'.tr() : 'hrm_modals.profile.da_gui_don_va_dong_bo'.tr()),
                                 behavior: SnackBarBehavior.floating,
@@ -1252,6 +1253,7 @@ class HrmProfileModals {
                             return;
                           }
                           setModalState(() => isSaving = true);
+                          final messenger = ScaffoldMessenger.of(context);
                           final newDep = {
                             'id': DateTime.now().millisecondsSinceEpoch.toString(),
                             'fullName': nameCtrl.text.trim(),
@@ -1263,9 +1265,9 @@ class HrmProfileModals {
                           if (employeeId != null && employeeId.isNotEmpty) {
                             await _service.createEmployeeDependent(employeeId, newDep);
                           }
-                          Navigator.pop(ctx);
+                          if (ctx.mounted) Navigator.pop(ctx);
                           onAdded(newDep);
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(
                               content: Text('hrm_modals.profile.da_them_nguoi_than_thanh_cong'.tr()),
                               behavior: SnackBarBehavior.floating,
@@ -1702,7 +1704,7 @@ class HrmProfileModals {
                                 if (effectiveToCtrl.text.trim().isNotEmpty) 'effectiveTo': toIso(effectiveToCtrl.text),
                                 if (signDateCtrl.text.trim().isNotEmpty) 'signDate': toIso(signDateCtrl.text),
                                 if (parsedSalary.isNotEmpty) 'baseSalary': num.tryParse(parsedSalary),
-                                if (cleanFileUrl != null) 'fileUrl': cleanFileUrl,
+                                'fileUrl': ?cleanFileUrl,
                                 if (noteCtrl.text.trim().isNotEmpty) 'note': noteCtrl.text.trim(),
                               };
 
@@ -1834,6 +1836,7 @@ class HrmProfileModals {
                     ? null
                     : () async {
                         setModalState(() => isUploading = true);
+                        final messenger = ScaffoldMessenger.of(context);
                         final fileName = pickedName ?? '${docType.toLowerCase()}_uploaded.jpg';
 
                         if (pickedPath != null) {
@@ -1845,9 +1848,9 @@ class HrmProfileModals {
                           );
                         }
 
-                        Navigator.pop(ctx);
+                        if (ctx.mounted) Navigator.pop(ctx);
                         onUploaded(fileName);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text('hrm_modals.profile.da_tai_len_file_name_cho'.tr(args: {'file_name': fileName, 'title': title})),
                             backgroundColor: const Color(0xFF059669),

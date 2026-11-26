@@ -11,7 +11,7 @@ abstract class OrganizationRepository {
     required String password,
   });
   Future<bool> updateUserStatus(String userId, String status);
-  Future<List<Map<String, dynamic>>> getRoles();
+  Future<List<TenantRole>> getRoles();
   Future<bool> assignRoleToUser(String userId, String roleId);
 }
 
@@ -46,16 +46,21 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
 
   @override
   Future<bool> updateUserStatus(String userId, String status) async {
-    return await _service.updateUserStatus(userId, status);
+    final result = await _service.updateUser(userId, status: status);
+    return result.success;
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getRoles() async {
-    return await _service.getRoles();
+  Future<List<TenantRole>> getRoles() async {
+    return await _service.getTenantRoles();
   }
 
   @override
+  /// Thêm một vai trò cho người dùng, giữ các vai trò đang có (API gán thay cả danh sách).
   Future<bool> assignRoleToUser(String userId, String roleId) async {
-    return await _service.assignRoleToUser(userId, roleId);
+    final current = await _service.getUserRoleIds(userId);
+    if (current.contains(roleId)) return true;
+    final result = await _service.assignUserRoles(userId, [...current, roleId]);
+    return result.success;
   }
 }

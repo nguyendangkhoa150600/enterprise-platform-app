@@ -71,8 +71,8 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
         trees.firstOrNull?.id;
     _snapshot = _scoped(widget.snapshot);
     _transformController.value = Matrix4.identity()
-      ..translate(-220.0, 30.0)
-      ..scale(0.48, 0.48);
+      ..translateByDouble(-220.0, 30.0, 0, 1)
+      ..scaleByDouble(0.48, 0.48, 0.48, 1);
   }
 
   @override
@@ -84,7 +84,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
 
   Future<void> _refreshSnapshot() async {
     final updated = await _platformService.getOrganizationSnapshot();
-    if (updated != null && mounted) {
+    if (mounted) {
       setState(() {
         _snapshot = _scoped(updated);
         if (_selectedNode != null) {
@@ -98,21 +98,21 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
 
   void _zoomIn() {
     final matrix = _transformController.value.clone();
-    matrix.scale(1.25, 1.25);
+    matrix.scaleByDouble(1.25, 1.25, 1.25, 1);
     _transformController.value = matrix;
   }
 
   void _zoomOut() {
     final matrix = _transformController.value.clone();
-    matrix.scale(0.8, 0.8);
+    matrix.scaleByDouble(0.8, 0.8, 0.8, 1);
     _transformController.value = matrix;
   }
 
   void _resetZoom() {
     setState(() {
       _transformController.value = Matrix4.identity()
-        ..translate(-220.0, 30.0)
-        ..scale(0.48, 0.48);
+        ..translateByDouble(-220.0, 30.0, 0, 1)
+        ..scaleByDouble(0.48, 0.48, 0.48, 1);
     });
   }
 
@@ -300,7 +300,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF2563EB).withOpacity(0.25),
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.25),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -343,7 +343,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 3,
                     offset: const Offset(0, 1),
                   ),
@@ -421,7 +421,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
               border: Border.all(color: const Color(0xFFE2E8F0)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 3),
                 ),
@@ -447,7 +447,7 @@ class _OrgChartWorkspaceScreenState extends State<OrgChartWorkspaceScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A).withOpacity(0.85),
+              color: const Color(0xFF0F172A).withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -859,7 +859,7 @@ class _GridBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFCBD5E1).withOpacity(0.35)
+      ..color = const Color(0xFFCBD5E1).withValues(alpha: 0.35)
       ..strokeWidth = 1;
 
     const step = 24.0;

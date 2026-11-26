@@ -1,6 +1,6 @@
 ﻿part of '../../role_permission_screen.dart';
 
-extension PermissionFormSheetsExtension on _RolePermissionScreenState {
+extension _PermissionFormSheetsExtension on _RolePermissionScreenState {
 
   // Edit Permission Sheet
   void _showEditPermissionSheet(BuildContext sheetContext, TenantPermission perm) {
@@ -343,7 +343,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                             if (!mounted) return;
 
                             if (success) {
-                              Navigator.pop(ctx);
+                              if (ctx.mounted) Navigator.pop(ctx);
                               _loadData();
                               messenger.showSnackBar(
                                 const SnackBar(
@@ -738,7 +738,7 @@ extension PermissionFormSheetsExtension on _RolePermissionScreenState {
                             if (!mounted) return;
 
                             if (success) {
-                              Navigator.pop(ctx);
+                              if (ctx.mounted) Navigator.pop(ctx);
                               _loadData();
                               messenger.showSnackBar(
                                 const SnackBar(

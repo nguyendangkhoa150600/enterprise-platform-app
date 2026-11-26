@@ -2,10 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hrm_attendance_models.dart';
-import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import './notification_center_screen.dart';
 import './my_requests_screen.dart';
@@ -33,7 +31,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   DateTime _currentTime = DateTime.now();
 
   AttendanceContext? _context;
-  DeviceLocationFix? _geoFix;
   bool _isLocating = false;
   HrmTimesheetBoard? _currentMonthBoard;
   AttendanceRecord? _todayRecord;
@@ -46,16 +43,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   bool _isLoading = true;
   bool _isPunching = false;
   bool _isInShift = false;
-  String _historyFilter = 'ALL';
 
   // Matrix View State
-  int _historyViewMode = 0; // 0: Bảng công ma trận, 1: Nhật ký quẹt thẻ
   late String _selectedMonth;
   late final List<String> _availableMonths;
 
   static String _monthLabel(DateTime d) => '${d.month.toString().padLeft(2, '0')}/${d.year}';
-  int _matrixSubTab = 0; // 0: Bảng chấm công, 1: Chi tiết bảng chấm công
-  int _requestsSubTab = 1; // 0: Bản nháp, 1: Tạo đơn mới (Catalog), 2: Chờ duyệt, 3: Lịch sử
   HrmTimesheetBoard? _timesheetBoard;
   bool _isLoadingTimesheet = false;
 
@@ -86,20 +79,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     }
   }
 
-
-  // Search & Filter State for Requests (Matching Web)
-  String _requestSearchKeyword = '';
-  String _requestTypeFilter = 'ALL';
-  String _requestStatusFilter = 'ALL';
-  String _requestApproverFilter = '';
-  String _requestStepFilter = 'ALL';
-  DateTime? _requestFromDate;
-  DateTime? _requestToDate;
-  bool _showAdvancedFilters = false;
-
-  final TextEditingController _requestSearchController = TextEditingController();
-  final TextEditingController _requestApproverController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
@@ -124,16 +103,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         setState(() => _currentTime = DateTime.now());
       }
     });
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts[0].isEmpty) return 'TT';
-    if (parts.length == 1) return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
-    if (parts.length >= 3) {
-      return (parts[parts.length - 2][0] + parts.last[0]).toUpperCase();
-    }
-    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
   Future<List<AttendanceCorrection>> _loadLocalDrafts() async {
@@ -263,10 +232,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   Future<void> _refreshLocation({bool requestPermission = true}) async {
     if (_isLocating) return;
     setState(() => _isLocating = true);
-    final fix = await DeviceLocationService.getFix(requestPermission: requestPermission);
+    await DeviceLocationService.getFix(requestPermission: requestPermission);
     if (mounted) {
       setState(() {
-        _geoFix = fix;
         _isLocating = false;
       });
     }
@@ -275,7 +243,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   /// Gets a fresh position for a punch. Returns null (and tells the user) when the policy requires GPS but it is unavailable.
   Future<DeviceLocationFix?> _fixForPunch() async {
     final fix = await DeviceLocationService.getFix();
-    if (mounted) setState(() => _geoFix = fix);
     if (!fix.isOk && (_context?.requireGps ?? true)) {
       if (mounted) {
         setState(() => _isPunching = false);
@@ -446,18 +413,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     return '--:--';
   }
 
-  String _formatDate(String isoString) {
-    final dt = DateTime.tryParse(isoString);
-    if (dt == null) return isoString;
-    final local = (dt.isUtc || isoString.endsWith('Z')) ? dt.add(const Duration(hours: 7)) : dt;
-    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
-  }
-
-  List<AttendanceRecord> get _filteredHistory {
-    if (_historyFilter == 'ALL') return _history;
-    return _history.where((r) => r.status == _historyFilter).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -606,8 +561,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   Widget _buildTodayTab() {
     final shift = _effectiveTodayShift;
-    final hasCheckedIn = _todayRecord?.firstCheckInAt != null;
-    final hasCheckedOut = _todayRecord?.lastCheckOutAt != null;
 
     final hourStr = _currentTime.hour.toString().padLeft(2, '0');
     final minuteStr = _currentTime.minute.toString().padLeft(2, '0');
@@ -646,7 +599,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
+                  color: Colors.black.withValues(alpha: 0.12),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -661,7 +614,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0284C7).withOpacity(0.2),
+                        color: const Color(0xFF0284C7).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFF0284C7)),
                       ),
@@ -716,9 +669,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1113,110 +1066,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               const SizedBox(width: 2),
               Text(unit, style: const TextStyle(fontSize: 9, color: Color(0xFF94A3B8))),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Web Style KPI Card
-  Widget _buildWebKpiCard({
-    required String label,
-    required String value,
-    required String unit,
-    String? hint,
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBg,
-    bool isAlert = false,
-    double? progress,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: iconColor),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: isAlert ? const Color(0xFFB91C1C) : const Color(0xFF0F172A),
-                      ),
-                    ),
-                    if (unit.isNotEmpty) ...[
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          unit,
-                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (hint != null && hint.isNotEmpty)
-                  Text(
-                    hint,
-                    style: const TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (progress != null) ...[
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: (progress / 100).clamp(0.0, 1.0),
-                      minHeight: 4,
-                      backgroundColor: const Color(0xFFF1F5F9),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
-                    ),
-                  ),
-                ],
-              ],
-            ),
           ),
         ],
       ),

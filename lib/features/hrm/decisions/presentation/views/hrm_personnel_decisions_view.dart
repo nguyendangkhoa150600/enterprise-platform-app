@@ -423,7 +423,7 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
                   // Unit filter
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _unitFilter,
+                      initialValue: _unitFilter,
                       isExpanded: true,
                       menuMaxHeight: 280,
                       borderRadius: BorderRadius.circular(10),
@@ -448,7 +448,7 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
                   // Type filter
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _typeFilter,
+                      initialValue: _typeFilter,
                       isExpanded: true,
                       menuMaxHeight: 280,
                       borderRadius: BorderRadius.circular(10),
@@ -472,7 +472,7 @@ class _HrmPersonnelDecisionsViewState extends State<HrmPersonnelDecisionsView> {
 
               // Status Filter
               DropdownButtonFormField<String>(
-                value: _statusFilter,
+                initialValue: _statusFilter,
                 isExpanded: true,
                 menuMaxHeight: 280,
                 borderRadius: BorderRadius.circular(10),

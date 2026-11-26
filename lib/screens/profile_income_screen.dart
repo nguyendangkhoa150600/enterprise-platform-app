@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
@@ -10,14 +8,6 @@ import '../services/hrm_attendance_service.dart';
 import '../services/pdf_export_service.dart';
 import '../widgets/hrm_profile_modals.dart';
 import '../widgets/hrm_payslip_modals.dart';
-import '../core/theme/app_colors.dart';
-import '../core/theme/app_text_styles.dart';
-import '../core/utils/formatters.dart';
-import '../shared/widgets/app_card.dart';
-import '../shared/widgets/app_status_badge.dart';
-import '../shared/widgets/empty_state_view.dart';
-import '../features/payroll/widgets/payslip_item_card.dart';
-import '../features/payroll/widgets/payroll_metric_header.dart';
 import 'profile_income/components/profile_personal_tab.dart';
 import 'profile_income/components/profile_work_history_tab.dart';
 import 'profile_income/components/profile_bank_tax_tab.dart';
@@ -39,7 +29,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
   final HrmAttendanceService _service = HrmAttendanceService();
 
   bool _isLoading = true;
-  String? _errorMessage;
 
   // Profile data from backend
   Map<String, dynamic>? _profile;
@@ -95,7 +84,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -209,7 +197,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
           _isLoading = false;
         });
       }
@@ -260,10 +247,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
       );
     }
   }
-
-  Future<void> _saveContactInfo() => _saveContactAndEmergencyInfo();
-
-  Future<void> _saveEmergencyInfo() => _saveContactAndEmergencyInfo();
 
   Future<void> _pickDocument(String docKey, String docLabel) async {
     try {
@@ -384,85 +367,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
     }
   }
 
-  void _showAddQualificationDialog({Map<String, dynamic>? editItem, int? editIndex}) {
-    final empId = _profile?['id']?.toString() ?? _profile?['employeeId']?.toString();
-    HrmProfileModals.showAddQualificationModal(
-      context,
-      employeeId: empId,
-      editItem: editItem,
-      editIndex: editIndex,
-      onAdded: (item) async {
-        setState(() {
-          if (editIndex != null && editIndex < _qualifications.length) {
-            _qualifications[editIndex] = item;
-          } else {
-            _qualifications.add(item);
-          }
-        });
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('saved_qualifications', jsonEncode(_qualifications));
-        } catch (_) {}
-      },
-    );
-  }
-
-  Future<void> _deleteQualification(int index) async {
-    if (index < 0 || index >= _qualifications.length) return;
-    final item = _qualifications[index];
-    final name = item['name']?.toString() ?? 'profile.screen.default_certificate_name'.tr();
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('profile.screen.delete_qualification_title'.tr()),
-        content: Text('profile.screen.delete_qualification_message'.tr(args: {'name': name})),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
-            child: Text('common.delete'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      final empId = _profile?['id']?.toString() ?? _profile?['employeeId']?.toString();
-      final qualId = item['id']?.toString();
-      if (qualId != null && qualId.length > 20) {
-        await _service.submitProfileDocumentChanges(
-          documentChanges: [
-            {
-              'op': 'REMOVE_QUALIFICATION',
-              'id': qualId,
-            }
-          ],
-          employeeId: empId,
-          reason: 'Xóa bằng cấp/chứng chỉ từ Mobile',
-        );
-      }
-
-      setState(() {
-        _qualifications.removeAt(index);
-      });
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('saved_qualifications', jsonEncode(_qualifications));
-      } catch (_) {}
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('profile.screen.delete_qualification_done'.tr(args: {'name': name})),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
   void _showProfileCorrectionDialog() {
     HrmPayslipModals.showProfileCorrectionDialog(
       context,
@@ -524,13 +428,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
         );
       }
     }
-  }
-
-  String _formatCurrency(dynamic amount) {
-    if (amount == null) return '0 ₫';
-    final val = double.tryParse(amount.toString()) ?? 0.0;
-    final f = NumberFormat('#,###', 'vi_VN');
-    return '${f.format(val.round())} ₫';
   }
 
   String _formatDate(dynamic dateStr) {
@@ -1109,23 +1006,6 @@ class _ProfileIncomeScreenState extends State<ProfileIncomeScreen> with TickerPr
       position: position,
       statusLabel: statusLabel,
       onRefresh: _loadData,
-    );
-  }
-
-  void _showPayslipDetailModal(
-    Map<String, dynamic> item,
-    String userFullName,
-    String employeeCode,
-    String department,
-    String position,
-  ) {
-    ProfilePayslipsTabContent.showPayslipDetailModal(
-      context,
-      item,
-      userFullName,
-      employeeCode,
-      department,
-      position,
     );
   }
 }

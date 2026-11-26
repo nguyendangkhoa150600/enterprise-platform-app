@@ -166,7 +166,7 @@ class HrmEmployeeActionModals {
                 const SizedBox(height: 14),
 
                 DropdownButtonFormField<String>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
                   items: [
@@ -388,7 +388,7 @@ class HrmEmployeeActionModals {
                 Text('hrm_modals.employee_action.tao_don_tu_yeu_cau_moi'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<HrmRequestType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   menuMaxHeight: 280,
                   borderRadius: BorderRadius.circular(10),
                   items: [

@@ -1,6 +1,6 @@
-﻿part of '../../role_permission_screen.dart';
+part of '../../role_permission_screen.dart';
 
-extension PermissionDetailSheetExtension on _RolePermissionScreenState {
+extension _PermissionDetailSheetExtension on _RolePermissionScreenState {
   // Permission Detail Modal (Đồng bộ 1:1 với Web)
   void _showPermissionDetailModal(TenantPermission perm, bool canManage) {
     showModalBottomSheet(
@@ -352,7 +352,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
                   IconButton(
                     onPressed: () {
                       if (usedRoles.isNotEmpty) {
-                        ScaffoldMessenger.of(this.context).showSnackBar(
+                        ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
                               'Permission đang được dùng trong ${usedRoles.length} vai trò. Hãy gỡ khỏi vai trò trước khi xóa!',
@@ -393,7 +393,7 @@ extension PermissionDetailSheetExtension on _RolePermissionScreenState {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final messenger = ScaffoldMessenger.of(this.context);
+              final messenger = ScaffoldMessenger.of(context);
               final success = await _platformService.deletePermission(perm.id);
               if (!mounted) return;
               if (success) {

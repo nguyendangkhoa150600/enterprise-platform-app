@@ -36,7 +36,6 @@ class PayslipItemCard extends StatelessWidget {
     final periodCode = periodInfo?['periodCode']?.toString() ?? item['periodCode']?.toString() ?? 'payroll_widgets.payslip.current_period'.tr();
     final fromDate = periodInfo?['fromDate']?.toString() ?? item['fromDate']?.toString() ?? '';
     final toDate = periodInfo?['toDate']?.toString() ?? item['toDate']?.toString() ?? '';
-    final paymentDate = periodInfo?['paymentDate']?.toString() ?? item['issuedAt']?.toString() ?? '';
     final payslipNo = item['payslipNo']?.toString() ?? 'PL-${item['id'] ?? '001'}';
     final status = item['status']?.toString() ?? 'PAID';
 

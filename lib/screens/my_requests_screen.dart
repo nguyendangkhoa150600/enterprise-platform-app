@@ -2,10 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import '../core/i18n/app_i18n.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hrm_attendance_models.dart';
-import '../providers/auth_provider.dart';
 import '../services/hrm_attendance_service.dart';
 import '../utils/error_handler.dart';
 import 'requests/components/request_cards.dart';
@@ -72,16 +70,6 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
   void dispose() {
     _requestSearchController.dispose();
     super.dispose();
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts[0].isEmpty) return 'TT';
-    if (parts.length == 1) return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
-    if (parts.length >= 3) {
-      return (parts[parts.length - 2][0] + parts.last[0]).toUpperCase();
-    }
-    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
   void _openCorrectionFormDialog({String? initialType, AttendanceCorrection? draftItem}) {
@@ -274,235 +262,27 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
         children: [
           // 1. Header & Quick Actions
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        Text(
-                          'my_requests.header_title'.tr(),
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEEF2FF),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFC7D2FE)),
-                          ),
-                          child: Text('my_requests.ess_badge'.tr(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'my_requests.header_subtitle'.tr(),
-                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
-                    ),
-                  ],
-                ),
+              Text(
+                'my_requests.header_title'.tr(),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
-              const SizedBox(width: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.file_download_outlined, size: 20, color: Color(0xFF475569)),
-                    tooltip: 'my_requests.export_tooltip'.tr(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('my_requests.exporting'.tr()), behavior: SnackBarBehavior.floating),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => _openCorrectionFormDialog(),
-                    icon: const Icon(Icons.add, size: 14),
-                    label: Text('requests.form.create_new'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ],
+              ElevatedButton.icon(
+                onPressed: () => _openCorrectionFormDialog(),
+                icon: const Icon(Icons.add, size: 14),
+                label: Text('requests.form.create_new'.tr(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-
-          // 2. Employee Profile Card
-          Builder(
-            builder: (context) {
-              final auth = context.watch<AuthProvider>();
-              final userFullName = (auth.fullName?.isNotEmpty == true)
-                  ? auth.fullName!
-                  : ((_context != null && _context!.fullName.isNotEmpty)
-                      ? _context!.fullName
-                      : (auth.email?.split('@').first ?? 'my_requests.employee_default'.tr()));
-              final employeeCode = (_context != null && _context!.employeeCode.isNotEmpty)
-                  ? _context!.employeeCode
-                  : '--';
-              final userEmail = auth.email ?? '';
-              final userInitials = _getInitials(userFullName);
-
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Stack(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF0F172A),
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            userInitials,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Wrap(
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  spacing: 6,
-                                  runSpacing: 4,
-                                  children: [
-                                    Text(
-                                      userFullName,
-                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFECFDF5),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        'my_requests.official_badge'.tr(),
-                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'my_requests.employee_code'.tr(args: {'code': employeeCode}),
-                                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 3,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.mail_outline, size: 12, color: Color(0xFF94A3B8)),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    userEmail,
-                                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.badge_outlined, size: 12, color: Color(0xFF94A3B8)),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    auth.isTenantAdmin
-                                        ? 'Tenant Administrator'
-                                        : (auth.isPlatformAdmin
-                                            ? 'Platform Administrator'
-                                            : (auth.roles.isNotEmpty ? auth.roles.first : 'my_requests.employee_account'.tr())),
-                                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          if (_context?.shift != null && _context!.shift!.startTime.length >= 5 && _context!.shift!.endTime.length >= 5)
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    '${_context!.shift!.name.isNotEmpty ? '${_context!.shift!.name} ' : ''}(${_context!.shift!.startTime.substring(0, 5)} - ${_context!.shift!.endTime.substring(0, 5)})',
-                                    style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
           ),
           const SizedBox(height: 12),
 
@@ -548,63 +328,43 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
           // 4. Sub-tab Content
           if (_requestsSubTab == 0) ...[
             // ====================================================
-            // SUB-TAB 0: 4 REQUEST CATALOG CARDS (100% MATCHING WEB)
+            // SUB-TAB 0: 4 REQUEST CATALOG CARDS (COMPACT UI)
             // ====================================================
             _buildCatalogCard(
               icon: Icons.calendar_today_outlined,
               iconBgColor: const Color(0xFFECFDF5),
               iconColor: const Color(0xFF059669),
-              badgeText: 'my_requests.leave_badge'.tr(),
-              badgeBgColor: const Color(0xFFECFDF5),
-              badgeTextColor: const Color(0xFF059669),
               title: 'requests.type.leave'.tr(),
-              description: 'my_requests.leave_desc'.tr(),
-              infoBoxText: 'my_requests.leave_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đơn xin nghỉ'),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             _buildCatalogCard(
               icon: Icons.access_time_filled_rounded,
               iconBgColor: const Color(0xFFF5F3FF),
               iconColor: const Color(0xFF7C3AED),
-              badgeText: 'my_requests.ot_badge'.tr(),
-              badgeBgColor: const Color(0xFFFEF3C7),
-              badgeTextColor: const Color(0xFFD97706),
               title: 'requests.type.ot'.tr(),
-              description: 'my_requests.ot_desc'.tr(),
-              infoBoxText: 'my_requests.ot_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đơn tăng ca'),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             _buildCatalogCard(
               icon: Icons.business_center_outlined,
               iconBgColor: const Color(0xFFFFF7ED),
               iconColor: const Color(0xFFEA580C),
-              badgeText: 'my_requests.trip_badge'.tr(),
-              badgeBgColor: const Color(0xFFEFF6FF),
-              badgeTextColor: const Color(0xFF2563EB),
               title: 'requests.type.trip'.tr(),
-              description: 'my_requests.trip_desc'.tr(),
-              infoBoxText: 'my_requests.trip_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đơn công tác'),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             _buildCatalogCard(
               icon: Icons.article_outlined,
               iconBgColor: const Color(0xFFFFF1F2),
               iconColor: const Color(0xFFE11D48),
-              badgeText: 'my_requests.explain_badge'.tr(),
-              badgeBgColor: const Color(0xFFFFE4E6),
-              badgeTextColor: const Color(0xFFE11D48),
               title: 'my_requests.explain_title'.tr(),
-              description: 'my_requests.explain_desc'.tr(),
-              infoBoxText: 'my_requests.explain_info'.tr(),
               buttonText: 'my_requests.start_request'.tr(),
               onTap: () => _showCorrectionDialog(null, initialType: 'Đơn giải trình chấm công'),
             ),
@@ -825,12 +585,12 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
     required IconData icon,
     required Color iconBgColor,
     required Color iconColor,
-    required String badgeText,
-    required Color badgeBgColor,
-    required Color badgeTextColor,
+    String? badgeText,
+    Color? badgeBgColor,
+    Color? badgeTextColor,
     required String title,
-    required String description,
-    required String infoBoxText,
+    String? description,
+    String? infoBoxText,
     required String buttonText,
     required VoidCallback onTap,
   }) {

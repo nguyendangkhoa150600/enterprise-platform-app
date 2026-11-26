@@ -416,7 +416,7 @@ class HrmStandardWorkdaysConfigView extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: standardMonths.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (context, i) {
             final sm = standardMonths[i];
             final isCurrentMonth = sm['month']!.contains('10/2026');

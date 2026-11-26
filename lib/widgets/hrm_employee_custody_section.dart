@@ -272,7 +272,7 @@ class _HrmEmployeeCustodySectionState extends State<HrmEmployeeCustodySection> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
               itemBuilder: (ctx, idx) {
                 final item = _items[idx];
                 final code = item['code']?.toString() ?? '';
