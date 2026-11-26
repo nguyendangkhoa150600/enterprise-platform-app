@@ -8,6 +8,7 @@ import '../services/platform_service.dart';
 import '../theme/colors.dart';
 import '../widgets/assign_role_modal.dart';
 import './org_chart_workspace_screen.dart';
+import '../widgets/user_avatar.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -454,11 +455,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           final isAdmin = user.systemRole == 'tenant-admin' || user.systemRole == 'platform-admin';
                           final isActive = user.isActive;
 
-                          final nameParts = user.fullName.trim().split(' ');
-                          final initials = nameParts.length >= 2
-                              ? '${nameParts[nameParts.length - 2][0]}${nameParts.last[0]}'.toUpperCase()
-                              : (user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U');
-
                           return Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -476,17 +472,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor: isAdmin ? const Color(0xFFF3E8FF) : const Color(0xFFEFF6FF),
-                                  child: Text(
-                                    initials,
-                                    style: TextStyle(
-                                      color: isAdmin ? const Color(0xFF7E22CE) : const Color(0xFF1D4ED8),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
+                                UserAvatar(
+                                  userId: user.id,
+                                  name: user.fullName,
+                                  size: 40,
+                                  background: isAdmin ? const Color(0xFFF3E8FF) : const Color(0xFFEFF6FF),
+                                  foreground: isAdmin ? const Color(0xFF7E22CE) : const Color(0xFF1D4ED8),
+                                  fontSize: 13,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(

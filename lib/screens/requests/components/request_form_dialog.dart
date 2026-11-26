@@ -347,7 +347,38 @@ String _normalizeRequestKey(String? raw) {
   return 'leave';
 }
 
-void showCorrectionFormDialog({
+/// Giá trị điền sẵn lúc mở form (bản nháp của Trợ lý Savina, web `RequestFormInitial`); ô null giữ mặc định của form.
+/// Ngày giờ áp vào khoảng thời gian đầu của loại đơn đang mở; lý do, dự án chỉ chọn khi có trong danh mục tải về.
+class RequestFormPrefill {
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  final TimeOfDay? fromTime;
+  final TimeOfDay? toTime;
+  final String? leaveTypeId;
+  final String? reasonId;
+  final String? description;
+  final String? destination;
+
+  /// DOMESTIC | OVERSEAS | INTERSITE.
+  final String? businessTripType;
+  final String? projectId;
+
+  const RequestFormPrefill({
+    this.fromDate,
+    this.toDate,
+    this.fromTime,
+    this.toTime,
+    this.leaveTypeId,
+    this.reasonId,
+    this.description,
+    this.destination,
+    this.businessTripType,
+    this.projectId,
+  });
+}
+
+/// Mở form tạo đơn; trả về đơn vừa gửi (nhiều khoảng thời gian là đơn cuối cùng), null khi đóng không gửi.
+Future<AttendanceCorrection?> showCorrectionFormDialog({
   required BuildContext context,
   required HrmAttendanceService service,
   AttendanceRecord? item,
@@ -355,6 +386,7 @@ void showCorrectionFormDialog({
   AttendanceCorrection? draftItem,
   AttendanceContext? attendanceContext,
   List<LeaveType> availableLeaveTypes = const [],
+  RequestFormPrefill? prefill,
   required Future<void> Function(AttendanceCorrection draft) onSaveDraft,
   required Future<void> Function(AttendanceCorrection? deletedDraft) onSubmitSuccess,
 }) {
@@ -470,6 +502,32 @@ void showCorrectionFormDialog({
     }
   }
 
+  // Điền sẵn từ bản nháp của Trợ lý (lý do, dự án áp khi danh mục tải xong, xem bên dưới).
+  if (prefill != null) {
+    final target = switch (selectedCategoryKey) {
+      'ot' => otIntervals.first,
+      'business_trip' => tripIntervals.first,
+      'leave' => leaveIntervals.first,
+      _ => null,
+    };
+    if (target != null) {
+      if (prefill.fromDate != null) target.fromDate = prefill.fromDate!;
+      if (prefill.toDate != null) target.toDate = prefill.toDate!;
+      if (prefill.fromTime != null) target.fromTime = prefill.fromTime!;
+      if (prefill.toTime != null) target.toTime = prefill.toTime!;
+    }
+    if (prefill.description != null) descController.text = prefill.description!;
+    if (prefill.destination != null) tripLocationCtrl.text = prefill.destination!;
+    switch (prefill.businessTripType) {
+      case 'OVERSEAS':
+        tripScope = 'Công tác nước ngoài (Quốc tế)';
+      case 'INTERSITE':
+        tripScope = 'Công tác nội bộ liên chi nhánh';
+      case 'DOMESTIC':
+        tripScope = 'Công tác trong nước (Nội địa)';
+    }
+  }
+
   // Attachments & submission state
   String? selectedFileName;
   int? selectedFileSize;
@@ -477,7 +535,7 @@ void showCorrectionFormDialog({
   bool isSavingDraft = false;
   String? modalErrorMessage;
 
-  showModalBottomSheet(
+  return showModalBottomSheet<AttendanceCorrection>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -531,7 +589,8 @@ void showCorrectionFormDialog({
             )));
           }
 
-          selectedLeaveReason ??= leaveReasonsList.first;
+          selectedLeaveReason ??=
+              leaveReasonsList.where((r) => r.id == prefill?.leaveTypeId).firstOrNull ?? leaveReasonsList.first;
 
           // Fetch dynamic reasons and linkable projects from backend (Zero-Mock Policy)
           if (!didFetchServerReasons) {
@@ -546,6 +605,16 @@ void showCorrectionFormDialog({
               if (results[1].isNotEmpty) tripReasons = results[1] as List<HrmRequestReason>;
               if (results[2].isNotEmpty) correctionReasons = results[2] as List<HrmRequestReason>;
               if (results[3].isNotEmpty) linkableProjects = results[3] as List<ProjectItem>;
+              final wantedReasonId = prefill?.reasonId;
+              if (wantedReasonId != null) {
+                selectedOtReason = otReasons.where((r) => r.id == wantedReasonId).firstOrNull ?? selectedOtReason;
+                selectedTripReason = tripReasons.where((r) => r.id == wantedReasonId).firstOrNull ?? selectedTripReason;
+              }
+              final wantedProjectId = prefill?.projectId;
+              if (wantedProjectId != null) {
+                selectedTripProject =
+                    linkableProjects.where((p) => p.id == wantedProjectId).firstOrNull ?? selectedTripProject;
+              }
               selectedOtReason = otReasons.firstWhere((r) => r.id == selectedOtReason?.id, orElse: () => otReasons.first);
               selectedTripReason = tripReasons.firstWhere((r) => r.id == selectedTripReason?.id, orElse: () => tripReasons.first);
               selectedCorrectionReason = correctionReasons.firstWhere((r) => r.id == selectedCorrectionReason?.id, orElse: () => correctionReasons.first);
@@ -943,6 +1012,7 @@ void showCorrectionFormDialog({
                                   modalErrorMessage = null;
                                 });
 
+                                AttendanceCorrection? created;
                                 try {
                                   if (selectedCategoryKey == 'leave') {
                                     final reasonTag = selectedLeaveReason?.name ?? 'Nghỉ phép năm';
@@ -982,7 +1052,7 @@ void showCorrectionFormDialog({
                                       }).toList();
                                     }
 
-                                    await service.createCorrection(
+                                    created = await service.createCorrection(
                                       employeeId: attendanceContext?.employeeId,
                                       attendanceId: item?.id,
                                       leaveTypeId: targetLeaveTypeId,
@@ -1010,7 +1080,7 @@ void showCorrectionFormDialog({
                                       final fDate = '${interval.fromDate.year}-${interval.fromDate.month.toString().padLeft(2, '0')}-${interval.fromDate.day.toString().padLeft(2, '0')}';
                                       final tDate = '${interval.toDate.year}-${interval.toDate.month.toString().padLeft(2, '0')}-${interval.toDate.day.toString().padLeft(2, '0')}';
 
-                                      await service.createCorrection(
+                                      created = await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
                                         attendanceId: item?.id,
                                         reasonId: actualReasonId,
@@ -1057,7 +1127,7 @@ void showCorrectionFormDialog({
                                       final fDate = '${interval.fromDate.year}-${interval.fromDate.month.toString().padLeft(2, '0')}-${interval.fromDate.day.toString().padLeft(2, '0')}';
                                       final tDate = '${interval.toDate.year}-${interval.toDate.month.toString().padLeft(2, '0')}-${interval.toDate.day.toString().padLeft(2, '0')}';
 
-                                      await service.createCorrection(
+                                      created = await service.createCorrection(
                                         employeeId: attendanceContext?.employeeId,
                                         attendanceId: item?.id,
                                         reasonId: actualReasonId,
@@ -1092,7 +1162,7 @@ void showCorrectionFormDialog({
 
                                     final fDate = '${correctionDate.year}-${correctionDate.month.toString().padLeft(2, '0')}-${correctionDate.day.toString().padLeft(2, '0')}';
 
-                                    await service.createCorrection(
+                                    created = await service.createCorrection(
                                       employeeId: attendanceContext?.employeeId,
                                       attendanceId: item?.id,
                                       reasonId: actualReasonId,
@@ -1114,7 +1184,7 @@ void showCorrectionFormDialog({
                                   }
 
                                   if (ctx.mounted) {
-                                    Navigator.pop(ctx);
+                                    Navigator.pop(ctx, created);
                                   }
 
                                   if (draftItem != null && !draftItem.id.startsWith('DFT-')) {

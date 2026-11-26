@@ -3,6 +3,7 @@ import '../../../../../core/i18n/app_i18n.dart';
 import '../../../../../features/workspace/data/datasources/workspace_requests_api.dart';
 import '../finance/finance_format.dart';
 import 'request_filter.dart';
+import '../../../../../widgets/user_avatar.dart';
 
 /// Nhãn trạng thái đơn từ.
 class RequestStatusPill extends StatelessWidget {
@@ -82,10 +83,7 @@ class RequestCard extends StatelessWidget {
             line(
               'workspace.requests.col_requester'.tr(),
               Row(children: [
-                CircleAvatar(
-                  radius: 10,
-                  child: Text(_initials(name), style: const TextStyle(fontSize: 9)),
-                ),
+                UserAvatar(userId: item.requesterUserId, name: name, size: 20, fontSize: 9),
                 const SizedBox(width: 6),
                 Expanded(child: Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
               ]),
@@ -108,12 +106,4 @@ class RequestCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Chữ cái đầu của hai từ cuối (như `initials` của web project-header).
-String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-  if (parts.isEmpty) return '?';
-  final picked = parts.length == 1 ? parts : parts.sublist(parts.length - 2);
-  return picked.map((p) => p.characters.first.toUpperCase()).join();
 }

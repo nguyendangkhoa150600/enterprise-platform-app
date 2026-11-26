@@ -4,6 +4,7 @@ import '../../../../../models/hrm_models.dart';
 import '../../../../../models/hrm_attendance_models.dart';
 import '../../../../../models/hrm_work_schedule_models.dart';
 import '../../../../../services/hrm_service.dart';
+import '../../../../../widgets/user_avatar.dart';
 
 /// Quản lý Phân ca, Nhả ca & Lịch làm việc (Web 1:1 ?view=schedules) - Chuẩn Web 1:1 Pixel-Perfect
 class HrmScheduleManagementView extends StatefulWidget {
@@ -1948,14 +1949,8 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                 final shiftLabel = idx % 2 == 0 ? 'T2-T6: Ca HC; T7: HC-T7; CN: OFF' : 'hrm_schedule.t2_t7_ca_sang_ca1_cn_off'.tr();
                 return Row(
                   children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: const Color(0xFFEFF6FF),
-                      child: Text(
-                        emp.fullName.isNotEmpty ? emp.fullName[0].toUpperCase() : 'N',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                      ),
-                    ),
+                    UserAvatar(userId: emp.userId, name: emp.fullName, size: 32, fontSize: 12,
+                        background: const Color(0xFFEFF6FF), foreground: const Color(0xFF2563EB)),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -2079,12 +2074,12 @@ class _HrmScheduleManagementViewState extends State<HrmScheduleManagementView> {
                             });
                             Navigator.pop(ctx);
                           },
-                          leading: CircleAvatar(
-                            backgroundColor: isForRelease ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
-                            child: Text(
-                              empName.isNotEmpty ? empName[0].toUpperCase() : 'N',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: isForRelease ? const Color(0xFFDC2626) : const Color(0xFF2563EB)),
-                            ),
+                          leading: UserAvatar(
+                            userId: hasOptions ? null : _employees[idx].userId,
+                            name: empName,
+                            size: 40,
+                            background: isForRelease ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
+                            foreground: isForRelease ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
                           ),
                           title: Text(empName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                           subtitle: Text('$empCode • $dept', style: const TextStyle(fontSize: 11)),

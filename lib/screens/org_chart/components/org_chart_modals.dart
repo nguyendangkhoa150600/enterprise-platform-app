@@ -4,6 +4,7 @@ import '../../../models/platform_models.dart';
 import '../../../services/platform_service.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../widgets/user_avatar.dart';
 
 Widget buildOrgCategoryOption({
   required String label,
@@ -611,13 +612,13 @@ void showOrgNodeDetailBottomSheet(
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: const Color(0xFFEFF6FF),
-                            child: Text(
-                              name.isNotEmpty ? name[0] : 'U',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                            ),
+                          UserAvatar(
+                            userId: asg.userId,
+                            name: assignedUser?.fullName,
+                            size: 36,
+                            background: const Color(0xFFEFF6FF),
+                            foreground: const Color(0xFF2563EB),
+                            fontSize: 14,
                           ),
                           const SizedBox(width: 12),
                           Expanded(

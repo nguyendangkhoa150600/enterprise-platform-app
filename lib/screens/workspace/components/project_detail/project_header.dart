@@ -4,6 +4,7 @@ import '../../../../features/workspace/data/datasources/workspace_project_api.da
 import '../../../../models/workspace_models.dart';
 import '../../../../utils/user_resolver.dart';
 import 'project_work_model.dart';
+import '../../../../widgets/user_avatar.dart';
 
 /// Khối đầu của trang dự án (web project-header.tsx + project-progress-bar.tsx).
 class ProjectHeader extends StatelessWidget {
@@ -144,18 +145,23 @@ class ProjectHeader extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 13,
                   backgroundColor: Colors.white,
-                  child: CircleAvatar(
-                    radius: 11.5,
-                    backgroundColor: i < shown.length ? const Color(0xFFEAB308) : const Color(0xFFE2E8F0),
-                    child: Text(
-                      i < shown.length ? nameInitials(_memberName(shown[i])) : '+$more',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: i < shown.length ? Colors.white : const Color(0xFF475569),
-                      ),
-                    ),
-                  ),
+                  child: i < shown.length
+                      ? UserAvatar(
+                          userId: shown[i].userId,
+                          name: _memberName(shown[i]),
+                          size: 23,
+                          background: const Color(0xFFEAB308),
+                          foreground: Colors.white,
+                          fontSize: 9,
+                        )
+                      : CircleAvatar(
+                          radius: 11.5,
+                          backgroundColor: const Color(0xFFE2E8F0),
+                          child: Text(
+                            '+$more',
+                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                          ),
+                        ),
                 ),
               ),
             ),

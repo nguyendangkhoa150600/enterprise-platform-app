@@ -54,6 +54,9 @@ abstract class IWorkspaceRepository {
   /// Thông điệp lỗi gần nhất (nếu có)
   String? get lastError;
 
+  /// Bản ghi server trả về ở lần tạo thành công gần nhất ([createWorkItem]: công việc; [createStandaloneTask]: `task`).
+  Map<String, dynamic>? get lastCreated;
+
   /// Tạo công việc trong dự án: POST /work-items
   Future<bool> createWorkItem({
     required String projectId,

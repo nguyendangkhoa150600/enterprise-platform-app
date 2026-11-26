@@ -18,7 +18,9 @@ import 'workspace_parent_task_picker_sheet.dart';
 /// Đồng bộ 1:1 với Web React packages/features/workspace/src/lib/components/work-item-form.tsx (chế độ tạo)
 /// và work-item-draft.tsx. [parentTask] null (hoặc id rỗng) ⇒ tạo ở cấp gốc của dự án; khi đó cần [projectId].
 /// Không thuộc dự án (việc lẻ) thì giữ cách tạo một việc như cũ.
-void showWorkspaceCreateSubtaskSheet(
+/// [initialDraft] điền sẵn việc đầu tiên (Trợ lý Savina); [onItemCreated] nhận bản ghi server trả về cho mỗi việc
+/// tạo xong trong dự án.
+Future<void> showWorkspaceCreateSubtaskSheet(
   BuildContext context, {
   StandaloneTaskItem? parentTask,
   required WorkspaceService service,
@@ -30,8 +32,10 @@ void showWorkspaceCreateSubtaskSheet(
   ProjectAccess? access,
   /// Lập "công việc điều chỉnh" cho việc đã huỷ hiệu lực (web `adjustmentOf`, gửi `adjustmentOfId`).
   StandaloneTaskItem? adjustmentOf,
+  CreateItemDraft? initialDraft,
+  ValueChanged<Map<String, dynamic>>? onItemCreated,
 }) {
-  showModalBottomSheet(
+  return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -43,6 +47,8 @@ void showWorkspaceCreateSubtaskSheet(
       projectItems: projectItems,
       access: access,
       adjustmentOf: adjustmentOf,
+      initialDraft: initialDraft,
+      onItemCreated: onItemCreated,
     ),
   );
 }
@@ -55,6 +61,8 @@ class _CreateSubtaskSheetContent extends StatefulWidget {
   final List<StandaloneTaskItem>? projectItems;
   final ProjectAccess? access;
   final StandaloneTaskItem? adjustmentOf;
+  final CreateItemDraft? initialDraft;
+  final ValueChanged<Map<String, dynamic>>? onItemCreated;
 
   const _CreateSubtaskSheetContent({
     required this.parentTask,
@@ -64,6 +72,8 @@ class _CreateSubtaskSheetContent extends StatefulWidget {
     this.projectItems,
     this.access,
     this.adjustmentOf,
+    this.initialDraft,
+    this.onItemCreated,
   });
 
   @override
@@ -141,9 +151,11 @@ class _CreateSubtaskSheetContentState extends State<_CreateSubtaskSheetContent> 
         ? ''
         : (parent!.code.isNotEmpty ? '${parent.code} · ${parent.title}' : parent.title);
     final adjustment = _adjustmentOf;
-    _rows.add(adjustment != null
-        ? CreateItemDraft.adjustmentOf(adjustment, parentId: parentId, parentTitle: parentTitle)
-        : CreateItemDraft(parentId: parentId, parentTitle: parentTitle));
+    final initial = widget.initialDraft;
+    _rows.add(initial ??
+        (adjustment != null
+            ? CreateItemDraft.adjustmentOf(adjustment, parentId: parentId, parentTitle: parentTitle)
+            : CreateItemDraft(parentId: parentId, parentTitle: parentTitle)));
     _loadMembers();
     _loadProjectTasks();
     _loadTags();
@@ -462,6 +474,8 @@ class _CreateSubtaskSheetContentState extends State<_CreateSubtaskSheetContent> 
         return;
       }
       created += 1;
+      final record = _adjustmentOf == null ? widget.service.lastCreated : null;
+      if (record != null) widget.onItemCreated?.call(record);
       setState(() {
         _rows.remove(row);
         _collapsed.remove(row.key);

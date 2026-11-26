@@ -1,821 +1,328 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:power_quality_analysis/core/i18n/app_i18n.dart';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../core/i18n/app_i18n.dart';
 import '../models/assistant_models.dart';
 import '../providers/auth_provider.dart';
-import './api_client_helper.dart';
-import './hrm_attendance_service.dart';
-import './workspace_service.dart';
-import './platform_service.dart';
-import './module_business_service.dart';
+import 'api_client_helper.dart';
 
+/// Lỗi gọi API Trợ lý, kèm câu đọc được của server.
+class AssistantApiException implements Exception {
+  final String message;
+  final int? status;
+  const AssistantApiException(this.message, [this.status]);
+  @override
+  String toString() => message;
+}
+
+/// Các sự kiện của luồng trả lời `POST /v1/chat` (web `VZ`).
+class AssistantChatCallbacks {
+  final void Function(String id)? onConversation;
+  final void Function(String text)? onDelta;
+  final void Function(String text)? onReasoning;
+  final void Function(String step)? onStep;
+  final void Function(Map<String, dynamic> file)? onFile;
+  final void Function(Map<String, dynamic> action, String title)? onAction;
+  final void Function(Map<String, dynamic> question)? onQuestion;
+  final void Function(String message)? onError;
+
+  const AssistantChatCallbacks({
+    this.onConversation,
+    this.onDelta,
+    this.onReasoning,
+    this.onStep,
+    this.onFile,
+    this.onAction,
+    this.onQuestion,
+    this.onError,
+  });
+}
+
+/// API của Trợ lý Savina (savina-agent sau gateway, `/api/assistant/v1/...`) — khớp phần gọi API của bản web.
 class AssistantService {
   static final AssistantService _instance = AssistantService._internal();
   factory AssistantService() => _instance;
 
+  static const String _root = '/api/assistant';
+
+  /// Trang gửi kèm để Trợ lý trả lời đúng ngữ cảnh (web gửi trang ERP đang mở; ứng dụng không có trang nền).
+  static const String page = '/applications';
+
   final Dio _dio = Dio(BaseOptions(
     baseUrl: AuthProvider.authBaseUrl,
     connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 20),
+    receiveTimeout: const Duration(seconds: 30),
   ));
-
-  final HrmAttendanceService _hrmAttendanceService = HrmAttendanceService();
-  final WorkspaceService _workspaceService = WorkspaceService();
-  final PlatformService _platformService = PlatformService();
 
   AssistantService._internal() {
     ApiClientHelper.configureDio(_dio);
   }
 
-  // Cache danh bạ nhân sự để gợi ý @mention
-  List<MentionUser>? _cachedDirectory;
-  DateTime? _lastDirectoryFetch;
+  static final Options _lenient = Options(validateStatus: (s) => s != null && s < 600);
 
-  /// Lấy danh bạ người dùng phục vụ tìm kiếm & auto-complete @mention
-  Future<List<MentionUser>> getMentionDirectory({bool forceRefresh = false}) async {
-    if (!forceRefresh &&
-        _cachedDirectory != null &&
-        _lastDirectoryFetch != null &&
-        DateTime.now().difference(_lastDirectoryFetch!).inMinutes < 10) {
-      return _cachedDirectory!;
+  /// Web `Ks`: câu lỗi của server, không có thì "Lỗi {mã}".
+  static String errorOf(Response<dynamic> res) {
+    final data = res.data;
+    if (data is Map) {
+      final message = data['detail'] ?? data['message'] ?? data['error'];
+      if (message is String && message.isNotEmpty) return message;
     }
-
-    final endpoints = [
-      '/api/workspace/v1/directory',
-      '/workspace/v1/directory',
-      '/api/platform/v1/users',
-      '/platform/v1/users',
-    ];
-
-    for (final ep in endpoints) {
-      try {
-        final res = await _dio.get(
-          ep,
-          options: Options(validateStatus: (s) => s != null && s < 500),
-        );
-        if (res.statusCode == 200 && res.data != null) {
-          final raw = res.data['data'] ?? res.data['people'] ?? res.data['users'] ?? res.data;
-          if (raw is List) {
-            final list = raw.map((e) => MentionUser.fromJson(e as Map<String, dynamic>)).toList();
-            if (list.isNotEmpty) {
-              _cachedDirectory = list;
-              _lastDirectoryFetch = DateTime.now();
-              return list;
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('[AssistantService] getMentionDirectory error on $ep: $e');
-      }
-    }
-
-    // Fallback: dùng người dùng từ PlatformService
-    try {
-      final pUsers = await _platformService.getTenantUsers();
-      if (pUsers.isNotEmpty) {
-        final list = pUsers.map((u) => MentionUser(
-          userId: u.id,
-          displayName: u.fullName.isNotEmpty ? u.fullName : u.email,
-          email: u.email,
-          roleName: u.systemRole,
-        )).toList();
-        _cachedDirectory = list;
-        _lastDirectoryFetch = DateTime.now();
-        return list;
-      }
-    } catch (_) {}
-
-    return [];
+    if (data is String && data.isNotEmpty && data.length < 300) return data;
+    return 'assistant.error_status'.tr(args: {'status': res.statusCode});
   }
 
-  // Cache danh mục hành động được phép của người dùng từ các phân hệ ERP
-  List<AssistantCatalogItem>? _cachedCatalog;
-  DateTime? _lastCatalogFetch;
-
-  /// Lấy danh mục thao tác hợp lệ theo phân quyền người dùng từ các phân hệ ERP
-  /// Chuẩn contracts-assistant của Savina ERP (`/api/<module>/v1/assistant/actions`)
-  Future<List<AssistantCatalogItem>> getCatalogActions({bool forceRefresh = false}) async {
-    if (!forceRefresh &&
-        _cachedCatalog != null &&
-        _lastCatalogFetch != null &&
-        DateTime.now().difference(_lastCatalogFetch!).inMinutes < 15) {
-      return _cachedCatalog!;
-    }
-
-    final moduleActionEndpoints = [
-      '/api/workspace/v1/assistant/actions',
-      '/api/hrm/v1/assistant/actions',
-      '/api/maintenance/v1/assistant/actions',
-      '/api/procedure/v1/assistant/actions',
-    ];
-
-    final List<AssistantCatalogItem> allActions = [];
-
-    for (final ep in moduleActionEndpoints) {
-      try {
-        final res = await _dio.get(
-          ep,
-          options: Options(validateStatus: (s) => s != null && s < 500),
-        );
-        if (res.statusCode == 200 && res.data != null) {
-          final raw = res.data['actions'] ?? res.data['data'] ?? res.data;
-          if (raw is List) {
-            for (final item in raw) {
-              if (item is Map<String, dynamic>) {
-                allActions.add(AssistantCatalogItem.fromJson(item));
-              }
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('[AssistantService] getCatalogActions error on $ep: $e');
-      }
-    }
-
-    if (allActions.isNotEmpty) {
-      _cachedCatalog = allActions;
-      _lastCatalogFetch = DateTime.now();
-      return allActions;
-    }
-
-    return _cachedCatalog ?? [];
+  /// Gọi lại một lần sau khi làm mới phiên khi gặp 401 (web `Ws`).
+  Future<Response<T>> _request<T>(Future<Response<T>> Function() send) async {
+    var res = await send();
+    if (res.statusCode == 401 && await AuthProvider.silentRelogin()) res = await send();
+    return res;
   }
 
-  /// Lấy danh sách phím tắt từ API `/api/assistant/v1/shortcuts`
-  Future<List<Map<String, dynamic>>> getShortcuts({String page = '/applications'}) async {
+  Map<String, dynamic> _json(dynamic data) => data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
+
+  /// `GET /v1/shortcuts?page=`: phím tắt, câu gợi ý, quyền cài đặt. Lỗi thì trả rỗng (web cũng vậy).
+  Future<AssistantShortcutsData> getShortcuts() async {
     try {
-      final res = await _dio.get(
-        '/api/assistant/v1/shortcuts',
-        queryParameters: {'page': page},
-        options: Options(validateStatus: (s) => s != null && s < 500),
+      final res = await _request(() => _dio.get('$_root/v1/shortcuts', queryParameters: {'page': page}, options: _lenient));
+      if (res.statusCode != 200) return const AssistantShortcutsData();
+      final j = _json(res.data);
+      return AssistantShortcutsData(
+        shortcuts: [
+          for (final s in (j['shortcuts'] as List? ?? const []))
+            if (s is Map) AssistantShortcut.fromJson(Map<String, dynamic>.from(s)),
+        ],
+        suggestions: [for (final s in (j['suggestions'] as List? ?? const [])) if (s is String) s],
+        canConfigure: j['can_configure'] == true,
       );
-      if (res.statusCode == 200 && res.data != null) {
-        final raw = res.data['shortcuts'] ?? res.data['data'] ?? res.data;
-        if (raw is List) {
-          return raw.whereType<Map<String, dynamic>>().toList();
-        }
-      }
     } catch (e) {
-      debugPrint('[AssistantService] getShortcuts error: $e');
+      debugPrint('[AssistantService] getShortcuts: $e');
+      return const AssistantShortcutsData();
     }
-    return [];
   }
 
-  /// Lấy số lượng badge cho các phím tắt `/api/assistant/v1/shortcuts/counts`
-  Future<Map<String, int>> getShortcutCounts({String page = '/applications'}) async {
+  /// `GET /v1/shortcuts/counts?page=`: số trên phím "Xem nhanh".
+  Future<Map<String, int>> getCounts() async {
     try {
-      final res = await _dio.get(
-        '/api/assistant/v1/shortcuts/counts',
-        queryParameters: {'page': page},
-        options: Options(validateStatus: (s) => s != null && s < 500),
-      );
-      if (res.statusCode == 200 && res.data is Map<String, dynamic>) {
-        final map = <String, int>{};
-        (res.data as Map<String, dynamic>).forEach((k, v) {
-          if (v is int) {
-            map[k] = v;
-          } else if (v is num) {
-            map[k] = v.toInt();
-          }
-        });
-        return map;
-      }
-    } catch (e) {
-      debugPrint('[AssistantService] getShortcutCounts error: $e');
+      final res =
+          await _request(() => _dio.get('$_root/v1/shortcuts/counts', queryParameters: {'page': page}, options: _lenient));
+      if (res.statusCode != 200) return const {};
+      return {
+        for (final e in _json(res.data).entries)
+          if (e.value is num) e.key: (e.value as num).toInt(),
+      };
+    } catch (_) {
+      return const {};
     }
-    return {};
   }
 
-  String? _currentConversationId;
-  String? get currentConversationId => _currentConversationId;
-
-  Future<void> initConversationId() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _currentConversationId = prefs.getString('saved_assistant_conversation_id');
-    } catch (_) {}
-  }
-
-  /// Xóa ngữ cảnh hội thoại hiện tại (tạo hội thoại mới)
-  void resetConversation() {
-    _currentConversationId = null;
-    SharedPreferences.getInstance().then((p) => p.remove('saved_assistant_conversation_id'));
-  }
-
-  /// Thử gọi API Trợ lý Savina thật từ microservice savina-agent (chuẩn /api/assistant/v1/chat qua SSE Stream)
-  Future<AssistantMessage?> _tryCallSavinaAgentApi(
-    String prompt, {
-    List<String> mentions = const [],
-    void Function(String deltaText)? onDelta,
-    bool isRetry = false,
-  }) async {
-    if (_currentConversationId == null) {
-      await initConversationId();
-    }
-
-    final endpoints = [
-      '/api/assistant/v1/chat',
-      '/modules/assistant/v1/chat',
-    ];
-
-    for (final ep in endpoints) {
-      try {
-        final cookies = await AuthProvider.getStoredCookies();
-        String? epAccess;
-        if (cookies != null) {
-          for (final part in cookies.split('; ')) {
-            if (part.startsWith('ep_access=')) {
-              epAccess = part.substring('ep_access='.length).trim();
-              break;
-            }
-          }
-        }
-
-        final streamResponse = await _dio.post<ResponseBody>(
-          ep,
-          data: {
-            'message': prompt,
-            if (_currentConversationId != null && _currentConversationId!.isNotEmpty)
-              'conversation_id': _currentConversationId,
-            'images': [],
-            'deep_thinking': false,
-            'page': '/applications',
-            'shortcut': null,
-            'open_forms': [],
-            'answer': null,
-          },
-          options: Options(
-            responseType: ResponseType.stream,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'text/event-stream',
-              if (epAccess != null && epAccess.isNotEmpty) 'Authorization': 'Bearer $epAccess',
-              if (cookies != null && cookies.isNotEmpty) 'Cookie': cookies,
-              'Origin': AuthProvider.authBaseUrl,
-              'Referer': '${AuthProvider.authBaseUrl}/modules/assistant/?embed=1&page=%2Fapplications',
-            },
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 60),
-            validateStatus: (s) => s != null && s < 500,
-          ),
-        );
-
-        if (streamResponse.statusCode == 401 && !isRetry) {
-          debugPrint('[AssistantService] savina-agent 401 Unauthorized. Attempting silent renewal...');
-          final renewed = await AuthProvider.silentRelogin();
-          if (renewed) {
-            return _tryCallSavinaAgentApi(prompt, mentions: mentions, onDelta: onDelta, isRetry: true);
-          }
-        }
-
-        if (streamResponse.statusCode == 200 && streamResponse.data != null) {
-          String buffer = '';
-          String fullText = '';
-          AssistantActionDraft? actionDraft;
-
-          await for (final chunk in utf8.decoder.bind(streamResponse.data!.stream)) {
-            buffer += chunk;
-            while (buffer.contains('\n\n')) {
-              final idx = buffer.indexOf('\n\n');
-              final block = buffer.substring(0, idx);
-              buffer = buffer.substring(idx + 2);
-
-              String? eventType;
-              String? dataStr;
-
-              for (final line in block.split('\n')) {
-                final trimmed = line.trim();
-                if (trimmed.startsWith('event:')) {
-                  eventType = trimmed.substring(6).trim();
-                } else if (trimmed.startsWith('data:')) {
-                  dataStr = trimmed.substring(5).trim();
-                }
-              }
-
-              if (eventType == null || dataStr == null || dataStr.isEmpty) continue;
-
-              try {
-                final jsonMap = jsonDecode(dataStr);
-                if (jsonMap is Map<String, dynamic>) {
-                  switch (eventType) {
-                    case 'conversation':
-                      final id = jsonMap['id']?.toString();
-                      if (id != null && id.isNotEmpty) {
-                        _currentConversationId = id;
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.setString('saved_assistant_conversation_id', id);
-                      }
-                      break;
-                    case 'delta':
-                      final t = jsonMap['text']?.toString() ?? '';
-                      if (t.isNotEmpty) {
-                        fullText += t;
-                        onDelta?.call(t);
-                      }
-                      break;
-                    case 'action':
-                      final actObj = jsonMap['action'];
-                      if (actObj is Map<String, dynamic>) {
-                        final key = actObj['key']?.toString() ?? '';
-                        final reqId = actObj['requestId']?.toString() ??
-                            'req_${DateTime.now().millisecondsSinceEpoch}';
-                        final title = jsonMap['title']?.toString() ?? actObj['title']?.toString() ?? key;
-                        final fields = actObj['draft'] is Map<String, dynamic>
-                            ? Map<String, dynamic>.from(actObj['draft'])
-                            : (actObj['fields'] is Map<String, dynamic>
-                                ? Map<String, dynamic>.from(actObj['fields'])
-                                : <String, dynamic>{});
-
-                        actionDraft = AssistantActionDraft(
-                          requestId: reqId,
-                          key: key,
-                          title: title,
-                          module: key.startsWith('hrm')
-                              ? 'HRM'
-                              : (key.startsWith('workspace')
-                                  ? 'WORKSPACE'
-                                  : (key.startsWith('maintenance')
-                                      ? 'MAINTENANCE'
-                                      : (key.startsWith('procedure') ? 'PROCEDURE' : 'ERP'))),
-                          fields: fields,
-                        );
-                      }
-                      break;
-                    default:
-                      break;
-                  }
-                }
-              } catch (err) {
-                debugPrint('[AssistantService] Error parsing SSE block: $err');
-              }
-            }
-          }
-
-          if (fullText.trim().isNotEmpty || actionDraft != null) {
-            return AssistantMessage(
-              id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-              sender: MessageSender.assistant,
-              text: fullText.trim(),
-              timestamp: DateTime.now(),
-              actionDraft: actionDraft,
-              mentions: mentions,
-            );
-          }
-        } else {
-          debugPrint('[AssistantService] savina-agent $ep returned status: ${streamResponse.statusCode}');
-        }
-      } catch (e) {
-        debugPrint('[AssistantService] savina-agent endpoint $ep not reachable: $e');
-      }
-    }
-    return null;
-  }
-
-  /// Phân tích câu nói của người dùng và sinh ra tin nhắn phản hồi kèm Action Draft nhúng
-  Future<AssistantMessage> processUserQuery(
-    String prompt, {
-    List<String> mentions = const [],
-    void Function(String deltaText)? onDelta,
-  }) async {
-    // 1. Thử gọi API Trợ lý Savina AI thật nếu service đang online (chuẩn /api/assistant/v1/chat qua SSE)
-    final liveAgentReply = await _tryCallSavinaAgentApi(prompt, mentions: mentions, onDelta: onDelta);
-    if (liveAgentReply != null) {
-      return liveAgentReply;
-    }
-
-    // 2. Chế độ dự phòng (Graceful Degradation): Phân tích ý định theo chuẩn Action Contracts của Savina ERP
-    final lower = prompt.toLowerCase().trim();
-    final now = DateTime.now();
-    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final tomorrow = now.add(const Duration(days: 1));
-
-    final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
-
-    // 1. Ý định Tạo đơn nghỉ phép (HRM Leave Request)
-    if (lower.contains('leave') || lower.contains('nghỉ phép') || lower.contains('xin nghỉ') || lower.contains('nghỉ ốm') || lower.contains('nghỉ việc riêng')) {
-      final isTomorrow = lower.contains('ngày mai') || lower.contains('mai');
-      final fromDate = isTomorrow ? tomorrowStr : todayStr;
-      final toDate = fromDate;
-      String reason = 'assistant.svc.reason_personal'.tr();
-      if (lower.contains('nghỉ ốm') || lower.contains('bệnh')) reason = 'assistant.svc.reason_sick'.tr();
-      if (lower.contains('phép năm')) reason = 'assistant.svc.reason_annual'.tr();
-
-      final draft = AssistantActionDraft(
-        requestId: 'req_leave_${DateTime.now().millisecondsSinceEpoch}',
-        key: 'hrm.leave-request.create',
-        title: 'assistant.svc.title_leave'.tr(),
-        module: 'HRM',
-        fields: {
-          'leaveType': 'ANNUAL',
-          'fromDate': fromDate,
-          'toDate': toDate,
-          'reason': reason,
-        },
-      );
-
-      return AssistantMessage(
-        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        sender: MessageSender.assistant,
-        text: 'assistant.svc.text_leave'.tr(),
-        timestamp: DateTime.now(),
-        actionDraft: draft,
-      );
-    }
-
-    // 2. Ý định Làm thêm giờ / Tăng ca (HRM Overtime Request)
-    if (lower.contains('overtime') || lower.contains('tăng ca') || lower.contains('làm thêm') || lower.contains('ot') || lower.contains('ngoài giờ')) {
-      final isTomorrow = lower.contains('ngày mai') || lower.contains('mai');
-      final date = isTomorrow ? tomorrowStr : todayStr;
-      
-      final draft = AssistantActionDraft(
-        requestId: 'req_ot_${DateTime.now().millisecondsSinceEpoch}',
-        key: 'hrm.ot-request.create',
-        title: 'assistant.svc.title_ot'.tr(),
-        module: 'HRM',
-        fields: {
-          'workDate': date,
-          'startTime': '18:00',
-          'endTime': '21:00',
-          'hours': 3.0,
-          'reason': 'assistant.svc.ot_reason'.tr(),
-        },
-      );
-
-      return AssistantMessage(
-        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        sender: MessageSender.assistant,
-        text: 'assistant.svc.text_ot'.tr(),
-        timestamp: DateTime.now(),
-        actionDraft: draft,
-      );
-    }
-
-    // 3. Ý định Đi công tác (HRM Business Trip Request)
-    if (lower.contains('business trip') || lower.contains('công tác') || lower.contains('đi tỉnh') || lower.contains('khảo sát hiện trường')) {
-      String destination = 'assistant.svc.dest_default'.tr();
-      if (lower.contains('hà nội')) {
-        destination = 'assistant.svc.city_hanoi'.tr();
-      } else if (lower.contains('đà nẵng')) {
-        destination = 'assistant.svc.city_danang'.tr();
-      } else if (lower.contains('cần thơ')) {
-        destination = 'assistant.svc.city_cantho'.tr();
-      } else if (lower.contains('bình dương')) {
-        destination = 'assistant.svc.city_binhduong'.tr();
-      } else if (lower.contains('đồng nai')) {
-        destination = 'assistant.svc.city_dongnai'.tr();
-      }
-
-      final draft = AssistantActionDraft(
-        requestId: 'req_trip_${DateTime.now().millisecondsSinceEpoch}',
-        key: 'hrm.business-trip-request.create',
-        title: 'assistant.svc.title_trip'.tr(),
-        module: 'HRM',
-        fields: {
-          'destination': destination,
-          'fromDate': tomorrowStr,
-          'toDate': tomorrowStr,
-          'businessTripType': 'DOMESTIC',
-          'purpose': 'assistant.svc.trip_purpose'.tr(),
-        },
-      );
-
-      return AssistantMessage(
-        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        sender: MessageSender.assistant,
-        text: 'assistant.svc.text_trip'.tr(args: {'destination': destination}),
-        timestamp: DateTime.now(),
-        actionDraft: draft,
-      );
-    }
-
-    // 4. Ý định Tạo cuộc họp / Đặt lịch (Workspace Event)
-    if (lower.contains('meeting') || lower.contains('cuộc họp') || lower.contains('đặt lịch') || lower.contains('lịch họp') || lower.contains('mời họp')) {
-      String title = 'assistant.svc.meeting_default'.tr();
-      if (lower.contains('kỹ thuật')) {
-        title = 'assistant.svc.meeting_tech'.tr();
-      } else if (lower.contains('khách hàng')) {
-        title = 'assistant.svc.meeting_customer'.tr();
-      } else if (lower.contains('tiến độ')) {
-        title = 'assistant.svc.meeting_progress'.tr();
-      }
-
-      final startHour = now.hour + 1;
-      final startAt = DateTime(now.year, now.month, now.day, startHour, 0);
-      final endAt = startAt.add(const Duration(hours: 1));
-
-      final draft = AssistantActionDraft(
-        requestId: 'req_event_${DateTime.now().millisecondsSinceEpoch}',
-        key: 'workspace.event.create',
-        title: 'assistant.svc.title_event'.tr(),
-        module: 'WORKSPACE',
-        fields: {
-          'title': title,
-          'startAt': startAt.toIso8601String(),
-          'endAt': endAt.toIso8601String(),
-          'location': 'assistant.svc.event_location'.tr(),
-          'description': 'assistant.svc.event_desc'.tr(),
-        },
-      );
-
-      return AssistantMessage(
-        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        sender: MessageSender.assistant,
-        text: 'assistant.svc.text_event'.tr(args: {'title': title}),
-        timestamp: DateTime.now(),
-        actionDraft: draft,
-      );
-    }
-
-    // 5. Ý định Giao việc ngoài dự án (Workspace Standalone Task)
-    if (lower.contains('assign task') || lower.contains('giao việc') || lower.contains('việc ngoài dự án') || lower.contains('đầu việc') || lower.contains('nhắc việc')) {
-      String taskTitle = prompt.replaceAll(RegExp(r'(giao việc|tạo việc|việc ngoài dự án|tạo đầu việc|giúp tôi)\s*', caseSensitive: false), '').trim();
-      if (taskTitle.isEmpty || taskTitle.length < 3) {
-        taskTitle = 'assistant.svc.task_default'.tr();
-      }
-
-      String priority = 'normal';
-      if (lower.contains('gấp') || lower.contains('khẩn cấp') || lower.contains('ngay')) {
-        priority = 'urgent';
-      } else if (lower.contains('quan trọng') || lower.contains('ưu tiên')) {
-        priority = 'high';
-      }
-
-      final draft = AssistantActionDraft(
-        requestId: 'req_task_${DateTime.now().millisecondsSinceEpoch}',
-        key: 'workspace.standalone-task.create',
-        title: 'assistant.svc.title_task'.tr(),
-        module: 'WORKSPACE',
-        fields: {
-          'title': taskTitle,
-          'priority': priority,
-          'dueDate': tomorrowStr,
-          'description': 'assistant.svc.task_desc'.tr(),
-        },
-      );
-
-      return AssistantMessage(
-        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        sender: MessageSender.assistant,
-        text: 'assistant.svc.text_task'.tr(args: {'title': taskTitle}),
-        timestamp: DateTime.now(),
-        actionDraft: draft,
-      );
-    }
-
-    // 6. Ý định Ghi nhận sự cố thiết bị (Maintenance Incident Record)
-    if (lower.contains('incident') || lower.contains('sự cố') || lower.contains('báo hỏng') || lower.contains('hỏng hóc') || lower.contains('bảo trì')) {
-      final draft = AssistantActionDraft(
-        requestId: 'req_inc_${DateTime.now().millisecondsSinceEpoch}',
-        key: 'maintenance.incident.record',
-        title: 'assistant.svc.title_incident'.tr(),
-        module: 'MAINTENANCE',
-        fields: {
-          'equipmentName': 'assistant.svc.incident_equipment'.tr(),
-          'severity': 'HIGH',
-          'description': prompt,
-          'occurredAt': todayStr,
-        },
-      );
-
-      return AssistantMessage(
-        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        sender: MessageSender.assistant,
-        text: 'assistant.svc.text_incident'.tr(),
-        timestamp: DateTime.now(),
-        actionDraft: draft,
-      );
-    }
-
-    // 7. Ý định Khởi tạo quy trình / Hồ sơ quy trình (Procedure Instance Start)
-    if (lower.contains('quy trình') || lower.contains('thủ tục') || lower.contains('hồ sơ quy trình') || lower.contains('procedure')) {
-      String title = prompt.replaceAll(RegExp(r'(khởi tạo|tạo|mở|bắt đầu|quy trình|thủ tục|hồ sơ quy trình|giúp tôi)\s*', caseSensitive: false), '').trim();
-      if (title.isEmpty) {
-        title = 'Quy trình xử lý công việc';
-      }
-
-      final draft = AssistantActionDraft(
-        requestId: 'req_proc_${DateTime.now().millisecondsSinceEpoch}',
-        key: 'procedure.instance.start',
-        title: 'Khởi tạo quy trình',
-        module: 'PROCEDURE',
-        fields: {
-          'title': title,
-          'definitionId': '',
-          'description': prompt,
-        },
-      );
-
-      return AssistantMessage(
-        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        sender: MessageSender.assistant,
-        text: 'Tôi đã tạo bản nháp khởi tạo quy trình "$title". Vui lòng kiểm tra thông tin và nhấn Lưu để gửi yêu cầu nhé!',
-        timestamp: DateTime.now(),
-        actionDraft: draft,
-      );
-    }
-
-    // Phản hồi hội thoại chung
-    String reply = 'assistant.svc.reply_help'.tr();
-
-    if (mentions.isNotEmpty) {
-      reply = 'assistant.svc.mention_ack'.tr(args: {'count': mentions.length, 'reply': reply});
-    }
-
-    return AssistantMessage(
-      id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-      sender: MessageSender.assistant,
-      text: reply,
-      timestamp: DateTime.now(),
+  /// `GET /v1/shortcuts/settings`: toàn bộ phím của công ty và các phím đang tắt.
+  Future<({List<AssistantShortcut> shortcuts, Set<String> disabled})> getSettings() async {
+    final res = await _request(() => _dio.get('$_root/v1/shortcuts/settings', options: _lenient));
+    if (res.statusCode != 200) throw AssistantApiException(errorOf(res), res.statusCode);
+    final j = _json(res.data);
+    return (
+      shortcuts: [
+        for (final s in (j['shortcuts'] as List? ?? const []))
+          if (s is Map) AssistantShortcut.fromJson(Map<String, dynamic>.from(s)),
+      ],
+      disabled: {for (final k in (j['disabled'] as List? ?? const [])) k.toString()},
     );
   }
 
-  /// Thực thi và gửi bản nháp lên API tương ứng ngay tại chỗ
-  Future<Map<String, dynamic>> executeActionDraft(AssistantActionDraft draft) async {
-    try {
-      if (draft.key == 'hrm.leave-request.create') {
-        final fromDate = draft.fields['fromDate']?.toString() ?? '';
-        final toDate = draft.fields['toDate']?.toString() ?? fromDate;
-        final reason = draft.fields['reason']?.toString() ?? 'assistant.svc.reason_personal'.tr();
+  /// `PUT /v1/shortcuts/settings {disabled}`.
+  Future<void> saveSettings(Set<String> disabled) async {
+    final res = await _request(
+        () => _dio.put('$_root/v1/shortcuts/settings', data: {'disabled': disabled.toList()}, options: _lenient));
+    if (res.statusCode != 200) throw AssistantApiException(errorOf(res), res.statusCode);
+  }
 
-        final res = await _hrmAttendanceService.createCorrection(
-          requestDate: fromDate,
-          fromDate: fromDate,
-          toDate: toDate,
-          newCheckInAt: '${fromDate}T07:30:00',
-          newCheckOutAt: '${toDate}T17:00:00',
-          reason: reason,
-        );
+  /// `POST /v1/shortcuts/:key/open {value?}`: trả `{action, title}` (mở thẻ form) hoặc `{href}` (mở trang ERP).
+  Future<Map<String, dynamic>> openShortcut(String key, [String? value]) async {
+    final res = await _request(() => _dio.post('$_root/v1/shortcuts/${Uri.encodeComponent(key)}/open',
+        data: value == null ? <String, dynamic>{} : {'value': value}, options: _lenient));
+    if (res.statusCode != 200) throw AssistantApiException(errorOf(res), res.statusCode);
+    return _json(res.data);
+  }
 
-        return {
-          'success': true,
-          'id': res.id.isNotEmpty ? res.id : 'LEAVE-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'assistant.svc.label_leave'.tr(args: {'from': fromDate, 'to': toDate}),
-        };
-      }
-
-      if (draft.key == 'hrm.ot-request.create') {
-        final workDate = draft.fields['workDate']?.toString() ?? '';
-        final hours = (draft.fields['hours'] is num) ? (draft.fields['hours'] as num).toDouble() : 3.0;
-        final reason = draft.fields['reason']?.toString() ?? 'assistant.svc.ot_reason_default'.tr();
-
-        final res = await _hrmAttendanceService.createCorrection(
-          requestDate: workDate,
-          fromDate: workDate,
-          toDate: workDate,
-          newCheckInAt: '${workDate}T18:00:00',
-          newCheckOutAt: '${workDate}T21:00:00',
-          duration: hours,
-          reason: 'assistant.svc.ot_prefix'.tr(args: {'reason': reason}),
-        );
-
-        return {
-          'success': true,
-          'id': res.id.isNotEmpty ? res.id : 'OT-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'assistant.svc.label_ot'.tr(args: {'date': workDate}),
-        };
-      }
-
-      if (draft.key == 'hrm.business-trip-request.create') {
-        final dest = draft.fields['destination']?.toString() ?? 'assistant.svc.dest_unknown'.tr();
-        final fromDate = draft.fields['fromDate']?.toString() ?? '';
-        final toDate = draft.fields['toDate']?.toString() ?? fromDate;
-        final purpose = draft.fields['purpose']?.toString() ?? 'assistant.svc.purpose_default'.tr();
-
-        final res = await _hrmAttendanceService.createCorrection(
-          requestDate: fromDate,
-          fromDate: fromDate,
-          toDate: toDate,
-          newCheckInAt: '${fromDate}T07:30:00',
-          newCheckOutAt: '${toDate}T17:00:00',
-          reason: 'assistant.svc.trip_reason'.tr(args: {'purpose': purpose, 'dest': dest}),
-        );
-
-        return {
-          'success': true,
-          'id': res.id.isNotEmpty ? res.id : 'TRIP-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'assistant.svc.label_trip'.tr(args: {'dest': dest}),
-        };
-      }
-
-      if (draft.key == 'workspace.standalone-task.create') {
-        final title = draft.fields['title']?.toString() ?? 'assistant.svc.task_title_default'.tr();
-        final priority = draft.fields['priority']?.toString() ?? 'normal';
-        final desc = draft.fields['description']?.toString() ?? '';
-
-        final res = await _workspaceService.createStandaloneTask(
-          title: title,
-          description: desc,
-          priority: priority,
-          assigneeUserId: '',
-        );
-
-        if (res.success) {
-          return {
-            'success': true,
-            'id': 'TASK-${DateTime.now().millisecondsSinceEpoch % 10000}',
-            'label': 'assistant.svc.label_task'.tr(args: {'title': title}),
-          };
+  /// `POST /v1/chat` (luồng SSE). [body] theo web: message, conversation_id, images, deep_thinking, page, shortcut,
+  /// open_forms, answer. Ném [AssistantApiException] khi server từ chối; huỷ bằng [cancelToken].
+  Future<void> chat(Map<String, dynamic> body, AssistantChatCallbacks cb, {CancelToken? cancelToken}) async {
+    final res = await _request(() => _dio.post<ResponseBody>(
+          '$_root/v1/chat',
+          data: body,
+          cancelToken: cancelToken,
+          options: Options(
+            responseType: ResponseType.stream,
+            headers: {'Accept': 'text/event-stream'},
+            receiveTimeout: const Duration(minutes: 5),
+            validateStatus: (s) => s != null && s < 600,
+          ),
+        ));
+    final stream = res.data?.stream;
+    if (res.statusCode != 200 || stream == null) {
+      var message = 'assistant.error_status'.tr(args: {'status': res.statusCode});
+      try {
+        final raw = await utf8.decoder.bind(stream ?? const Stream<List<int>>.empty()).join();
+        final decoded = jsonDecode(raw);
+        if (decoded is Map && (decoded['detail'] ?? decoded['message']) is String) {
+          message = (decoded['detail'] ?? decoded['message']) as String;
         }
-      }
-
-      if (draft.key == 'workspace.work-item.create') {
-        final title = draft.fields['title']?.toString() ?? 'assistant.svc.task_title_default'.tr();
-        final projectId = draft.fields['projectId']?.toString() ?? '';
-        final priority = draft.fields['priority']?.toString() ?? 'normal';
-        final desc = draft.fields['description']?.toString() ?? '';
-
-        final ok = await _workspaceService.createWorkItem(
-          projectId: projectId,
-          title: title,
-          description: desc,
-          priority: priority,
-        );
-
-        if (ok) {
-          return {
-            'success': true,
-            'id': 'WORKITEM-${DateTime.now().millisecondsSinceEpoch % 10000}',
-            'label': 'assistant.svc.label_task'.tr(args: {'title': title}),
-          };
-        }
-      }
-
-
-      if (draft.key == 'workspace.event.create') {
-        // Tạo sự kiện trên Workspace API
-        final endpoints = ['/api/workspace/v1/events', '/workspace/v1/events'];
-        for (final ep in endpoints) {
-          try {
-            final res = await _dio.post(
-              ep,
-              data: {
-                'title': draft.fields['title'] ?? 'assistant.svc.meeting_title_default'.tr(),
-                'description': draft.fields['description'] ?? '',
-                'location': draft.fields['location'] ?? '',
-                'startAt': draft.fields['startAt'],
-                'endAt': draft.fields['endAt'],
-              },
-              options: Options(validateStatus: (s) => s != null && s < 500),
-            );
-            if (res.statusCode == 200 || res.statusCode == 201) {
-              return {
-                'success': true,
-                'id': 'EVT-${DateTime.now().millisecondsSinceEpoch % 10000}',
-                'label': 'assistant.svc.label_event'.tr(args: {'title': draft.fields['title']}),
-              };
-            }
-          } catch (_) {}
-        }
-        // Fallback thành công
-        return {
-          'success': true,
-          'id': 'EVT-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'assistant.svc.label_event'.tr(args: {'title': draft.fields['title']}),
-        };
-      }
-
-      if (draft.key == 'maintenance.incident.record') {
-        return {
-          'success': true,
-          'id': 'INC-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'assistant.svc.label_incident'.tr(args: {'name': draft.fields['equipmentName'] ?? 'assistant.svc.equipment_default'.tr()}),
-        };
-      }
-
-      if (draft.key == 'procedure.instance.start' || draft.key == 'procedure.start-instance') {
-        final defId = draft.fields['definitionId']?.toString() ?? '';
-        final title = draft.fields['title']?.toString() ?? 'Hồ sơ quy trình';
-        final inst = await ModuleBusinessService().createProcedureInstance(
-          definitionId: defId,
-          title: title,
-        );
-        if (inst != null) {
-          return {
-            'success': true,
-            'id': inst.id.isNotEmpty ? inst.id : 'PROC-${DateTime.now().millisecondsSinceEpoch % 10000}',
-            'label': 'Hồ sơ: ${inst.title.isNotEmpty ? inst.title : title}',
-          };
-        }
-        return {
-          'success': true,
-          'id': 'PROC-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          'label': 'Hồ sơ: $title',
-        };
-      }
-
-      return {
-        'success': true,
-        'id': 'ACT-${DateTime.now().millisecondsSinceEpoch % 10000}',
-        'label': draft.title,
-      };
-    } catch (e) {
-      debugPrint('[AssistantService] executeActionDraft error: $e');
-      return {
-        'success': false,
-        'error': e.toString(),
-      };
+      } catch (_) {}
+      throw AssistantApiException(message, res.statusCode);
     }
+    var buffer = '';
+    await for (final chunk in utf8.decoder.bind(stream)) {
+      buffer += chunk.replaceAll('\r\n', '\n');
+      int index;
+      while ((index = buffer.indexOf('\n\n')) >= 0) {
+        final block = buffer.substring(0, index);
+        buffer = buffer.substring(index + 2);
+        final event = RegExp(r'^event: (.*)$', multiLine: true).firstMatch(block)?.group(1);
+        final dataLine = RegExp(r'^data: (.*)$', multiLine: true).firstMatch(block)?.group(1);
+        if (event == null || dataLine == null) continue;
+        dynamic data;
+        try {
+          data = jsonDecode(dataLine);
+        } catch (_) {
+          continue;
+        }
+        final map = data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
+        switch (event) {
+          case 'conversation':
+            cb.onConversation?.call(map['id']?.toString() ?? '');
+          case 'delta':
+            cb.onDelta?.call(map['text']?.toString() ?? '');
+          case 'reasoning':
+            cb.onReasoning?.call(map['text']?.toString() ?? '');
+          case 'status':
+            cb.onStep?.call(map['message']?.toString() ?? '');
+          case 'tool_start':
+            cb.onStep?.call(toolLabel(map['name']?.toString() ?? '', map['arguments']));
+          case 'tool_end':
+            if (map['ok'] != true) {
+              cb.onStep?.call('assistant.tool_failed'.tr(args: {'tool': _toolName(map['name']?.toString() ?? '')}));
+            }
+          case 'file':
+            cb.onFile?.call(map);
+          case 'action':
+            final action = map['action'];
+            if (action is Map) cb.onAction?.call(Map<String, dynamic>.from(action), map['title']?.toString() ?? '');
+          case 'question':
+            if (map['id'] != null && map['options'] is List) cb.onQuestion?.call(map);
+          case 'error':
+            cb.onError?.call(map['message']?.toString() ?? '');
+        }
+      }
+    }
+  }
+
+  static const Set<String> _knownTools = {
+    'huong_dan_su_dung',
+    'search_documents',
+    'erp_read',
+    'execute_code',
+    'mo_form',
+    'hoi_nguoi_dung',
+    'tra_cuu_erp',
+  };
+
+  static String _toolName(String name) =>
+      _knownTools.contains(name) ? 'assistant.tool.$name'.tr() : 'assistant.tool_call'.tr(args: {'tool': name});
+
+  /// Web `GZ`: tên bước công cụ, kèm nguồn đọc (erp_read) hoặc câu truy vấn.
+  static String toolLabel(String name, dynamic arguments) {
+    final label = _toolName(name);
+    final args = arguments is Map ? arguments : const {};
+    if (name == 'erp_read' && args['source'] is String) return '$label: ${args['source']}';
+    if (args['query'] is String) {
+      final q = args['query'] as String;
+      return '$label: “${q.length > 60 ? q.substring(0, 60) : q}”';
+    }
+    return label;
+  }
+
+  /// Đường dẫn tệp của Trợ lý (web `ur`): đường dẫn tương đối nằm dưới `/api/assistant`.
+  static String resolveUrl(String url) {
+    if (RegExp(r'^(https?:|data:|blob:)').hasMatch(url)) return url;
+    return '${AuthProvider.authBaseUrl}$_root${url.startsWith('/') ? url : '/$url'}';
+  }
+
+  /// Header phiên đăng nhập cho ảnh/tệp của Trợ lý.
+  static Future<Map<String, String>> authHeaders() async {
+    final cookies = await AuthProvider.getStoredCookies();
+    return {if (cookies != null && cookies.isNotEmpty) 'cookie': cookies};
+  }
+
+  /// Tải một tệp của Trợ lý (cần phiên đăng nhập) về [savePath].
+  Future<void> download(String url, String savePath) async {
+    final res = await _request(() => _dio.download(resolveUrl(url), savePath, options: _lenient));
+    if (res.statusCode != 200) throw AssistantApiException(errorOf(res), res.statusCode);
+  }
+
+  // ---- Lưu cuộc trò chuyện (web `XA`/`zZ`: theo người dùng + công ty, tối đa 100 tin) ----
+
+  String get _storeKey {
+    final auth = AuthProvider.instance;
+    return 'sa_chat:${auth?.tenantId ?? ''}:${auth?.userId ?? ''}:portal';
+  }
+
+  Future<({String? conversationId, List<AssistantChatMessage> messages})> loadConversation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storeKey);
+      if (raw == null) return (conversationId: null, messages: const <AssistantChatMessage>[]);
+      final j = jsonDecode(raw);
+      if (j is! Map) return (conversationId: null, messages: const <AssistantChatMessage>[]);
+      return (
+        conversationId: j['conversationId'] is String ? j['conversationId'] as String : null,
+        messages: [
+          for (final m in (j['messages'] as List? ?? const []))
+            if (m is Map) AssistantChatMessage.fromJson(Map<String, dynamic>.from(m)),
+        ],
+      );
+    } catch (_) {
+      return (conversationId: null, messages: const <AssistantChatMessage>[]);
+    }
+  }
+
+  Future<void> saveConversation(String? conversationId, List<AssistantChatMessage> messages) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final kept = messages.length > 100 ? messages.sublist(messages.length - 100) : messages;
+      if (kept.isEmpty && conversationId == null) {
+        await prefs.remove(_storeKey);
+        return;
+      }
+      await prefs.setString(
+          _storeKey, jsonEncode({'conversationId': conversationId, 'messages': [for (final m in kept) m.toJson()]}));
+    } catch (_) {}
+  }
+
+  Future<void> clearConversation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storeKey);
+    } catch (_) {}
+  }
+
+  /// Tab phím tắt đang chọn (web `sa_shortcut_tab`).
+  Future<String> loadShortcutTab() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('sa_shortcut_tab') == 'create' ? 'create' : 'view';
+    } catch (_) {
+      return 'view';
+    }
+  }
+
+  Future<void> saveShortcutTab(String tab) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('sa_shortcut_tab', tab);
+    } catch (_) {}
   }
 }

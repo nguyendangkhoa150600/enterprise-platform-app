@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/i18n/app_i18n.dart';
 import '../../../domain/models/correspondence_models.dart';
+import '../../../../../widgets/user_avatar.dart';
 
 /// Modal BottomSheet tìm kiếm và chọn nhân sự xử lý trong phòng ban (Rule 5.2)
 class UnitMemberPickerSheet extends StatefulWidget {
@@ -154,13 +155,13 @@ class _UnitMemberPickerSheetState extends State<UnitMemberPickerSheet> {
                   return ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: const Color(0xFFF1F5F9),
-                      child: Text(
-                        m.name.isNotEmpty ? m.name[0].toUpperCase() : '?',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
-                      ),
+                    leading: UserAvatar(
+                      userId: m.userId,
+                      name: m.name,
+                      size: 32,
+                      background: const Color(0xFFF1F5F9),
+                      foreground: const Color(0xFF475569),
+                      fontSize: 12,
                     ),
                     title: Row(
                       children: [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/chat_models.dart';
 import '../../services/chat_service.dart';
 import '../../theme/colors.dart';
+import '../../widgets/user_avatar.dart';
 
 class CreateGroupDialog extends StatefulWidget {
   final List<ChatPerson> people;
@@ -104,13 +105,13 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                     },
                     title: Text(person.fullName, style: const TextStyle(fontSize: 13.5)),
                     subtitle: Text(person.email, style: const TextStyle(fontSize: 11.5)),
-                    secondary: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: AppColors.emerald,
-                      child: Text(
-                        person.fullName.isNotEmpty ? person.fullName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 11),
-                      ),
+                    secondary: UserAvatar(
+                      userId: person.id,
+                      name: person.fullName,
+                      size: 28,
+                      background: AppColors.emerald,
+                      foreground: Colors.white,
+                      fontSize: 11,
                     ),
                     dense: true,
                     contentPadding: EdgeInsets.zero,

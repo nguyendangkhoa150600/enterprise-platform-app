@@ -367,9 +367,13 @@ class InvAuditorCandidate {
   final String? email;
   final bool hasWarehouseAccess;
 
+  /// Tài khoản nền tảng (ảnh đại diện); `/auditor-candidates` trả `id` = `core_schema.users.id`.
+  final String? userId;
+
   const InvAuditorCandidate({
     required this.id,
     required this.name,
+    this.userId,
     this.code,
     this.department,
     this.position,
@@ -385,6 +389,7 @@ class InvAuditorCandidate {
         position: _str(j['position']),
         email: _str(j['email']),
         hasWarehouseAccess: j['hasWarehouseAccess'] == true,
+        userId: j['id']?.toString(),
       );
 
   bool matches(String q) {
