@@ -4,12 +4,38 @@ import '../../../../../features/workspace/data/datasources/workspace_calendar_ap
 import 'calendar_grid_model.dart';
 import 'calendar_people_picker.dart';
 
+/// Giá trị điền sẵn của form tạo sự kiện (web `EventPrefill`); chỉ ô khác null mới được điền.
+class CalendarEventPrefill {
+  final String? title;
+  final String? description;
+  final String? location;
+  final String? eventType;
+  final DateTime? date;
+  final TimeOfDay? startTime;
+  final TimeOfDay? endTime;
+  final bool? allDay;
+  final List<String>? participantUserIds;
+
+  const CalendarEventPrefill({
+    this.title,
+    this.description,
+    this.location,
+    this.eventType,
+    this.date,
+    this.startTime,
+    this.endTime,
+    this.allDay,
+    this.participantUserIds,
+  });
+}
+
 /// Mở form tạo / xem / sửa sự kiện (web `event-form.tsx`). [onChanged] chạy sau mỗi lần ghi thành công để tab tải lại
-/// lịch (web tăng `calendarToken`).
+/// lịch (web tăng `calendarToken`). [projectId] null là sự kiện cá nhân (mời được cả tổ chức).
+/// [prefill], [projectLabel], [onCreated] dùng khi Trợ lý Savina mở form tạo: [onCreated] nhận sự kiện vừa tạo.
 Future<void> showCalendarEventFormSheet(
   BuildContext context, {
   required WorkspaceCalendarApi api,
-  required String projectId,
+  required String? projectId,
   required String currentUserId,
   required bool isTenantAdmin,
   required List<CalendarPerson> invitable,
@@ -17,6 +43,9 @@ Future<void> showCalendarEventFormSheet(
   required VoidCallback onChanged,
   CalendarOccurrence? occurrence,
   DateTime? defaultDate,
+  CalendarEventPrefill? prefill,
+  String? projectLabel,
+  ValueChanged<CalendarOccurrence>? onCreated,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -34,6 +63,9 @@ Future<void> showCalendarEventFormSheet(
       onChanged: onChanged,
       occurrence: occurrence,
       defaultDate: defaultDate,
+      prefill: prefill,
+      projectLabel: projectLabel,
+      onCreated: onCreated,
     ),
   );
 }
@@ -44,7 +76,7 @@ const _weekdayCodes = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
 class CalendarEventFormSheet extends StatefulWidget {
   final WorkspaceCalendarApi api;
-  final String projectId;
+  final String? projectId;
   final String currentUserId;
   final bool isTenantAdmin;
   final List<CalendarPerson> invitable;
@@ -52,6 +84,9 @@ class CalendarEventFormSheet extends StatefulWidget {
   final VoidCallback onChanged;
   final CalendarOccurrence? occurrence;
   final DateTime? defaultDate;
+  final CalendarEventPrefill? prefill;
+  final String? projectLabel;
+  final ValueChanged<CalendarOccurrence>? onCreated;
 
   const CalendarEventFormSheet({
     super.key,
@@ -64,6 +99,9 @@ class CalendarEventFormSheet extends StatefulWidget {
     required this.onChanged,
     this.occurrence,
     this.defaultDate,
+    this.prefill,
+    this.projectLabel,
+    this.onCreated,
   });
 
   @override
@@ -106,6 +144,7 @@ class _CalendarEventFormSheetState extends State<CalendarEventFormSheet> {
       _organizerId = widget.currentUserId;
       final d = widget.defaultDate ?? DateTime.now();
       _date = DateTime(d.year, d.month, d.day);
+      _applyPrefill(widget.prefill);
       return;
     }
     _organizerId = occ.organizerUserId;
@@ -118,6 +157,19 @@ class _CalendarEventFormSheetState extends State<CalendarEventFormSheet> {
     _allDay = occ.allDay;
     _scope = occ.isRecurring ? 'single' : 'all';
     _loadDetail(occ.eventId);
+  }
+
+  void _applyPrefill(CalendarEventPrefill? p) {
+    if (p == null) return;
+    if (p.title != null) _title.text = p.title!;
+    if (p.description != null) _description.text = p.description!;
+    if (p.location != null) _location.text = p.location!;
+    if (p.eventType != null && _eventTypes.contains(p.eventType)) _eventType = p.eventType!;
+    if (p.date != null) _date = DateTime(p.date!.year, p.date!.month, p.date!.day);
+    if (p.startTime != null) _start = p.startTime!;
+    if (p.endTime != null) _end = p.endTime!;
+    if (p.allDay != null) _allDay = p.allDay!;
+    if (p.participantUserIds != null) _participants = [...p.participantUserIds!];
   }
 
   /// Người tham dự và mô tả không có trong dữ liệu lưới; bỏ bước này mà lưu sẽ xoá sạch người được mời.
@@ -198,7 +250,7 @@ class _CalendarEventFormSheetState extends State<CalendarEventFormSheet> {
         ? await widget.api.updateEvent(occ.eventId, {...common, 'scope': _scope, 'occurrenceDate': occ.occurrenceDate})
         : await widget.api.createEvent({
             ...common,
-            'projectId': widget.projectId,
+            'projectId': ?widget.projectId,
             'recurrenceRule': ?_buildRecurrence(),
           });
     if (!mounted) return;
@@ -210,6 +262,8 @@ class _CalendarEventFormSheetState extends State<CalendarEventFormSheet> {
       return;
     }
     widget.onChanged();
+    final created = occ == null ? res.data?.occurrence : null;
+    if (created != null) widget.onCreated?.call(created);
     final warnings = res.data?.warnings ?? const [];
     // Trùng lịch người chỉ là cảnh báo: giữ form mở để người tổ chức đọc rồi tự quyết.
     if (warnings.isNotEmpty) {
@@ -294,8 +348,14 @@ class _CalendarEventFormSheetState extends State<CalendarEventFormSheet> {
 
   String get _subtitle {
     if (!_canEdit) return 'workspace.calendar.form_sub_organizer'.tr(args: {'name': widget.nameOf(_organizerId ?? '')});
+    final projectLabel = widget.projectLabel;
+    if (_occ == null && projectLabel != null) {
+      return 'workspace.calendar.form_sub_project_label'.tr(args: {'label': projectLabel});
+    }
     if (_occ?.isRecurring == true) return 'workspace.calendar.form_sub_recurring'.tr();
-    return 'workspace.calendar.form_sub_project'.tr();
+    return widget.projectId == null
+        ? 'workspace.calendar.form_sub_personal'.tr()
+        : 'workspace.calendar.form_sub_project'.tr();
   }
 
   String get _removeLabel => switch (_scope) {
@@ -392,7 +452,10 @@ class _CalendarEventFormSheetState extends State<CalendarEventFormSheet> {
                   enabled: edit,
                   onChanged: (ids) => setState(() => _participants = ids),
                 ),
-                if (edit) _hint('workspace.calendar.field_participants_hint'.tr()),
+                if (edit)
+                  _hint(widget.projectId == null
+                      ? 'workspace.calendar.field_participants_hint_org'.tr()
+                      : 'workspace.calendar.field_participants_hint'.tr()),
                 _label('workspace.calendar.field_description'.tr()),
                 TextField(
                   controller: _description,

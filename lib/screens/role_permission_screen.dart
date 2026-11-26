@@ -7,6 +7,7 @@ import '../models/platform_models.dart';
 import '../providers/auth_provider.dart';
 import '../services/platform_service.dart';
 import '../features/workspace/presentation/widgets/searchable_dropdown_field.dart';
+import '../widgets/user_avatar.dart';
 
 part 'role_permission/components/role_detail_sheet.dart';
 part 'role_permission/components/permission_detail_sheet.dart';

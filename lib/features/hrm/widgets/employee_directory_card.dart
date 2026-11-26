@@ -6,6 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../models/hrm_models.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_status_badge.dart';
+import '../../../widgets/user_avatar.dart';
 
 /// Rich Employee Card used in HRM Directory
 class EmployeeDirectoryCard extends StatelessWidget {
@@ -36,16 +37,13 @@ class EmployeeDirectoryCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: isProbation ? AppColors.warningBg : AppColors.primaryLight,
-                child: Text(
-                  employee.avatarInitials,
-                  style: AppTextStyles.h3.copyWith(
-                    color: isProbation ? AppColors.warningFg : AppColors.primary,
-                    fontSize: 13,
-                  ),
-                ),
+              UserAvatar(
+                userId: employee.userId,
+                name: employee.fullName,
+                size: 40,
+                background: isProbation ? AppColors.warningBg : AppColors.primaryLight,
+                foreground: isProbation ? AppColors.warningFg : AppColors.primary,
+                fontSize: 13,
               ),
               const SizedBox(width: 12),
               Expanded(

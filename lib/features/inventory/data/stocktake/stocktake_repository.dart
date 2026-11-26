@@ -153,6 +153,7 @@ class StocktakeRepository {
           final pos = (emp['positionTitle'] ?? emp['position'] ?? '').toString();
           return InvAuditorCandidate(
             id: (emp['employeeId'] ?? emp['id'] ?? emp['employeeCode'] ?? '').toString(),
+            userId: (emp['userId'] ?? emp['user_id'])?.toString(),
             name: (emp['fullName'] ?? emp['name'] ?? '').toString(),
             code: (emp['employeeCode'] ?? emp['code'])?.toString(),
             department: dept,
@@ -176,6 +177,7 @@ class StocktakeRepository {
           final pos = (p['positionName'] ?? '').toString();
           return InvAuditorCandidate(
             id: (p['userId'] ?? '').toString(),
+            userId: p['userId']?.toString(),
             name: (p['displayName'] ?? p['name'] ?? '').toString(),
             department: unit,
             position: pos,

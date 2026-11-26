@@ -323,6 +323,9 @@ class WorkspaceService {
 
   String? get lastError => _repository.lastError;
 
+  /// Bản ghi vừa tạo ở lần [createWorkItem] / [createStandaloneTask] thành công gần nhất.
+  Map<String, dynamic>? get lastCreated => _repository.lastCreated;
+
   Future<List<Map<String, dynamic>>> getTags() => _repository.getTags();
 
   Future<Map<String, dynamic>?> createTag(String name) => _repository.createTag(name);

@@ -2,17 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/i18n/app_i18n.dart';
 import '../../../../theme/colors.dart';
 import '../../domain/stocktake/stocktake_models.dart';
+import '../../../../widgets/user_avatar.dart';
 import 'stocktake_ui.dart';
-
-String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-  if (parts.isEmpty) return 'NV';
-  if (parts.length == 1) {
-    final p = parts.first;
-    return (p.length > 2 ? p.substring(0, 2) : p).toUpperCase();
-  }
-  return (parts.first[0] + parts.last[0]).toUpperCase();
-}
 
 /// Chọn thành viên tổ kiểm kê (web `AuditorPicker` trong create-stocktake-dialog).
 class StocktakeAuditorPicker extends StatefulWidget {
@@ -102,10 +93,13 @@ class _StocktakeAuditorPickerState extends State<StocktakeAuditorPicker> {
                 visualDensity: VisualDensity.compact,
                 backgroundColor: StocktakeUi.blue50,
                 side: const BorderSide(color: StocktakeUi.blue200),
-                avatar: CircleAvatar(
-                  backgroundColor: StocktakeUi.blue600,
-                  child: Text(_initials(name),
-                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                avatar: UserAvatar(
+                  userId: cand?.userId,
+                  name: name,
+                  size: 24,
+                  background: StocktakeUi.blue600,
+                  foreground: Colors.white,
+                  fontSize: 9,
                 ),
                 label: Row(mainAxisSize: MainAxisSize.min, children: [
                   ConstrainedBox(
@@ -258,11 +252,13 @@ class _StocktakeAuditorPickerState extends State<StocktakeAuditorPicker> {
             color: isLead ? StocktakeUi.blue700 : (isSel ? StocktakeUi.blue600 : AppColors.slate300),
           ),
           const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 15,
-            backgroundColor: StocktakeUi.indigo100,
-            child: Text(_initials(c.name),
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: StocktakeUi.indigo800)),
+          UserAvatar(
+            userId: c.userId,
+            name: c.name,
+            size: 30,
+            background: StocktakeUi.indigo100,
+            foreground: StocktakeUi.indigo800,
+            fontSize: 11,
           ),
           const SizedBox(width: 8),
           Expanded(

@@ -11,6 +11,7 @@ import 'workspace_blocked_reason_dialog.dart';
 import 'workspace_standalone_task_detail_sheet.dart';
 import 'workspace_complete_work_item_dialog.dart';
 import 'workspace_cancel_work_item_dialog.dart';
+import '../../../widgets/user_avatar.dart';
 
 /// Chế độ xem bảng Kanban cho công việc dự án, đồng bộ 1:1 với Web React
 /// Hỗ trợ kéo thả (Drag and Drop) thẻ công việc giữa các cột trạng thái
@@ -649,13 +650,13 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
             _buildPriorityBadge(task.priority),
             const Spacer(),
             if (assigneeName != 'Chưa giao') ...[
-              CircleAvatar(
-                radius: 8,
-                backgroundColor: const Color(0xFFEAB308),
-                child: Text(
-                  _getInitials(assigneeName),
-                  style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+              UserAvatar(
+                userId: task.assigneeUserId,
+                name: assigneeName,
+                size: 16,
+                background: const Color(0xFFEAB308),
+                foreground: Colors.white,
+                fontSize: 7,
               ),
               const SizedBox(width: 4),
               Flexible(
@@ -764,12 +765,5 @@ class _WorkspaceProjectKanbanViewState extends State<WorkspaceProjectKanbanView>
   String _formatDate(DateTime? dt) {
     if (dt == null) return '';
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts[0].isEmpty) return '?';
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
   }
 }

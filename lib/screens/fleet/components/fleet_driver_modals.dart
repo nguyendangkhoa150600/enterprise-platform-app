@@ -4,6 +4,7 @@ import '../../../models/hrm_fleet_models.dart';
 import '../../../models/hrm_models.dart';
 import '../../../services/fleet_service.dart';
 import 'fleet_vehicle_modals.dart';
+import '../../../widgets/user_avatar.dart';
 
 void showSelectEmployeeSheet({
   required BuildContext context,
@@ -88,13 +89,13 @@ void showSelectEmployeeSheet({
                             final isChosen = item.id == currentSelectedId;
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              leading: CircleAvatar(
-                                radius: 18,
-                                backgroundColor: const Color(0xFFEFF6FF),
-                                child: Text(
-                                  item.fullName.isNotEmpty ? item.fullName[0].toUpperCase() : 'N',
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                                ),
+                              leading: UserAvatar(
+                                userId: item.userId,
+                                name: item.fullName,
+                                size: 36,
+                                background: const Color(0xFFEFF6FF),
+                                foreground: const Color(0xFF2563EB),
+                                fontSize: 13,
                               ),
                               title: Text(
                                 item.fullName,

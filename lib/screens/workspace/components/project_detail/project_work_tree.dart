@@ -4,6 +4,7 @@ import '../../../../features/workspace/domain/models/workspace_report_models.dar
 import '../../../../models/workspace_models.dart';
 import '../../../../utils/user_resolver.dart';
 import 'project_work_model.dart';
+import '../../../../widgets/user_avatar.dart';
 
 /// Bảng WBS dạng cây của tab Công việc (web tab-work.tsx, kiểu xem "Bảng"): mỗi dòng thụt theo cấp,
 /// nhóm có nút mở/thu nhánh; cột Người thực hiện, Ưu tiên (ẩn ở dòng cha), Trạng thái, Bắt đầu,
@@ -300,7 +301,21 @@ class _People extends StatelessWidget {
             width: 20 + (avatars.length - 1 + (more > 0 ? 1 : 0)) * 13.0,
             child: Stack(children: [
               for (var i = 0; i < avatars.length; i++)
-                Positioned(left: i * 13.0, child: _avatar(nameInitials(_name(avatars[i])), const Color(0xFFEAB308))),
+                Positioned(
+                  left: i * 13.0,
+                  child: CircleAvatar(
+                    radius: 10,
+                    backgroundColor: Colors.white,
+                    child: UserAvatar(
+                      userId: avatars[i],
+                      name: _name(avatars[i]),
+                      size: 18,
+                      background: const Color(0xFFEAB308),
+                      foreground: Colors.white,
+                      fontSize: 7.5,
+                    ),
+                  ),
+                ),
               if (more > 0) Positioned(left: avatars.length * 13.0, child: _avatar('+$more', const Color(0xFF94A3B8))),
             ]),
           ),

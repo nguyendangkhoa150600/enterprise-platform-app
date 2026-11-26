@@ -40,6 +40,7 @@ import './home/components/home_desktop_dashboard_view.dart';
 import './social/social_feed_view.dart';
 import './org_chart_workspace_screen.dart';
 import '../core/i18n/app_i18n.dart';
+import '../widgets/user_avatar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -519,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case 3:
         return RefreshIndicator(
           onRefresh: _loadAllPlatformData,
-          child: _buildMobileProfileView(userName, userInitials, tenantDisplay),
+          child: _buildMobileProfileView(userName, tenantDisplay),
         );
       default:
         return RefreshIndicator(
@@ -568,10 +569,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ==========================================
   // MOBILE VIEW 4: PROFILE & SETTINGS
   // ==========================================
-  Widget _buildMobileProfileView(String userName, String userInitials, String tenantDisplay) {
+  Widget _buildMobileProfileView(String userName, String tenantDisplay) {
     return HomeMobileProfileView(
       userName: userName,
-      userInitials: userInitials,
       tenantDisplay: tenantDisplay,
     );
   }
@@ -593,19 +593,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        userInitials,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                    ),
+                  UserAvatar(
+                    userId: auth.userId,
+                    name: userName,
+                    size: 42,
+                    background: const Color(0xFF2563EB),
+                    foreground: Colors.white,
+                    fontSize: 18,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -834,7 +828,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(userName, userInitials),
+                _buildHeader(userName),
                 Expanded(
                   child: _isLoadingData
                       ? const Center(child: CircularProgressIndicator())
@@ -1055,7 +1049,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // Header
-  Widget _buildHeader(String name, String initials) {
+  Widget _buildHeader(String name) {
     return Container(
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1082,16 +1076,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onPressed: _loadAllPlatformData,
               ),
               const SizedBox(width: 8),
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(color: AppColors.slate200, shape: BoxShape.circle),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(color: AppColors.slate800, fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                ),
+              UserAvatar(
+                userId: AuthProvider.instance?.userId,
+                name: name,
+                size: 34,
+                background: AppColors.slate200,
+                foreground: AppColors.slate800,
+                fontSize: 13,
               ),
             ],
           ),

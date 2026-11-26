@@ -7,6 +7,9 @@ import '../../../theme/colors.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../features/finance/domain/models/finance_models.dart';
 import '../../../features/finance/presentation/finance_routes.dart';
+import '../../../widgets/user_avatar.dart';
+
+export 'procedure_create_instance_dialog.dart';
 
 String _formatDateTime(String? raw) {
   if (raw == null || raw.isEmpty) return '-';
@@ -38,128 +41,6 @@ Widget _buildDetailRow(String label, String val) {
           child: Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
         ),
       ],
-    ),
-  );
-}
-
-// 1. Mở hồ sơ mới (Dialog thực tế với API)
-void showCreateProcedureInstanceDialog({
-  required BuildContext context,
-  required List<ProcedureDefinition> definitions,
-  required ModuleBusinessService service,
-  required VoidCallback onCreated,
-}) {
-  String? selectedDefId = definitions.isNotEmpty ? definitions.first.id : null;
-  final titleController = TextEditingController();
-  bool isSubmitting = false;
-
-  showDialog(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (context, setDialogState) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.add_circle_outline, color: Color(0xFF2563EB)),
-              const SizedBox(width: 8),
-              Text('procedure.create.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('procedure.create.select_procedure'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.white,
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: selectedDefId,
-                      items: definitions.map((def) {
-                        return DropdownMenuItem<String>(
-                          value: def.id,
-                          child: Text(def.name, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)), overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setDialogState(() => selectedDefId = val);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text('procedure.create.case_title'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.slate700)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    hintText: 'procedure.create.title_hint'.tr(),
-                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.slate400),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-              child: Text('common.cancel'.tr()),
-            ),
-            ElevatedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      final title = titleController.text.trim();
-                      if (title.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('procedure.create.title_required'.tr())),
-                        );
-                        return;
-                      }
-                      if (selectedDefId == null) return;
-
-                      setDialogState(() => isSubmitting = true);
-                      final newInst = await service.createProcedureInstance(
-                        definitionId: selectedDefId!,
-                        title: title,
-                      );
-                      if (context.mounted) {
-                        Navigator.pop(ctx);
-                        if (newInst != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('procedure.create.success'.tr(args: {'code': newInst.code}))),
-                          );
-                          onCreated();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('procedure.create.failed'.tr())),
-                          );
-                        }
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: isSubmitting
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text('procedure.create.submit'.tr()),
-            ),
-          ],
-        );
-      },
     ),
   );
 }
@@ -1222,13 +1103,13 @@ class _ProcedureDetailSheetWidgetState extends State<ProcedureDetailSheetWidget>
                                           children: [
                                             Row(
                                               children: [
-                                                CircleAvatar(
-                                                  radius: 10,
-                                                  backgroundColor: const Color(0xFFDBEAFE),
-                                                  child: Text(
-                                                    act.actorName.isNotEmpty ? act.actorName[0] : 'U',
-                                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                                                  ),
+                                                UserAvatar(
+                                                  userId: act.actorId,
+                                                  name: act.actorName,
+                                                  size: 20,
+                                                  background: const Color(0xFFDBEAFE),
+                                                  foreground: const Color(0xFF2563EB),
+                                                  fontSize: 8,
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Text(act.actorName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),

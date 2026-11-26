@@ -5,6 +5,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../models/platform_models.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_status_badge.dart';
+import '../../../widgets/user_avatar.dart';
 
 /// Clean User Account Card for Admin & User Management
 class UserAccountCard extends StatelessWidget {
@@ -26,7 +27,6 @@ class UserAccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = user.status.toUpperCase() == 'ACTIVE';
-    final initials = user.fullName.trim().split(' ').where((s) => s.isNotEmpty).map((s) => s[0]).take(2).join().toUpperCase();
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 10),
@@ -37,16 +37,13 @@ class UserAccountCard extends StatelessWidget {
           // Row 1: Avatar, Full Name, Email, Status Badge
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: isActive ? AppColors.primaryLight : AppColors.slate200,
-                child: Text(
-                  initials.isNotEmpty ? initials : 'U',
-                  style: AppTextStyles.h3.copyWith(
-                    color: isActive ? AppColors.primary : AppColors.slate600,
-                    fontSize: 13,
-                  ),
-                ),
+              UserAvatar(
+                userId: user.id,
+                name: user.fullName,
+                size: 40,
+                background: isActive ? AppColors.primaryLight : AppColors.slate200,
+                foreground: isActive ? AppColors.primary : AppColors.slate600,
+                fontSize: 13,
               ),
               const SizedBox(width: 12),
               Expanded(

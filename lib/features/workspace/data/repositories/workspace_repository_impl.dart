@@ -17,9 +17,20 @@ class WorkspaceRepositoryImpl with _WorkspaceChatReportsRepository implements IW
   final WorkspaceRemoteDataSource _remoteDataSource;
   final PlatformService _platformService;
   String? _lastError;
+  Map<String, dynamic>? _lastCreated;
 
   @override
   String? get lastError => _lastError;
+
+  @override
+  Map<String, dynamic>? get lastCreated => _lastCreated;
+
+  /// Bản ghi vừa tạo trong phản hồi (web `WorkItem`, hoặc `StandaloneTaskDetail.task` khi có [key]).
+  static Map<String, dynamic>? _createdRecord(dynamic data, [String? key]) {
+    if (data is! Map) return null;
+    final inner = key != null && data[key] is Map ? data[key] : (data['data'] is Map ? data['data'] : data);
+    return Map<String, dynamic>.from(inner as Map);
+  }
 
   /// Thành công khi 2xx; không thì giữ lời nhắn lỗi của server (`{code, message}`) ở [lastError]
   /// để giao diện hiện đúng lý do như web, thay vì một câu chung chung.
@@ -469,9 +480,11 @@ class WorkspaceRepositoryImpl with _WorkspaceChatReportsRepository implements IW
         payload['parentTaskId'] = parentId;
       }
 
+      _lastCreated = null;
       final res = await _remoteDataSource.createWorkItemRaw(payload);
       if (res.statusCode == 200 || res.statusCode == 201) {
         _lastError = null;
+        _lastCreated = _createdRecord(res.data);
         return true;
       }
       String errorMsg = 'Lỗi tạo công việc (${res.statusCode})';
@@ -617,8 +630,10 @@ class WorkspaceRepositoryImpl with _WorkspaceChatReportsRepository implements IW
         payload['parentId'] = parentId.trim();
       }
 
+      _lastCreated = null;
       final res = await _remoteDataSource.createStandaloneTaskRaw(payload);
       if (res.statusCode == 200 || res.statusCode == 201) {
+        _lastCreated = _createdRecord(res.data, 'task');
         return (success: true, error: null);
       } else {
         String? msg;

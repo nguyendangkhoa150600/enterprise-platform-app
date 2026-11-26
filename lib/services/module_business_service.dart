@@ -93,6 +93,8 @@ class ModuleBusinessService {
     required String definitionId,
     required String title,
     Map<String, dynamic>? processAttributeValues,
+    String? startDueAt,
+    String? endDueAt,
   }) async {
     final endpoints = [
       '/api/procedure/v1/instances',
@@ -102,6 +104,9 @@ class ModuleBusinessService {
       'definitionId': definitionId,
       'title': title,
       'idempotencyKey': generateProcedureUuidV4(),
+      'startDueAt': ?startDueAt,
+      'endDueAt': ?endDueAt,
+      if (startDueAt != null || endDueAt != null) 'isHourlyScheduling': true,
       ...?processAttributeValues != null ? {'processAttributeValues': processAttributeValues} : null,
     };
     for (final ep in endpoints) {

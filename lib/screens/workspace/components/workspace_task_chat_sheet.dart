@@ -4,6 +4,7 @@ import '../../../../services/workspace_service.dart';
 import '../../../../utils/user_resolver.dart';
 import '../../../../utils/app_toast.dart';
 import '../../../core/i18n/app_i18n.dart';
+import '../../../widgets/user_avatar.dart';
 
 /// Trạng thái lượt gõ `@`
 class _MentionQuery {
@@ -561,13 +562,13 @@ class _TaskChatSheetContentState extends State<_TaskChatSheetContent> {
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: Row(
                               children: [
-                                CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: const Color(0xFFEFF6FF),
-                                  child: Text(
-                                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
-                                  ),
+                                UserAvatar(
+                                  userId: m.userId,
+                                  name: name,
+                                  size: 28,
+                                  background: const Color(0xFFEFF6FF),
+                                  foreground: const Color(0xFF1D4ED8),
+                                  fontSize: 12,
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(

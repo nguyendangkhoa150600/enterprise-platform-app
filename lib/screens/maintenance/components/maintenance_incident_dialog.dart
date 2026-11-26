@@ -4,16 +4,46 @@ import '../../../features/workspace/presentation/widgets/searchable_dropdown_fie
 import '../../../models/inventory_models.dart';
 import '../../../models/procedure_models.dart';
 import '../../../models/hrm_fleet_models.dart';
+import '../../../core/i18n/app_i18n.dart';
+import '../../../services/maintenance_incident_api.dart';
 import '../../../services/module_business_service.dart';
-import '../../../services/hrm_service.dart';
 import '../../../services/fleet_service.dart';
 import '../../../utils/user_resolver.dart';
 import '../../../providers/auth_provider.dart';
 
+/// Giá trị điền sẵn của form "Tạo sự cố" (web `IncidentFormValues`); chỉ ô khác null mới được điền.
+/// Mã thiết bị, quy trình, người phụ trách không có trong danh mục đang hiện thì bỏ qua, để người dùng tự chọn.
+class MaintenanceIncidentPrefill {
+  final String? assetCode;
+  final String? title;
+  final String? description;
+
+  /// `High` | `Normal` | `Low`.
+  final String? priority;
+  final String? procedureDefinitionId;
+  final String? assigneeId;
+
+  const MaintenanceIncidentPrefill({
+    this.assetCode,
+    this.title,
+    this.description,
+    this.priority,
+    this.procedureDefinitionId,
+    this.assigneeId,
+  });
+}
+
+/// Mức ưu tiên của sự cố (web `MaintenancePriority`).
+const _incidentPriorities = ['High', 'Normal', 'Low'];
+
 class MaintenanceIncidentDialog extends StatefulWidget {
   final String? initialAssetCode;
+  final MaintenanceIncidentPrefill? prefill;
 
-  const MaintenanceIncidentDialog({super.key, this.initialAssetCode});
+  /// Nhận phiếu vừa tạo (`MaintenanceOccurrence`) — Trợ lý Savina báo kết quả.
+  final ValueChanged<Map<String, dynamic>>? onCreated;
+
+  const MaintenanceIncidentDialog({super.key, this.initialAssetCode, this.prefill, this.onCreated});
 
   @override
   State<MaintenanceIncidentDialog> createState() => _MaintenanceIncidentDialogState();
@@ -22,12 +52,12 @@ class MaintenanceIncidentDialog extends StatefulWidget {
 class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
   final _formKey = GlobalKey<FormState>();
   final ModuleBusinessService _service = ModuleBusinessService();
-  final HrmService _hrmService = HrmService();
+  final MaintenanceIncidentApi _incidentApi = MaintenanceIncidentApi();
   final FleetService _fleetService = FleetService();
 
   // Selected values
   String? _selectedAssetCode;
-  String _selectedPriority = 'HIGH';
+  String _selectedPriority = 'High';
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
 
@@ -48,6 +78,13 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
   void initState() {
     super.initState();
     _selectedAssetCode = widget.initialAssetCode;
+    final prefill = widget.prefill;
+    if (prefill != null) {
+      _titleController.text = prefill.title ?? '';
+      _descController.text = prefill.description ?? '';
+      final priority = prefill.priority;
+      if (priority != null && _incidentPriorities.contains(priority)) _selectedPriority = priority;
+    }
     _loadInitialData();
   }
 
@@ -67,29 +104,21 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
         _service.getAssets(),
         _service.getProcedureWorkspace(),
         _fleetService.getVehicles(),
-        _hrmService.getEmployees(),
+        _incidentApi.members(),
       ]);
 
       if (mounted) {
         final assets = results[0] as List<AssetItem>;
         final procWs = results[1] as ProcedureWorkspaceData;
         final vehicles = results[2] as List<HrmFleetVehicle>;
-        final empList = results[3] as List<dynamic>;
+        final members = results[3] as List<MaintenanceMember>;
 
-        // Merge employees
+        // Merge employees: người phụ trách là `userId` của tenant (web `members[]` của organization-context).
         final employeeMapList = List<Map<String, String>>.from(_employees);
         final indexById = {for (int i = 0; i < employeeMapList.length; i++) employeeMapList[i]['id']!: i};
 
-        for (final item in empList) {
-          if (item is Map) {
-            final id = item['id']?.toString() ?? '';
-            final name = item['fullName']?.toString() ?? item['name']?.toString() ?? '';
-            final pos = item['position']?.toString() ?? '';
-            final dept = item['department']?.toString() ?? '';
-            if (id.isNotEmpty && name.isNotEmpty) {
-              _addOrUpdatePerson(employeeMapList, indexById, id, name, position: pos, department: dept);
-            }
-          }
+        for (final member in members) {
+          _addOrUpdatePerson(employeeMapList, indexById, member.userId, member.displayName);
         }
 
         setState(() {
@@ -97,10 +126,31 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
           _procedures = procWs.definitions.where((d) => d.status == 'published').toList();
           _vehicles = vehicles;
           _employees = employeeMapList;
+          _applyListPrefill(members.map((m) => m.userId).toList());
         });
       }
     } catch (_) {
       // Load failure: keep the current (empty) option lists.
+    }
+  }
+
+  /// Web `incidentDraftToFormValues`: thiết bị so mã không phân biệt hoa thường, quy trình phải đang công bố,
+  /// người phụ trách phải có trong danh bạ (danh bạ rỗng thì giữ nguyên mã).
+  void _applyListPrefill(List<String> memberIds) {
+    final prefill = widget.prefill;
+    if (prefill == null) return;
+    final assetCode = prefill.assetCode?.toLowerCase();
+    if (assetCode != null) {
+      final asset = _assets.where((a) => a.code.toLowerCase() == assetCode).firstOrNull;
+      if (asset != null) _selectedAssetCode = asset.code;
+    }
+    final procedureId = prefill.procedureDefinitionId;
+    if (procedureId != null && _procedures.any((p) => p.id == procedureId)) _selectedProcedureId = procedureId;
+    final assigneeId = prefill.assigneeId;
+    if (assigneeId != null &&
+        (memberIds.isEmpty || memberIds.contains(assigneeId)) &&
+        _employees.any((e) => e['id'] == assigneeId)) {
+      _selectedEmployeeId = assigneeId;
     }
   }
 
@@ -204,20 +254,28 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
 
-    final ok = await _service.createAssetIncident(
-      assetCode: _selectedAssetCode!.trim(),
-      title: _titleController.text.trim(),
-      description: _descController.text.trim(),
-      priority: _selectedPriority,
-      assignedEmployeeId: _selectedEmployeeId,
-      procedureId: _selectedProcedureId,
-      vehicleId: _selectedVehicleId,
-      attachmentUrls: _selectedFiles.map((f) => f.name).toList(),
-    );
+    // Web `CreateMaintenanceIncidentRequest` (`POST /api/maintenance/v1/occurrences/incidents`).
+    final description = _descController.text.trim();
+    final assigneeId = _selectedEmployeeId;
+    final assigneeName = assigneeId == null
+        ? null
+        : _employees.where((e) => e['id'] == assigneeId).firstOrNull?['name'];
+    final res = await _incidentApi.createIncident({
+      'assetCode': _selectedAssetCode!.trim(),
+      'title': _titleController.text.trim(),
+      if (description.isNotEmpty) 'description': description,
+      'priority': _selectedPriority,
+      if (_selectedProcedureId != null && _selectedProcedureId!.isNotEmpty)
+        'procedureDefinitionId': _selectedProcedureId,
+      'assigneeId': ?assigneeId,
+      'assigneeName': ?assigneeName,
+    });
+    final occurrence = res.occurrence;
 
     if (mounted) {
       setState(() => _isSubmitting = false);
-      if (ok) {
+      if (occurrence != null) {
+        widget.onCreated?.call(occurrence);
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -227,9 +285,9 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể ghi nhận sự cố, vui lòng thử lại'),
-            backgroundColor: Color(0xFFDC2626),
+          SnackBar(
+            content: Text(res.error ?? 'maintenance.incident.create_failed'.tr()),
+            backgroundColor: const Color(0xFFDC2626),
           ),
         );
       }
@@ -375,13 +433,15 @@ class _MaintenanceIncidentDialogState extends State<MaintenanceIncidentDialog> {
                               child: DropdownButton<String>(
                                 isExpanded: true,
                                 value: _selectedPriority,
-                                items: const [
-                                  DropdownMenuItem(value: 'CRITICAL', child: Text('Khẩn cấp', style: TextStyle(fontSize: 12.5))),
-                                  DropdownMenuItem(value: 'HIGH', child: Text('Cao', style: TextStyle(fontSize: 12.5))),
-                                  DropdownMenuItem(value: 'MEDIUM', child: Text('Trung bình', style: TextStyle(fontSize: 12.5))),
-                                  DropdownMenuItem(value: 'LOW', child: Text('Thấp', style: TextStyle(fontSize: 12.5))),
+                                items: [
+                                  for (final p in _incidentPriorities)
+                                    DropdownMenuItem(
+                                      value: p,
+                                      child: Text('maintenance.incident.priority_${p.toLowerCase()}'.tr(),
+                                          style: const TextStyle(fontSize: 12.5)),
+                                    ),
                                 ],
-                                onChanged: (val) => setState(() => _selectedPriority = val ?? 'HIGH'),
+                                onChanged: (val) => setState(() => _selectedPriority = val ?? 'High'),
                               ),
                             ),
                           ),

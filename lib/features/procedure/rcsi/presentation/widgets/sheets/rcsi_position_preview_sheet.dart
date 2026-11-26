@@ -5,6 +5,7 @@ import '../../../../../../core/theme/app_colors.dart';
 import '../../../domain/logic/rcsi_columns.dart';
 import '../../../domain/organization_snapshot.dart';
 import '../components/rcsi_common.dart';
+import '../../../../../../widgets/user_avatar.dart';
 
 /// Xem nhanh một chức danh (popup "positionPreview" của web): cây đơn vị trực
 /// thuộc từ gốc tới chức danh và danh sách nhân sự được bổ nhiệm.
@@ -170,20 +171,17 @@ class _PositionPreview extends StatelessWidget {
       );
 
   Widget _memberRow(OrganizationMember member) {
-    final words = member.displayName.trim().split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
-    final tail = words.length > 2 ? words.sublist(words.length - 2) : words;
-    final initials = tail.map((word) => word[0]).join().toUpperCase();
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.primaryLight,
-            child: Text(
-              initials.isEmpty ? 'NV' : initials,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
-            ),
+          UserAvatar(
+            userId: member.userId,
+            name: member.displayName,
+            size: 36,
+            background: AppColors.primaryLight,
+            foreground: AppColors.primary,
+            fontSize: 12,
           ),
           const SizedBox(width: 10),
           Expanded(

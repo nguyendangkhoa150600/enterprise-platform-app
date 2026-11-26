@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_i18n.dart';
 import '../../../models/platform_models.dart';
 import '../../../theme/colors.dart';
+import '../../../widgets/user_avatar.dart';
 
 // Tree Branch Painter for Hierarchy Lines
 class TreeBranchPainter extends CustomPainter {
@@ -197,13 +198,13 @@ Widget buildOrgTreeNodeItem(OrgNode node, int depth, OrganizationSnapshot snapsh
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircleAvatar(
-                              radius: 7,
-                              backgroundColor: isRoot ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1),
-                              child: Text(
-                                user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                                style: TextStyle(fontSize: 7.5, fontWeight: FontWeight.bold, color: isRoot ? Colors.white : AppColors.slate800),
-                              ),
+                            UserAvatar(
+                              userId: a.userId,
+                              name: user.fullName,
+                              size: 14,
+                              background: isRoot ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1),
+                              foreground: isRoot ? Colors.white : AppColors.slate800,
+                              fontSize: 7.5,
                             ),
                             const SizedBox(width: 5),
                             Flexible(
