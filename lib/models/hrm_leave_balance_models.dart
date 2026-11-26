@@ -329,3 +329,353 @@ class HrmLeaveTransactionItem {
     return parts.isNotEmpty ? parts : 'NV';
   }
 }
+
+/// Model số dư Quỹ nghỉ bù theo nhân viên (đồng bộ 1:1 với HrmCompOffBalanceRow trên Web)
+class HrmCompOffBalanceItem {
+  final String employeeId;
+  final String employeeCode;
+  final String employeeName;
+  final String? department;
+  final double accrued;
+  final double used;
+  final double reserved;
+  final double expired;
+  final double adjusted;
+  final double available;
+  final HrmCompOffExpiry? nextExpiry;
+
+  const HrmCompOffBalanceItem({
+    required this.employeeId,
+    required this.employeeCode,
+    required this.employeeName,
+    this.department,
+    required this.accrued,
+    required this.used,
+    required this.reserved,
+    required this.expired,
+    required this.adjusted,
+    required this.available,
+    this.nextExpiry,
+  });
+
+  String get avatarInitials {
+    final parts = employeeName.trim().split(' ').where((s) => s.isNotEmpty).map((s) => s[0]).take(2).join().toUpperCase();
+    return parts.isNotEmpty ? parts : 'NV';
+  }
+
+  factory HrmCompOffBalanceItem.fromJson(Map<String, dynamic> json) {
+    HrmCompOffExpiry? expiry;
+    if (json['nextExpiry'] is Map) {
+      expiry = HrmCompOffExpiry.fromJson(Map<String, dynamic>.from(json['nextExpiry'] as Map));
+    } else if (json['next_expiry'] is Map) {
+      expiry = HrmCompOffExpiry.fromJson(Map<String, dynamic>.from(json['next_expiry'] as Map));
+    }
+
+    return HrmCompOffBalanceItem(
+      employeeId: json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? json['employee_code']?.toString() ?? '—',
+      employeeName: json['employeeName']?.toString() ?? json['employee_name']?.toString() ?? 'Nhân viên',
+      department: json['department']?.toString() ?? json['departmentName']?.toString(),
+      accrued: HrmLeaveBalanceItem._toDouble(json['accrued']),
+      used: HrmLeaveBalanceItem._toDouble(json['used']),
+      reserved: HrmLeaveBalanceItem._toDouble(json['reserved']),
+      expired: HrmLeaveBalanceItem._toDouble(json['expired']),
+      adjusted: HrmLeaveBalanceItem._toDouble(json['adjusted']),
+      available: HrmLeaveBalanceItem._toDouble(json['available']),
+      nextExpiry: expiry,
+    );
+  }
+}
+
+class HrmCompOffExpiry {
+  final double days;
+  final String on;
+
+  const HrmCompOffExpiry({required this.days, required this.on});
+
+  factory HrmCompOffExpiry.fromJson(Map<String, dynamic> json) {
+    return HrmCompOffExpiry(
+      days: HrmLeaveBalanceItem._toDouble(json['days']),
+      on: json['on']?.toString() ?? '',
+    );
+  }
+}
+
+/// Chi tiết sổ Quỹ nghỉ bù của nhân viên (các lô & sổ giao dịch)
+class HrmCompOffDetail {
+  final String employeeId;
+  final double available;
+  final double reserved;
+  final double usageStepDays;
+  final List<HrmCompOffLot> lots;
+  final List<HrmCompOffLedgerItem> entries;
+
+  const HrmCompOffDetail({
+    required this.employeeId,
+    required this.available,
+    required this.reserved,
+    required this.usageStepDays,
+    required this.lots,
+    required this.entries,
+  });
+
+  factory HrmCompOffDetail.fromJson(Map<String, dynamic> json) {
+    final rawLots = json['lots'] as List? ?? [];
+    final rawEntries = json['entries'] as List? ?? [];
+
+    return HrmCompOffDetail(
+      employeeId: json['employeeId']?.toString() ?? '',
+      available: HrmLeaveBalanceItem._toDouble(json['available']),
+      reserved: HrmLeaveBalanceItem._toDouble(json['reserved']),
+      usageStepDays: HrmLeaveBalanceItem._toDouble(json['usageStepDays'] ?? json['usage_step_days'], 0.5),
+      lots: rawLots.map((e) => HrmCompOffLot.fromJson(Map<String, dynamic>.from(e as Map))).toList(),
+      entries: rawEntries.map((e) => HrmCompOffLedgerItem.fromJson(Map<String, dynamic>.from(e as Map))).toList(),
+    );
+  }
+}
+
+class HrmCompOffLot {
+  final String lotId;
+  final String openedOn;
+  final String? expiresOn;
+  final double granted;
+  final double remaining;
+
+  const HrmCompOffLot({
+    required this.lotId,
+    required this.openedOn,
+    this.expiresOn,
+    required this.granted,
+    required this.remaining,
+  });
+
+  factory HrmCompOffLot.fromJson(Map<String, dynamic> json) {
+    return HrmCompOffLot(
+      lotId: json['lotId']?.toString() ?? json['id']?.toString() ?? '',
+      openedOn: json['openedOn']?.toString() ?? json['opened_on']?.toString() ?? '',
+      expiresOn: json['expiresOn']?.toString() ?? json['expires_on']?.toString(),
+      granted: HrmLeaveBalanceItem._toDouble(json['granted']),
+      remaining: HrmLeaveBalanceItem._toDouble(json['remaining']),
+    );
+  }
+}
+
+class HrmCompOffLedgerItem {
+  final String id;
+  final String kind;
+  final double days;
+  final String occurredOn;
+  final String? lotId;
+  final String? expiresOn;
+  final String? periodMonth;
+  final double? excessHours;
+  final String? reason;
+  final String? actorName;
+  final String? actorEmail;
+
+  const HrmCompOffLedgerItem({
+    required this.id,
+    required this.kind,
+    required this.days,
+    required this.occurredOn,
+    this.lotId,
+    this.expiresOn,
+    this.periodMonth,
+    this.excessHours,
+    this.reason,
+    this.actorName,
+    this.actorEmail,
+  });
+
+  String get kindLabel {
+    switch (kind.toUpperCase()) {
+      case 'ACCRUAL':
+      case 'CONVERSION':
+        return 'Tích luỹ từ OT';
+      case 'MANUAL_PLUS':
+      case 'ADJUST':
+        return days >= 0 ? 'Điều chỉnh tăng' : 'Điều chỉnh giảm';
+      case 'MANUAL_MINUS':
+        return 'Điều chỉnh giảm';
+      case 'EXCEL_IMPORT':
+        return 'Import Excel';
+      case 'RESERVE':
+      case 'LEAVE_RESERVE':
+        return 'Giữ chỗ đơn nghỉ';
+      case 'USAGE':
+      case 'LEAVE_DEDUCT':
+        return 'Trừ quỹ khi duyệt';
+      case 'RELEASE':
+      case 'LEAVE_RELEASE':
+        return 'Hoàn quỹ (huỷ/từ chối)';
+      case 'EXPIRE':
+        return 'Hết hạn lô';
+      case 'REVERSAL':
+        return 'Đảo điều chỉnh';
+      default:
+        return kind;
+    }
+  }
+
+  factory HrmCompOffLedgerItem.fromJson(Map<String, dynamic> json) {
+    return HrmCompOffLedgerItem(
+      id: json['id']?.toString() ?? '',
+      kind: json['kind']?.toString() ?? 'ADJUST',
+      days: HrmLeaveBalanceItem._toDouble(json['days']),
+      occurredOn: json['occurredOn']?.toString() ?? json['occurred_on']?.toString() ?? json['createdAt']?.toString() ?? '',
+      lotId: json['lotId']?.toString() ?? json['lot_id']?.toString(),
+      expiresOn: json['expiresOn']?.toString() ?? json['expires_on']?.toString(),
+      periodMonth: json['periodMonth']?.toString() ?? json['period_month']?.toString(),
+      excessHours: json['excessHours'] != null ? HrmLeaveBalanceItem._toDouble(json['excessHours']) : null,
+      reason: json['reason']?.toString(),
+      actorName: json['actorName']?.toString() ?? json['actor_name']?.toString() ?? json['createdByName']?.toString(),
+      actorEmail: json['actorEmail']?.toString() ?? json['actor_email']?.toString(),
+    );
+  }
+}
+
+class HrmCompOffConversionRow {
+  final String employeeId;
+  final String? employeeCode;
+  final String? employeeName;
+  final String month;
+  final double actualOtHours;
+  final double countedOtHours;
+  final double nightHours;
+  final double excessOtHours;
+  final double compDays;
+  final double? convertedDays;
+  final String status; // 'READY', 'CONVERTED', 'NOTHING', 'CAP_REACHED'
+  final String accrualOn;
+  final String? expiresOn;
+  final String? note;
+
+  const HrmCompOffConversionRow({
+    required this.employeeId,
+    this.employeeCode,
+    this.employeeName,
+    required this.month,
+    required this.actualOtHours,
+    required this.countedOtHours,
+    required this.nightHours,
+    required this.excessOtHours,
+    required this.compDays,
+    this.convertedDays,
+    required this.status,
+    required this.accrualOn,
+    this.expiresOn,
+    this.note,
+  });
+
+  bool get isConvertible => status == 'READY' && compDays > 0;
+
+  String get statusLabel {
+    switch (status) {
+      case 'READY':
+        return 'Chưa chuyển đổi';
+      case 'CONVERTED':
+        return 'Đã chuyển đổi';
+      case 'NOTHING':
+        return 'Không có giờ dư';
+      case 'CAP_REACHED':
+        return 'Đã chạm trần quỹ';
+      default:
+        return status;
+    }
+  }
+
+  factory HrmCompOffConversionRow.fromJson(Map<String, dynamic> json) {
+    return HrmCompOffConversionRow(
+      employeeId: json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? json['employee_code']?.toString(),
+      employeeName: json['employeeName']?.toString() ?? json['employee_name']?.toString(),
+      month: json['month']?.toString() ?? '',
+      actualOtHours: HrmLeaveBalanceItem._toDouble(json['actualOtHours'] ?? json['actual_ot_hours']),
+      countedOtHours: HrmLeaveBalanceItem._toDouble(json['countedOtHours'] ?? json['counted_ot_hours']),
+      nightHours: HrmLeaveBalanceItem._toDouble(json['nightHours'] ?? json['night_hours']),
+      excessOtHours: HrmLeaveBalanceItem._toDouble(json['excessOtHours'] ?? json['excess_ot_hours']),
+      compDays: HrmLeaveBalanceItem._toDouble(json['compDays'] ?? json['comp_days']),
+      convertedDays: json['convertedDays'] != null || json['converted_days'] != null
+          ? HrmLeaveBalanceItem._toDouble(json['convertedDays'] ?? json['converted_days'])
+          : null,
+      status: json['status']?.toString() ?? 'NOTHING',
+      accrualOn: json['accrualOn']?.toString() ?? json['accrual_on']?.toString() ?? '',
+      expiresOn: json['expiresOn']?.toString() ?? json['expires_on']?.toString(),
+      note: json['note']?.toString(),
+    );
+  }
+}
+
+class HrmCompOffConversionPreview {
+  final String month;
+  final bool locked;
+  final bool enabled;
+  final List<HrmCompOffConversionRow> rows;
+
+  const HrmCompOffConversionPreview({
+    required this.month,
+    required this.locked,
+    required this.enabled,
+    required this.rows,
+  });
+
+  factory HrmCompOffConversionPreview.fromJson(Map<String, dynamic> json) {
+    final rawRows = json['rows'];
+    final rowsList = rawRows is List
+        ? rawRows.map((e) => HrmCompOffConversionRow.fromJson(Map<String, dynamic>.from(e as Map))).toList()
+        : <HrmCompOffConversionRow>[];
+    return HrmCompOffConversionPreview(
+      month: json['month']?.toString() ?? '',
+      locked: json['locked'] == true,
+      enabled: json['enabled'] == true,
+      rows: rowsList,
+    );
+  }
+}
+
+class HrmOvertimeMonthSummary {
+  final String employeeId;
+  final String? employeeCode;
+  final String? employeeName;
+  final String month;
+  final double actualOtHours;
+  final double countedOtHours;
+  final double nightHours;
+  final double excessOtHours;
+  final double compDays;
+  final double payrollHours;
+  final double nightRestDays;
+  final int blockCount;
+
+  const HrmOvertimeMonthSummary({
+    required this.employeeId,
+    this.employeeCode,
+    this.employeeName,
+    required this.month,
+    required this.actualOtHours,
+    required this.countedOtHours,
+    required this.nightHours,
+    required this.excessOtHours,
+    required this.compDays,
+    required this.payrollHours,
+    required this.nightRestDays,
+    required this.blockCount,
+  });
+
+  factory HrmOvertimeMonthSummary.fromJson(Map<String, dynamic> json) {
+    return HrmOvertimeMonthSummary(
+      employeeId: json['employeeId']?.toString() ?? json['employee_id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? json['employee_code']?.toString(),
+      employeeName: json['employeeName']?.toString() ?? json['employee_name']?.toString(),
+      month: json['month']?.toString() ?? '',
+      actualOtHours: HrmLeaveBalanceItem._toDouble(json['actualOtHours'] ?? json['actual_ot_hours']),
+      countedOtHours: HrmLeaveBalanceItem._toDouble(json['countedOtHours'] ?? json['counted_ot_hours']),
+      nightHours: HrmLeaveBalanceItem._toDouble(json['nightHours'] ?? json['night_hours']),
+      excessOtHours: HrmLeaveBalanceItem._toDouble(json['excessOtHours'] ?? json['excess_ot_hours']),
+      compDays: HrmLeaveBalanceItem._toDouble(json['compDays'] ?? json['comp_days']),
+      payrollHours: HrmLeaveBalanceItem._toDouble(json['payrollHours'] ?? json['payroll_hours']),
+      nightRestDays: HrmLeaveBalanceItem._toDouble(json['nightRestDays'] ?? json['night_rest_days']),
+      blockCount: int.tryParse((json['blockCount'] ?? json['block_count'] ?? 0).toString()) ?? 0,
+    );
+  }
+}

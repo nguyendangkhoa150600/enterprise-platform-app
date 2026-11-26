@@ -6,6 +6,7 @@ import '../models/hrm_attendance_models.dart';
 import '../models/hrm_attendance_monitor_models.dart';
 import '../models/hrm_work_schedule_models.dart';
 import '../models/hrm_personnel_decision_model.dart';
+import '../models/hrm_leave_balance_models.dart';
 import '../providers/auth_provider.dart';
 import 'api_client_helper.dart';
 import '../core/i18n/app_i18n.dart';
@@ -583,7 +584,7 @@ class HrmService {
   // 13. Employee Asset Custody (Vật tư & Tài sản cấp phát)
   Future<List<Map<String, dynamic>>> getEmployeeCustody(String employeeId) async {
     try {
-      final res = await _dio.get('/hrm/v1/employees/' + Uri.encodeComponent(employeeId) + '/custody');
+      final res = await _dio.get('/hrm/v1/employees/${Uri.encodeComponent(employeeId)}/custody');
       if (res.statusCode == 200 && res.data != null) {
         final raw = res.data['data'] ?? (res.data is List ? res.data : null);
         if (raw is List) {
@@ -597,7 +598,7 @@ class HrmService {
   Future<bool> assignEmployeeCustody(String employeeId, String materialCode) async {
     try {
       final res = await _dio.post(
-        '/hrm/v1/employees/' + Uri.encodeComponent(employeeId) + '/custody',
+        '/hrm/v1/employees/${Uri.encodeComponent(employeeId)}/custody',
         data: {'materialCode': materialCode},
       );
       return res.statusCode == 200 || res.statusCode == 201;
@@ -609,7 +610,7 @@ class HrmService {
   Future<bool> revokeEmployeeCustody(String employeeId, String materialCode) async {
     try {
       final res = await _dio.post(
-        '/hrm/v1/employees/' + Uri.encodeComponent(employeeId) + '/custody/' + Uri.encodeComponent(materialCode) + '/revoke',
+        '/hrm/v1/employees/${Uri.encodeComponent(employeeId)}/custody/${Uri.encodeComponent(materialCode)}/revoke',
       );
       return res.statusCode == 200 || res.statusCode == 204;
     } catch (_) {
