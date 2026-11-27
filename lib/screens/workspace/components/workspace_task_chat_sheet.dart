@@ -1,28 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../../../../models/workspace_models.dart';
-import '../../../../services/workspace_service.dart';
-import '../../../../utils/user_resolver.dart';
-import '../../../../utils/app_toast.dart';
+
 import '../../../core/i18n/app_i18n.dart';
-import '../../../widgets/user_avatar.dart';
+import '../../../core/realtime/realtime_service.dart';
+import '../../../features/workspace/data/datasources/workspace_chat_timeline_api.dart';
+import '../../../features/workspace/data/datasources/workspace_remote_datasource.dart';
+import '../../../models/workspace_models.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../services/workspace_service.dart';
+import '../../../utils/app_toast.dart';
+import '../../../utils/user_resolver.dart';
+import '../../../widgets/comment_thread_view.dart';
+import 'workspace_upload_document_dialog.dart';
 
-/// Trạng thái lượt gõ `@`
-class _MentionQuery {
-  final int start;
-  final String term;
-  const _MentionQuery(this.start, this.term);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is _MentionQuery && runtimeType == other.runtimeType && start == other.start && term == other.term;
-
-  @override
-  int get hashCode => start.hashCode ^ term.hashCode;
-}
-
-/// Bottom Sheet hiển thị trực tiếp trao đổi (Direct Chat Thread) của công việc
-/// Đồng bộ 1:1 với ChatDrawer trên Web React packages/features/workspace/src/lib/components/chat-drawer.tsx
+/// Bảng trượt trao đổi của công việc (web `ChatDrawer`, luồng `work_item`), mở từ nút "Trao đổi".
 void showWorkspaceTaskChatSheet(
   BuildContext context, {
   required StandaloneTaskItem task,
@@ -32,362 +24,38 @@ void showWorkspaceTaskChatSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => _TaskChatSheetContent(
-      task: task,
-      service: service,
-    ),
+    builder: (ctx) => _TaskChatSheet(task: task, service: service),
   );
 }
 
-class _TaskChatSheetContent extends StatefulWidget {
+/// Khung trao đổi nhúng thẳng trong màn chi tiết công việc (đặt trên "Lịch sử hoạt động").
+class WorkspaceTaskChatPanel extends StatelessWidget {
   final StandaloneTaskItem task;
   final WorkspaceService service;
-
-  const _TaskChatSheetContent({
-    required this.task,
-    required this.service,
-  });
+  const WorkspaceTaskChatPanel({super.key, required this.task, required this.service});
 
   @override
-  State<_TaskChatSheetContent> createState() => _TaskChatSheetContentState();
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: WorkspaceTaskChatThread(task: task, service: service),
+      );
 }
 
-class _TaskChatSheetContentState extends State<_TaskChatSheetContent> {
-  final TextEditingController _msgCtrl = TextEditingController();
-  final ScrollController _scrollCtrl = ScrollController();
-  bool _isLoading = true;
-  bool _isSending = false;
-  List<ProjectChatMessage> _messages = [];
-
-  List<ProjectMemberItem> _members = [];
-  final Map<String, String> _memberHandles = {};
-  _MentionQuery? _mentionQuery;
-  final Set<String> _mentionedUserIds = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMessages();
-    _loadMembers();
-    _msgCtrl.addListener(_onTextChanged);
-  }
-
-  @override
-  void dispose() {
-    _msgCtrl.removeListener(_onTextChanged);
-    _msgCtrl.dispose();
-    _scrollCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onTextChanged() {
-    final text = _msgCtrl.text;
-    final selection = _msgCtrl.selection;
-    final cursor = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
-
-    final q = _findMentionQuery(text, cursor);
-    if (q != _mentionQuery) {
-      setState(() {
-        _mentionQuery = q;
-      });
-    }
-  }
-
-  _MentionQuery? _findMentionQuery(String text, int cursor) {
-    if (cursor <= 0 || cursor > text.length) return null;
-    final before = text.substring(0, cursor);
-    final at = before.lastIndexOf('@');
-    if (at < 0) return null;
-
-    final preceding = at == 0 ? ' ' : before[at - 1];
-    if (preceding != ' ' && preceding != '\n') return null;
-
-    final term = before.substring(at + 1);
-    if (term.contains(' ') || term.contains('\n')) return null;
-
-    return _MentionQuery(at, term);
-  }
-
-  String _removeDiacritics(String str) {
-    const vietnamese = 'aAeEoOuUiIdDyY';
-    final patterns = [
-      RegExp(r'[àáạảãâầấậẩẫăằắặẳẵ]'),
-      RegExp(r'[ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴ]'),
-      RegExp(r'[èéẹẻẽêềếệểễ]'),
-      RegExp(r'[ÈÉẸẺẼÊỀẾỆỂỄ]'),
-      RegExp(r'[òóọỏõôồốộổỗơờớợởỡ]'),
-      RegExp(r'[ÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ]'),
-      RegExp(r'[ùúụủũưừứựửữ]'),
-      RegExp(r'[ÙÚỤỦŨƯỪỨỰỬỮ]'),
-      RegExp(r'[ìíịỉĩ]'),
-      RegExp(r'[ÌÍỊỈĨ]'),
-      RegExp(r'[đ]'),
-      RegExp(r'[Đ]'),
-      RegExp(r'[ỳýỵỷỹ]'),
-      RegExp(r'[ỲÝỴỶỸ]'),
-    ];
-    var res = str;
-    for (var i = 0; i < patterns.length; i++) {
-      res = res.replaceAll(patterns[i], vietnamese[i]);
-    }
-    return res;
-  }
-
-  String _generateHandle(String name, String userId) {
-    if (name.isEmpty || name == '—') return userId;
-    final normalized = _removeDiacritics(name);
-    final words = normalized
-        .replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ')
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .toList();
-    if (words.isEmpty) return userId;
-    final handle = words.map((w) => '${w[0].toUpperCase()}${w.substring(1)}').join('');
-    return handle.isNotEmpty ? handle : userId;
-  }
-
-  void _buildHandles() {
-    _memberHandles.clear();
-    for (final m in _members) {
-      final name = m.fullName != null && m.fullName!.isNotEmpty
-          ? m.fullName!
-          : UserResolver.resolveName(m.userId);
-      _memberHandles[m.userId] = _generateHandle(name, m.userId);
-    }
-  }
-
-  Future<void> _loadMembers() async {
-    final pId = widget.task.projectId ?? '';
-    if (pId.isNotEmpty) {
-      try {
-        final list = await widget.service.getProjectMembers(pId);
-        if (mounted && list.isNotEmpty) {
-          setState(() {
-            _members = list;
-            _buildHandles();
-          });
-          return;
-        }
-      } catch (_) {}
-    }
-
-    // Fallback: nếu không lấy được từ dự án, lấy từ các thành viên trong công việc
-    final fallbackList = <ProjectMemberItem>[];
-    if (widget.task.assigneeUserId.isNotEmpty) {
-      fallbackList.add(ProjectMemberItem(
-        userId: widget.task.assigneeUserId,
-        fullName: widget.task.assigneeName,
-        role: 'assignee',
-      ));
-    }
-    if (widget.task.createdBy.isNotEmpty && widget.task.createdBy != widget.task.assigneeUserId) {
-      fallbackList.add(ProjectMemberItem(
-        userId: widget.task.createdBy,
-        fullName: widget.task.creatorName,
-        role: 'creator',
-      ));
-    }
-    for (final uId in widget.task.participantUserIds) {
-      if (!fallbackList.any((m) => m.userId == uId)) {
-        fallbackList.add(ProjectMemberItem(
-          userId: uId,
-          role: 'participant',
-        ));
-      }
-    }
-    if (fallbackList.isEmpty && UserResolver.allRawNames.isNotEmpty) {
-      for (final entry in UserResolver.allRawNames.entries) {
-        if (entry.key.isNotEmpty && entry.value != 'Người dùng' && entry.value != '—') {
-          fallbackList.add(ProjectMemberItem(
-            userId: entry.key,
-            fullName: entry.value,
-            role: 'member',
-          ));
-        }
-      }
-    }
-    if (mounted) {
-      setState(() {
-        _members = fallbackList;
-        _buildHandles();
-      });
-    }
-  }
-
-  List<ProjectMemberItem> _getFilteredMembers() {
-    if (_mentionQuery == null) return [];
-    final term = _mentionQuery!.term.trim().toLowerCase();
-    if (term.isEmpty) return _members;
-
-    final normalizedTerm = _removeDiacritics(term);
-    return _members.where((m) {
-      final name = m.fullName != null && m.fullName!.isNotEmpty
-          ? m.fullName!
-          : UserResolver.resolveName(m.userId);
-      final normalizedName = _removeDiacritics(name).toLowerCase();
-      final handle = (_memberHandles[m.userId] ?? m.userId).toLowerCase();
-      return normalizedName.contains(normalizedTerm) ||
-          handle.contains(normalizedTerm) ||
-          m.userId.toLowerCase().contains(term);
-    }).toList();
-  }
-
-  void _pickMention(ProjectMemberItem member) {
-    if (_mentionQuery == null) return;
-    final handle = _memberHandles[member.userId] ?? member.userId;
-    final inserted = '@$handle ';
-    final text = _msgCtrl.text;
-    final cursor = _msgCtrl.selection.baseOffset >= 0 ? _msgCtrl.selection.baseOffset : text.length;
-
-    final nextText = text.substring(0, _mentionQuery!.start) + inserted + text.substring(cursor);
-    final nextCaret = _mentionQuery!.start + inserted.length;
-
-    _mentionedUserIds.add(member.userId);
-
-    setState(() {
-      _mentionQuery = null;
-    });
-
-    _msgCtrl.value = TextEditingValue(
-      text: nextText,
-      selection: TextSelection.collapsed(offset: nextCaret),
-    );
-  }
-
-  Future<void> _loadMessages() async {
-    setState(() => _isLoading = true);
-    try {
-      ProjectChatThread thread = const ProjectChatThread();
-      final pId = widget.task.projectId ?? '';
-
-      // Web chat-drawer: luồng `work_item` là nguồn chính; chỉ đọc luồng của
-      // bảng trao đổi dự án khi luồng chính không trả tin nào.
-      thread = await widget.service.getChatThread('work_item', widget.task.id);
-      if (thread.messages.isEmpty && pId.isNotEmpty) {
-        thread = await widget.service.getProjectChatFeedThread(pId, widget.task.id);
-      }
-
-      if (mounted) {
-        setState(() {
-          _messages = thread.messages;
-          _isLoading = false;
-        });
-        _scrollToBottom();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  Future<void> _sendMessage() async {
-    final text = _msgCtrl.text.trim();
-    if (text.isEmpty || _isSending) return;
-
-    setState(() => _isSending = true);
-    final mentionsToSend = _mentionedUserIds.isNotEmpty ? _mentionedUserIds.toList() : null;
-    _msgCtrl.clear();
-    _mentionedUserIds.clear();
-
-    bool ok = false;
-    try {
-      ok = await widget.service.sendChatMessage(
-        entityType: 'work_item',
-        entityId: widget.task.id,
-        body: text,
-        mentions: mentionsToSend,
-      );
-    } catch (_) {
-      ok = false;
-    }
-
-    if (!mounted) return;
-    setState(() => _isSending = false);
-    if (ok) {
-      _loadMessages();
-    } else {
-      // Giữ lại nội dung để người dùng gửi lại; không đẩy sang luồng khác.
-      if (_msgCtrl.text.isEmpty) {
-        _msgCtrl.value = TextEditingValue(
-          text: text,
-          selection: TextSelection.collapsed(offset: text.length),
-        );
-        if (mentionsToSend != null) _mentionedUserIds.addAll(mentionsToSend);
-      }
-      AppToast.error(context, widget.service.lastError ?? 'workspace.task_chat.send_failed'.tr());
-    }
-  }
-
-  String _formatTime(String raw) {
-    try {
-      final dt = DateTime.parse(raw);
-      final vn = dt.isUtc ? dt.add(const Duration(hours: 7)) : dt;
-      return '${vn.hour.toString().padLeft(2, '0')}:${vn.minute.toString().padLeft(2, '0')} ${vn.day.toString().padLeft(2, '0')}/${vn.month.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return raw;
-    }
-  }
-
-  Widget _buildMessageBody(String text) {
-    final regex = RegExp(r'@([a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]+)');
-    final matches = regex.allMatches(text);
-    if (matches.isEmpty) {
-      return Text(
-        text,
-        style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
-      );
-    }
-
-    final spans = <InlineSpan>[];
-    int lastIndex = 0;
-    for (final m in matches) {
-      if (m.start > lastIndex) {
-        spans.add(TextSpan(text: text.substring(lastIndex, m.start)));
-      }
-      spans.add(
-        TextSpan(
-          text: m.group(0),
-          style: const TextStyle(
-            color: Color(0xFF1D4ED8),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-      lastIndex = m.end;
-    }
-    if (lastIndex < text.length) {
-      spans.add(TextSpan(text: text.substring(lastIndex)));
-    }
-
-    return RichText(
-      text: TextSpan(
-        style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
-        children: spans,
-      ),
-    );
-  }
+class _TaskChatSheet extends StatelessWidget {
+  final StandaloneTaskItem task;
+  final WorkspaceService service;
+  const _TaskChatSheet({required this.task, required this.service});
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final filteredMembers = _getFilteredMembers();
-
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      margin: EdgeInsets.only(bottom: bottomInset),
+      height: MediaQuery.sizeOf(context).height * 0.85,
+      margin: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -395,289 +63,353 @@ class _TaskChatSheetContentState extends State<_TaskChatSheetContent> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Header matching Web 1:1
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 14, 14, 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'Trao đổi',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFECFDF5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFA7F3D0)),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.circle, size: 7, color: Color(0xFF10B981)),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Trực tiếp',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${widget.task.code} · ${widget.task.title}',
-                        style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+            padding: const EdgeInsets.fromLTRB(18, 10, 8, 10),
+            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9)))),
+            child: Row(children: [
+              Expanded(
+                child: Text(
+                  '${task.code} · ${task.title}',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => Navigator.pop(context),
-                  tooltip: 'Đóng',
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20, color: Color(0xFF64748B)),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ]),
           ),
-
-          // Messages list
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFEAB308)))
-                : _messages.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Chưa có trao đổi nào ở mục này.',
-                          style: TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8)),
-                        ),
-                      )
-                    : ListView.separated(
-                        controller: _scrollCtrl,
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                        itemCount: _messages.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (ctx, idx) {
-                          final msg = _messages[idx];
-                          final author = UserResolver.resolveName(msg.createdBy);
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      author,
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      _formatTime(msg.createdAt),
-                                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                _buildMessageBody(msg.body),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-          ),
-
-          // Mention suggestions overlay (hiển thị ngay phía trên khung nhập khi gõ @)
-          if (_mentionQuery != null && filteredMembers.isNotEmpty)
-            Container(
-              constraints: const BoxConstraints(maxHeight: 210),
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, -3),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.alternate_email_rounded, size: 14, color: Color(0xFF2563EB)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Nhắc thành viên (${filteredMembers.length})',
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      itemCount: filteredMembers.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1, indent: 44, color: Color(0xFFF8FAFC)),
-                      itemBuilder: (ctx, i) {
-                        final m = filteredMembers[i];
-                        final name = m.fullName != null && m.fullName!.isNotEmpty
-                            ? m.fullName!
-                            : UserResolver.resolveName(m.userId);
-                        final handle = _memberHandles[m.userId] ?? m.userId;
-                        return InkWell(
-                          onTap: () => _pickMention(m),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: Row(
-                              children: [
-                                UserAvatar(
-                                  userId: m.userId,
-                                  name: name,
-                                  size: 28,
-                                  background: const Color(0xFFEFF6FF),
-                                  foreground: const Color(0xFF1D4ED8),
-                                  fontSize: 12,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                                      ),
-                                      Text(
-                                        '@$handle',
-                                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Bottom Bar matching Web 1:1
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Dự án chưa có tài liệu nào.',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _msgCtrl,
-                                style: const TextStyle(fontSize: 13),
-                                maxLines: null,
-                                decoration: const InputDecoration(
-                                  hintText: 'Nhập nội dung, gõ @ để nhắc thành viên. Enter để gửi.',
-                                  hintStyle: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(vertical: 10),
-                                ),
-                                onSubmitted: (_) => _sendMessage(),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.attach_file_rounded, size: 20, color: Color(0xFF64748B)),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                              onPressed: () {
-                                AppToast.show(context, 'Đính kèm tài liệu từ dự án.');
-                              },
-                              tooltip: 'Đính kèm',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: _isSending ? null : _sendMessage,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEAB308),
-                          shape: BoxShape.circle,
-                        ),
-                        child: _isSending
-                            ? const Padding(
-                                padding: EdgeInsets.all(10),
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)),
-                              )
-                            : const Icon(Icons.near_me_rounded, size: 18, color: Color(0xFF0F172A)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            child: SingleChildScrollView(
+              reverse: true,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: WorkspaceTaskChatThread(task: task, service: service),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dữ liệu trao đổi của một công việc: tải luồng `work_item`, làm mới khi có tín hiệu realtime
+/// `workspace.chat.changed`, nhắc thành viên dự án bằng handle, đính kèm tài liệu dự án hoặc tải tệp mới lên.
+/// Giao diện là [CommentThreadView] (cùng khối với "Trao đổi và ý kiến" của đơn từ).
+class WorkspaceTaskChatThread extends StatefulWidget {
+  final StandaloneTaskItem task;
+  final WorkspaceService service;
+  const WorkspaceTaskChatThread({super.key, required this.task, required this.service});
+
+  @override
+  State<WorkspaceTaskChatThread> createState() => _WorkspaceTaskChatThreadState();
+}
+
+class _WorkspaceTaskChatThreadState extends State<WorkspaceTaskChatThread> {
+  bool _loading = true;
+  List<ProjectChatMessage> _messages = [];
+  List<ProjectMemberItem> _members = [];
+  final Map<String, String> _handles = {};
+
+  final WorkspaceChatTimelineApi _docsApi = WorkspaceChatTimelineApi();
+  List<WorkspaceDocumentItem> _documents = [];
+  List<WorkspaceFolderItem> _folders = [];
+  final List<String> _attachmentIds = [];
+  VoidCallback? _offRealtime;
+  Timer? _realtimeTimer;
+
+  String get _projectId => widget.task.projectId ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+    _loadMembers();
+    _loadDocuments();
+    // Web chat-drawer: máy chủ đẩy `workspace.chat.changed` (chỉ có id) → tải lại luồng của đúng công việc này.
+    _offRealtime = RealtimeService.instance.listen(
+      'workspace.chat.changed',
+      (data) {
+        if (data['entityType'] != 'work_item' || data['entityId'] != widget.task.id) return;
+        if (data['change'] == 'read') return;
+        _scheduleReload();
+      },
+      onReconnected: _scheduleReload,
+    );
+  }
+
+  @override
+  void dispose() {
+    _offRealtime?.call();
+    _realtimeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleReload() {
+    _realtimeTimer?.cancel();
+    _realtimeTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _loadMessages(silent: true);
+    });
+  }
+
+  Future<void> _loadMessages({bool silent = false}) async {
+    if (!silent) setState(() => _loading = true);
+    try {
+      // Web chat-drawer: luồng `work_item` là nguồn chính; chỉ đọc luồng của bảng trao đổi dự án khi luồng chính rỗng.
+      var thread = await widget.service.getChatThread('work_item', widget.task.id);
+      if (thread.messages.isEmpty && _projectId.isNotEmpty) {
+        thread = await widget.service.getProjectChatFeedThread(_projectId, widget.task.id);
+      }
+      if (!mounted) return;
+      setState(() {
+        _messages = thread.messages;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadDocuments() async {
+    if (_projectId.isEmpty) return;
+    final results = await Future.wait([_docsApi.loadDocuments(_projectId), _docsApi.loadFolders(_projectId)]);
+    if (!mounted) return;
+    setState(() {
+      _documents = (results[0].data as List<WorkspaceDocumentItem>?) ?? _documents;
+      _folders = (results[1].data as List<WorkspaceFolderItem>?) ?? _folders;
+    });
+  }
+
+  Future<void> _loadMembers() async {
+    List<ProjectMemberItem> list = const [];
+    if (_projectId.isNotEmpty) {
+      try {
+        list = await widget.service.getProjectMembers(_projectId);
+      } catch (_) {}
+    }
+    if (list.isEmpty) {
+      // Không lấy được thành viên dự án: dùng những người của công việc.
+      final t = widget.task;
+      list = [
+        if (t.assigneeUserId.isNotEmpty)
+          ProjectMemberItem(userId: t.assigneeUserId, fullName: t.assigneeName, role: 'assignee'),
+        if (t.createdBy.isNotEmpty && t.createdBy != t.assigneeUserId)
+          ProjectMemberItem(userId: t.createdBy, fullName: t.creatorName, role: 'creator'),
+        for (final id in t.participantUserIds.toSet())
+          if (id != t.assigneeUserId && id != t.createdBy) ProjectMemberItem(userId: id, role: 'participant'),
+      ];
+    }
+    if (!mounted) return;
+    setState(() {
+      _members = list;
+      _handles
+        ..clear()
+        ..addAll({for (final m in list) m.userId: _handleOf(_nameOf(m), m.userId)});
+    });
+  }
+
+  String _nameOf(ProjectMemberItem m) =>
+      (m.fullName ?? '').isNotEmpty ? m.fullName! : UserResolver.resolveName(m.userId);
+
+  static String _plain(String s) {
+    const from = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ';
+    const to = 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd';
+    final buf = StringBuffer();
+    for (final ch in s.split('')) {
+      final lower = ch.toLowerCase();
+      final i = from.indexOf(lower);
+      if (i < 0) {
+        buf.write(ch);
+      } else {
+        buf.write(ch == lower ? to[i] : to[i].toUpperCase());
+      }
+    }
+    return buf.toString();
+  }
+
+  /// Handle nhắc tên: tên không dấu viết liền, hoa chữ đầu mỗi từ (ví dụ "NguyenDangKhoa").
+  static String _handleOf(String name, String userId) {
+    if (name.isEmpty || name == '—') return userId;
+    final words =
+        _plain(name).replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ').split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final handle = words.map((w) => '${w[0].toUpperCase()}${w.substring(1)}').join();
+    return handle.isEmpty ? userId : handle;
+  }
+
+  Future<List<CommentMentionCandidate>> _search(String query) async {
+    final term = _plain(query.trim()).toLowerCase();
+    return [
+      for (final m in _members)
+        if (term.isEmpty ||
+            _plain(_nameOf(m)).toLowerCase().contains(term) ||
+            (_handles[m.userId] ?? '').toLowerCase().contains(term))
+          CommentMentionCandidate(
+            userId: m.userId,
+            name: _nameOf(m),
+            insertText: _handles[m.userId] ?? m.userId,
+            subtitle: '@${_handles[m.userId] ?? m.userId}',
+          ),
+    ];
+  }
+
+  Future<bool> _send(String body, List<String> mentionUserIds) async {
+    final attachments = List<String>.of(_attachmentIds);
+    if (body.isEmpty && attachments.isEmpty) return false;
+    bool ok;
+    try {
+      ok = await widget.service.sendChatMessage(
+        entityType: 'work_item',
+        entityId: widget.task.id,
+        body: body,
+        mentions: mentionUserIds.isEmpty ? null : mentionUserIds,
+        attachmentDocumentIds: attachments.isEmpty ? null : attachments,
+      );
+    } catch (_) {
+      ok = false;
+    }
+    if (!mounted) return ok;
+    if (!ok) {
+      AppToast.error(context, widget.service.lastError ?? 'workspace.task_chat.send_failed'.tr());
+      return false;
+    }
+    setState(_attachmentIds.clear);
+    await _loadMessages(silent: true);
+    return true;
+  }
+
+  String _documentName(String id) {
+    for (final d in _documents) {
+      if (d.id == id) return d.name;
+    }
+    return 'workspace.chat_timeline.unknown_attachment'.tr();
+  }
+
+  /// Web: tải tệp mới lên kho tài liệu (gắn với công việc, tự xếp vào thư mục dự án/công việc) rồi chọn sẵn để gửi.
+  Future<void> _upload() async {
+    if (_projectId.isEmpty) return;
+    final ids = await showUploadWorkspaceDocumentsDialog(
+      context,
+      remote: WorkspaceRemoteDataSource(),
+      folders: _folders,
+      linkedTo: (entityType: 'work_item', entityId: widget.task.id),
+      autoPath: (projectId: _projectId, workItemId: widget.task.id),
+    );
+    if (ids == null || ids.isEmpty || !mounted) return;
+    await _loadDocuments();
+    if (!mounted) return;
+    setState(() {
+      for (final id in ids) {
+        if (!_attachmentIds.contains(id)) _attachmentIds.add(id);
+      }
+    });
+  }
+
+  Future<void> _pickExisting() async {
+    final options = _documents.where((d) => !_attachmentIds.contains(d.id)).toList();
+    if (options.isEmpty) return;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                child: Text('workspace.task_chat.attach_pick'.tr(),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              ),
+              Flexible(
+                child: ListView(shrinkWrap: true, children: [
+                  for (final d in options)
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.description_outlined, size: 20),
+                      title: Text(d.name, style: const TextStyle(fontSize: 13.5)),
+                      onTap: () => Navigator.pop(ctx, d.id),
+                    ),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null && mounted) setState(() => _attachmentIds.add(picked));
+  }
+
+  Widget _composerHeader() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Web: chọn một tài liệu đã có của dự án, hoặc tải tệp mới lên (nút kẹp giấy trong ô nhập).
+          if (_documents.isNotEmpty)
+            InkWell(
+              onTap: _pickExisting,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.add_link_rounded, size: 15, color: Color(0xFF2563EB)),
+                const SizedBox(width: 4),
+                Text(
+                  (_attachmentIds.isEmpty ? 'workspace.task_chat.attach_existing' : 'workspace.task_chat.attach_more')
+                      .tr(),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
+                ),
+              ]),
+            )
+          else
+            Text('workspace.task_chat.no_documents'.tr(),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+          if (_attachmentIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final id in _attachmentIds)
+                  InputChip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: const Icon(Icons.attach_file_rounded, size: 14),
+                    label: Text(_documentName(id), style: const TextStyle(fontSize: 12)),
+                    onDeleted: () => setState(() => _attachmentIds.remove(id)),
+                  ),
+              ]),
+            ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final me = AuthProvider.instance?.userId;
+    final mentionPattern = RegExp(r'@[a-zA-Z0-9_À-ɏḀ-ỿ]+');
+    return CommentThreadView(
+      title: 'workspace.task_chat.title'.tr(args: {'count': _messages.length}),
+      loading: _loading,
+      loadingText: 'workspace.task_chat.loading'.tr(),
+      emptyText: 'workspace.task_chat.empty'.tr(),
+      hintText: 'workspace.task_chat.hint'.tr(),
+      searchMentions: _search,
+      onSend: _send,
+      canSendEmpty: _attachmentIds.isNotEmpty,
+      composerHeader: _composerHeader(),
+      onAttach: _projectId.isEmpty ? null : _upload,
+      attachTooltip: 'workspace.task_chat.attach_upload'.tr(),
+      entries: [
+        for (final m in _messages)
+          CommentThreadEntry(
+            id: m.id,
+            authorUserId: m.createdBy,
+            authorName: UserResolver.resolveName(m.createdBy),
+            createdAt: DateTime.tryParse(m.createdAt)?.toLocal() ?? DateTime.now(),
+            body: m.body,
+            mine: me != null && m.createdBy == me,
+            mentionTokens: [for (final x in mentionPattern.allMatches(m.body)) x.group(0)!],
+            attachments: [
+              for (final id in {...m.attachmentDocumentIds, ?m.attachmentDocumentId}) _documentName(id),
+            ],
+          ),
+      ],
     );
   }
 }

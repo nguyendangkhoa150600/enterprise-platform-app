@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,8 @@ import '../core/i18n/app_i18n.dart';
 import '../services/api_client_helper.dart';
 import '../shared/widgets/language_selector_tile.dart';
 import '../widgets/user_avatar.dart';
+import '../utils/avatar_image.dart';
+import '../widgets/avatar_crop_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -67,13 +70,23 @@ class _AccountScreenState extends State<AccountScreen> {
     } catch (_) {}
   }
 
+  void _showAvatarError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFFDC2626),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _chooseAvatar() async {
     try {
       final file = await FilePicker.pickFile(type: FileType.image);
       if (file == null || !mounted) return;
 
       final size = await file.length() ?? 0;
-      if (size > 5 * 1024 * 1024) {
+      if (size > kAvatarMaxSourceBytes) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -86,7 +99,8 @@ class _AccountScreenState extends State<AccountScreen> {
       }
 
       final ext = (file.extension ?? 'png').toLowerCase();
-      if (!['png', 'jpg', 'jpeg', 'webp'].contains(ext)) {
+      // Web nhận PNG/JPG/WebP; ảnh HEIC của iPhone cũng nhận vì được chuyển sang JPEG trước khi gửi.
+      if (!['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].contains(ext)) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -98,9 +112,23 @@ class _AccountScreenState extends State<AccountScreen> {
         return;
       }
 
+      // Người dùng chọn vùng cắt (kéo, phóng to) trước khi gửi; huỷ thì thôi.
+      final source = await file.xFile.readAsBytes();
+      if (!mounted) return;
+      final crop = await showAvatarCropScreen(context, source);
+      if (crop == null || !mounted) return;
+
       setState(() => _isAvatarBusy = true);
 
-      final bytes = await file.xFile.readAsBytes();
+      // Web `prepareAvatarImage`: cắt vuông, thu về 512px, nén JPEG ≤ 1 MB (máy chủ từ chối tệp lớn hơn).
+      final Uint8List bytes;
+      try {
+        bytes = await prepareAvatarImage(source, crop: crop);
+      } on AvatarImageException catch (e) {
+        if (!mounted) return;
+        _showAvatarError('account.avatar.prepare_${e.code}'.tr());
+        return;
+      }
       final dio = Dio(BaseOptions(
         baseUrl: AuthProvider.authBaseUrl,
         connectTimeout: const Duration(seconds: 15),
@@ -109,10 +137,14 @@ class _AccountScreenState extends State<AccountScreen> {
       ApiClientHelper.configureDio(dio);
 
       final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(bytes, filename: 'avatar.$ext'),
+        'file': MultipartFile.fromBytes(bytes, filename: 'avatar.jpg', contentType: DioMediaType('image', 'jpeg')),
       });
 
-      final res = await dio.put('/api/platform/v1/profile/avatar', data: formData);
+      final res = await dio.put(
+        '/api/platform/v1/profile/avatar',
+        data: formData,
+        options: Options(validateStatus: (s) => s != null && s < 500),
+      );
       if (!mounted) return;
 
       if (res.statusCode == 200 && res.data is Map) {
@@ -129,13 +161,9 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('account.avatar.failed'.tr()),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        final data = res.data;
+        final message = data is Map ? data['message']?.toString() : null;
+        _showAvatarError(message != null && message.isNotEmpty ? message : 'account.avatar.failed'.tr());
       }
     } catch (_) {
       if (!mounted) return;

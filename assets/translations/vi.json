@@ -10547,5 +10547,22 @@
   "procedure.create.start_due": "Thời gian bắt đầu",
   "procedure.create.end_due": "Thời gian kết thúc",
   "procedure.create.pick_time": "Chọn ngày giờ",
-  "procedure.create.schedule_invalid": "Thời gian kết thúc phải sau thời gian bắt đầu."
+  "procedure.create.schedule_invalid": "Thời gian kết thúc phải sau thời gian bắt đầu.",
+  "workspace.task_chat.attach_pick": "Đính kèm tài liệu",
+  "workspace.task_chat.attach_existing": "Đính kèm tài liệu của dự án",
+  "workspace.task_chat.attach_more": "Thêm tài liệu khác…",
+  "workspace.task_chat.no_documents": "Dự án chưa có tài liệu nào.",
+  "workspace.task_chat.attach_upload": "Tải tệp mới lên và đính kèm",
+  "workspace.task_chat.title": "Trao đổi ({count})",
+  "workspace.task_chat.loading": "Đang tải trao đổi...",
+  "workspace.task_chat.empty": "Chưa có trao đổi nào ở mục này.",
+  "workspace.task_chat.hint": "Viết trao đổi... gõ @ để nhắc thành viên",
+  "workspace.work_tab.tab_chats_short": "Trao đổi",
+  "workspace.work_tab.tab_more": "Thêm",
+  "account.avatar.prepare_too_small": "Ảnh quá nhỏ. Chọn ảnh từ 32x32 điểm ảnh trở lên.",
+  "account.avatar.prepare_decode": "Không đọc được ảnh này. Hãy chọn ảnh khác.",
+  "account.avatar.prepare_encode": "Không nén được ảnh. Hãy chọn ảnh khác.",
+  "account.avatar.crop_title": "Chỉnh ảnh đại diện",
+  "account.avatar.crop_hint": "Kéo để chọn vị trí, chụm hai ngón để phóng to hoặc thu nhỏ. Phần trong vòng tròn sẽ là ảnh đại diện.",
+  "account.avatar.crop_use": "Dùng ảnh"
 }

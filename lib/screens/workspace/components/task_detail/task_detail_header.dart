@@ -106,8 +106,10 @@ class TaskDetailHeader extends StatelessWidget {
             runSpacing: 8,
             alignment: WrapAlignment.spaceBetween,
             children: [
-              if (primaryActions.isNotEmpty) Wrap(spacing: 8, runSpacing: 8, children: primaryActions),
-              if (secondaryActions.isNotEmpty) Wrap(spacing: 8, runSpacing: 8, children: secondaryActions),
+              if (primaryActions.isNotEmpty)
+                Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: primaryActions),
+              if (secondaryActions.isNotEmpty)
+                Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: secondaryActions),
             ],
           ),
         ],
@@ -117,6 +119,9 @@ class TaskDetailHeader extends StatelessWidget {
 }
 
 /// Nút của thanh thao tác: `filled` là nút chính (vàng như web), còn lại viền.
+/// Chiều cao chung của các nút thao tác ở đầu chi tiết công việc (kể cả nút "⋯"), để cùng thẳng hàng.
+const double kTaskActionHeight = 36;
+
 class TaskActionButton extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -162,7 +167,8 @@ class TaskActionButton extends StatelessWidget {
           backgroundColor: danger ? kTaskDanger : const Color(0xFFEAB308),
           elevation: 0,
           padding: padding,
-          minimumSize: Size.zero,
+          minimumSize: const Size(0, kTaskActionHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: shape,
         ),
         child: child,
@@ -173,7 +179,8 @@ class TaskActionButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         side: BorderSide(color: danger ? const Color(0xFFFECACA) : const Color(0xFFCBD5E1)),
         padding: padding,
-        minimumSize: Size.zero,
+        minimumSize: const Size(0, kTaskActionHeight),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: shape,
       ),
       child: child,

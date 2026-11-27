@@ -10547,5 +10547,22 @@
   "procedure.create.start_due": "Start time",
   "procedure.create.end_due": "End time",
   "procedure.create.pick_time": "Pick date and time",
-  "procedure.create.schedule_invalid": "The end time must be after the start time."
+  "procedure.create.schedule_invalid": "The end time must be after the start time.",
+  "workspace.task_chat.attach_pick": "Attach a document",
+  "workspace.task_chat.attach_existing": "Attach a project document",
+  "workspace.task_chat.attach_more": "Add another document…",
+  "workspace.task_chat.no_documents": "The project has no documents yet.",
+  "workspace.task_chat.attach_upload": "Upload a new file and attach it",
+  "workspace.task_chat.title": "Discussion ({count})",
+  "workspace.task_chat.loading": "Loading discussion...",
+  "workspace.task_chat.empty": "No messages here yet.",
+  "workspace.task_chat.hint": "Write a message... type @ to mention a member",
+  "workspace.work_tab.tab_chats_short": "Chat",
+  "workspace.work_tab.tab_more": "More",
+  "account.avatar.prepare_too_small": "The image is too small. Choose one at least 32x32 pixels.",
+  "account.avatar.prepare_decode": "Cannot read this image. Please choose another one.",
+  "account.avatar.prepare_encode": "Cannot compress the image. Please choose another one.",
+  "account.avatar.crop_title": "Adjust profile photo",
+  "account.avatar.crop_hint": "Drag to position, pinch to zoom in or out. The part inside the circle becomes your profile photo.",
+  "account.avatar.crop_use": "Use photo"
 }

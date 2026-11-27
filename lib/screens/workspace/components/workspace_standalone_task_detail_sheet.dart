@@ -386,6 +386,9 @@ class _TaskDetailContentState extends State<_TaskDetailContent>
         onReportQuantity: _reportProgress,
       ),
       _gap(),
+      // Trao đổi của công việc hiện ngay trong màn chi tiết, trên "Lịch sử hoạt động".
+      WorkspaceTaskChatPanel(key: ValueKey('chat-${t.id}'), task: t, service: widget.service),
+      _gap(),
       TaskPanel(
         title: Text('workspace.task_detail.activity_title'.tr()),
         child: WorkspaceActivityList(

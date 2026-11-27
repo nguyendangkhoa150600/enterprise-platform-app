@@ -5,6 +5,7 @@ import '../../../models/workspace_models.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/workspace_service.dart';
 import '../../../utils/app_toast.dart';
+import 'task_detail/task_detail_header.dart' show kTaskActionHeight;
 import 'task_detail/task_detail_text_prompt.dart';
 import 'task_detail/workspace_reverse_work_item_dialog.dart';
 import 'workspace_cancel_work_item_dialog.dart';
@@ -514,7 +515,9 @@ mixin WorkspaceTaskActionsMixin<T extends StatefulWidget> on State<T> {
         ],
       ],
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        height: kTaskActionHeight,
+        width: kTaskActionHeight + 8,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: const Color(0xFFCBD5E1)),

@@ -371,59 +371,143 @@ class _ProjectDetailSheetState extends State<ProjectDetailSheet> {
     return null;
   }
 
+  static const Map<String, IconData> _tabIcons = {
+    'work': Icons.checklist_rounded,
+    'calendar': Icons.calendar_month_outlined,
+    'documents': Icons.folder_outlined,
+    'finance': Icons.account_balance_wallet_outlined,
+    'requests': Icons.description_outlined,
+    'activity': Icons.history_rounded,
+    _kChatsTab: Icons.chat_bubble_outline_rounded,
+  };
+
+  /// Mục luôn hiện trên hàng; các mục còn lại nằm trong ô "Thêm".
+  static const List<String> _kPrimaryTabs = ['work', 'documents', _kChatsTab];
+
+  List<String> get _moreTabs => [
+        for (final id in _kTabs)
+          if (!_kPrimaryTabs.contains(id) && (id != 'finance' || _project.finance != null)) id,
+      ];
+
+  String _tabLabel(String id) =>
+      id == _kChatsTab ? 'workspace.work_tab.tab_chats_short'.tr() : 'workspace.work_tab.tab_$id'.tr();
+
+  /// Hàng mục của dự án: Công việc, Tài liệu, Trao đổi và ô "Thêm" (mở danh sách Lịch, Tài chính, Đơn từ, Hoạt động).
+  /// Đang mở một mục trong "Thêm" thì ô đó hiện tên mục ấy.
   Widget _tabsBar() {
-    final tabs = _kTabs.where((id) => id != 'finance' || _project.finance != null);
+    final more = _moreTabs;
+    final inMore = more.contains(_tab);
     return Container(
-      color: Colors.white,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          children: [
-            for (final id in tabs) _tabChip(id),
-            const SizedBox(width: 8),
-            OutlinedButton.icon(
-              onPressed: () => setState(() => _tab = _kChatsTab),
-              icon: const Icon(Icons.chat_bubble_outline, size: 14),
-              label: Text('workspace.work_tab.tab_chats'.tr(), style: const TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                backgroundColor: _tab == _kChatsTab ? const Color(0xFFFACC15) : null,
-                foregroundColor: const Color(0xFF0F172A),
-                side: BorderSide(color: _tab == _kChatsTab ? const Color(0xFFEAB308) : const Color(0xFFCBD5E1)),
-              ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(children: [
+        for (final id in _kPrimaryTabs) Expanded(child: _tabChip(id)),
+        if (more.isNotEmpty)
+          Expanded(
+            child: _tabItem(
+              icon: inMore ? _tabIcons[_tab]! : Icons.more_horiz_rounded,
+              label: inMore ? _tabLabel(_tab) : 'workspace.work_tab.tab_more'.tr(),
+              selected: inMore,
+              trailing: const Icon(Icons.arrow_drop_down_rounded, size: 16),
+              onTap: _openMoreTabs,
             ),
+          ),
+      ]),
+    );
+  }
+
+  Future<void> _openMoreTabs() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            for (final id in _moreTabs)
+              ListTile(
+                leading: Icon(_tabIcons[id], color: _tab == id ? const Color(0xFFB45309) : const Color(0xFF475569)),
+                title: Text(
+                  _tabLabel(id),
+                  style: TextStyle(fontWeight: _tab == id ? FontWeight.w700 : FontWeight.w500),
+                ),
+                trailing: _tab == id ? const Icon(Icons.check_rounded, color: Color(0xFFEAB308)) : null,
+                onTap: () => Navigator.pop(ctx, id),
+              ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
     );
+    if (picked != null && mounted) setState(() => _tab = picked);
   }
 
   Widget _tabChip(String id) {
-    final selected = _tab == id;
     final count = _tabCount(id);
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: InkWell(
-        onTap: () => setState(() => _tab = id),
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6.5),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFFFACC15) : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: selected ? const Color(0xFFEAB308) : Colors.transparent),
+    return _tabItem(
+      icon: _tabIcons[id]!,
+      label: _tabLabel(id),
+      selected: _tab == id,
+      count: count,
+      onTap: () => setState(() => _tab = id),
+    );
+  }
+
+  Widget _tabItem({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    int? count,
+    Widget? trailing,
+  }) {
+    final color = selected ? const Color(0xFF0F172A) : const Color(0xFF64748B);
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.only(top: 7, bottom: 5),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: selected ? const Color(0xFFEAB308) : Colors.transparent, width: 2.5),
           ),
-          child: Text(
-            count != null && count > 0
-                ? '${'workspace.work_tab.tab_$id'.tr()} ($count)'
-                : 'workspace.work_tab.tab_$id'.tr(),
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-              color: selected ? const Color(0xFF0F172A) : const Color(0xFF475569),
-            ),
-          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(clipBehavior: Clip.none, children: [
+              Icon(icon, size: 19, color: color),
+              if (count != null && count > 0)
+                Positioned(
+                  top: -5,
+                  right: -12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                    decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(8)),
+                    child: Text(
+                      count > 99 ? '99+' : '$count',
+                      style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+            ]),
+            const SizedBox(height: 2),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: color),
+                ),
+              ),
+              ?trailing,
+            ]),
+          ],
         ),
       ),
     );
