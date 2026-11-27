@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
@@ -132,7 +133,7 @@ class PushNotificationService {
 
   Future<void> _setupLocalNotifications() async {
     try {
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings('@drawable/ic_stat_notification');
       const darwinSettings = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -303,6 +304,9 @@ class PushNotificationService {
     // 1. Foreground message: Show local notification
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('[PushNotificationService] Foreground message received: ${message.messageId}');
+      // iOS đã tự hiện banner nhờ `setForegroundNotificationPresentationOptions(alert: true)`; hiện thêm thông báo
+      // cục bộ sẽ thành hai banner. Bấm banner của hệ thống đi qua `onMessageOpenedApp` như khi app ở nền.
+      if (!kIsWeb && Platform.isIOS && message.notification != null) return;
       final notification = message.notification;
       final android = message.notification?.android;
 
@@ -324,11 +328,11 @@ class PushNotificationService {
             _androidChannel.id,
             _androidChannel.name,
             channelDescription: _androidChannel.description,
-            icon: android?.smallIcon ?? '@mipmap/ic_launcher',
+            icon: android?.smallIcon ?? '@drawable/ic_stat_notification',
+            color: const Color(0xFFEAB308),
             importance: Importance.max,
             priority: Priority.max,
             visibility: NotificationVisibility.public,
-            fullScreenIntent: true,
             playSound: true,
             enableVibration: true,
           ),
